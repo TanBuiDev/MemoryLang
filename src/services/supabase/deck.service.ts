@@ -1,6 +1,7 @@
 import { supabase } from '@/services/supabase/client'
 import type { Deck } from '@/types/deck.types'
 import type { LanguageCode } from '@/types/language.types'
+import type { VocabularyItem } from '@/types/vocabulary.types'
 
 export interface DeckInput {
   user_id: string
@@ -26,6 +27,18 @@ export const deckService = {
     const { data, error } = await supabase.from('decks').select('*').eq('id', id).maybeSingle()
     if (error) throw error
     return data as Deck | null
+  },
+  async listTerms(deckId: string): Promise<VocabularyItem[]> {
+    const { data, error } = await supabase
+      .from('deck_terms')
+      .select('user_terms(*)')
+      .eq('deck_id', deckId)
+    if (error) throw error
+    return (data ?? []).flatMap((entry) => {
+      const terms = entry.user_terms as VocabularyItem | VocabularyItem[] | null
+      if (!terms) return []
+      return Array.isArray(terms) ? terms : [terms]
+    })
   },
   async create(input: DeckInput): Promise<Deck> {
     const { data, error } = await supabase.from('decks').insert(input).select('*').single()

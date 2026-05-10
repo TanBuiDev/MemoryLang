@@ -23,6 +23,7 @@ export async function enrichVocabulary(
     pronunciationText: null,
     meanings: [{ text: '', language: nativeLanguage }],
     examples: [],
+    translationText: '',
     audioUrl: null,
     imageUrl: null,
     source: 'fallback',

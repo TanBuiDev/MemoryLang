@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -7,13 +8,27 @@ import { Progress } from '@/components/ui/progress'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { generateTrueFalseQuestions } from '@/features/quiz/trueFalseQuiz'
 import { useI18n } from '@/i18n'
+import { isSupabaseConfigured } from '@/services/supabase/client'
+import { vocabularyService } from '@/services/supabase/vocabulary.service'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { useQuizStore } from '@/stores/useQuizStore'
 
 export function QuizSessionPage() {
   const navigate = useNavigate()
   const { t } = useI18n()
+  const user = useAuthStore((state) => state.user)
   const questionCount = useQuizStore((state) => state.questionCount)
-  const questions = useMemo(() => generateTrueFalseQuestions(demoVocabulary, questionCount), [questionCount])
+  const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
+  const vocabularyQuery = useQuery({
+    queryKey: ['vocabulary', user?.id],
+    queryFn: () => vocabularyService.list(user!.id),
+    enabled: shouldUseRemoteData,
+  })
+  const vocabulary = useMemo(
+    () => shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary,
+    [shouldUseRemoteData, vocabularyQuery.data],
+  )
+  const questions = useMemo(() => generateTrueFalseQuestions(vocabulary, questionCount), [questionCount, vocabulary])
   const [index, setIndex] = useState(0)
   const [score, setScore] = useState(0)
   const question = questions[index]
@@ -26,6 +41,23 @@ export function QuizSessionPage() {
       return
     }
     setIndex(index + 1)
+  }
+
+  if (vocabularyQuery.isLoading) {
+    return <Card className="font-black">{t('vocabulary.loading')}</Card>
+  }
+
+  if (vocabularyQuery.error) {
+    return <Card className="font-black text-danger">{vocabularyQuery.error.message}</Card>
+  }
+
+  if (!question) {
+    return (
+      <Card className="text-center">
+        <p className="text-xl font-black">{t('vocabulary.emptyTitle')}</p>
+        <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.emptyDescription')}</p>
+      </Card>
+    )
   }
 
   return (
