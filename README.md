@@ -1,73 +1,133 @@
-# React + TypeScript + Vite
+# MemoryLang
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Vocabulary learning & spaced-repetition flashcard web app. Primary audience: Vietnamese learners studying English (supports 8+ languages).
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Vocabulary CRUD** — Add, edit, delete words/phrases/idioms/sentences
+- **AI-powered enrichment** — Auto-generate IPA, definitions, translations, and example sentences via Edge Function
+- **Flashcard study** — Two-side and one-side card modes with progress tracking
+- **True/false quiz** — Test vocabulary knowledge with generated questions
+- **Spaced repetition** — Review scheduling based on recall performance
+- **Dashboard stats** — Total words, accuracy rate, deck progress
+- **i18n** — Vietnamese and English interface
+- **Demo mode** — Full offline operation with hardcoded data (no Supabase required)
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, TypeScript 6, Vite 8 |
+| Styling | Tailwind CSS v4 (neobrutalist design) |
+| Backend | Supabase (PostgreSQL, Auth, Edge Functions) |
+| State | Zustand + TanStack React Query |
+| Routing | react-router-dom v7 |
+| Validation | Zod v4 |
+| Testing | Vitest + Testing Library |
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js 18+
+- pnpm
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Installation
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Environment
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Create a `.env` file in the project root:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
+
+Without these variables, the app runs in **demo mode** with hardcoded data.
+
+### Development
+
+```bash
+pnpm dev
+```
+
+### Build
+
+```bash
+pnpm build
+```
+
+### Test
+
+```bash
+pnpm test
+```
+
+## Project Structure
+
+```
+src/
+  app/              # App entry, providers, routes, auth guards
+  components/
+    common/         # PageHeader, StatTile, EmptyState
+    layout/         # AppLayout (sidebar + header)
+    ui/             # Button, Card, Badge, Progress, Input
+  features/
+    demo/           # Hardcoded demo data
+    quiz/           # True/false question generator
+    study/          # Study mode labels
+    vocabulary/     # Zod form schema
+  i18n/             # Custom i18n (vi/en)
+  pages/            # 22 pages
+  services/
+    api/            # enrichVocabulary (Edge Function)
+    supabase/       # client, auth, vocabulary, deck, study, quiz, statistics
+  stores/           # Zustand stores (auth, language, study, quiz)
+  types/            # TypeScript type definitions
+  utils/            # audio, spaced repetition, text normalization
+```
+
+## Database
+
+10 tables with Row Level Security:
+
+| Table | Purpose |
+|---|---|
+| `profiles` | User profile |
+| `language_profiles` | Per-language learning config |
+| `global_terms` | Shared vocabulary cache |
+| `user_terms` | Per-user vocabulary (status, counts, review schedule, translation) |
+| `decks` | Vocabulary collections |
+| `deck_terms` | Many-to-many join |
+| `flashcard_templates` | Card templates (MVP 2) |
+| `study_sessions` | Study session records |
+| `quiz_results` | Quiz attempt records |
+| `quiz_answers` | Individual quiz answers |
+
+## Spaced Repetition
+
+| Action | Status | Next Review |
+|---|---|---|
+| Don't know | need_review | +1 day |
+| Difficult | difficult | +1 day |
+| Know (1st correct) | learning | +2 days |
+| Know (repeated) | familiar | +7 days |
+| Memorized | memorized | +14 days |
+
+## Deployment
+
+```bash
+# Deploy Edge Function
+npx supabase functions deploy enrich-vocabulary --project-ref <your-project-ref>
+
+# Push database migrations
+npx supabase db push
+```
+
+## License
+
+Private project.
