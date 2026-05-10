@@ -2,6 +2,7 @@ import { supabase } from '@/services/supabase/client'
 import { getDefaultUiLanguage } from '@/i18n'
 import type { Profile } from '@/types/auth.types'
 import type { LanguageCode } from '@/types/language.types'
+import type { Session, AuthChangeEvent } from '@supabase/supabase-js'
 
 export interface OnboardingInput {
   userId: string
@@ -14,8 +15,11 @@ export interface OnboardingInput {
 
 export const authService = {
   getSession: () => supabase.auth.getSession(),
-  onAuthStateChange: (callback: Parameters<typeof supabase.auth.onAuthStateChange>[0]) =>
-    supabase.auth.onAuthStateChange(callback),
+  onAuthStateChange: (callback: (event: AuthChangeEvent, session: Session | null) => void) =>
+    supabase.auth.onAuthStateChange((event, session) => {
+      callback(event, session)
+      return Promise.resolve()
+    }),
   signInWithPassword: (email: string, password: string) => supabase.auth.signInWithPassword({ email, password }),
   signUpWithPassword: (email: string, password: string) => supabase.auth.signUp({ email, password }),
   signInWithGoogle: () =>

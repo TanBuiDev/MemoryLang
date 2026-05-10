@@ -24,6 +24,8 @@ function AuthBootstrap({ children }: { children: ReactNode }) {
   const setLoading = useAuthStore((state) => state.setLoading)
 
   useEffect(() => {
+    let isActive = true
+
     if (!isSupabaseConfigured) {
       setProfile(demoProfile)
       setLoading(false)
@@ -34,22 +36,53 @@ function AuthBootstrap({ children }: { children: ReactNode }) {
       window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
     }
 
+    async function loadProfile(userId: string) {
+      try {
+        const profile = await authService.getProfile(userId)
+        if (isActive) setProfile(profile)
+      } catch (error) {
+        console.error('Failed to load profile', error)
+        if (isActive) setProfile(null)
+      }
+    }
+
     authService
       .getSession()
       .then(async ({ data }) => {
+        if (!isActive) return
         setSession(data.session)
         if (data.session?.user) {
-          setProfile(await authService.getProfile(data.session.user.id))
+          await loadProfile(data.session.user.id)
+        } else {
+          setProfile(null)
         }
       })
-      .finally(() => setLoading(false))
+      .catch((error) => {
+        console.error('Failed to restore session', error)
+        if (!isActive) return
+        setSession(null)
+        setProfile(null)
+      })
+      .finally(() => {
+        if (isActive) setLoading(false)
+      })
 
-    const { data } = authService.onAuthStateChange(async (_event, session) => {
+    const { data } = authService.onAuthStateChange((_event, session) => {
       setSession(session)
-      setProfile(session?.user ? await authService.getProfile(session.user.id) : null)
+      if (!session?.user) {
+        setProfile(null)
+        return
+      }
+
+      window.setTimeout(() => {
+        void loadProfile(session.user.id)
+      }, 0)
     })
 
-    return () => data.subscription.unsubscribe()
+    return () => {
+      isActive = false
+      data.subscription.unsubscribe()
+    }
   }, [setLoading, setProfile, setSession])
 
   return children
