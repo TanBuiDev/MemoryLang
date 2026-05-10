@@ -29,6 +29,7 @@ export interface VocabularyItem {
   image_url: string | null
   note: string | null
   meanings: Meaning[]
+  translation: string | null
   examples: ExampleSentence[]
   tags: string[]
   status: VocabularyStatus
@@ -51,6 +52,7 @@ export interface EnrichedVocabulary {
   pronunciationText: string | null
   meanings: Meaning[]
   examples: ExampleSentence[]
+  translationText?: string
   audioUrl: string | null
   imageUrl: string | null
   source: 'cache' | 'dictionary' | 'ai' | 'fallback'

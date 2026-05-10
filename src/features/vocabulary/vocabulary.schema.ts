@@ -21,6 +21,7 @@ export const vocabularyFormSchema = z.object({
   audio_url: z.string().url().optional().or(z.literal('')),
   image_url: z.string().url().optional().or(z.literal('')),
   note: z.string().optional(),
+  translation: z.string().optional(),
   meanings: z.array(meaningSchema).min(1, 'Add at least one meaning'),
   examples: z.array(exampleSchema),
   tags: z.array(z.string()),

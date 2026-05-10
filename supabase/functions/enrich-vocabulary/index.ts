@@ -41,6 +41,77 @@ async function dictionaryLookup(text: string, nativeLanguage: LanguageCode) {
   }
 }
 
+async function translateText(text: string, sourceLanguage: LanguageCode, nativeLanguage: LanguageCode) {
+  const value = text.trim()
+  if (!value || sourceLanguage === nativeLanguage || sourceLanguage === 'other' || nativeLanguage === 'other') return value
+
+  const url = new URL('https://api.mymemory.translated.net/get')
+  url.searchParams.set('q', value)
+  url.searchParams.set('langpair', `${sourceLanguage}|${nativeLanguage}`)
+  url.searchParams.set('mt', '1')
+
+  try {
+    const response = await fetch(url)
+    if (!response.ok) return value
+
+    const payload = await response.json()
+    const translated = payload?.responseData?.translatedText
+    return typeof translated === 'string' && translated.trim() ? translated.trim() : value
+  } catch {
+    return value
+  }
+}
+
+async function addDictionaryTranslations(
+  sourceText: string,
+  sourceLanguage: LanguageCode,
+  nativeLanguage: LanguageCode,
+  dictionary: Awaited<ReturnType<typeof dictionaryLookup>>,
+) {
+  if (!dictionary) return null
+
+  const translatedWord = await translateText(sourceText, sourceLanguage, nativeLanguage)
+  const examples = await Promise.all(
+    dictionary.examples.map(async (example: { sentence: string; translation?: string }) => ({
+      sentence: example.sentence,
+      translation: await translateText(example.sentence, sourceLanguage, nativeLanguage),
+    })),
+  )
+
+  return {
+    ...dictionary,
+    translationText: translatedWord,
+    examples,
+  }
+}
+
+async function addCachedTranslations(term: Record<string, unknown>, sourceLanguage: LanguageCode, nativeLanguage: LanguageCode) {
+  const sourceText = String(term.source_text ?? '')
+  const meanings = Array.isArray(term.meanings) ? term.meanings : []
+  const examples = Array.isArray(term.examples) ? term.examples : []
+  const translatedWord = await translateText(sourceText, sourceLanguage, nativeLanguage)
+
+  return {
+    sourceText,
+    normalizedText: String(term.normalized_text ?? normalizeText(sourceText)),
+    itemType: term.item_type,
+    ipa: term.ipa,
+    partOfSpeech: term.part_of_speech,
+    pronunciationText: term.pronunciation_text,
+    meanings,
+    examples: await Promise.all(
+      examples.map(async (example) => ({
+        sentence: String(example?.sentence ?? ''),
+        translation: await translateText(String(example?.sentence ?? ''), sourceLanguage, nativeLanguage),
+      })),
+    ),
+    translationText: translatedWord,
+    audioUrl: term.audio_url,
+    imageUrl: term.image_url,
+    source: 'cache',
+  }
+}
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -61,6 +132,11 @@ Deno.serve(async (request) => {
       .maybeSingle()
 
     if (cached) {
+      if (body.sourceLanguage !== body.nativeLanguage) {
+        const translated = await addCachedTranslations(cached, body.sourceLanguage, body.nativeLanguage)
+        return Response.json(translated, { headers: corsHeaders })
+      }
+
       return Response.json(
         {
           sourceText: cached.source_text,
@@ -71,6 +147,7 @@ Deno.serve(async (request) => {
           pronunciationText: cached.pronunciation_text,
           meanings: cached.meanings,
           examples: cached.examples,
+          translationText: '',
           audioUrl: cached.audio_url,
           imageUrl: cached.image_url,
           source: 'cache',
@@ -80,6 +157,7 @@ Deno.serve(async (request) => {
     }
 
     const dictionary = itemType === 'word' && body.sourceLanguage === 'en' ? await dictionaryLookup(body.text, body.nativeLanguage) : null
+    const translatedDictionary = await addDictionaryTranslations(body.text, body.sourceLanguage, body.nativeLanguage, dictionary)
     const payload = {
       source_text: body.text,
       normalized_text: normalizedText,
@@ -91,8 +169,8 @@ Deno.serve(async (request) => {
       pronunciation_text: null,
       audio_url: dictionary?.audioUrl ?? null,
       image_url: null,
-      meanings: dictionary?.meanings?.[0]?.text ? dictionary.meanings : [{ text: '', language: body.nativeLanguage }],
-      examples: dictionary?.examples ?? [],
+      meanings: translatedDictionary?.meanings?.[0]?.text ? translatedDictionary.meanings : [{ text: '', language: body.nativeLanguage }],
+      examples: translatedDictionary?.examples ?? [],
       source: dictionary ? 'dictionary' : 'system',
     }
 
@@ -110,6 +188,7 @@ Deno.serve(async (request) => {
         pronunciationText: payload.pronunciation_text,
         meanings: payload.meanings,
         examples: payload.examples,
+        translationText: translatedDictionary?.translationText ?? '',
         audioUrl: payload.audio_url,
         imageUrl: payload.image_url,
         source: dictionary ? 'dictionary' : 'fallback',

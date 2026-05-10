@@ -32,6 +32,7 @@ export const vocabularyService = {
         audio_url: values.audio_url || null,
         image_url: values.image_url || null,
         note: values.note || null,
+        translation: values.translation || null,
       })
       .select('*')
       .single()
@@ -59,6 +60,7 @@ export const vocabularyService = {
         audio_url: values.audio_url || null,
         image_url: values.image_url || null,
         note: values.note || null,
+        translation: values.translation || null,
       })
       .eq('id', id)
       .select('*')
