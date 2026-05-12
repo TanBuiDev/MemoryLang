@@ -43,6 +43,21 @@ export interface VocabularyItem {
   updated_at: string
 }
 
+export type RelationType = 'derivative' | 'collocation' | 'synonym' | 'antonym' | 'idiom' | 'related'
+
+export interface TermRelationship {
+  id: string
+  source_id: string
+  target_id: string
+  relation_type: RelationType
+  created_at: string
+}
+
+export interface VocabularyCardResponse {
+  entry: VocabularyItem
+  relationships: Record<RelationType, VocabularyItem[]>
+}
+
 export interface EnrichedVocabulary {
   sourceText: string
   normalizedText: string
