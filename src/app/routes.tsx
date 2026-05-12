@@ -14,7 +14,6 @@ import { QuizSessionPage } from '@/pages/quiz/QuizSessionPage'
 import { QuizSetupPage } from '@/pages/quiz/QuizSetupPage'
 import { ReviewTodayPage } from '@/pages/review/ReviewTodayPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
-import { StatisticsOverviewPage } from '@/pages/statistics/StatisticsOverviewPage'
 import { FlashcardStudyPage } from '@/pages/study/FlashcardStudyPage'
 import { StudyResultPage } from '@/pages/study/StudyResultPage'
 import { StudySetupPage } from '@/pages/study/StudySetupPage'
@@ -56,7 +55,7 @@ export const router = createBrowserRouter([
           { path: 'templates', element: <TemplateListPage /> },
           { path: 'templates/new', element: <TemplateBuilderPage /> },
           { path: 'templates/:id/edit', element: <TemplateBuilderPage /> },
-          { path: 'statistics', element: <StatisticsOverviewPage /> },
+          { path: 'statistics', element: <Navigate to="/app/dashboard" replace /> },
           { path: 'settings', element: <SettingsPage /> },
         ],
       },

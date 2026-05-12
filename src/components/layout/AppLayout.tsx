@@ -1,12 +1,10 @@
 import {
-  BarChart3,
   BookOpen,
   Brain,
   ClipboardCheck,
   Gauge,
   LayoutDashboard,
   LibraryBig,
-  PanelsTopLeft,
   Settings,
 } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
@@ -23,8 +21,6 @@ const navItems = [
   { to: '/app/study', labelKey: 'nav.study', icon: Brain },
   { to: '/app/quiz', labelKey: 'nav.quiz', icon: ClipboardCheck },
   { to: '/app/review', labelKey: 'nav.review', icon: Gauge },
-  { to: '/app/templates', labelKey: 'nav.templates', icon: PanelsTopLeft },
-  { to: '/app/statistics', labelKey: 'nav.statistics', icon: BarChart3 },
   { to: '/app/settings', labelKey: 'nav.settings', icon: Settings },
 ] as const
 
