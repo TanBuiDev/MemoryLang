@@ -8,10 +8,11 @@ import { Card, CardTitle } from '@/components/ui/card'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
-import { vocabularyService } from '@/services/supabase/vocabulary.service'
+import { createEmptyRelationshipGroups, relationshipService } from '@/services/supabase/relationship.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import type { VocabularyItemType, VocabularyStatus } from '@/types/vocabulary.types'
 import { speak } from '@/utils/audio'
+import { RelatedTermsSection } from '@/components/vocabulary/RelatedTermsSection'
 
 const itemTypeLabelKeys: Record<VocabularyItemType, string> = {
   word: 'vocabulary.word',
@@ -34,19 +35,20 @@ export function VocabularyDetailPage() {
   const { t } = useI18n()
   const user = useAuthStore((state) => state.user)
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
-  const vocabularyQuery = useQuery({
-    queryKey: ['vocabulary', id],
-    queryFn: () => vocabularyService.get(id!),
+  const vocabularyCardQuery = useQuery({
+    queryKey: ['vocabulary-card', id],
+    queryFn: () => relationshipService.getCard(id!),
     enabled: shouldUseRemoteData && Boolean(id),
   })
-  const item = shouldUseRemoteData ? vocabularyQuery.data : demoVocabulary.find((entry) => entry.id === id) ?? demoVocabulary[0]
+  const item = shouldUseRemoteData ? vocabularyCardQuery.data?.entry : demoVocabulary.find((entry) => entry.id === id) ?? demoVocabulary[0]
+  const relationships = shouldUseRemoteData ? vocabularyCardQuery.data?.relationships ?? createEmptyRelationshipGroups() : createEmptyRelationshipGroups()
 
-  if (shouldUseRemoteData && vocabularyQuery.isLoading) {
+  if (shouldUseRemoteData && vocabularyCardQuery.isLoading) {
     return <Card className="font-black">{t('vocabulary.loading')}</Card>
   }
 
-  if (vocabularyQuery.error) {
-    return <Card className="font-black text-danger">{vocabularyQuery.error.message}</Card>
+  if (vocabularyCardQuery.error) {
+    return <Card className="font-black text-danger">{vocabularyCardQuery.error.message}</Card>
   }
 
   if (!item) {
@@ -81,6 +83,7 @@ export function VocabularyDetailPage() {
           <StatTile label={t('vocabulary.correct')} value={item.correct_count} />
           <StatTile label={t('vocabulary.wrong')} value={item.wrong_count} />
           <StatTile label={t('vocabulary.nextReview')} value={item.next_review_at ? new Date(item.next_review_at).toLocaleDateString() : t('vocabulary.unscheduled')} />
+          <RelatedTermsSection relationships={relationships} />
         </div>
       </div>
     </>

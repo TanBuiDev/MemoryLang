@@ -1,9 +1,20 @@
 import { supabase } from '@/services/supabase/client'
-import type { VocabularyFormValues } from '@/features/vocabulary/vocabulary.schema'
+import type { VocabularyFormValues, VocabularyUpdateFormValues } from '@/features/vocabulary/vocabulary.schema'
 import type { VocabularyItem } from '@/types/vocabulary.types'
 import { normalizeText } from '@/utils/normalizeText'
 
 export const vocabularyService = {
+  async findDuplicate(userId: string, sourceText: string): Promise<VocabularyItem | null> {
+    const normalized = normalizeText(sourceText)
+    const { data, error } = await supabase
+      .from('user_terms')
+      .select('id, source_text, normalized_text')
+      .eq('user_id', userId)
+      .eq('normalized_text', normalized)
+      .limit(1)
+    if (error) throw error
+    return (data?.[0] as VocabularyItem) ?? null
+  },
   async list(userId: string): Promise<VocabularyItem[]> {
     const { data, error } = await supabase
       .from('user_terms')
@@ -47,7 +58,7 @@ export const vocabularyService = {
 
     return data as VocabularyItem
   },
-  async update(id: string, values: VocabularyFormValues): Promise<VocabularyItem> {
+  async update(id: string, values: VocabularyUpdateFormValues): Promise<VocabularyItem> {
     const { deck_ids, ...termValues } = values
     const { data, error } = await supabase
       .from('user_terms')
@@ -67,8 +78,12 @@ export const vocabularyService = {
       .single()
     if (error) throw error
 
-    await supabase.from('deck_terms').delete().eq('user_term_id', id)
-    if (deck_ids.length > 0) {
+    if (Array.isArray(deck_ids)) {
+      const { error: deleteLinksError } = await supabase.from('deck_terms').delete().eq('user_term_id', id)
+      if (deleteLinksError) throw deleteLinksError
+    }
+
+    if (deck_ids && deck_ids.length > 0) {
       const { error: linkError } = await supabase
         .from('deck_terms')
         .insert(deck_ids.map((deck_id) => ({ deck_id, user_term_id: id })))
@@ -79,6 +94,10 @@ export const vocabularyService = {
   },
   async remove(id: string) {
     const { error } = await supabase.from('user_terms').delete().eq('id', id)
+    if (error) throw error
+  },
+  async removeMany(ids: string[]) {
+    const { error } = await supabase.from('user_terms').delete().in('id', ids)
     if (error) throw error
   },
 }

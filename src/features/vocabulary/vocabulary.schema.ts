@@ -28,4 +28,10 @@ export const vocabularyFormSchema = z.object({
   deck_ids: z.array(z.string()),
 })
 
+export const vocabularyUpdateFormSchema = vocabularyFormSchema.extend({
+  status: z.enum(['new', 'learning', 'familiar', 'memorized', 'difficult', 'need_review']).optional(),
+  deck_ids: z.array(z.string()).optional(),
+})
+
 export type VocabularyFormValues = z.infer<typeof vocabularyFormSchema>
+export type VocabularyUpdateFormValues = z.infer<typeof vocabularyUpdateFormSchema>

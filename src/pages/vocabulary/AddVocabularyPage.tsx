@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
@@ -33,6 +33,9 @@ export function AddVocabularyPage() {
   const [note, setNote] = useState('')
   const [message, setMessage] = useState('')
   const [source, setSource] = useState<EnrichedVocabulary['source'] | null>(null)
+  const [duplicateId, setDuplicateId] = useState<string | null>(null)
+  const [isEnriching, setIsEnriching] = useState(false)
+
   const createVocabulary = useMutation({
     mutationFn: (values: VocabularyFormValues) => vocabularyService.create(user!.id, values),
     onSuccess: async () => {
@@ -48,17 +51,47 @@ export function AddVocabularyPage() {
   })
 
   async function runEnrichment() {
-    const enriched = await enrichVocabulary(text, 'en', 'vi')
-    setItemType(enriched.itemType)
-    setIpa(enriched.ipa ?? '')
-    setPartOfSpeech(enriched.partOfSpeech ?? '')
-    setPronunciationText(enriched.pronunciationText ?? '')
-    setAudioUrl(enriched.audioUrl ?? '')
-    setImageUrl(enriched.imageUrl ?? '')
-    setMeaning(enriched.meanings[0]?.text ?? '')
-    setExample(enriched.examples[0]?.sentence ?? '')
-    setTranslation(enriched.translationText ?? enriched.examples[0]?.translation ?? '')
-    setSource(enriched.source)
+    const trimmed = text.trim()
+    if (!trimmed) return
+
+    setIsEnriching(true)
+    setMessage('')
+    setDuplicateId(null)
+
+    // Step 1: Check duplicate first
+    if (isSupabaseConfigured && user) {
+      try {
+        const existing = await vocabularyService.findDuplicate(user.id, trimmed)
+        if (existing) {
+          setDuplicateId(existing.id)
+          setMessage(t('vocabulary.duplicateError', { word: trimmed }))
+          setIsEnriching(false)
+          return
+        }
+      } catch (err) {
+        console.error('[AddVocabulary] Duplicate check failed:', err)
+      }
+    }
+
+    // Step 2: No duplicate — proceed with enrichment API
+    try {
+      const enriched = await enrichVocabulary(trimmed, 'en', 'vi')
+      setItemType(enriched.itemType)
+      setIpa(enriched.ipa ?? '')
+      setPartOfSpeech(enriched.partOfSpeech ?? '')
+      setPronunciationText(enriched.pronunciationText ?? '')
+      setAudioUrl(enriched.audioUrl ?? '')
+      setImageUrl(enriched.imageUrl ?? '')
+      setMeaning(enriched.meanings[0]?.text ?? '')
+      setExample(enriched.examples[0]?.sentence ?? '')
+      setTranslation(enriched.translationText ?? enriched.examples[0]?.translation ?? '')
+      setSource(enriched.source)
+    } catch (err) {
+      console.error('[AddVocabulary] Enrichment failed:', err)
+      setMessage('Enrichment failed. You can fill in the fields manually.')
+    }
+
+    setIsEnriching(false)
   }
 
   function submit(event: FormEvent) {
@@ -69,6 +102,8 @@ export function AddVocabularyPage() {
       setMessage('You need to sign in before saving vocabulary.')
       return
     }
+
+    if (duplicateId) return
 
     const nativeLanguage = profile?.native_language ?? 'vi'
     const sourceLanguage = profile?.current_target_language ?? 'en'
@@ -103,6 +138,9 @@ export function AddVocabularyPage() {
     createVocabulary.mutate(parsed.data)
   }
 
+  const isDuplicate = duplicateId !== null
+  const isEnrichDisabled = !text.trim() || isEnriching || isDuplicate
+
   return (
     <>
       <PageHeader title={t('vocabulary.addTitle')} description={t('vocabulary.addDescription')} />
@@ -110,9 +148,30 @@ export function AddVocabularyPage() {
         <Card>
           <CardTitle>{t('vocabulary.input')}</CardTitle>
           <div className="mt-4 grid gap-4">
-            <div><Label>{t('vocabulary.sourceTextPrompt')}</Label><Input value={text} onChange={(event) => { setText(event.target.value); setItemType(inferItemType(event.target.value) as VocabularyItemType) }} /></div>
+            <div>
+              <Label>{t('vocabulary.sourceTextPrompt')}</Label>
+              <Input
+                value={text}
+                onChange={(event) => {
+                  setText(event.target.value)
+                  setItemType(inferItemType(event.target.value) as VocabularyItemType)
+                  if (duplicateId) { setDuplicateId(null); setMessage('') }
+                }}
+                className={isDuplicate ? 'border-danger' : ''}
+              />
+              {isDuplicate ? (
+                <div className="mt-2">
+                  <p className="text-sm font-bold text-danger">{message}</p>
+                  <Button asChild variant="secondary" className="mt-1">
+                    <Link to={`/app/vocabulary/${duplicateId}/edit`}>{t('vocabulary.editExisting')}</Link>
+                  </Button>
+                </div>
+              ) : null}
+            </div>
             <div><Label>{t('vocabulary.itemType')}</Label><Select value={itemType} onChange={(event) => setItemType(event.target.value as VocabularyItemType)}><option value="word">{t('vocabulary.word')}</option><option value="phrase">{t('vocabulary.phrase')}</option><option value="idiom">{t('vocabulary.idiom')}</option><option value="sentence">{t('vocabulary.sentence')}</option></Select></div>
-            <Button type="button" variant="secondary" onClick={() => void runEnrichment()}>{t('vocabulary.enrich')}</Button>
+            <Button type="button" variant="secondary" disabled={isEnrichDisabled} onClick={() => void runEnrichment()}>
+              {isEnriching ? '...' : t('vocabulary.enrich')}
+            </Button>
           </div>
         </Card>
         <Card>
@@ -124,8 +183,8 @@ export function AddVocabularyPage() {
             <div><Label>{t('vocabulary.example')}</Label><Textarea value={example} onChange={(event) => setExample(event.target.value)} /></div>
             <div><Label>{t('vocabulary.translation')}</Label><Textarea value={translation} onChange={(event) => setTranslation(event.target.value)} /></div>
             <div><Label>{t('vocabulary.note')}</Label><Textarea value={note} onChange={(event) => setNote(event.target.value)} /></div>
-            <Button type="submit" disabled={createVocabulary.isPending}>{t('vocabulary.save')}</Button>
-            {message ? <p className="text-sm font-bold text-danger">{message}</p> : null}
+            <Button type="submit" disabled={createVocabulary.isPending || isDuplicate}>{createVocabulary.isPending ? '...' : t('vocabulary.save')}</Button>
+            {!isDuplicate && message ? <p className="text-sm font-bold text-danger">{message}</p> : null}
           </div>
         </Card>
       </form>

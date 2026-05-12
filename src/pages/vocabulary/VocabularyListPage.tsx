@@ -1,9 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Volume2 } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Select } from '@/components/ui/input'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { useI18n } from '@/i18n'
@@ -25,6 +28,7 @@ const statusLabelKeys: Record<VocabularyStatus, string> = {
 export function VocabularyListPage() {
   const { t } = useI18n()
   const user = useAuthStore((state) => state.user)
+  const queryClient = useQueryClient()
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
   const vocabularyQuery = useQuery({
     queryKey: ['vocabulary', user?.id],
@@ -33,9 +37,91 @@ export function VocabularyListPage() {
   })
   const vocabulary = shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary
 
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [pendingDelete, setPendingDelete] = useState<{ ids: string[]; word?: string } | null>(null)
+
+  const deleteVocabulary = useMutation({
+    mutationFn: (ids: string[]) => vocabularyService.removeMany(ids),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] }),
+        queryClient.invalidateQueries({ queryKey: ['statistics', user?.id] }),
+      ])
+    },
+  })
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === vocabulary.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(vocabulary.map((v) => v.id)))
+    }
+  }
+
+  function enterSelectMode() {
+    setSelectMode(true)
+    setSelectedIds(new Set())
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  function requestDeleteSingle(id: string, word: string) {
+    setPendingDelete({ ids: [id], word })
+  }
+
+  function requestDeleteSelected() {
+    const ids = [...selectedIds]
+    if (ids.length === 0) return
+    setPendingDelete({ ids })
+  }
+
+  function confirmDelete() {
+    if (!pendingDelete) return
+    deleteVocabulary.mutate(pendingDelete.ids)
+    if (selectMode) exitSelectMode()
+    setPendingDelete(null)
+  }
+
+  function cancelDelete() {
+    setPendingDelete(null)
+  }
+
+  const headerActions = selectMode ? (
+    <div className="flex gap-2">
+      <Button variant="ghost" onClick={exitSelectMode}>{t('actions.cancel')}</Button>
+      <span className="self-center text-sm font-bold">{t('vocabulary.selected', { count: selectedIds.size })}</span>
+      <Button variant="danger" disabled={selectedIds.size === 0} onClick={requestDeleteSelected}>{t('vocabulary.deleteSelected')}</Button>
+    </div>
+  ) : (
+    <div className="flex gap-2">
+      <Button variant="ghost" disabled={!shouldUseRemoteData} onClick={enterSelectMode}>{t('vocabulary.select')}</Button>
+      <Button asChild><Link to="/app/vocabulary/new">{t('vocabulary.add')}</Link></Button>
+    </div>
+  )
+
   return (
     <>
-      <PageHeader title={t('vocabulary.title')} description={t('vocabulary.description')} actions={<Button asChild><Link to="/app/vocabulary/new">{t('vocabulary.add')}</Link></Button>} />
+      <PageHeader title={t('vocabulary.title')} description={t('vocabulary.description')} actions={headerActions} />
+      {selectMode && vocabulary.length > 0 ? (
+        <div className="mb-3">
+          <Button variant="ghost" onClick={toggleSelectAll}>
+            {selectedIds.size === vocabulary.length ? t('vocabulary.deselectAll') : t('vocabulary.selectAll')}
+          </Button>
+        </div>
+      ) : null}
       <div className="mb-4 grid gap-3 md:grid-cols-4">
         <Input placeholder={t('vocabulary.search')} />
         <Select defaultValue="all"><option value="all">{t('vocabulary.allStatuses')}</option><option value="difficult">{t('vocabulary.statusDifficult')}</option><option value="need_review">{t('vocabulary.statusNeedReview')}</option></Select>
@@ -53,24 +139,47 @@ export function VocabularyListPage() {
           </Card>
         ) : null}
         {vocabulary.map((item) => (
-          <Card key={item.id} className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+          <Card key={item.id} className="grid gap-3 md:grid-cols-[auto_1fr_auto] md:items-center">
+            {selectMode ? (
+              <input
+                type="checkbox"
+                checked={selectedIds.has(item.id)}
+                onChange={() => toggleSelect(item.id)}
+                className="h-5 w-5 accent-primary"
+              />
+            ) : null}
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <Link to={`/app/vocabulary/${item.id}`} className="text-xl font-black underline">{item.source_text}</Link>
                 <Badge>{t(statusLabelKeys[item.status])}</Badge>
                 {item.part_of_speech ? <Badge className="bg-muted">{item.part_of_speech}</Badge> : null}
+                <Button variant="ghost" className="h-6 min-h-0 w-6 p-0" onClick={() => speak(item.source_text)}><Volume2 className="h-4 w-4" /></Button>
               </div>
               <p className="mt-1 font-mono text-sm">{item.ipa}</p>
               <p className="font-semibold text-muted-foreground">{item.meanings[0]?.text}</p>
+              {item.translation ? <p className="text-sm text-primary font-bold">{item.translation}</p> : null}
               <div className="mt-2 flex flex-wrap gap-1">{item.tags.map((tag) => <Badge key={tag} className="bg-card">#{tag}</Badge>)}</div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="ghost" onClick={() => speak(item.source_text)}>{t('vocabulary.audio')}</Button>
-              <Button asChild variant="secondary"><Link to={`/app/vocabulary/${item.id}/edit`}>{t('vocabulary.edit')}</Link></Button>
+            <div className="flex gap-2 ml-auto">
+              {selectMode ? null : (
+                <>
+                  <Button asChild variant="secondary"><Link to={`/app/vocabulary/${item.id}/edit`}>{t('vocabulary.edit')}</Link></Button>
+                  <Button variant="ghost" disabled={!shouldUseRemoteData} onClick={() => requestDeleteSingle(item.id, item.source_text)} className="text-danger">{t('vocabulary.delete')}</Button>
+                </>
+              )}
             </div>
           </Card>
         ))}
       </div>
+      <ConfirmModal
+        open={pendingDelete !== null}
+        title={pendingDelete?.word ? t('vocabulary.deleteConfirmSingle', { word: pendingDelete.word }) : t('vocabulary.deleteConfirm', { count: pendingDelete?.ids.length ?? 0 })}
+        confirmLabel={t('vocabulary.delete')}
+        cancelLabel={t('actions.cancel')}
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
     </>
   )
 }

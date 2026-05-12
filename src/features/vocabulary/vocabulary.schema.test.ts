@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { vocabularyFormSchema } from '@/features/vocabulary/vocabulary.schema'
+import { vocabularyFormSchema, vocabularyUpdateFormSchema } from '@/features/vocabulary/vocabulary.schema'
 
 describe('vocabularyFormSchema', () => {
   it('accepts a valid editable vocabulary payload', () => {
@@ -36,5 +36,20 @@ describe('vocabularyFormSchema', () => {
     })
 
     expect(result.success).toBe(false)
+  })
+
+  it('allows update payloads to omit deck ids and include status', () => {
+    const result = vocabularyUpdateFormSchema.safeParse({
+      source_text: 'apple',
+      source_language: 'en',
+      native_language: 'vi',
+      item_type: 'word',
+      status: 'learning',
+      meanings: [{ text: 'quả táo', language: 'vi' }],
+      examples: [],
+      tags: [],
+    })
+
+    expect(result.success).toBe(true)
   })
 })
