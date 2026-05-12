@@ -7,8 +7,10 @@ import { Card, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { generateTrueFalseQuestions } from '@/features/quiz/trueFalseQuiz'
+import { prepareSessionVocabulary } from '@/features/study/sessionVocabulary'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
+import { deckService } from '@/services/supabase/deck.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useQuizStore } from '@/stores/useQuizStore'
@@ -17,16 +19,28 @@ export function QuizSessionPage() {
   const navigate = useNavigate()
   const { t } = useI18n()
   const user = useAuthStore((state) => state.user)
-  const questionCount = useQuizStore((state) => state.questionCount)
+  const { questionCount, selectedDeckId } = useQuizStore()
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
   const vocabularyQuery = useQuery({
     queryKey: ['vocabulary', user?.id],
     queryFn: () => vocabularyService.list(user!.id),
-    enabled: shouldUseRemoteData,
+    enabled: shouldUseRemoteData && !selectedDeckId,
+  })
+  const deckTermsQuery = useQuery({
+    queryKey: ['deck-terms', selectedDeckId],
+    queryFn: () => deckService.listTerms(selectedDeckId!),
+    enabled: shouldUseRemoteData && Boolean(selectedDeckId),
   })
   const vocabulary = useMemo(
-    () => shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary,
-    [shouldUseRemoteData, vocabularyQuery.data],
+    () => {
+      const source = shouldUseRemoteData
+        ? selectedDeckId
+          ? deckTermsQuery.data ?? []
+          : vocabularyQuery.data ?? []
+        : demoVocabulary
+      return prepareSessionVocabulary(source, { limit: questionCount, shuffle: true })
+    },
+    [deckTermsQuery.data, questionCount, selectedDeckId, shouldUseRemoteData, vocabularyQuery.data],
   )
   const questions = useMemo(() => generateTrueFalseQuestions(vocabulary, questionCount), [questionCount, vocabulary])
   const [index, setIndex] = useState(0)
@@ -43,12 +57,17 @@ export function QuizSessionPage() {
     setIndex(index + 1)
   }
 
-  if (vocabularyQuery.isLoading) {
+  if (vocabularyQuery.isLoading || deckTermsQuery.isLoading) {
     return <Card className="font-black">{t('vocabulary.loading')}</Card>
   }
 
-  if (vocabularyQuery.error) {
-    return <Card className="font-black text-danger">{vocabularyQuery.error.message}</Card>
+  const error =
+    vocabularyQuery.error instanceof Error ? vocabularyQuery.error.message :
+    deckTermsQuery.error instanceof Error ? deckTermsQuery.error.message :
+    null
+
+  if (error) {
+    return <Card className="font-black text-danger">{error}</Card>
   }
 
   if (!question) {

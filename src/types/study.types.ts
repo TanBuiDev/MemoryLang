@@ -7,6 +7,8 @@ export type StudyMode =
   | 'ipa_first'
   | 'example_first'
 
+export type SessionLimit = number | 'all'
+
 export interface StudySession {
   id: string
   user_id: string

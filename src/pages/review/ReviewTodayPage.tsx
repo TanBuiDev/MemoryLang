@@ -8,10 +8,12 @@ import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useStudyStore } from '@/stores/useStudyStore'
 
 export function ReviewTodayPage() {
   const { t } = useI18n()
   const user = useAuthStore((state) => state.user)
+  const setSelectedDeckId = useStudyStore((state) => state.setSelectedDeckId)
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
   const vocabularyQuery = useQuery({
     queryKey: ['vocabulary', user?.id],
@@ -26,7 +28,7 @@ export function ReviewTodayPage() {
 
   return (
     <>
-      <PageHeader title={t('review.title')} description={t('review.description')} actions={<Button asChild><Link to="/app/study">{t('review.start')}</Link></Button>} />
+      <PageHeader title={t('review.title')} description={t('review.description')} actions={<Button asChild><Link to="/app/study/session/review-session" onClick={() => setSelectedDeckId(null)}>{t('review.start')}</Link></Button>} />
       <div className="grid gap-4 lg:grid-cols-2">
         {isLoading ? <Card className="font-black lg:col-span-2">{t('vocabulary.loading')}</Card> : null}
         {error ? <Card className="font-black text-danger lg:col-span-2">{error}</Card> : null}
