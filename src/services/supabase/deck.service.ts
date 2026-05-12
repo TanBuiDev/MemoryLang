@@ -54,4 +54,18 @@ export const deckService = {
     const { error } = await supabase.from('decks').delete().eq('id', id)
     if (error) throw error
   },
+  async addTerm(deckId: string, userTermId: string) {
+    const { error } = await supabase
+      .from('deck_terms')
+      .insert({ deck_id: deckId, user_term_id: userTermId })
+    if (error) throw error
+  },
+  async removeTerm(deckId: string, userTermId: string) {
+    const { error } = await supabase
+      .from('deck_terms')
+      .delete()
+      .eq('deck_id', deckId)
+      .eq('user_term_id', userTermId)
+    if (error) throw error
+  },
 }
