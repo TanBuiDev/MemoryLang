@@ -38,7 +38,8 @@ src/
   components/
     common/         # AppLoading, EmptyState, PageHeader, StatTile
     layout/         # AppLayout (sidebar + header + outlet)
-    ui/             # Button, Card, Badge, Progress, Input/Textarea/Select/Label
+    ui/             # Button, Card, Badge, Progress, Input/Textarea/Select/Label, ConfirmModal
+    vocabulary/     # RelatedTermsSection, relationshipDisplay
   features/
     demo/           # Hardcoded demo data (3 vocab, 2 decks)
     quiz/           # True/false question generator
@@ -55,13 +56,14 @@ src/
   test/             # Vitest setup
 ```
 
-## Database (10 tables, all RLS-enabled)
+## Database (11 tables, all RLS-enabled)
 | Table | Purpose |
 |---|---|
 | `profiles` | User profile (linked to auth.users) |
 | `language_profiles` | Per-language learning config |
 | `global_terms` | Shared vocabulary cache |
 | `user_terms` | Per-user vocabulary items (status, counts, review schedule, translation) |
+| `term_relationships` | Directed links between user vocabulary terms (derivative, collocation, synonym, antonym, idiom, related) |
 | `decks` | Vocabulary collections |
 | `deck_terms` | Many-to-many join (decks <-> user_terms) |
 | `flashcard_templates` | Card templates (MVP 2 placeholder) |
@@ -73,14 +75,14 @@ src/
 **Public:** `/` (landing), `/login`, `/register`, `/forgot-password`, `/onboarding`
 
 **Protected (under `/app`, requires auth + completed onboarding):**
-- `/app/dashboard` - Stats, daily goal, recent decks
+- `/app/dashboard` - Overview with daily goal, review pressure, learning health, deck progress, and statistics
 - `/app/vocabulary` - List, detail, add, edit
 - `/app/decks` - List, detail
 - `/app/study` - Setup, session (`/session/:id`), result (`/result/:id`)
 - `/app/quiz` - Setup, session (`/session/:id`), result (`/result/:id`)
 - `/app/review` - Due today + difficult words
 - `/app/templates` - MVP 2 placeholder
-- `/app/statistics` - Stats overview
+- `/app/statistics` - Redirects to `/app/dashboard` because statistics are integrated into Overview
 - `/app/settings` - Profile, language, study, audio settings
 
 ## Key Patterns
@@ -92,9 +94,14 @@ Every page checks `isSupabaseConfigured && Boolean(user)`. If false, uses hardco
 - `meanings` = definition/explanation of the word (from dictionary API, English)
 - `translation` = direct translation of the word to user's native language (banana → quả chuối)
 - `examples[].translation` = translation of the example sentence
+- Vocabulary detail uses `relationshipService.getCard(id)` to load the main term plus grouped `term_relationships`. Edit vocabulary can create/delete related-term links; `synonym`, `antonym`, and `related` are stored bidirectionally, while `derivative`, `collocation`, and `idiom` are stored one-way.
+- Flashcard study uses `relationshipService.getCard(currentTermId)` for the active card so one-side cards and flipped two-side cards can show translation fallback, examples, notes, images, and compact related terms.
 
 ### Service abstraction
 All Supabase calls wrapped in service objects (`authService`, `vocabularyService`, `deckService`, `studyService`, `quizService`, `statisticsService`). Never call Supabase client directly from components.
+
+### ConfirmModal (reusable confirmation dialog)
+Use `ConfirmModal` from `@/components/ui/confirm-modal` instead of `window.confirm()`. Pattern: store pending action in state (e.g. `pendingDeleteIds`), render `<ConfirmModal open={...} onConfirm={...} onCancel={...} />`, execute action on confirm. Never use browser default dialogs.
 
 ### React Query keys
 Pattern: `['entity', userId]` - e.g., `['vocabulary', user?.id]`, `['decks', user?.id]`, `['deck', id]`, `['deck-terms', id]`, `['statistics', user?.id]`
@@ -102,8 +109,8 @@ Pattern: `['entity', userId]` - e.g., `['vocabulary', user?.id]`, `['decks', use
 ### Zustand stores (4)
 1. `useAuthStore` - session, user, profile, loading
 2. `useLanguageStore` - nativeLanguage, targetLanguage
-3. `useStudyStore` - mode, cardLimit, shuffle
-4. `useQuizStore` - quizType, questionCount
+3. `useStudyStore` - mode, cardLimit (`number | 'all'`), shuffle
+4. `useQuizStore` - quizType, questionCount (`number | 'all'`)
 
 ### Spaced Repetition (`utils/spacedRepetition.ts`)
 | Action | Status | Next Review |
@@ -124,7 +131,7 @@ Supabase Auth (email/password + Google OAuth). `AuthBootstrap` in `providers.tsx
 Neobrutalist: `neo-card`, `neo-button`, `neo-button-active` CSS utilities. Colors: yellow `#fdc800` (primary), purple `#432dd7` (secondary), off-white `#fbfbf9` (bg), dark navy `#1c293c` (fg). Fonts: Inter + JetBrains Mono.
 
 ## Current State / MVP Status
-- **MVP 1 (current):** Core vocab CRUD, flashcard study (two-side/one-side), true/false quiz, spaced repetition, dashboard stats, i18n (vi/en)
+- **MVP 1 (current):** Core vocab CRUD, deck CRUD/membership management, all-vocabulary or deck-scoped flashcard study (two-side/one-side) with numeric/all card limits, all-vocabulary or deck-scoped true/false quiz with numeric/all question limits, review sessions from due/difficult SRS items, dashboard stats, i18n (vi/en)
 - **MVP 2 (placeholder):** Custom flashcard templates, template builder
 - **MVP 3 (planned):** Matching quiz, fill-blank quiz, mixed quiz
 - **Not yet used:** `react-hook-form` (declared but forms use manual useState), `framer-motion` (declared, not used)

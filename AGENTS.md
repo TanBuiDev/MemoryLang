@@ -1,5 +1,11 @@
 # MemoryLang Agent Instructions
 
+## Project context
+
+- Always read `CLAUDE.md` at the start of every conversation. It contains project overview, tech stack, architecture, conventions, and all essential context.
+- Do not duplicate or paraphrase `CLAUDE.md` content into this file or anywhere else. Read it directly when needed.
+- Update `CLAUDE.md` immediately when you learn something new about the project that is not already documented there.
+
 ## Git workflow
 
 - Before creating any commit, inspect the repository state with `git status` to see all modified files.
