@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { demoVocabulary } from '@/features/demo/demoData'
+import { buildQuizSessionStorageKey, clearStoredQuizSession, readActiveQuizSessionStorageKey, readStoredQuizSession, writeStoredQuizSession } from '@/features/quiz/sessionPersistence'
 import { generateTrueFalseQuestions } from '@/features/quiz/trueFalseQuiz'
 import { prepareSessionVocabulary } from '@/features/study/sessionVocabulary'
 import { useI18n } from '@/i18n'
@@ -17,10 +18,28 @@ import { useQuizStore } from '@/stores/useQuizStore'
 
 export function QuizSessionPage() {
   const navigate = useNavigate()
+  const { sessionId } = useParams()
   const { t } = useI18n()
   const user = useAuthStore((state) => state.user)
-  const { questionCount, selectedDeckId } = useQuizStore()
+  const { quizType, questionCount, selectedDeckId } = useQuizStore()
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
+  const fallbackSessionKey = buildQuizSessionStorageKey({
+    userId: user?.id,
+    sessionId,
+    selectedDeckId,
+    quizType,
+    questionCount,
+    remote: shouldUseRemoteData,
+  })
+  const sessionKey = readActiveQuizSessionStorageKey({
+    userId: user?.id,
+    sessionId,
+    remote: shouldUseRemoteData,
+  }) ?? fallbackSessionKey
+  const initialStoredSession = readStoredQuizSession(sessionKey)
+  const [index, setIndex] = useState(initialStoredSession?.index ?? 0)
+  const [score, setScore] = useState(initialStoredSession?.score ?? 0)
+  const [quizSnapshot, setQuizSnapshot] = useState(initialStoredSession ? { key: sessionKey, questions: initialStoredSession.questions } : null)
   const vocabularyQuery = useQuery({
     queryKey: ['vocabulary', user?.id],
     queryFn: () => vocabularyService.list(user!.id),
@@ -42,15 +61,45 @@ export function QuizSessionPage() {
     },
     [deckTermsQuery.data, questionCount, selectedDeckId, shouldUseRemoteData, vocabularyQuery.data],
   )
-  const questions = useMemo(() => generateTrueFalseQuestions(vocabulary, questionCount), [questionCount, vocabulary])
-  const [index, setIndex] = useState(0)
-  const [score, setScore] = useState(0)
+  const generatedQuestions = useMemo(() => generateTrueFalseQuestions(vocabulary, questionCount), [questionCount, vocabulary])
+  const isSourceReady = shouldUseRemoteData
+    ? selectedDeckId
+      ? deckTermsQuery.isSuccess
+      : vocabularyQuery.isSuccess
+    : true
+
+  useEffect(() => {
+    if (quizSnapshot?.key === sessionKey) return
+
+    const storedSession = readStoredQuizSession(sessionKey)
+    if (storedSession) {
+      setQuizSnapshot({ key: sessionKey, questions: storedSession.questions })
+      setIndex(storedSession.index)
+      setScore(storedSession.score)
+      return
+    }
+
+    if (!isSourceReady || generatedQuestions.length === 0) return
+    writeStoredQuizSession(sessionKey, { questions: generatedQuestions, index: 0, score: 0 })
+    setQuizSnapshot({ key: sessionKey, questions: generatedQuestions })
+    setIndex(0)
+    setScore(0)
+  }, [generatedQuestions, isSourceReady, quizSnapshot?.key, sessionKey])
+
+  const questions = quizSnapshot?.key === sessionKey ? quizSnapshot.questions : generatedQuestions
+
+  useEffect(() => {
+    if (quizSnapshot?.key !== sessionKey) return
+    writeStoredQuizSession(sessionKey, { questions: quizSnapshot.questions, index, score })
+  }, [index, quizSnapshot, score, sessionKey])
+
   const question = questions[index]
 
   function answer(value: boolean) {
     const nextScore = score + (value === question.expectedAnswer ? 1 : 0)
     setScore(nextScore)
     if (index >= questions.length - 1) {
+      clearStoredQuizSession(sessionKey)
       navigate(`/app/quiz/result/demo-result?score=${nextScore}&total=${questions.length}`)
       return
     }

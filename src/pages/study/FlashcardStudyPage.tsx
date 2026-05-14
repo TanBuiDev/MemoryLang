@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -7,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { hasRelatedTerms, relationshipDisplayOrder, relationshipLabelKeys } from '@/components/vocabulary/relationshipDisplay'
 import { demoVocabulary } from '@/features/demo/demoData'
+import { buildStudySessionStorageKey, readActiveStudySessionStorageKey, readStoredStudySession, writeStoredStudySession } from '@/features/study/sessionPersistence'
 import { prepareSessionVocabulary } from '@/features/study/sessionVocabulary'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
@@ -20,8 +22,23 @@ import type { RelationType, VocabularyItem } from '@/types/vocabulary.types'
 import { speak } from '@/utils/audio'
 import type { ReviewAction } from '@/utils/spacedRepetition'
 
+const AUTO_AUDIO_DELAY_MS = 600
+const DEFAULT_AUTO_CARD_SECONDS = 6
+const MIN_AUTO_CARD_SECONDS = 4
+const MAX_AUTO_CARD_SECONDS = 30
+const TWO_SIDE_FRONT_RATIO = 0.45
+
 function getText(value?: string | null) {
   return value?.trim() || null
+}
+
+function clampAutoSeconds(value: number) {
+  if (!Number.isFinite(value)) return DEFAULT_AUTO_CARD_SECONDS
+  return Math.max(MIN_AUTO_CARD_SECONDS, Math.min(MAX_AUTO_CARD_SECONDS, Math.trunc(value)))
+}
+
+function getTwoSideFrontMs(totalMs: number) {
+  return Math.max(1500, Math.min(totalMs - 1000, Math.round(totalMs * TWO_SIDE_FRONT_RATIO)))
 }
 
 function FlashcardDetails({
@@ -109,6 +126,28 @@ function FlashcardDetails({
   )
 }
 
+function FlashcardFaceContent({
+  item,
+  current,
+  total,
+}: {
+  item: VocabularyItem
+  current: number
+  total: number
+}) {
+  const { t } = useI18n()
+
+  return (
+    <>
+      <p className="text-sm font-black uppercase text-muted-foreground">{t('study.cardProgress', { current, total })}</p>
+      <p className="mt-8 text-5xl font-black">{item.source_text}</p>
+      {[item.part_of_speech, item.ipa].filter(Boolean).length > 0 ? (
+        <p className="mt-4 font-mono text-2xl">{[item.part_of_speech, item.ipa].filter(Boolean).join(' · ')}</p>
+      ) : null}
+    </>
+  )
+}
+
 export function FlashcardStudyPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -116,10 +155,41 @@ export function FlashcardStudyPage() {
   const { t } = useI18n()
   const user = useAuthStore((state) => state.user)
   const { mode, cardLimit, shuffle, selectedDeckId } = useStudyStore()
-  const [index, setIndex] = useState(0)
-  const [flipped, setFlipped] = useState(mode === 'one_side')
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
   const isReviewSession = sessionId === 'review-session'
+  const fallbackSessionKey = buildStudySessionStorageKey({
+    userId: user?.id,
+    sessionId,
+    selectedDeckId,
+    mode,
+    cardLimit,
+    shuffle: !isReviewSession && shuffle,
+    remote: shouldUseRemoteData,
+  })
+  const sessionKey = readActiveStudySessionStorageKey({
+    userId: user?.id,
+    sessionId,
+    remote: shouldUseRemoteData,
+  }) ?? fallbackSessionKey
+  const initialStoredSession = readStoredStudySession(sessionKey)
+  const [index, setIndex] = useState(initialStoredSession?.index ?? 0)
+  const [flipped, setFlipped] = useState((initialStoredSession?.mode ?? mode) === 'one_side')
+  const [autoEnabled, setAutoEnabled] = useState(false)
+  const [autoRepeat, setAutoRepeat] = useState(false)
+  const [autoCardSeconds, setAutoCardSeconds] = useState(DEFAULT_AUTO_CARD_SECONDS)
+  const [viewedTermIds, setViewedTermIds] = useState<string[]>(initialStoredSession?.viewedTermIds ?? [])
+  const [flushedViewTermIds, setFlushedViewTermIds] = useState<string[]>(initialStoredSession?.flushedViewTermIds ?? [])
+  const [sessionSnapshot, setSessionSnapshot] = useState<{ key: string, vocabulary: VocabularyItem[], mode: typeof mode, viewedTermIds: string[], flushedViewTermIds: string[] } | null>(
+    initialStoredSession
+      ? {
+          key: sessionKey,
+          vocabulary: initialStoredSession.vocabulary,
+          mode: initialStoredSession.mode,
+          viewedTermIds: initialStoredSession.viewedTermIds,
+          flushedViewTermIds: initialStoredSession.flushedViewTermIds,
+        }
+      : null,
+  )
   const vocabularyQuery = useQuery({
     queryKey: ['vocabulary', user?.id, isReviewSession ? 'review' : 'all'],
     queryFn: () => vocabularyService.list(user!.id),
@@ -142,10 +212,65 @@ export function FlashcardStudyPage() {
     const now = new Date()
     return source.filter((entry) => entry.status === 'difficult' || (entry.next_review_at && new Date(entry.next_review_at) <= now))
   }, [deckTermsQuery.data, isReviewSession, selectedDeckId, shouldUseRemoteData, vocabularyQuery.data])
-  const vocabulary = useMemo(
+  const preparedVocabulary = useMemo(
     () => prepareSessionVocabulary(rawVocabulary, { limit: cardLimit, shuffle: !isReviewSession && shuffle }),
     [cardLimit, isReviewSession, rawVocabulary, shuffle],
   )
+  const isSourceReady = shouldUseRemoteData
+    ? selectedDeckId && !isReviewSession
+      ? deckTermsQuery.isSuccess
+      : vocabularyQuery.isSuccess
+    : true
+
+  useEffect(() => {
+    if (sessionSnapshot?.key === sessionKey) return
+
+    const storedSession = readStoredStudySession(sessionKey)
+    if (storedSession) {
+      setSessionSnapshot((current) => {
+        if (current?.key === sessionKey) return current
+        return {
+          key: sessionKey,
+          vocabulary: storedSession.vocabulary,
+          mode: storedSession.mode,
+          viewedTermIds: storedSession.viewedTermIds,
+          flushedViewTermIds: storedSession.flushedViewTermIds,
+        }
+      })
+      setIndex(storedSession.index)
+      setFlipped(storedSession.mode === 'one_side')
+      setViewedTermIds(storedSession.viewedTermIds)
+      setFlushedViewTermIds(storedSession.flushedViewTermIds)
+      return
+    }
+
+    if (!isSourceReady) return
+    writeStoredStudySession(sessionKey, { vocabulary: preparedVocabulary, index: 0, mode, viewedTermIds: [], flushedViewTermIds: [] })
+    setSessionSnapshot((current) => {
+      if (current?.key === sessionKey) return current
+      return { key: sessionKey, vocabulary: preparedVocabulary, mode, viewedTermIds: [], flushedViewTermIds: [] }
+    })
+    setIndex(0)
+    setFlipped(mode === 'one_side')
+    setViewedTermIds([])
+    setFlushedViewTermIds([])
+  }, [isSourceReady, mode, preparedVocabulary, sessionKey, sessionSnapshot?.key])
+
+  const vocabulary = sessionSnapshot?.key === sessionKey ? sessionSnapshot.vocabulary : preparedVocabulary
+  const sessionMode = sessionSnapshot?.key === sessionKey ? sessionSnapshot.mode : initialStoredSession?.mode ?? mode
+  const autoCardMs = autoCardSeconds * 1000
+
+  useEffect(() => {
+    if (sessionSnapshot?.key !== sessionKey) return
+    writeStoredStudySession(sessionKey, {
+      vocabulary: sessionSnapshot.vocabulary,
+      index,
+      mode: sessionSnapshot.mode,
+      viewedTermIds,
+      flushedViewTermIds,
+    })
+  }, [flushedViewTermIds, index, sessionKey, sessionSnapshot, viewedTermIds])
+
   const item = vocabulary[index]
   const vocabularyCardQuery = useQuery({
     queryKey: ['vocabulary-card', item?.id],
@@ -161,14 +286,49 @@ export function FlashcardStudyPage() {
       if (selectedDeckId) await queryClient.invalidateQueries({ queryKey: ['deck-terms', selectedDeckId] })
     },
   })
+  useEffect(() => {
+    if (!shouldUseRemoteData || !item || sessionSnapshot?.key !== sessionKey) return
+    if (viewedTermIds.includes(item.id)) return
+
+    setViewedTermIds((current) => current.includes(item.id) ? current : [...current, item.id])
+  }, [item, sessionKey, sessionSnapshot?.key, shouldUseRemoteData, viewedTermIds])
+
+  async function flushViewedTerms() {
+    if (!shouldUseRemoteData) return
+    const pendingIds = viewedTermIds.filter((id) => !flushedViewTermIds.includes(id))
+    if (pendingIds.length === 0) return
+
+    await studyService.flushTermViews(pendingIds)
+    setFlushedViewTermIds((current) => Array.from(new Set([...current, ...pendingIds])))
+  }
 
   function next() {
     if (index >= vocabulary.length - 1) {
-      navigate('/app/study/result/demo-session')
+      void flushViewedTerms().finally(() => navigate('/app/study/result/demo-session'))
       return
     }
     setIndex(index + 1)
-    setFlipped(mode === 'one_side')
+    setFlipped(sessionMode === 'one_side')
+  }
+
+  function browseTo(nextIndex: number) {
+    if (nextIndex < 0 || nextIndex >= vocabulary.length) return
+    setIndex(nextIndex)
+    setFlipped(sessionMode === 'one_side')
+  }
+
+  function autoAdvance() {
+    if (index >= vocabulary.length - 1) {
+      if (autoRepeat && vocabulary.length > 1) {
+        setIndex(0)
+        setFlipped(sessionMode === 'one_side')
+        return
+      }
+      setAutoEnabled(false)
+      return
+    }
+    setIndex(index + 1)
+    setFlipped(sessionMode === 'one_side')
   }
 
   function record(action: ReviewAction) {
@@ -179,6 +339,36 @@ export function FlashcardStudyPage() {
     }
     reviewMutation.mutate({ entry: item, action }, { onSuccess: next })
   }
+
+  useEffect(() => {
+    if (!autoEnabled || !item) return
+
+    const timer = window.setTimeout(() => {
+      speak(item.source_text)
+    }, AUTO_AUDIO_DELAY_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [autoEnabled, index, item])
+
+  useEffect(() => {
+    if (!autoEnabled || !item) return
+
+    if (sessionMode === 'two_side') {
+      setFlipped(false)
+      const flipTimer = window.setTimeout(() => {
+        setFlipped(true)
+      }, getTwoSideFrontMs(autoCardMs))
+      const advanceTimer = window.setTimeout(autoAdvance, autoCardMs)
+
+      return () => {
+        window.clearTimeout(flipTimer)
+        window.clearTimeout(advanceTimer)
+      }
+    }
+
+    const advanceTimer = window.setTimeout(autoAdvance, autoCardMs)
+    return () => window.clearTimeout(advanceTimer)
+  }, [autoCardMs, autoEnabled, autoRepeat, index, item, sessionMode, vocabulary.length])
 
   if (vocabularyQuery.isLoading || deckTermsQuery.isLoading) {
     return <Card className="font-black">{t('vocabulary.loading')}</Card>
@@ -209,23 +399,98 @@ export function FlashcardStudyPage() {
     <>
       <PageHeader title={t('study.sessionTitle')} description={t('study.sessionDescription')} />
       <Progress value={((index + 1) / vocabulary.length) * 100} />
-      <Card className="mx-auto mt-6 min-h-96 max-w-3xl p-8 text-center">
-        <p className="text-sm font-black uppercase text-muted-foreground">{t('study.cardProgress', { current: index + 1, total: vocabulary.length })}</p>
-        <p className="mt-8 text-5xl font-black">{cardItem.source_text}</p>
-        {[cardItem.part_of_speech, cardItem.ipa].filter(Boolean).length > 0 ? (
-          <p className="mt-4 font-mono text-2xl">{[cardItem.part_of_speech, cardItem.ipa].filter(Boolean).join(' · ')}</p>
-        ) : null}
-        {flipped ? (
-          <FlashcardDetails item={cardItem} relationships={relationships} />
-        ) : null}
-      </Card>
+      <div className="mx-auto mt-6 grid max-w-5xl grid-cols-[3rem_minmax(0,1fr)_3rem] items-center gap-2 md:grid-cols-[4rem_minmax(0,48rem)_4rem] md:gap-4">
+        <Button
+          type="button"
+          variant="ghost"
+          aria-label={t('study.previousCard')}
+          disabled={index === 0}
+          className="h-12 min-h-12 w-12 px-0 md:h-14 md:min-h-14 md:w-14"
+          onClick={() => browseTo(index - 1)}
+        >
+          <ChevronLeft aria-hidden="true" size={28} />
+        </Button>
+        {sessionMode === 'two_side' ? (
+          <div
+            data-testid="flashcard-shell"
+            data-flipped={flipped ? 'true' : 'false'}
+            className="flashcard-shell"
+          >
+            <div className="flashcard-inner">
+              <Card
+                data-testid="flashcard-front"
+                aria-hidden={flipped}
+                className="flashcard-face flashcard-front p-8 text-center"
+              >
+                <FlashcardFaceContent item={cardItem} current={index + 1} total={vocabulary.length} />
+              </Card>
+              <Card
+                data-testid="flashcard-back"
+                aria-hidden={!flipped}
+                className="flashcard-face flashcard-back p-8 text-center"
+              >
+                <FlashcardFaceContent item={cardItem} current={index + 1} total={vocabulary.length} />
+                <FlashcardDetails item={cardItem} relationships={relationships} />
+              </Card>
+            </div>
+          </div>
+        ) : (
+          <Card className="min-h-96 p-8 text-center">
+            <FlashcardFaceContent item={cardItem} current={index + 1} total={vocabulary.length} />
+            <FlashcardDetails item={cardItem} relationships={relationships} />
+          </Card>
+        )}
+        <Button
+          type="button"
+          variant="ghost"
+          aria-label={t('study.nextCard')}
+          disabled={index >= vocabulary.length - 1}
+          className="h-12 min-h-12 w-12 px-0 md:h-14 md:min-h-14 md:w-14"
+          onClick={() => browseTo(index + 1)}
+        >
+          <ChevronRight aria-hidden="true" size={28} />
+        </Button>
+      </div>
       <div className="mx-auto mt-6 flex max-w-3xl flex-wrap justify-center gap-2">
         <Button variant="ghost" onClick={() => speak(item.source_text)}>{t('actions.playAudio')}</Button>
-        {mode === 'two_side' ? <Button variant="secondary" onClick={() => setFlipped(!flipped)}>{t('study.flip')}</Button> : null}
-        <Button disabled={reviewMutation.isPending} onClick={() => record('know')}>{t('study.know')}</Button>
-        <Button disabled={reviewMutation.isPending} variant="ghost" onClick={() => record('dont_know')}>{t('study.dontKnow')}</Button>
-        <Button disabled={reviewMutation.isPending} variant="secondary" onClick={() => record('difficult')}>{t('study.difficult')}</Button>
-        <Button disabled={reviewMutation.isPending} variant="primary" onClick={() => record('memorized')}>{t('study.memorized')}</Button>
+        {sessionMode === 'two_side' ? <Button variant="secondary" onClick={() => setFlipped(!flipped)}>{t('study.flip')}</Button> : null}
+      </div>
+      <div className="mx-auto mt-3 flex max-w-3xl flex-wrap items-center justify-center gap-3 rounded-md border-2 border-border bg-card p-3">
+        <Button
+          type="button"
+          variant={autoEnabled ? 'secondary' : 'ghost'}
+          onClick={() => setAutoEnabled((enabled) => !enabled)}
+        >
+          {autoEnabled ? t('study.autoStop') : t('study.autoStart')}
+        </Button>
+        <label className="flex items-center gap-2 text-sm font-black">
+          {t('study.autoSeconds')}
+          <input
+            aria-label={t('study.autoSeconds')}
+            type="number"
+            min={MIN_AUTO_CARD_SECONDS}
+            max={MAX_AUTO_CARD_SECONDS}
+            value={autoCardSeconds}
+            onChange={(event) => setAutoCardSeconds(clampAutoSeconds(Number(event.target.value)))}
+            className="h-10 w-20 rounded-md border-2 border-border bg-background px-3 font-black"
+          />
+        </label>
+        <Button
+          type="button"
+          variant={autoRepeat ? 'secondary' : 'ghost'}
+          aria-pressed={autoRepeat}
+          onClick={() => setAutoRepeat((repeat) => !repeat)}
+        >
+          {t('study.autoRepeat')}
+        </Button>
+      </div>
+      <div className="mx-auto mt-3 grid max-w-xl grid-cols-2 gap-3">
+        <Button disabled={reviewMutation.isPending} variant="ghost" className="min-h-14 text-base" onClick={() => record('dont_know')}>
+          {t('study.dontKnow')}
+        </Button>
+        <Button disabled={reviewMutation.isPending} className="min-h-14 text-base" onClick={() => record('know')}>
+          {t('study.know')}
+        </Button>
       </div>
     </>
   )

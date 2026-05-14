@@ -21,7 +21,6 @@ export const studyService = {
       .update({
         correct_count: item.correct_count + result.correctIncrement,
         wrong_count: item.wrong_count + result.wrongIncrement,
-        view_count: item.view_count + 1,
         status: result.status,
         last_reviewed_at: new Date().toISOString(),
         next_review_at: result.nextReviewAt.toISOString(),
@@ -29,6 +28,14 @@ export const studyService = {
       .eq('id', item.id)
     if (error) throw error
     return result
+  },
+  async flushTermViews(termIds: string[]) {
+    const uniqueIds = Array.from(new Set(termIds)).filter(Boolean)
+    if (uniqueIds.length === 0) return
+
+    const { error } = await supabase
+      .rpc('increment_term_view_counts', { term_ids: uniqueIds })
+    if (error) throw error
   },
   async endSession(sessionId: string, patch: Partial<StudySession>) {
     const { error } = await supabase

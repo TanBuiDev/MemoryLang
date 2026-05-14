@@ -1,8 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { buildQuizSessionStorageKey } from '@/features/quiz/sessionPersistence'
 import { QuizSetupPage } from '@/pages/quiz/QuizSetupPage'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { useQuizStore } from '@/stores/useQuizStore'
 
 function renderPage() {
@@ -21,7 +24,9 @@ function renderPage() {
 
 describe('QuizSetupPage', () => {
   beforeEach(() => {
-    useQuizStore.setState({ selectedDeckId: null })
+    window.sessionStorage.clear()
+    useAuthStore.setState({ user: null, profile: null })
+    useQuizStore.setState({ quizType: 'true_false', questionCount: 10, selectedDeckId: null })
   })
 
   it('allows starting a quiz from all vocabulary by default', () => {
@@ -41,5 +46,23 @@ describe('QuizSetupPage', () => {
 
     expect(screen.getByRole('option', { name: 'Tất cả' })).toBeInTheDocument()
     expect(questionCountSelect).toHaveValue('10')
+  })
+
+  it('clears the stored quiz session when starting a fresh quiz', async () => {
+    const user = userEvent.setup()
+    const storageKey = buildQuizSessionStorageKey({
+      userId: null,
+      sessionId: 'deck-quiz',
+      selectedDeckId: null,
+      quizType: 'true_false',
+      questionCount: 10,
+      remote: false,
+    })
+    window.sessionStorage.setItem(storageKey, 'stored-quiz')
+
+    renderPage()
+    await user.click(screen.getByRole('button', { name: 'Bắt đầu kiểm tra' }))
+
+    expect(window.sessionStorage.getItem(storageKey)).toBeNull()
   })
 })

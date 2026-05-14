@@ -33,6 +33,7 @@ export const deckService = {
       .from('deck_terms')
       .select('user_terms(*)')
       .eq('deck_id', deckId)
+      .order('created_at', { ascending: true })
     if (error) throw error
     return (data ?? []).flatMap((entry) => {
       const terms = entry.user_terms as VocabularyItem | VocabularyItem[] | null
