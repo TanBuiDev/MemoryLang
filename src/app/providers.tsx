@@ -12,6 +12,7 @@ const demoProfile: Profile = {
   current_target_language: 'en',
   ui_language: 'vi',
   onboarding_completed: true,
+  password_set: true,
   daily_goal: 10,
   default_study_mode: 'two_side',
   created_at: new Date().toISOString(),
