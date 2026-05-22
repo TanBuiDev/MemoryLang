@@ -8,7 +8,7 @@ import { OnboardingPage } from '@/pages/onboarding/OnboardingPage'
 import { ForgotPasswordPage } from '@/pages/public/ForgotPasswordPage'
 import { LandingPage } from '@/pages/public/LandingPage'
 import { LoginPage } from '@/pages/public/LoginPage'
-import { RegisterPage } from '@/pages/public/RegisterPage'
+import { CreatePasswordPage } from '@/pages/public/CreatePasswordPage'
 import { QuizResultPage } from '@/pages/quiz/QuizResultPage'
 import { QuizSessionPage } from '@/pages/quiz/QuizSessionPage'
 import { QuizSetupPage } from '@/pages/quiz/QuizSetupPage'
@@ -27,8 +27,8 @@ import { VocabularyListPage } from '@/pages/vocabulary/VocabularyListPage'
 export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
-  { path: '/register', element: <RegisterPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/create-password', element: <CreatePasswordPage /> },
   { path: '/onboarding', element: <OnboardingPage /> },
   {
     element: <ProtectedRoute />,
