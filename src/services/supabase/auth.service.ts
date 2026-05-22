@@ -21,7 +21,7 @@ export const authService = {
       return Promise.resolve()
     }),
   signInWithPassword: (email: string, password: string) => supabase.auth.signInWithPassword({ email, password }),
-  signUpWithPassword: (email: string, password: string) => supabase.auth.signUp({ email, password }),
+
   signInWithGoogle: () =>
     supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -30,6 +30,17 @@ export const authService = {
   resetPassword: (email: string) =>
     supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login` }),
   signOut: () => supabase.auth.signOut(),
+  setPassword: async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) throw error
+  },
+  markPasswordSet: async (userId: string) => {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ password_set: true })
+      .eq('id', userId)
+    if (error) throw error
+  },
   async getProfile(userId: string): Promise<Profile | null> {
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
     if (error) throw error
