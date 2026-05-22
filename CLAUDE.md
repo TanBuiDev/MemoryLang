@@ -13,6 +13,7 @@ Vocabulary learning & spaced-repetition flashcard web app. Primary audience: Vie
 - **Frontend:** React 19, TypeScript 6, Vite 8, Tailwind CSS v4 (CSS-first config)
 - **Backend:** Supabase (PostgreSQL 17, Auth, Edge Functions)
 - **State:** Zustand (4 client stores) + TanStack React Query (server state)
+- **Local-first study storage:** Dexie/IndexedDB for cached study vocabulary, active study sessions, and pending study sync queues
 - **Routing:** react-router-dom v7 (`createBrowserRouter`)
 - **Validation:** Zod v4
 - **Package manager:** pnpm
@@ -49,6 +50,7 @@ src/
   pages/            # 22 pages (see routing below)
   services/
     api/            # enrichVocabulary (Supabase Edge Function)
+    local/          # Dexie local study DB + pending study sync service
     supabase/       # client, auth, vocabulary, deck, study, quiz, statistics
   stores/           # useAuthStore, useLanguageStore, useStudyStore, useQuizStore
   types/            # auth, deck, language, quiz, study, vocabulary
@@ -72,7 +74,7 @@ src/
 | `quiz_answers` | Individual quiz answers |
 
 ## Routing
-**Public:** `/` (landing), `/login`, `/register`, `/forgot-password`, `/onboarding`
+**Public:** `/` (full branded homepage with feature/workflow/product-preview sections), `/login`, `/register`, `/forgot-password`, `/onboarding`
 
 **Protected (under `/app`, requires auth + completed onboarding):**
 - `/app/dashboard` - Overview with daily goal, review pressure, learning health, deck progress, and statistics
@@ -96,8 +98,8 @@ Every page checks `isSupabaseConfigured && Boolean(user)`. If false, uses hardco
 - `examples[].translation` = translation of the example sentence
 - Vocabulary enrichment gets IPA/part of speech/audio only from dictionaryapi.dev, and only for inferred single English words. Phrases, idioms, sentences, non-English source terms, API errors, and fallback mode return empty IPA unless manually entered or already cached.
 - Vocabulary detail uses `relationshipService.getCard(id)` to load the main term plus grouped `term_relationships`. Edit vocabulary can create/delete related-term links; `synonym`, `antonym`, and `related` are stored bidirectionally, while `derivative`, `collocation`, and `idiom` are stored one-way.
-- Flashcard study uses `relationshipService.getCard(currentTermId)` for the active card so one-side cards and flipped two-side cards can show translation fallback, examples, notes, images, and compact related terms. Study sessions freeze a prepared vocabulary snapshot at session start and persist the snapshot, current card index, selected study mode, and active session key in `sessionStorage`, so review mutations/refetches and browser reloads cannot reorder, reset, or switch one-side/two-side mode while learners browse back and forward. Starting a fresh deck session from setup clears the stored snapshot for the selected options. Two-side cards use a lightweight CSS 3D flip with fixed-height front/back faces; long back content scrolls inside the card instead of expanding the layout. The study session UI exposes only two review choices (`remember`/`forgot`) mapped to `know`/`dont_know`; `difficult` and `memorized` remain valid data statuses but are not primary study actions. Left/right arrow buttons around the card let learners browse previous/next cards without recording a review action. Flashcard sessions also include an optional auto-play mode with configurable seconds per card, delayed audio playback after card changes, automatic front/back timing for two-side cards, and optional repeat after the final card.
-- Flashcard sessions collect viewed term IDs when cards are first shown in the current persisted session, including manual navigation and auto-play. Viewed and flushed term IDs are stored in the session snapshot to avoid double-counting on back navigation or reload. Pending views are flushed in a single Supabase RPC batch (`increment_term_view_counts`) when the session completes or when a new session starts, instead of sending one request per card. Review actions update `correct_count`, `wrong_count`, status, and review schedule without incrementing `view_count`.
+- Flashcard study uses `relationshipService.getCard(currentTermId)` for the active card so one-side cards and flipped two-side cards can show translation fallback, examples, notes, images, and compact related terms. `/app/study` is a study command center with session setup, optional resume card, and Supabase-backed recent study history. Remote study sessions create a `study_sessions` row at start, update viewed/remembered/forgot counts on completion, prune history to the latest 30 sessions, and return to `/app/study` instead of a separate result screen. Users can delete individual history rows or clear all saved study history; vocabulary and review schedules are unaffected. Study sessions freeze a prepared vocabulary snapshot at session start and persist the snapshot, current card index, selected study mode, and active session key in `sessionStorage`, so review mutations/refetches and browser reloads cannot reorder, reset, or switch one-side/two-side mode while learners browse back and forward. Starting a fresh deck session from setup clears the stored snapshot for the selected options. Two-side cards use a lightweight CSS 3D flip with fixed-height front/back faces; long back content scrolls inside the card instead of expanding the layout. One-side card height changes use a measured 180ms height transition that carries the previous measured height into the next animation frame before expanding to the new card height, so longer card details expand smoothly without slowing study flow. The study session UI exposes only two review choices (`remember`/`forgot`) mapped to `know`/`dont_know`; `difficult` and `memorized` remain valid data statuses but are not primary study actions. Left/right arrow buttons around the card let learners browse previous/next cards without recording a review action. A top-left `End`/`Kết thúc` card button opens `ConfirmModal`; confirming flushes viewed term IDs, saves the session summary, clears the stored/active session, and returns to `/app/study`. Flashcard sessions use a fixed bottom icon toolbar for audio, flip, auto-play, repeat, and review actions so controls remain reachable when one-side cards have long content. Flashcard sessions also include an optional auto-play mode with delayed audio playback after card changes, automatic front/back timing for two-side cards, a top-right countdown badge while auto-play is active, repeat after the final card only while auto-play is enabled, and a small floating timer panel opened from the clock icon for changing seconds per card and toggling auto-play.
+- Flashcard sessions collect viewed term IDs when cards are first shown in the current persisted session, including manual navigation and auto-play. Study progress is local-first: active study snapshots are mirrored to Dexie/IndexedDB, vocabulary is cached per user/deck for offline fallback, and review actions are applied optimistically on the client using SM-2 fields (`srs_repetition`, `srs_interval_days`, `srs_ease_factor`, `next_review_at`). Pending review actions, viewed term IDs, and session summaries are queued locally and flushed through the `apply_study_review_batch` Supabase RPC on session end, when starting a new session, on app startup after login, and best-effort on `visibilitychange`/`pagehide`. Legacy `increment_term_view_counts` still exists, but flashcard study now uses the combined batch sync path.
 - True/false quiz sessions persist generated questions, current index, score, and the active session key in `sessionStorage`, so leaving the route or reloading can restore the in-progress quiz. Starting a fresh quiz from setup clears the stored quiz snapshot for the selected options.
 
 ### Service abstraction
@@ -116,13 +118,7 @@ Pattern: `['entity', userId]` - e.g., `['vocabulary', user?.id]`, `['decks', use
 4. `useQuizStore` - quizType, questionCount (`number | 'all'`)
 
 ### Spaced Repetition (`utils/spacedRepetition.ts`)
-| Action | Status | Next Review |
-|---|---|---|
-| dont_know | need_review | +1 day |
-| difficult | difficult | +1 day |
-| know (1st correct) | learning | +2 days |
-| know (repeated) | familiar | +7 days |
-| memorized | memorized | +14 days |
+SM-2 adapter with the two-button study UI. `know` maps to quality 4 and increases repetition/interval using `srs_ease_factor`; `dont_know` maps to quality 0, resets repetition, schedules tomorrow, and lowers ease with a 1.3 floor. `status`, `correct_count`, `wrong_count`, `last_reviewed_at`, and `next_review_at` are still maintained for existing dashboard/review UI.
 
 ### i18n
 Custom system in `i18n/index.ts`. `useI18n()` returns `{ language, t }`. Keys: `section.key` format. Supports `vi` and `en`.
@@ -131,7 +127,14 @@ Custom system in `i18n/index.ts`. `useI18n()` returns `{ language, t }`. Keys: `
 Supabase Auth (email/password + Google OAuth). `AuthBootstrap` in `providers.tsx` restores session on mount. Database trigger auto-creates profile on signup. `ProtectedRoute` guards: loading -> login redirect -> onboarding redirect -> render.
 
 ### Design system
-Neobrutalist: `neo-card`, `neo-button`, `neo-button-active` CSS utilities. Colors: yellow `#fdc800` (primary), purple `#432dd7` (secondary), off-white `#fbfbf9` (bg), dark navy `#1c293c` (fg). Fonts: Inter + JetBrains Mono.
+Neobrutalist MemoryLang identity: thick navy borders, hard shadows, warm off-white surfaces, energetic yellow CTA/status accents, and purple secondary actions. Core CSS utilities: `neo-card`, `neo-button`, `neo-button-active`, `brand-grid-bg`, and `brand-surface`. Colors: yellow `#fdc800` (primary), purple `#432dd7` (secondary), off-white `#fbfbf9` (bg), dark navy `#1c293c` (fg). Fonts: Inter + JetBrains Mono.
+
+### Brand assets
+Usable logo exports live in `src/assets/brand/` and are rendered through `BrandLogo` / `BrandMark` from `components/common/BrandLogo.tsx`. Prefer SVG variants for runtime UI: primary logo for wide public surfaces, compact logo for navigation/auth/loading, icon-only for favicon, mobile headers, empty states, and subtle decorative marks. Study toolbar button icons live in `src/assets/brand/button-icons/`; corrected source/reference SVGs also live in `images/memorylang_button_icons_svg/`. The homepage uses the vector mascot export (`memorylang-mascot.svg`) as a large decorative layer behind hero/CTA objects so it stays transparent and does not carry a bitmap checkerboard background. The large generated brand-board PNGs in root `images/` are source/reference material; do not import them directly into the app runtime.
+
+### Navigation
+Authenticated app shell includes a `nav.home` link back to `/` so users can reach the public homepage without typing the URL. Homepage top navigation uses in-page anchors for features, workflow, and preview plus auth/demo entry points.
+The authenticated `nav.study` sidebar link resumes an active stored flashcard session from normal app pages, but on `/app/study/result/:sessionId` it links to `/app/study` so finishing a legacy/result session and clicking `Học` starts from the study setup screen instead of reopening the completed session.
 
 ## Current State / MVP Status
 - **MVP 1 (current):** Core vocab CRUD, deck CRUD/membership management, all-vocabulary or deck-scoped flashcard study (two-side/one-side) with numeric/all card limits, all-vocabulary or deck-scoped true/false quiz with numeric/all question limits, review sessions from due/difficult SRS items, dashboard stats, i18n (vi/en)
@@ -148,6 +151,7 @@ Neobrutalist: `neo-card`, `neo-button`, `neo-button-active` CSS utilities. Color
 - CLI available via `npx supabase` (v2.98+, no global install needed)
 - Project ref: `brwvbpkgimhamivmaflu` (MemoryLang, Sydney region)
 - Org ID: `lwpjxmfjvvdiufbsrviu`
+- Remote DB has applied migration `20260522113956_add_local_first_srs_batch_sync.sql` for SM-2 SRS columns and the `apply_study_review_batch` RPC.
 - Deploy edge function: `npx supabase functions deploy enrich-vocabulary --project-ref brwvbpkgimhamivmaflu`
 - Edge functions source: `supabase/functions/<name>/index.ts`
 - Dashboard: https://supabase.com/dashboard/project/brwvbpkgimhamivmaflu
