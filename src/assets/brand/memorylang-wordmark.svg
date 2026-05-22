@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="160" viewBox="0 0 680 160" role="img" aria-label="MemoryLang logo" shape-rendering="geometricPrecision">
+
+<defs>
+  <style>
+    .navy{fill:#1C293C;}
+    .yellow{fill:#FDC800;}
+    .purple{fill:#432DD7;}
+    .off{fill:#FBFBF9;}
+    .stroke{stroke:#1C293C;stroke-width:8;stroke-linejoin:round;stroke-linecap:round;}
+    .stroke6{stroke:#1C293C;stroke-width:6;stroke-linejoin:round;stroke-linecap:round;}
+    .text{font-family: Inter, Arial, Helvetica, sans-serif; font-weight:900; letter-spacing:-4px;}
+  </style>
+</defs>
+
+
+<g transform="translate(10 15)">
+  <text class="text" x="10" y="96" font-size="92" fill="#1C293C" stroke="#1C293C" stroke-width="22" stroke-linejoin="round" transform="translate(9 12)">MemoryLang</text>
+  <text class="text" x="10" y="96" font-size="92" fill="none" stroke="white" stroke-width="26" stroke-linejoin="round">MemoryLang</text>
+  <text class="text" x="10" y="96" font-size="92" fill="#1C293C" stroke="#1C293C" stroke-width="2" stroke-linejoin="round">Memory</text>
+  <text class="text" x="398.23999999999995" y="96" font-size="92" fill="#432DD7" stroke="#432DD7" stroke-width="2" stroke-linejoin="round">Lang</text>
+</g>
+</svg>

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { BrandLogo, BrandMark } from '@/components/common/BrandLogo'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { Label, Select } from '@/components/ui/input'
@@ -55,8 +56,12 @@ export function OnboardingPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-background px-4 py-8">
-      <Card className="w-full max-w-2xl">
+    <main className="brand-grid-bg grid min-h-screen place-items-center bg-background px-4 py-8">
+      <Card className="relative w-full max-w-2xl overflow-hidden p-6">
+        <div className="absolute -right-12 -top-12 opacity-10">
+          <BrandMark size="xl" label="" className="h-44 w-44" />
+        </div>
+        <BrandLogo variant="compact" size="lg" className="relative mb-6 h-12" />
         <CardTitle>{t('onboarding.title')}</CardTitle>
         <CardDescription className="mt-2">{t('onboarding.description')}</CardDescription>
         <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={submit}>

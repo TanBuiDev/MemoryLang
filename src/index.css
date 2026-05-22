@@ -17,6 +17,8 @@
   --warning: #d97706;
   --danger: #dc2626;
   --radius: 0.5rem;
+  --brand-shadow: 5px 5px 0 var(--border);
+  --brand-shadow-sm: 3px 3px 0 var(--border);
 }
 
 .dark {
@@ -63,6 +65,7 @@
     background: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans);
+    font-feature-settings: "ss01" on;
   }
 
   button,
@@ -82,13 +85,13 @@
   border: 2px solid var(--border);
   border-radius: var(--radius);
   background: var(--card);
-  box-shadow: 5px 5px 0 var(--border);
+  box-shadow: var(--brand-shadow);
 }
 
 @utility neo-button {
   border: 2px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 3px 3px 0 var(--border);
+  box-shadow: var(--brand-shadow-sm);
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
@@ -97,9 +100,34 @@
   box-shadow: 1px 1px 0 var(--border);
 }
 
+.brand-grid-bg {
+  background-image:
+    linear-gradient(rgba(28, 41, 60, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28, 41, 60, 0.035) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.brand-surface {
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: var(--brand-shadow-sm);
+}
+
 .flashcard-shell {
   min-height: 28rem;
   perspective: 1400px;
+}
+
+.study-card-motion-frame {
+  min-height: 24rem;
+  overflow: hidden;
+  transition: height 180ms ease-out;
+  will-change: height;
+}
+
+.study-card-motion-content {
+  min-height: 100%;
 }
 
 .flashcard-inner {
@@ -126,6 +154,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .study-card-motion-frame,
   .flashcard-inner {
     transition: none;
   }

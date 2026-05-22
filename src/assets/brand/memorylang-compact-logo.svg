@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="190" viewBox="0 0 680 190" role="img" aria-label="MemoryLang logo" shape-rendering="geometricPrecision">
+
+<defs>
+  <style>
+    .navy{fill:#1C293C;}
+    .yellow{fill:#FDC800;}
+    .purple{fill:#432DD7;}
+    .off{fill:#FBFBF9;}
+    .stroke{stroke:#1C293C;stroke-width:8;stroke-linejoin:round;stroke-linecap:round;}
+    .stroke6{stroke:#1C293C;stroke-width:6;stroke-linejoin:round;stroke-linecap:round;}
+    .text{font-family: Inter, Arial, Helvetica, sans-serif; font-weight:900; letter-spacing:-4px;}
+  </style>
+</defs>
+
+
+<g transform="translate(35 40) scale(0.72)">
+  <!-- hard neobrutalist shadow -->
+  <g transform="translate(14 18)" opacity="1">
+    <path d="M54 42 Q54 20 76 20 L155 20 Q176 20 176 42 L176 124 Q176 145 154 145 L89 145 L53 170 L61 145 L54 145 Q34 145 34 124 Z" fill="#1C293C"/>
+    <path d="M113 36 L156 26 Q176 22 180 42 L190 112 Q194 134 172 140 L126 153 Z" fill="#1C293C"/>
+  </g>
+  <!-- rear yellow card -->
+  <path d="M112 36 L156 26 Q176 22 180 42 L190 112 Q194 134 172 140 L126 153 Z" fill="#FDC800" class="stroke"/>
+  <!-- front speech flashcard -->
+  <path d="M54 42 Q54 20 76 20 L155 20 Q176 20 176 42 L176 124 Q176 145 154 145 L89 145 L53 170 L61 145 L54 145 Q34 145 34 124 Z" fill="#FBFBF9" class="stroke"/>
+  <!-- inner highlight line -->
+  <path d="M67 48 Q67 34 81 34 L145 34" fill="none" stroke="#1C293C" stroke-width="4" opacity=".18"/>
+  <!-- bookmark -->
+  <path d="M132 20 L160 20 L160 86 L146 74 L132 86 Z" fill="#432DD7" class="stroke6"/>
+  <!-- A -->
+  <text x="80" y="118" font-family="Inter, Arial, sans-serif" font-weight="900" font-size="72" fill="#1C293C">A</text>
+  <!-- sync badge shadow and circle -->
+  <circle cx="158" cy="135" r="43" fill="#1C293C" transform="translate(8 8)"/>
+  <circle cx="158" cy="135" r="43" fill="#432DD7" class="stroke6"/>
+  <path d="M137 132 Q151 115 170 124" fill="none" stroke="white" stroke-width="8" stroke-linecap="round"/>
+  <path d="M170 124 L165 111 L181 116 Z" fill="white"/>
+  <path d="M179 139 Q165 158 145 148" fill="none" stroke="white" stroke-width="8" stroke-linecap="round"/>
+  <path d="M145 148 L151 161 L134 156 Z" fill="white"/>
+  <!-- sparkle -->
+  <path d="M29 4 L40 30 L66 41 L40 52 L29 79 L18 52 L-8 41 L18 30 Z" fill="#FDC800" class="stroke6"/>
+  <path d="M6 88 L-9 80" stroke="#1C293C" stroke-width="8" stroke-linecap="round"/>
+  <path d="M80 4 L88 -17" stroke="#1C293C" stroke-width="8" stroke-linecap="round"/>
+  <path d="M103 10 L116 -4" stroke="#1C293C" stroke-width="6" stroke-linecap="round"/>
+</g>
+<g transform="translate(205 39)">
+  <text class="text" x="10" y="96" font-size="68" fill="#1C293C" stroke="#1C293C" stroke-width="22" stroke-linejoin="round" transform="translate(9 12)">MemoryLang</text>
+  <text class="text" x="10" y="96" font-size="68" fill="none" stroke="white" stroke-width="26" stroke-linejoin="round">MemoryLang</text>
+  <text class="text" x="10" y="96" font-size="68" fill="#1C293C" stroke="#1C293C" stroke-width="2" stroke-linejoin="round">Memory</text>
+  <text class="text" x="296.96" y="96" font-size="68" fill="#432DD7" stroke="#432DD7" stroke-width="2" stroke-linejoin="round">Lang</text>
+</g>
+</svg>

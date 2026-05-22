@@ -1,11 +1,16 @@
+import { BrandLogo, BrandMark } from '@/components/common/BrandLogo'
 import { useI18n } from '@/i18n'
 
 export function AppLoading() {
   const { t } = useI18n()
 
   return (
-    <main className="grid min-h-screen place-items-center bg-background px-4 text-foreground">
-      <section className="neo-card w-full max-w-md p-6">
+    <main className="brand-grid-bg grid min-h-screen place-items-center bg-background px-4 text-foreground">
+      <section className="neo-card relative w-full max-w-md overflow-hidden p-6">
+        <div className="absolute -right-10 -top-10 opacity-10">
+          <BrandMark size="xl" label="" className="h-36 w-36" />
+        </div>
+        <BrandLogo variant="compact" size="lg" className="relative mb-6 h-12" />
         <p className="text-xs font-black uppercase text-secondary">{t('loading.eyebrow')}</p>
         <h1 className="mt-2 text-2xl font-black">{t('loading.title')}</h1>
         <p className="mt-2 text-sm font-semibold text-muted-foreground">
