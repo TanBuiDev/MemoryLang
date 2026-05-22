@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -39,9 +39,33 @@ vi.mock('@/services/supabase/relationship.service', async (importOriginal) => {
 vi.mock('@/services/supabase/study.service', () => ({
   studyService: {
     applyReviewAction: vi.fn(),
+    flushStudyChanges: vi.fn(),
+    endSession: vi.fn(),
     flushTermViews: vi.fn(),
+    pruneHistory: vi.fn(),
   },
 }))
+
+vi.mock('@/services/local/studyLocalDb', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/services/local/studyLocalDb')>()
+  return {
+    ...actual,
+    studyLocalDb: {
+      cacheVocabulary: vi.fn().mockResolvedValue(undefined),
+      getCachedVocabulary: vi.fn().mockResolvedValue([]),
+      saveActiveSession: vi.fn().mockResolvedValue(undefined),
+      getActiveSession: vi.fn().mockResolvedValue(null),
+      clearActiveSession: vi.fn().mockResolvedValue(undefined),
+      addPendingReviewAction: vi.fn().mockResolvedValue(undefined),
+      addPendingViewTermIds: vi.fn().mockResolvedValue(undefined),
+      savePendingSessionSummary: vi.fn().mockResolvedValue(undefined),
+      getPendingReviewActions: vi.fn().mockResolvedValue([]),
+      getPendingViewTermIds: vi.fn().mockResolvedValue([]),
+      getPendingStudyChanges: vi.fn().mockResolvedValue({ actions: [], viewedTermIds: [], sessionId: null, sessionPatch: null }),
+      clearPendingStudyChanges: vi.fn().mockResolvedValue(undefined),
+    },
+  }
+})
 
 vi.mock('@/utils/audio', () => ({
   speak: vi.fn(),
@@ -71,6 +95,9 @@ const baseItem: VocabularyItem = {
   correct_count: 0,
   wrong_count: 0,
   audio_play_count: 0,
+  srs_repetition: 0,
+  srs_interval_days: 0,
+  srs_ease_factor: 2.5,
   last_reviewed_at: null,
   next_review_at: null,
   created_at: new Date(0).toISOString(),
@@ -124,6 +151,8 @@ async function renderPage(items: VocabularyItem[] = [baseItem], lookupItems: Voc
       <MemoryRouter initialEntries={['/app/study/session/deck-session']}>
         <Routes>
           <Route path="/app/study/session/:sessionId" element={<FlashcardStudyPage />} />
+          <Route path="/app/study/result/:sessionId" element={<div>Study result reached</div>} />
+          <Route path="/app/study" element={<div>Study setup reached</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -164,6 +193,131 @@ describe('FlashcardStudyPage', () => {
     expect(screen.queryByRole('button', { name: 'Đã ghi nhớ' })).not.toBeInTheDocument()
   })
 
+  it('keeps study controls in a responsive fixed icon toolbar', async () => {
+    await renderPage()
+
+    const toolbar = await screen.findByTestId('study-action-toolbar')
+    expect(toolbar).toHaveClass('fixed')
+    expect(toolbar).toHaveClass('md:sticky')
+    expect(toolbar).toHaveClass('md:inset-auto')
+    expect(toolbar).toHaveClass('md:self-start')
+    const buttons = screen.getByTestId('study-toolbar-buttons')
+    expect(buttons).toHaveClass('md:flex-col')
+    expect(buttons).toHaveClass('md:max-w-none')
+    expect(toolbar).toContainElement(screen.getByRole('button', { name: 'Phát âm thanh' }))
+    expect(toolbar).toContainElement(screen.getByRole('button', { name: 'Bật tự động' }))
+    expect(screen.queryByRole('spinbutton', { name: 'Giây/thẻ' })).not.toBeInTheDocument()
+    expect(screen.queryAllByRole('button', { name: 'Bật tự động' })).toHaveLength(1)
+    expect(toolbar).toContainElement(screen.getByRole('button', { name: 'Lặp lại' }))
+    expect(toolbar).toContainElement(screen.getByRole('button', { name: 'Không nhớ' }))
+    expect(toolbar).toContainElement(screen.getByRole('button', { name: 'Nhớ' }))
+    expect(screen.getByRole('button', { name: 'Nhớ' })).toHaveClass('study-toolbar-button')
+  })
+
+  it('disables repeat until automatic playback is enabled', async () => {
+    await renderPage()
+
+    const repeatButton = await screen.findByRole('button', { name: 'Lặp lại' })
+    expect(repeatButton).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bật tự động' }))
+    const panel = screen.getByRole('dialog', { name: 'Giây/thẻ' })
+    fireEvent.click(within(panel).getByRole('button', { name: 'Bật tự động' }))
+
+    expect(repeatButton).toBeEnabled()
+  })
+
+  it('opens a floating auto timer panel from the clock icon', async () => {
+    const user = userEvent.setup()
+    await renderPage()
+
+    expect(screen.queryByRole('dialog', { name: 'Giây/thẻ' })).not.toBeInTheDocument()
+
+    await user.click(await screen.findByRole('button', { name: 'Bật tự động' }))
+
+    const panel = await screen.findByRole('dialog', { name: 'Giây/thẻ' })
+    expect(panel).toHaveClass('study-auto-settings-panel')
+    expect(panel).toContainElement(within(panel).getByRole('spinbutton', { name: 'Giây/thẻ' }))
+    expect(panel).toContainElement(within(panel).getByRole('button', { name: 'Bật tự động' }))
+  })
+
+  it('uses play and equal icons inside the auto timer panel', async () => {
+    await renderPage()
+    expect(await screen.findByText('produce')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bật tự động' }))
+    const panel = screen.getByRole('dialog', { name: 'Giây/thẻ' })
+    const startButton = within(panel).getByRole('button', { name: 'Bật tự động' })
+    expect(startButton.querySelector('.lucide-play')).toBeInTheDocument()
+
+    fireEvent.click(startButton)
+    fireEvent.click(screen.getByRole('button', { name: 'Tắt tự động' }))
+    const activePanel = screen.getByRole('dialog', { name: 'Giây/thẻ' })
+    const stopButton = within(activePanel).getByRole('button', { name: 'Tắt tự động' })
+    expect(stopButton.querySelector('.lucide-equal')).toBeInTheDocument()
+  })
+
+  it('animates one-side card height from measured content', async () => {
+    const scrollHeightSpy = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(536)
+
+    try {
+      await renderPage()
+
+      const frame = await screen.findByTestId('study-card-motion-frame')
+      expect(frame).toHaveClass('study-card-motion-frame')
+      await waitFor(() => expect(frame).toHaveStyle({ height: '536px' }))
+    } finally {
+      scrollHeightSpy.mockRestore()
+    }
+  })
+
+  it('animates from the previous measured height when moving to another expanded card', async () => {
+    let measuredHeight = 420
+    let frameHeight = 420
+    let nextAnimationFrame: FrameRequestCallback | null = null
+    const scrollHeightSpy = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockImplementation(() => measuredHeight)
+    const rectSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({
+      x: 0,
+      y: 0,
+      width: 0,
+      height: frameHeight,
+      top: 0,
+      right: 0,
+      bottom: frameHeight,
+      left: 0,
+      toJSON: () => ({}),
+    }))
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      nextAnimationFrame = callback
+      return 1
+    })
+    const cancelRafSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined)
+
+    try {
+      await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
+
+      const frame = await screen.findByTestId('study-card-motion-frame')
+      await waitFor(() => expect(frame).toHaveStyle({ height: '420px' }))
+
+      measuredHeight = 640
+      frameHeight = 420
+      fireEvent.click(screen.getByRole('button', { name: 'Thẻ tiếp theo' }))
+
+      expect(frame).toHaveStyle({ height: '420px' })
+      expect(rafSpy).toHaveBeenCalled()
+      expect(nextAnimationFrame).not.toBeNull()
+
+      act(() => nextAnimationFrame?.(performance.now()))
+
+      expect(frame).toHaveStyle({ height: '640px' })
+    } finally {
+      scrollHeightSpy.mockRestore()
+      rectSpy.mockRestore()
+      rafSpy.mockRestore()
+      cancelRafSpy.mockRestore()
+    }
+  })
+
   it('lets learners move backward and forward without recording a review action', async () => {
     const user = userEvent.setup()
     const { studyService } = await import('@/services/supabase/study.service')
@@ -186,7 +340,18 @@ describe('FlashcardStudyPage', () => {
   it('batches viewed cards and flushes them when the study session completes', async () => {
     const user = userEvent.setup()
     const { studyService } = await import('@/services/supabase/study.service')
-    vi.mocked(studyService.applyReviewAction).mockResolvedValue({} as never)
+    const { studyLocalDb } = await import('@/services/local/studyLocalDb')
+    vi.mocked(studyLocalDb.getPendingStudyChanges).mockResolvedValue({
+      actions: [],
+      viewedTermIds: ['produce', 'transfer'],
+      sessionId: 'deck-session',
+      sessionPatch: {
+        total_cards: 2,
+        viewed_cards: 2,
+        remembered_count: 1,
+        difficult_count: 0,
+      },
+    })
     await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
 
     expect(await screen.findByText('produce')).toBeInTheDocument()
@@ -201,8 +366,79 @@ describe('FlashcardStudyPage', () => {
     await user.click(screen.getByRole('button', { name: 'Thẻ tiếp theo' }))
     await user.click(screen.getByRole('button', { name: 'Nhớ' }))
 
-    await waitFor(() => expect(studyService.flushTermViews).toHaveBeenCalledTimes(1))
-    expect(studyService.flushTermViews).toHaveBeenCalledWith(['produce', 'transfer'])
+    await waitFor(() => expect(studyService.flushStudyChanges).toHaveBeenCalledTimes(1))
+    expect(studyService.flushStudyChanges).toHaveBeenCalledWith(expect.objectContaining({
+      viewedTermIds: ['produce', 'transfer'],
+    }))
+    expect(studyService.applyReviewAction).not.toHaveBeenCalled()
+  })
+
+  it('confirms before ending an in-progress study session from the card', async () => {
+    const user = userEvent.setup()
+    const { studyService } = await import('@/services/supabase/study.service')
+    const { studyLocalDb } = await import('@/services/local/studyLocalDb')
+    vi.mocked(studyLocalDb.getPendingStudyChanges).mockResolvedValue({
+      actions: [],
+      viewedTermIds: ['produce'],
+      sessionId: 'deck-session',
+      sessionPatch: {
+        total_cards: 2,
+        viewed_cards: 1,
+        remembered_count: 0,
+        difficult_count: 0,
+      },
+    })
+    await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
+
+    expect(await screen.findByText('produce')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Kết thúc' }))
+
+    expect(screen.getByText('Kết thúc phiên học?')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Tiếp tục học' }))
+    expect(screen.queryByText('Kết thúc phiên học?')).not.toBeInTheDocument()
+    expect(screen.getByText('produce')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Kết thúc' }))
+    await user.click(screen.getByRole('button', { name: 'Kết thúc phiên' }))
+
+    await waitFor(() => expect(studyService.flushStudyChanges).toHaveBeenCalledWith(expect.objectContaining({
+      viewedTermIds: ['produce'],
+    })))
+    expect(await screen.findByText('Study setup reached')).toBeInTheDocument()
+  })
+
+  it('records the remote study summary before returning to setup', async () => {
+    const user = userEvent.setup()
+    const { studyService } = await import('@/services/supabase/study.service')
+    const { studyLocalDb } = await import('@/services/local/studyLocalDb')
+    vi.mocked(studyLocalDb.getPendingStudyChanges).mockResolvedValue({
+      actions: [],
+      viewedTermIds: ['produce'],
+      sessionId: 'deck-session',
+      sessionPatch: {
+        total_cards: 2,
+        viewed_cards: 2,
+        remembered_count: 1,
+        difficult_count: 0,
+      },
+    })
+    await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
+
+    await user.click(await screen.findByRole('button', { name: 'Nhớ' }))
+    await user.click(await screen.findByRole('button', { name: 'Kết thúc' }))
+    await user.click(screen.getByRole('button', { name: 'Kết thúc phiên' }))
+
+    await waitFor(() => expect(studyService.flushStudyChanges).toHaveBeenCalledWith(expect.objectContaining({
+      sessionId: 'deck-session',
+      sessionPatch: {
+        total_cards: 2,
+        viewed_cards: 2,
+        remembered_count: 1,
+        difficult_count: 0,
+      },
+    })))
+    expect(studyService.pruneHistory).toHaveBeenCalledWith('user-1')
+    expect(await screen.findByText('Study setup reached')).toBeInTheDocument()
   })
 
   it('keeps the original session order after recording a review action refetches deck terms', async () => {
@@ -299,7 +535,10 @@ describe('FlashcardStudyPage', () => {
     const { speak } = await import('@/utils/audio')
     useStudyStore.setState({ mode: 'two_side' })
     await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
-    const autoButton = await screen.findByRole('button', { name: 'Bật tự động' })
+    const user = userEvent.setup({ delay: null })
+    await user.click(await screen.findByRole('button', { name: 'Bật tự động' }))
+    const autoButton = screen.getByRole('dialog', { name: 'Giây/thẻ' }).querySelector('button[aria-label="Bật tự động"]') as HTMLButtonElement
+    expect(autoButton).toBeInTheDocument()
 
     vi.useFakeTimers()
     try {
@@ -323,15 +562,46 @@ describe('FlashcardStudyPage', () => {
     }
   })
 
-  it('loops to the first card when automatic repeat is enabled', async () => {
+  it('shows an auto-advance countdown on the card while automatic mode is enabled', async () => {
     await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
-    const repeatButton = await screen.findByRole('button', { name: 'Lặp lại' })
-    const autoButton = screen.getByRole('button', { name: 'Bật tự động' })
+    expect(await screen.findByText('produce')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Bật tự động' }))
+    const panel = screen.getByRole('dialog', { name: 'Giây/thẻ' })
+    const autoButton = panel.querySelector('button[aria-label="Bật tự động"]') as HTMLButtonElement
 
     vi.useFakeTimers()
     try {
-      fireEvent.click(repeatButton)
       fireEvent.click(autoButton)
+
+      expect(screen.getByTestId('auto-countdown')).toHaveTextContent('6s')
+
+      act(() => vi.advanceTimersByTime(1000))
+      expect(screen.getByTestId('auto-countdown')).toHaveTextContent('5s')
+
+      act(() => vi.advanceTimersByTime(5000))
+      expect(screen.getByText('transfer')).toBeInTheDocument()
+      expect(screen.getByTestId('auto-countdown')).toHaveTextContent('6s')
+
+      fireEvent.click(screen.getByRole('button', { name: 'Tắt tự động' }))
+      fireEvent.click(screen.getByRole('dialog', { name: 'Giây/thẻ' }).querySelector('button[aria-label="Tắt tự động"]') as HTMLButtonElement)
+      expect(screen.queryByTestId('auto-countdown')).not.toBeInTheDocument()
+    } finally {
+      vi.clearAllTimers()
+      vi.useRealTimers()
+    }
+  })
+
+  it('loops to the first card when automatic repeat is enabled', async () => {
+    await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
+    expect(await screen.findByText('produce')).toBeInTheDocument()
+    const repeatButton = screen.getByRole('button', { name: 'Lặp lại' })
+    fireEvent.click(screen.getByRole('button', { name: 'Bật tự động' }))
+    const autoButton = screen.getByRole('dialog', { name: 'Giây/thẻ' }).querySelector('button[aria-label="Bật tự động"]') as HTMLButtonElement
+
+    vi.useFakeTimers()
+    try {
+      fireEvent.click(autoButton)
+      fireEvent.click(repeatButton)
 
       act(() => vi.advanceTimersByTime(6000))
       expect(screen.getByText('transfer')).toBeInTheDocument()
@@ -339,7 +609,7 @@ describe('FlashcardStudyPage', () => {
       act(() => vi.advanceTimersByTime(6000))
       expect(screen.getByText('produce')).toBeInTheDocument()
     } finally {
-      vi.runOnlyPendingTimers()
+      vi.clearAllTimers()
       vi.useRealTimers()
     }
   })

@@ -37,6 +37,9 @@ export interface VocabularyItem {
   correct_count: number
   wrong_count: number
   audio_play_count: number
+  srs_repetition: number
+  srs_interval_days: number
+  srs_ease_factor: number
   last_reviewed_at: string | null
   next_review_at: string | null
   created_at: string

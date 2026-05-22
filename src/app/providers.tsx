@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useMemo, type ReactNode } from 'react'
+import { studySyncService } from '@/services/local/studySync.service'
 import { authService } from '@/services/supabase/auth.service'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -89,12 +90,48 @@ function AuthBootstrap({ children }: { children: ReactNode }) {
   return children
 }
 
+function StudySyncBootstrap() {
+  const user = useAuthStore((state) => state.user)
+
+  useEffect(() => {
+    if (!user) return
+    void studySyncService.flushPendingStudyChanges(user.id).catch((error) => {
+      console.warn('Pending study sync will retry later', error)
+    })
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+
+    function flushPendingChanges() {
+      void studySyncService.flushPendingStudyChanges(user!.id).catch(() => undefined)
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') flushPendingChanges()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pagehide', flushPendingChanges)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pagehide', flushPendingChanges)
+    }
+  }, [user])
+
+  return null
+}
+
 export function AppProviders({ children }: { children: ReactNode }) {
   const queryClient = useMemo(() => new QueryClient(), [])
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthBootstrap>{children}</AuthBootstrap>
+      <AuthBootstrap>
+        <StudySyncBootstrap />
+        {children}
+      </AuthBootstrap>
     </QueryClientProvider>
   )
 }

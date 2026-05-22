@@ -93,19 +93,21 @@ export const relationshipService = {
     await this.remove(sourceId, targetId, relationType)
   },
 
-  async getCard(entryId: string): Promise<VocabularyCardResponse> {
+  async getCard(entryId: string, entry?: VocabularyItem): Promise<VocabularyCardResponse> {
     const relationships = await this.listBySourceId(entryId)
 
     const emptyRecord = createEmptyRelationshipGroups()
 
     if (relationships.length === 0) {
-      const { data: entry, error } = await supabase
+      if (entry) return { entry, relationships: emptyRecord }
+
+      const { data: fetchedEntry, error } = await supabase
         .from('user_terms')
         .select('*')
         .eq('id', entryId)
         .single()
       if (error) throw error
-      return { entry: entry as VocabularyItem, relationships: emptyRecord }
+      return { entry: fetchedEntry as VocabularyItem, relationships: emptyRecord }
     }
 
     const targetIds = relationships.map((r) => r.target_id)
@@ -126,13 +128,15 @@ export const relationshipService = {
       }
     }
 
-    const { data: entry, error: entryError } = await supabase
+    if (entry) return { entry, relationships: grouped }
+
+    const { data: fetchedEntry, error: entryError } = await supabase
       .from('user_terms')
       .select('*')
       .eq('id', entryId)
       .single()
     if (entryError) throw entryError
 
-    return { entry: entry as VocabularyItem, relationships: grouped }
+    return { entry: fetchedEntry as VocabularyItem, relationships: grouped }
   },
 }

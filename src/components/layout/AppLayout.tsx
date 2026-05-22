@@ -3,22 +3,28 @@ import {
   Brain,
   ClipboardCheck,
   Gauge,
+  Home,
   LayoutDashboard,
   LibraryBig,
   Settings,
 } from 'lucide-react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { BrandLogo, BrandMark } from '@/components/common/BrandLogo'
 import { Button } from '@/components/ui/button'
+import { hasActiveStudySession } from '@/features/study/sessionPersistence'
 import { useI18n } from '@/i18n'
 import { authService } from '@/services/supabase/auth.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { cn } from '@/utils/cn'
 
-const navItems = [
+const navItemsBeforeStudy = [
+  { to: '/', labelKey: 'nav.home', icon: Home },
   { to: '/app/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
   { to: '/app/vocabulary', labelKey: 'nav.vocabulary', icon: BookOpen },
   { to: '/app/decks', labelKey: 'nav.decks', icon: LibraryBig },
-  { to: '/app/study', labelKey: 'nav.study', icon: Brain },
+] as const
+
+const navItemsAfterStudy = [
   { to: '/app/quiz', labelKey: 'nav.quiz', icon: ClipboardCheck },
   { to: '/app/review', labelKey: 'nav.review', icon: Gauge },
   { to: '/app/settings', labelKey: 'nav.settings', icon: Settings },
@@ -27,22 +33,53 @@ const navItems = [
 export function AppLayout() {
   const profile = useAuthStore((state) => state.profile)
   const { t } = useI18n()
+  const location = useLocation()
+  const studyTo = location.pathname.startsWith('/app/study/result')
+    ? '/app/study'
+    : hasActiveStudySession() ?? '/app/study'
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r-2 border-border bg-card p-4 lg:block">
-        <NavLink to="/app/dashboard" className="block text-2xl font-black">
-          MemoryLang
+    <div className="brand-grid-bg min-h-screen bg-background text-foreground">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r-2 border-border bg-card/95 p-4 lg:block">
+        <NavLink to="/app/dashboard" className="block rounded-md border-2 border-transparent p-1 transition hover:border-border hover:bg-muted">
+          <BrandLogo variant="compact" size="lg" className="h-11" />
         </NavLink>
         <nav className="mt-8 grid gap-2">
-          {navItems.map((item) => (
+          {navItemsBeforeStudy.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 rounded-md border-2 border-transparent px-3 py-2 text-sm font-black',
-                  isActive && 'border-border bg-primary',
+                  'flex items-center gap-3 rounded-md border-2 border-transparent px-3 py-2 text-sm font-black transition',
+                  isActive ? 'border-border bg-primary shadow-[3px_3px_0_var(--border)]' : 'hover:border-border hover:bg-muted',
+                )
+              }
+            >
+              <item.icon size={18} />
+              {t(item.labelKey)}
+            </NavLink>
+          ))}
+          <NavLink
+            to={studyTo}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 rounded-md border-2 border-transparent px-3 py-2 text-sm font-black transition',
+                isActive ? 'border-border bg-primary shadow-[3px_3px_0_var(--border)]' : 'hover:border-border hover:bg-muted',
+              )
+            }
+          >
+            <Brain size={18} />
+            {t('nav.study')}
+          </NavLink>
+          {navItemsAfterStudy.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 rounded-md border-2 border-transparent px-3 py-2 text-sm font-black transition',
+                  isActive ? 'border-border bg-primary shadow-[3px_3px_0_var(--border)]' : 'hover:border-border hover:bg-muted',
                 )
               }
             >
@@ -55,9 +92,14 @@ export function AppLayout() {
       <div className="lg:pl-64">
         <header className="sticky top-0 z-20 border-b-2 border-border bg-background/95 px-4 py-3 backdrop-blur">
           <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase text-muted-foreground">{t('app.target')}</p>
-              <p className="font-black">{t('app.languagePair', { target: profile?.current_target_language?.toUpperCase() ?? 'EN', native: profile?.native_language?.toUpperCase() ?? 'VI' })}</p>
+            <div className="flex items-center gap-3">
+              <NavLink to="/app/dashboard" className="lg:hidden">
+                <BrandMark size="sm" />
+              </NavLink>
+              <div>
+                <p className="text-xs font-black uppercase text-muted-foreground">{t('app.target')}</p>
+                <p className="font-black">{t('app.languagePair', { target: profile?.current_target_language?.toUpperCase() ?? 'EN', native: profile?.native_language?.toUpperCase() ?? 'VI' })}</p>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Button asChild>

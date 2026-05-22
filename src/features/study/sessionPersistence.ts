@@ -143,3 +143,32 @@ export function clearStoredStudySession(key: string) {
   if (!storage) return
   storage.removeItem(key)
 }
+
+export function hasActiveStudySession(): string | null {
+  const storage = getStorage()
+  if (!storage) return null
+
+  for (let i = 0; i < storage.length; i++) {
+    const key = storage.key(i)
+    if (!key || !key.startsWith(ACTIVE_STORAGE_PREFIX)) continue
+
+    const sessionStorageKey = storage.getItem(key)
+    if (!sessionStorageKey) continue
+
+    const storedSession = readStoredStudySession(sessionStorageKey)
+    if (!storedSession) continue
+
+    const parts = key.slice(ACTIVE_STORAGE_PREFIX.length).split(':').map(decodeURIComponent)
+    const sessionId = parts[1] ?? 'deck-session'
+
+    return `/app/study/session/${sessionId}`
+  }
+
+  return null
+}
+
+export function clearActiveStudySession(options: StudyActiveSessionStorageKeyOptions) {
+  const storage = getStorage()
+  if (!storage) return
+  storage.removeItem(buildActiveStudySessionStorageKey(options))
+}
