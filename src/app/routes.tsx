@@ -27,6 +27,7 @@ import { VocabularyListPage } from '@/pages/vocabulary/VocabularyListPage'
 export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
+  { path: '/register', element: <Navigate to="/login" replace /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/create-password', element: <CreatePasswordPage /> },
   { path: '/onboarding', element: <OnboardingPage /> },
