@@ -44,7 +44,7 @@ export function CreatePasswordPage() {
       await authService.markPasswordSet(user!.id)
       const updated = await authService.getProfile(user!.id)
       if (updated) setProfile(updated)
-      navigate('/onboarding')
+      navigate(updated?.onboarding_completed ? '/app/dashboard' : '/onboarding')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to set password')
       setIsError(true)
