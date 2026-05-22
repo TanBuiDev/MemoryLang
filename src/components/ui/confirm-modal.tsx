@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
 
@@ -9,6 +9,8 @@ interface ConfirmModalProps {
   confirmLabel?: string
   cancelLabel?: string
   variant?: 'danger' | 'primary'
+  children?: ReactNode
+  confirmDisabled?: boolean
   onConfirm: () => void
   onCancel: () => void
 }
@@ -20,6 +22,8 @@ export function ConfirmModal({
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   variant = 'danger',
+  children,
+  confirmDisabled,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -48,9 +52,10 @@ export function ConfirmModal({
       >
         <h2 className="text-xl font-black">{title}</h2>
         {description ? <p className="mt-2 text-sm font-semibold text-muted-foreground">{description}</p> : null}
+        {children ? <div className="mt-4">{children}</div> : null}
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="ghost" onClick={onCancel}>{cancelLabel}</Button>
-          <Button variant={variant} onClick={onConfirm}>{confirmLabel}</Button>
+          <Button variant={variant} onClick={onConfirm} disabled={confirmDisabled}>{confirmLabel}</Button>
         </div>
       </div>
     </div>

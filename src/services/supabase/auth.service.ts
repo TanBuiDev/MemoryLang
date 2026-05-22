@@ -30,9 +30,17 @@ export const authService = {
   resetPassword: (email: string) =>
     supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login` }),
   signOut: () => supabase.auth.signOut(),
+  signOutAllDevices: () => supabase.auth.signOut({ scope: 'global' }),
   setPassword: async (password: string) => {
     const { error } = await supabase.auth.updateUser({ password })
     if (error) throw error
+  },
+  changePassword: async (email: string, currentPassword: string, newPassword: string) => {
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: currentPassword })
+    if (signInError) throw signInError
+
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
+    if (updateError) throw updateError
   },
   markPasswordSet: async (userId: string) => {
     const { error } = await supabase

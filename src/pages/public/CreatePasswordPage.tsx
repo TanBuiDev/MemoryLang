@@ -3,7 +3,7 @@ import { useNavigate, Navigate } from 'react-router-dom'
 import { BrandLogo, BrandMark } from '@/components/common/BrandLogo'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
-import { Input, Label } from '@/components/ui/input'
+import { Label, PasswordInput } from '@/components/ui/input'
 import { useI18n } from '@/i18n'
 import { authService } from '@/services/supabase/auth.service'
 import { isSupabaseConfigured } from '@/services/supabase/client'
@@ -74,19 +74,17 @@ export function CreatePasswordPage() {
         <form className="mt-6 grid gap-4" onSubmit={submit}>
           <div>
             <Label>{t('auth.password')}</Label>
-            <Input
+            <PasswordInput
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              type="password"
               minLength={6}
             />
           </div>
           <div>
             <Label>{t('auth.confirmPassword')}</Label>
-            <Input
+            <PasswordInput
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
-              type="password"
               minLength={6}
             />
           </div>

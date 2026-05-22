@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
-import { Input, Label, Select } from '@/components/ui/input'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { Input, Label, PasswordInput, Select } from '@/components/ui/input'
 import { uiLanguageOptions, useI18n } from '@/i18n'
 import { authService } from '@/services/supabase/auth.service'
 import { isSupabaseConfigured } from '@/services/supabase/client'
@@ -16,12 +18,27 @@ export function SettingsPage() {
   const profile = useAuthStore((state) => state.profile)
   const setProfile = useAuthStore((state) => state.setProfile)
   const { t } = useI18n()
+  const navigate = useNavigate()
   const [displayName, setDisplayName] = useState(profile?.display_name ?? '')
   const [nativeLanguage, setNativeLanguage] = useState<LanguageCode>(profile?.native_language ?? 'vi')
   const [targetLanguage, setTargetLanguage] = useState<LanguageCode>(profile?.current_target_language ?? 'en')
   const [uiLanguage, setUiLanguage] = useState<UiLanguageCode>(profile?.ui_language ?? 'vi')
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState('')
+
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [passwordMessage, setPasswordMessage] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+
+  function resetPasswordForm() {
+    setNewPassword('')
+    setConfirmNewPassword('')
+    setPasswordMessage('')
+    setPasswordError('')
+  }
 
   async function saveSettings() {
     setMessage('')
@@ -54,6 +71,38 @@ export function SettingsPage() {
     }
   }
 
+  async function changePassword() {
+    setPasswordMessage('')
+    setPasswordError('')
+
+    if (newPassword.length < 6) {
+      setPasswordError(t('auth.passwordMinLength'))
+      return
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError(t('auth.passwordMismatch'))
+      return
+    }
+
+    setIsChangingPassword(true)
+    try {
+      await authService.setPassword(newPassword)
+      setShowPasswordModal(false)
+      resetPasswordForm()
+      setMessage(t('settings.passwordChanged'))
+      await authService.signOutAllDevices()
+      navigate('/login')
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : ''
+      setPasswordError(/same|different|old|giống|khác|cũ/i.test(msg) ? t('auth.passwordSameAsOld') : t('settings.passwordChangeError'))
+    } finally {
+      setIsChangingPassword(false)
+    }
+  }
+
+  const showPasswordSection = isSupabaseConfigured && user && profile?.password_set
+
   return (
     <>
       <PageHeader
@@ -69,6 +118,11 @@ export function SettingsPage() {
             <div><Label>{t('settings.displayName')}</Label><Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} /></div>
             <div><Label>{t('settings.email')}</Label><Input defaultValue={user?.email ?? 'learner@example.com'} type="email" disabled /></div>
           </div>
+          {showPasswordSection ? (
+            <div className="mt-6 border-t-2 border-border pt-4">
+              <Button variant="ghost" onClick={() => setShowPasswordModal(true)}>{t('settings.changePassword')}</Button>
+            </div>
+          ) : null}
         </Card>
         <Card>
           <CardTitle>{t('settings.languages')}</CardTitle>
@@ -103,6 +157,33 @@ export function SettingsPage() {
         </Card>
         {message ? <p className="lg:col-span-2 text-sm font-black text-secondary">{message}</p> : null}
       </div>
+
+      <ConfirmModal
+        open={showPasswordModal}
+        title={t('settings.changePassword')}
+        description={t('settings.changePasswordDescription')}
+        confirmLabel={isChangingPassword ? t('settings.passwordChanging') : t('settings.changePassword')}
+        cancelLabel={t('actions.cancel')}
+        variant="primary"
+        confirmDisabled={isChangingPassword}
+        onConfirm={() => void changePassword()}
+        onCancel={() => { setShowPasswordModal(false); resetPasswordForm() }}
+      >
+        <input type="text" autoComplete="username" className="hidden" aria-hidden="true" tabIndex={-1} />
+        <input type="password" className="hidden" aria-hidden="true" tabIndex={-1} />
+        <div className="grid gap-3">
+          <div>
+            <Label>{t('settings.newPassword')}</Label>
+            <PasswordInput value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" />
+          </div>
+          <div>
+            <Label>{t('settings.confirmNewPassword')}</Label>
+            <PasswordInput value={confirmNewPassword} onChange={(event) => setConfirmNewPassword(event.target.value)} autoComplete="new-password" />
+          </div>
+          {passwordError ? <p className="text-sm font-black text-destructive">{passwordError}</p> : null}
+          {passwordMessage ? <p className="text-sm font-black text-secondary">{passwordMessage}</p> : null}
+        </div>
+      </ConfirmModal>
     </>
   )
 }
