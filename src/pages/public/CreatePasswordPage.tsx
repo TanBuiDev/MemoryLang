@@ -9,6 +9,12 @@ import { authService } from '@/services/supabase/auth.service'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { useAuthStore } from '@/stores/useAuthStore'
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (error && typeof error === 'object' && 'message' in error) return String((error as Record<string, unknown>).message)
+  return 'Failed to set password'
+}
+
 export function CreatePasswordPage() {
   const navigate = useNavigate()
   const { t } = useI18n()
@@ -40,13 +46,18 @@ export function CreatePasswordPage() {
     }
 
     try {
-      await authService.setPassword(password)
+      try {
+        await authService.setPassword(password)
+      } catch (innerError) {
+        const innerMsg = getErrorMessage(innerError)
+        if (!/different from the old/i.test(innerMsg)) throw innerError
+      }
       await authService.markPasswordSet(user!.id)
       const updated = await authService.getProfile(user!.id)
       if (updated) setProfile(updated)
       navigate(updated?.onboarding_completed ? '/app/dashboard' : '/onboarding')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Failed to set password')
+      setMessage(getErrorMessage(error))
       setIsError(true)
     }
   }
