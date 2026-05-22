@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { BrandLogo, BrandMark } from '@/components/common/BrandLogo'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { Input, Label } from '@/components/ui/input'
@@ -26,8 +27,14 @@ export function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-background px-4">
-      <Card className="w-full max-w-md">
+    <main className="brand-grid-bg grid min-h-screen place-items-center bg-background px-4 py-8">
+      <Card className="relative w-full max-w-md overflow-hidden p-6">
+        <div className="absolute -right-10 -top-10 opacity-10">
+          <BrandMark size="xl" label="" className="h-36 w-36" />
+        </div>
+        <Link to="/" className="relative mb-6 block">
+          <BrandLogo variant="compact" size="lg" className="h-12" />
+        </Link>
         <CardTitle>{t('auth.loginTitle')}</CardTitle>
         <CardDescription className="mt-2">{t('auth.loginDescription')}</CardDescription>
         <form className="mt-6 grid gap-4" onSubmit={submit}>
@@ -38,7 +45,7 @@ export function LoginPage() {
         </form>
         {message ? <p className="mt-3 text-sm font-bold">{message}</p> : null}
         <p className="mt-4 text-sm font-semibold">
-          <Link className="underline" to="/forgot-password">{t('auth.forgotPassword')}</Link> · <Link className="underline" to="/register">{t('auth.createAccount')}</Link>
+          <Link className="underline" to="/forgot-password">{t('auth.forgotPassword')}</Link>
         </p>
       </Card>
     </main>
