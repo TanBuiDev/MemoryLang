@@ -10,6 +10,7 @@ export interface Profile {
   current_target_language: LanguageCode
   ui_language: UiLanguageCode
   onboarding_completed: boolean
+  password_set: boolean
   daily_goal?: number
   default_study_mode?: StudyMode
   created_at: string
