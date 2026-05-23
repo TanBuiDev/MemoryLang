@@ -48,6 +48,7 @@ export function VocabularyListPage() {
     queryKey: ['vocabulary', user?.id],
     queryFn: () => vocabularyService.list(user!.id),
     enabled: shouldUseRemoteData,
+    staleTime: 5 * 60 * 1000,
   })
   const [cachedVocabulary, setCachedVocabulary] = useState<VocabularyItem[]>([])
   const [filterStatus, setFilterStatus] = useState<VocabularyStatus | 'all'>('all')
@@ -202,8 +203,13 @@ export function VocabularyListPage() {
         </Select>
       </div>
       {vocabularyQuery.isLoading ? <Card className="font-black">{t('vocabulary.loading')}</Card> : null}
-      {vocabularyQuery.error ? <Card className="font-black text-danger">{vocabularyQuery.error.message}</Card> : null}
-      {!vocabularyQuery.isLoading && vocabulary.length === 0 ? (
+      {vocabularyQuery.isError && cachedVocabulary.length === 0 ? (
+        <Card className="text-center">
+          <p className="text-xl font-black">{t('vocabulary.offlineTitle')}</p>
+          <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.offlineDescription')}</p>
+        </Card>
+      ) : null}
+      {!vocabularyQuery.isLoading && !vocabularyQuery.isError && vocabulary.length === 0 ? (
         <Card className="text-center">
           <p className="text-xl font-black">{t('vocabulary.emptyTitle')}</p>
           <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.emptyDescription')}</p>
@@ -227,7 +233,7 @@ export function VocabularyListPage() {
                   width: '100%',
                   transform: `translateY(${virtualRow.start}px)`,
                 }}
-                className="grid gap-3 grid-cols-1 md:grid-cols-2"
+                className="grid gap-3 grid-cols-1 md:grid-cols-2 pb-3"
               >
                 {rowItems.map((item) => (
                   <Card key={item.id} className={`grid gap-3 md:grid-cols-[auto_1fr_auto] md:items-center border-l-4 ${statusBorderClasses[item.status]}`}>

@@ -13,6 +13,7 @@ import { BrandLogo, BrandMark } from '@/components/common/BrandLogo'
 import { Button } from '@/components/ui/button'
 import { hasActiveStudySession } from '@/features/study/sessionPersistence'
 import { useI18n } from '@/i18n'
+import { studyLocalDb } from '@/services/local/studyLocalDb'
 import { authService } from '@/services/supabase/auth.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { cn } from '@/utils/cn'
@@ -105,7 +106,7 @@ export function AppLayout() {
               <Button asChild>
                 <NavLink to="/app/vocabulary/new">{t('actions.addWord')}</NavLink>
               </Button>
-              <Button variant="ghost" onClick={() => void authService.signOut()}>
+              <Button variant="ghost" onClick={() => { void studyLocalDb.clearAllData(); void authService.signOut() }}>
                 {t('actions.logout')}
               </Button>
             </div>

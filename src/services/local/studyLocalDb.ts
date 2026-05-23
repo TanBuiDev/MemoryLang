@@ -86,6 +86,13 @@ async function readPending(userId: string): Promise<PendingStudyRecord> {
   }
 }
 
+async function updatePending(userId: string, update: (pending: PendingStudyRecord) => PendingStudyRecord) {
+  await db.transaction('rw', db.pendingStudy, async () => {
+    const pending = await readPending(userId)
+    await db.pendingStudy.put(update(pending))
+  })
+}
+
 export const studyLocalDb = {
   async cacheVocabulary(userId: string, deckId: string | null, items: VocabularyItem[]) {
     await db.cachedVocabulary.put({
@@ -114,31 +121,28 @@ export const studyLocalDb = {
   },
 
   async addPendingReviewAction(userId: string, action: PendingReviewAction) {
-    const pending = await readPending(userId)
-    await db.pendingStudy.put({
+    await updatePending(userId, (pending) => ({
       ...pending,
       actions: mergeReviewActions(pending.actions, [action]),
       updatedAt: new Date().toISOString(),
-    })
+    }))
   },
 
   async addPendingViewTermIds(userId: string, termIds: string[]) {
-    const pending = await readPending(userId)
-    await db.pendingStudy.put({
+    await updatePending(userId, (pending) => ({
       ...pending,
       viewedTermIds: mergeViewedTermIds(pending.viewedTermIds, termIds),
       updatedAt: new Date().toISOString(),
-    })
+    }))
   },
 
   async savePendingSessionSummary(userId: string, sessionId: string | null, sessionPatch: Partial<StudySession>) {
-    const pending = await readPending(userId)
-    await db.pendingStudy.put({
+    await updatePending(userId, (pending) => ({
       ...pending,
       sessionId,
       sessionPatch,
       updatedAt: new Date().toISOString(),
-    })
+    }))
   },
 
   async getPendingReviewActions(userId: string) {
@@ -161,5 +165,9 @@ export const studyLocalDb = {
 
   async clearPendingStudyChanges(userId: string) {
     await db.pendingStudy.delete(userId)
+  },
+
+  async clearAllData() {
+    await db.delete()
   },
 }
