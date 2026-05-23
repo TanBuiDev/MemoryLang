@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { Volume2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Badge } from '@/components/ui/badge'
@@ -78,6 +79,17 @@ export function VocabularyListPage() {
     if (!shouldUseRemoteData || !user || !data || data.length === 0) return
     void studyLocalDb.cacheVocabulary(user.id, null, data)
   }, [shouldUseRemoteData, user, vocabularyQuery.data])
+
+  const containerRef = useRef<HTMLDivElement>(null)
+  const columns = 2
+  const rows = Math.ceil(vocabulary.length / columns)
+
+  const virtualizer = useVirtualizer({
+    count: rows,
+    getScrollElement: () => containerRef.current,
+    estimateSize: () => 180,
+    overscan: 3,
+  })
 
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -190,47 +202,70 @@ export function VocabularyListPage() {
         </Select>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
-        {vocabularyQuery.isLoading ? <Card className="font-black">{t('vocabulary.loading')}</Card> : null}
-        {vocabularyQuery.error ? <Card className="font-black text-danger">{vocabularyQuery.error.message}</Card> : null}
-        {!vocabularyQuery.isLoading && vocabulary.length === 0 ? (
-          <Card className="text-center">
-            <p className="text-xl font-black">{t('vocabulary.emptyTitle')}</p>
-            <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.emptyDescription')}</p>
-            <Button asChild className="mt-4"><Link to="/app/vocabulary/new">{t('vocabulary.add')}</Link></Button>
-          </Card>
-        ) : null}
-        {vocabulary.map((item) => (
-          <Card key={item.id} className={`grid gap-3 md:grid-cols-[auto_1fr_auto] md:items-center border-l-4 ${statusBorderClasses[item.status]}`}>
-            {selectMode ? (
-              <input
-                type="checkbox"
-                checked={selectedIds.has(item.id)}
-                onChange={() => toggleSelect(item.id)}
-                className="h-5 w-5 accent-primary"
-              />
-            ) : null}
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Link to={`/app/vocabulary/${item.id}`} className="text-xl font-black underline">{item.source_text}</Link>
-                <Badge>{t(statusLabelKeys[item.status])}</Badge>
-                {item.part_of_speech ? <Badge className="bg-muted">{item.part_of_speech}</Badge> : null}
-                <Button variant="ghost" className="h-6 min-h-0 w-6 p-0" onClick={() => speak(item.source_text)}><Volume2 className="h-4 w-4" /></Button>
+      {vocabularyQuery.isLoading ? <Card className="font-black">{t('vocabulary.loading')}</Card> : null}
+      {vocabularyQuery.error ? <Card className="font-black text-danger">{vocabularyQuery.error.message}</Card> : null}
+      {!vocabularyQuery.isLoading && vocabulary.length === 0 ? (
+        <Card className="text-center">
+          <p className="text-xl font-black">{t('vocabulary.emptyTitle')}</p>
+          <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.emptyDescription')}</p>
+          <Button asChild className="mt-4"><Link to="/app/vocabulary/new">{t('vocabulary.add')}</Link></Button>
+        </Card>
+      ) : null}
+      <div ref={containerRef} className="h-[calc(100vh-280px)] overflow-auto">
+        <div style={{ height: virtualizer.getTotalSize(), position: 'relative', width: '100%' }}>
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const start = virtualRow.index * columns
+            const rowItems = vocabulary.slice(start, start + columns)
+            return (
+              <div
+                key={virtualRow.key}
+                data-index={virtualRow.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+                className="grid gap-3 grid-cols-1 md:grid-cols-2"
+              >
+                {rowItems.map((item) => (
+                  <Card key={item.id} className={`grid gap-3 md:grid-cols-[auto_1fr_auto] md:items-center border-l-4 ${statusBorderClasses[item.status]}`}>
+                    {selectMode ? (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(item.id)}
+                        onChange={() => toggleSelect(item.id)}
+                        className="h-5 w-5 accent-primary"
+                      />
+                    ) : null}
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link to={`/app/vocabulary/${item.id}`} className="text-xl font-black underline">{item.source_text}</Link>
+                        <Badge>{t(statusLabelKeys[item.status])}</Badge>
+                        {item.part_of_speech ? <Badge className="bg-muted">{item.part_of_speech}</Badge> : null}
+                        <Button variant="ghost" className="h-6 min-h-0 w-6 p-0" onClick={() => speak(item.source_text)}><Volume2 className="h-4 w-4" /></Button>
+                      </div>
+                      <p className="mt-1 font-mono text-sm">{item.ipa}</p>
+                      <p className="font-semibold text-muted-foreground">{item.meanings[0]?.text}</p>
+                      {item.translation ? <p className="text-sm text-primary font-bold">{item.translation}</p> : null}
+                      <div className="mt-2 flex flex-wrap gap-1">{item.tags.map((tag) => <Badge key={tag} className="bg-card">#{tag}</Badge>)}</div>
+                    </div>
+                    <div className="flex gap-2 ml-auto">
+                      {selectMode ? null : (
+                        <>
+                          <Button asChild variant="secondary"><Link to={`/app/vocabulary/${item.id}/edit`}>{t('vocabulary.edit')}</Link></Button>
+                          <Button variant="ghost" disabled={!shouldUseRemoteData} onClick={() => requestDeleteSingle(item.id, item.source_text)} className="text-danger">{t('vocabulary.delete')}</Button>
+                        </>
+                      )}
+                    </div>
+                  </Card>
+                ))}
               </div>
-              <p className="mt-1 font-mono text-sm">{item.ipa}</p>
-              <p className="font-semibold text-muted-foreground">{item.meanings[0]?.text}</p>
-              {item.translation ? <p className="text-sm text-primary font-bold">{item.translation}</p> : null}
-              <div className="mt-2 flex flex-wrap gap-1">{item.tags.map((tag) => <Badge key={tag} className="bg-card">#{tag}</Badge>)}</div>
-            </div>
-            <div className="flex gap-2 ml-auto">
-              {selectMode ? null : (
-                <>
-                  <Button asChild variant="secondary"><Link to={`/app/vocabulary/${item.id}/edit`}>{t('vocabulary.edit')}</Link></Button>
-                  <Button variant="ghost" disabled={!shouldUseRemoteData} onClick={() => requestDeleteSingle(item.id, item.source_text)} className="text-danger">{t('vocabulary.delete')}</Button>
-                </>
-              )}
-            </div>
-          </Card>
-        ))}
+            )
+          })}
+        </div>
       </div>
       <ConfirmModal
         open={pendingDelete !== null}
