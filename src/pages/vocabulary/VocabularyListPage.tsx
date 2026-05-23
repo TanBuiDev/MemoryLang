@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Volume2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -52,23 +52,53 @@ export function VocabularyListPage() {
     enabled: shouldUseRemoteData,
     staleTime: 5 * 60 * 1000,
   })
+  const [searchParams, setSearchParams] = useSearchParams()
   const [cachedVocabulary, setCachedVocabulary] = useState<VocabularyItem[]>([])
-  const [filterStatus, setFilterStatus] = useState<VocabularyStatus | 'all'>('all')
-  const [searchText, setSearchText] = useState('')
+  const filterStatus = (searchParams.get('status') as VocabularyStatus | 'all') || 'all'
+  const setFilterStatus = (value: VocabularyStatus | 'all') => {
+    setSearchParams((prev) => {
+      if (value === 'all') { prev.delete('status') } else { prev.set('status', value) }
+      return prev
+    })
+  }
+  const [searchText, setSearchText] = useState(searchParams.get('q') ?? '')
   const debouncedSearch = useDebounce(searchText, 300)
+  useEffect(() => {
+    searchParams.get('q') !== debouncedSearch && setSearchParams((prev) => {
+      if (!debouncedSearch) { prev.delete('q') } else { prev.set('q', debouncedSearch) }
+      return prev
+    })
+  }, [debouncedSearch, searchParams, setSearchParams])
+  const sortOrder = (searchParams.get('sort') as 'created' | 'next_review' | 'wrong' | 'alpha') || 'created'
+  const setSortOrder = (value: 'created' | 'next_review' | 'wrong' | 'alpha') => {
+    setSearchParams((prev) => {
+      if (value === 'created') { prev.delete('sort') } else { prev.set('sort', value) }
+      return prev
+    })
+  }
   const rawVocabulary = filterActiveVocabulary(shouldUseRemoteData
     ? vocabularyQuery.data ?? cachedVocabulary
     : demoVocabulary)
   const vocabulary = useMemo(() => {
     const normalizedSearch = debouncedSearch.trim().toLowerCase()
-    const filtered = filterStatus === 'all'
+    let filtered = filterStatus === 'all'
       ? rawVocabulary
       : rawVocabulary.filter((item) => item.status === filterStatus)
-    if (!normalizedSearch) return filtered
-    return filtered.filter((item) =>
-      item.source_text.toLowerCase().includes(normalizedSearch)
-    )
-  }, [debouncedSearch, filterStatus, rawVocabulary])
+    if (normalizedSearch) {
+      filtered = filtered.filter((item) =>
+        item.source_text.toLowerCase().includes(normalizedSearch),
+      )
+    }
+    const sorted = [...filtered]
+    if (sortOrder === 'alpha') {
+      sorted.sort((a, b) => a.source_text.localeCompare(b.source_text))
+    } else if (sortOrder === 'next_review') {
+      sorted.sort((a, b) => (a.next_review_at ?? '').localeCompare(b.next_review_at ?? ''))
+    } else if (sortOrder === 'wrong') {
+      sorted.sort((a, b) => (b.wrong_count ?? 0) - (a.wrong_count ?? 0))
+    }
+    return sorted
+  }, [debouncedSearch, filterStatus, rawVocabulary, sortOrder])
 
   const online = useOnlineStatus()
 
@@ -261,8 +291,9 @@ export function VocabularyListPage() {
             </button>
           ))}
         </div>
-        <Select defaultValue="created">
+        <Select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
           <option value="created">{t('vocabulary.sortCreated')}</option>
+          <option value="alpha">{t('vocabulary.sortAlpha')}</option>
           <option value="next_review">{t('vocabulary.sortReview')}</option>
           <option value="wrong">{t('vocabulary.sortWrong')}</option>
         </Select>

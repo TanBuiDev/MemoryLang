@@ -76,8 +76,11 @@ function AuthBootstrap({ children }: { children: ReactNode }) {
         return
       }
 
+      setLoading(true)
       window.setTimeout(() => {
-        void loadProfile(session.user.id)
+        void loadProfile(session.user.id).finally(() => {
+          if (isActive) setLoading(false)
+        })
       }, 0)
     })
 
