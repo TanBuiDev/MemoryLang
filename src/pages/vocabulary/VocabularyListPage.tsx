@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Volume2 } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Select } from '@/components/ui/input'
 import { demoVocabulary } from '@/features/demo/demoData'
+import { useDebounce } from '@/hooks/useDebounce'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
@@ -47,8 +48,19 @@ export function VocabularyListPage() {
     enabled: shouldUseRemoteData,
   })
   const [filterStatus, setFilterStatus] = useState<VocabularyStatus | 'all'>('all')
+  const [searchText, setSearchText] = useState('')
+  const debouncedSearch = useDebounce(searchText, 300)
   const rawVocabulary = shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary
-  const vocabulary = filterStatus === 'all' ? rawVocabulary : rawVocabulary.filter((item) => item.status === filterStatus)
+  const vocabulary = useMemo(() => {
+    const normalizedSearch = debouncedSearch.trim().toLowerCase()
+    const filtered = filterStatus === 'all'
+      ? rawVocabulary
+      : rawVocabulary.filter((item) => item.status === filterStatus)
+    if (!normalizedSearch) return filtered
+    return filtered.filter((item) =>
+      item.source_text.toLowerCase().includes(normalizedSearch)
+    )
+  }, [debouncedSearch, filterStatus, rawVocabulary])
 
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -136,7 +148,7 @@ export function VocabularyListPage() {
         </div>
       ) : null}
       <div className="mb-4 grid gap-3 md:grid-cols-[2fr_auto_1fr]">
-        <Input placeholder={t('vocabulary.search')} />
+        <Input placeholder={t('vocabulary.search')} value={searchText} onChange={(event) => setSearchText(event.target.value)} />
         <div className="flex flex-wrap gap-1">
           {statusFilterOptions.map((status) => (
             <button
@@ -160,7 +172,7 @@ export function VocabularyListPage() {
           <option value="wrong">{t('vocabulary.sortWrong')}</option>
         </Select>
       </div>
-      <div className="grid gap-3">
+      <div className="grid gap-3 md:grid-cols-2">
         {vocabularyQuery.isLoading ? <Card className="font-black">{t('vocabulary.loading')}</Card> : null}
         {vocabularyQuery.error ? <Card className="font-black text-danger">{vocabularyQuery.error.message}</Card> : null}
         {!vocabularyQuery.isLoading && vocabulary.length === 0 ? (
