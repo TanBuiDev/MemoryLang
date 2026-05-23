@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { BrandLogo, BrandMark } from '@/components/common/BrandLogo'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
@@ -13,8 +13,14 @@ import { goals, languageOptions, levels } from '@/utils/languageCodes'
 
 export function OnboardingPage() {
   const navigate = useNavigate()
-  const user = useAuthStore((state) => state.user)
+  const { user, profile, loading } = useAuthStore()
   const setProfile = useAuthStore((state) => state.setProfile)
+
+  if (!isSupabaseConfigured && !user) return <Navigate to="/login" replace />
+  if (isSupabaseConfigured && !user) return <Navigate to="/login" replace />
+  if (loading || (isSupabaseConfigured && user && !profile)) return null
+  if (profile && !profile.password_set)
+    return <Navigate to="/create-password" replace />
   const [nativeLanguage, setNativeLanguage] = useState<LanguageCode>('vi')
   const [targetLanguage, setTargetLanguage] = useState<LanguageCode>('en')
   const [level, setLevel] = useState(levels[0])
