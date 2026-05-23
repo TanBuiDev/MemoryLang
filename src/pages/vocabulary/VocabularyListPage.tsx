@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Volume2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Badge } from '@/components/ui/badge'
@@ -11,10 +11,11 @@ import { Input, Select } from '@/components/ui/input'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useI18n } from '@/i18n'
+import { studyLocalDb } from '@/services/local/studyLocalDb'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
-import type { VocabularyStatus } from '@/types/vocabulary.types'
+import type { VocabularyItem, VocabularyStatus } from '@/types/vocabulary.types'
 import { speak } from '@/utils/audio'
 
 const statusLabelKeys: Record<VocabularyStatus, string> = {
@@ -47,10 +48,13 @@ export function VocabularyListPage() {
     queryFn: () => vocabularyService.list(user!.id),
     enabled: shouldUseRemoteData,
   })
+  const [cachedVocabulary, setCachedVocabulary] = useState<VocabularyItem[]>([])
   const [filterStatus, setFilterStatus] = useState<VocabularyStatus | 'all'>('all')
   const [searchText, setSearchText] = useState('')
   const debouncedSearch = useDebounce(searchText, 300)
-  const rawVocabulary = shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary
+  const rawVocabulary = shouldUseRemoteData
+    ? vocabularyQuery.data ?? cachedVocabulary
+    : demoVocabulary
   const vocabulary = useMemo(() => {
     const normalizedSearch = debouncedSearch.trim().toLowerCase()
     const filtered = filterStatus === 'all'
@@ -61,6 +65,19 @@ export function VocabularyListPage() {
       item.source_text.toLowerCase().includes(normalizedSearch)
     )
   }, [debouncedSearch, filterStatus, rawVocabulary])
+
+  useEffect(() => {
+    if (!shouldUseRemoteData || !user) return
+    void studyLocalDb.getCachedVocabulary(user.id, null)
+      .then(setCachedVocabulary)
+      .catch(() => setCachedVocabulary([]))
+  }, [shouldUseRemoteData, user])
+
+  useEffect(() => {
+    const data = vocabularyQuery.data
+    if (!shouldUseRemoteData || !user || !data || data.length === 0) return
+    void studyLocalDb.cacheVocabulary(user.id, null, data)
+  }, [shouldUseRemoteData, user, vocabularyQuery.data])
 
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
