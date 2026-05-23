@@ -10,6 +10,7 @@ import { deckService } from '@/services/supabase/deck.service'
 import { statisticsService } from '@/services/supabase/statistics.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { filterActiveVocabulary } from '@/utils/vocabulary'
 
 export function StatisticsOverviewPage() {
   const { t } = useI18n()
@@ -37,7 +38,7 @@ export function StatisticsOverviewPage() {
     ? statsQuery.data ?? { totalVocabulary: 0, averageAccuracy: 0, deckCount: 0 }
     : { totalVocabulary: demoVocabulary.length, averageAccuracy: demoAccuracy, deckCount: demoDecks.length }
   const decks = shouldUseRemoteData ? decksQuery.data ?? [] : demoDecks
-  const vocabulary = shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary
+  const vocabulary = filterActiveVocabulary(shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary)
   const isLoading = shouldUseRemoteData && (statsQuery.isLoading || decksQuery.isLoading || vocabularyQuery.isLoading)
   const error =
     statsQuery.error instanceof Error ? statsQuery.error.message :

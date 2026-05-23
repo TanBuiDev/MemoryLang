@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie'
 import type { StoredStudySession } from '@/features/study/sessionPersistence'
 import type { StudySession } from '@/types/study.types'
-import type { VocabularyItem } from '@/types/vocabulary.types'
+import type { VocabularyItem, VocabularyStatus } from '@/types/vocabulary.types'
 import type { ReviewAction, ReviewResult } from '@/utils/spacedRepetition'
 
 export interface SerializedReviewResult {
@@ -43,10 +43,19 @@ interface PendingStudyRecord {
   updatedAt: string
 }
 
+export interface PendingMutation {
+  id: string
+  userId: string
+  type: 'create' | 'update' | 'delete'
+  payload: VocabularyItem
+  createdAt: string
+}
+
 class StudyLocalDatabase extends Dexie {
   cachedVocabulary!: Table<CachedVocabularyRecord, string>
   activeSessions!: Table<ActiveStudySessionRecord, string>
   pendingStudy!: Table<PendingStudyRecord, string>
+  pendingMutations!: Table<PendingMutation, string>
 
   constructor() {
     super('memorylang-study')
@@ -54,6 +63,12 @@ class StudyLocalDatabase extends Dexie {
       cachedVocabulary: 'key,userId,deckId,updatedAt',
       activeSessions: 'key',
       pendingStudy: 'userId,updatedAt',
+    })
+    this.version(2).stores({
+      cachedVocabulary: 'key,userId,deckId,updatedAt',
+      activeSessions: 'key',
+      pendingStudy: 'userId,updatedAt',
+      pendingMutations: 'id,userId,createdAt',
     })
   }
 }
@@ -165,6 +180,40 @@ export const studyLocalDb = {
 
   async clearPendingStudyChanges(userId: string) {
     await db.pendingStudy.delete(userId)
+  },
+
+  async enqueueMutation(mutation: PendingMutation) {
+    await db.pendingMutations.put(mutation)
+  },
+
+  async dequeueMutation(id: string) {
+    await db.pendingMutations.delete(id)
+  },
+
+  async getPendingMutations(userId: string) {
+    return await db.pendingMutations.where('userId').equals(userId).sortBy('createdAt')
+  },
+
+  async clearPendingMutations(userId: string) {
+    await db.pendingMutations.where('userId').equals(userId).delete()
+  },
+
+  async flushPendingMutations(userId: string, createFn: (userId: string, payload: VocabularyItem) => Promise<VocabularyItem>, updateFn: (payload: VocabularyItem) => Promise<VocabularyItem>, removeFn: (ids: string[]) => Promise<void>) {
+    const mutations = await db.pendingMutations.where('userId').equals(userId).sortBy('createdAt')
+    for (const mutation of mutations) {
+      try {
+        if (mutation.type === 'create') {
+          await createFn(userId, mutation.payload)
+        } else if (mutation.type === 'update') {
+          await updateFn(mutation.payload)
+        } else if (mutation.type === 'delete') {
+          await removeFn([mutation.payload.id])
+        }
+        await db.pendingMutations.delete(mutation.id)
+      } catch {
+        break
+      }
+    }
   },
 
   async clearAllData() {

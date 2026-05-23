@@ -16,6 +16,7 @@ import { deckService } from '@/services/supabase/deck.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useQuizStore } from '@/stores/useQuizStore'
+import { filterActiveVocabulary } from '@/utils/vocabulary'
 
 export function QuizSessionPage() {
   const navigate = useNavigate()
@@ -58,7 +59,7 @@ export function QuizSessionPage() {
           ? deckTermsQuery.data ?? []
           : vocabularyQuery.data ?? []
         : demoVocabulary
-      return prepareSessionVocabulary(source, { limit: questionCount, shuffle: true })
+      return prepareSessionVocabulary(filterActiveVocabulary(source), { limit: questionCount, shuffle: true })
     },
     [deckTermsQuery.data, questionCount, selectedDeckId, shouldUseRemoteData, vocabularyQuery.data],
   )

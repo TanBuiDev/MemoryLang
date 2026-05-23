@@ -7,6 +7,7 @@ import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
 import { vocabularyFormSchema, type VocabularyFormValues } from '@/features/vocabulary/vocabulary.schema'
 import { useI18n } from '@/i18n'
+import { studyLocalDb } from '@/services/local/studyLocalDb'
 import { enrichVocabulary } from '@/services/api/enrichVocabulary.api'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
@@ -45,8 +46,49 @@ export function AddVocabularyPage() {
       ])
       navigate('/app/vocabulary')
     },
-    onError: (error) => {
+    onError: async (error, values) => {
       setMessage(error instanceof Error ? error.message : 'Could not save vocabulary.')
+      if (user) {
+        await studyLocalDb.enqueueMutation({
+          id: `create-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          userId: user.id,
+          type: 'create',
+          payload: {
+            id: `pending-${Date.now()}`,
+            user_id: user.id,
+            global_term_id: null,
+            source_text: values.source_text,
+            normalized_text: values.source_text.toLowerCase(),
+            source_language: values.source_language,
+            native_language: values.native_language,
+            item_type: values.item_type,
+            part_of_speech: values.part_of_speech ?? null,
+            ipa: values.ipa ?? null,
+            pronunciation_text: values.pronunciation_text ?? null,
+            audio_url: values.audio_url ?? null,
+            image_url: values.image_url ?? null,
+            note: values.note ?? null,
+            meanings: values.meanings,
+            translation: values.translation ?? null,
+            examples: values.examples,
+            tags: values.tags,
+            status: 'new' as import('@/types/vocabulary.types').VocabularyStatus,
+            view_count: 0,
+            correct_count: 0,
+            wrong_count: 0,
+            audio_play_count: 0,
+            srs_repetition: 0,
+            srs_interval_days: 0,
+            srs_ease_factor: 2.5,
+            last_reviewed_at: null,
+            next_review_at: null,
+            deleted_at: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          createdAt: new Date().toISOString(),
+        })
+      }
     },
   })
 

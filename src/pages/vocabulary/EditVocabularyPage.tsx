@@ -10,11 +10,13 @@ import { Input, Label, Select, Textarea } from '@/components/ui/input'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { vocabularyUpdateFormSchema } from '@/features/vocabulary/vocabulary.schema'
 import { useI18n } from '@/i18n'
+import { studyLocalDb } from '@/services/local/studyLocalDb'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { createEmptyRelationshipGroups, relationshipService } from '@/services/supabase/relationship.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import type { RelationType, VocabularyItemType, VocabularyStatus } from '@/types/vocabulary.types'
+import { filterActiveVocabulary } from '@/utils/vocabulary'
 
 const statusLabelKeys: Record<VocabularyStatus, string> = {
   new: 'vocabulary.statusNew',
@@ -69,7 +71,7 @@ export function EditVocabularyPage() {
   const relationships = shouldUseRemoteData ? vocabularyCardQuery.data?.relationships ?? createEmptyRelationshipGroups() : createEmptyRelationshipGroups()
 
   const targetOptions = useMemo(
-    () => (vocabularyListQuery.data ?? []).filter((entry) => entry.id !== id),
+    () => filterActiveVocabulary(vocabularyListQuery.data ?? []).filter((entry) => entry.id !== id),
     [id, vocabularyListQuery.data],
   )
 
@@ -115,7 +117,18 @@ export function EditVocabularyPage() {
       await invalidateVocabularyQueries()
       navigate(`/app/vocabulary/${updated.id}`)
     },
-    onError: (error) => setFormError(error instanceof Error ? error.message : String(error)),
+    onError: async (error) => {
+      setFormError(error instanceof Error ? error.message : String(error))
+      if (user && item) {
+        await studyLocalDb.enqueueMutation({
+          id: `${item.id}-update-${Date.now()}`,
+          userId: user.id,
+          type: 'update',
+          payload: { ...item, source_text: sourceText, translation, note: note.trim(), ipa, part_of_speech: partOfSpeech, item_type: itemType, status },
+          createdAt: new Date().toISOString(),
+        })
+      }
+    },
   })
 
   const addRelationshipMutation = useMutation({

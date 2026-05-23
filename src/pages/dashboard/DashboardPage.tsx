@@ -13,6 +13,7 @@ import { deckService } from '@/services/supabase/deck.service'
 import { statisticsService } from '@/services/supabase/statistics.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { filterActiveVocabulary } from '@/utils/vocabulary'
 
 export function DashboardPage() {
   const profile = useAuthStore((state) => state.profile)
@@ -35,7 +36,7 @@ export function DashboardPage() {
     enabled: shouldUseRemoteData,
   })
   const vocabulary = useMemo(
-    () => shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary,
+    () => filterActiveVocabulary(shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary),
     [shouldUseRemoteData, vocabularyQuery.data],
   )
   const decks = useMemo(

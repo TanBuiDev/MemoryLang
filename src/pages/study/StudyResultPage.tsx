@@ -9,6 +9,7 @@ import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { filterActiveVocabulary } from '@/utils/vocabulary'
 
 export function StudyResultPage() {
   const { t } = useI18n()
@@ -19,7 +20,7 @@ export function StudyResultPage() {
     queryFn: () => vocabularyService.list(user!.id),
     enabled: shouldUseRemoteData,
   })
-  const vocabulary = shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary
+  const vocabulary = filterActiveVocabulary(shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary)
 
   return (
     <>

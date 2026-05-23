@@ -14,6 +14,7 @@ import { deckService } from '@/services/supabase/deck.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useStudyStore } from '@/stores/useStudyStore'
+import { filterActiveVocabulary } from '@/utils/vocabulary'
 
 export function DeckDetailPage() {
   const { id } = useParams()
@@ -46,7 +47,7 @@ export function DeckDetailPage() {
   )
   const availableVocabulary = useMemo(() => {
     const deckTermIds = new Set(vocabulary.map((item) => item.id))
-    return (allVocabularyQuery.data ?? []).filter((item) => !deckTermIds.has(item.id))
+    return filterActiveVocabulary(allVocabularyQuery.data ?? []).filter((item) => !deckTermIds.has(item.id))
   }, [allVocabularyQuery.data, vocabulary])
   const addTermMutation = useMutation({
     mutationFn: () => deckService.addTerm(id!, selectedTermId),

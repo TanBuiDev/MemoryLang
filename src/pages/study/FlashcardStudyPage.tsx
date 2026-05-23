@@ -1,20 +1,20 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Equal, FlipHorizontal2, Play } from 'lucide-react'
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { BadgeCheck, Check, ChevronLeft, ChevronRight, CloudRain, Equal, FlipHorizontal2, Play } from 'lucide-react'
+import type { ButtonHTMLAttributes, ReactNode, RefObject } from 'react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import dontRememberIcon from '@/assets/brand/button-icons/dont-remember.svg'
 import pronunciationIcon from '@/assets/brand/button-icons/pronunciation.svg'
 import rememberIcon from '@/assets/brand/button-icons/remember.svg'
 import timerIcon from '@/assets/brand/button-icons/timer.svg'
-import repeatIcon from '@/assets/brand/button-icons/repeat.svg'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { hasRelatedTerms, relationshipDisplayOrder, relationshipLabelKeys } from '@/components/vocabulary/relationshipDisplay'
 import { demoVocabulary } from '@/features/demo/demoData'
-import { buildStudySessionStorageKey, clearActiveStudySession, clearStoredStudySession, readActiveStudySessionStorageKey, readStoredStudySession, writeStoredStudySession } from '@/features/study/sessionPersistence'
+import { formatStudyHotkey, hotkeyFromKeyboardEvent } from '@/features/study/studyHotkeys'
+import { buildStudySessionStorageKey, clearActiveStudySession, clearStoredStudySession, readActiveStudySessionStorageKey, readStoredStudySession, writeStoredStudySession, type StoredReviewAction, type StoredStudySession } from '@/features/study/sessionPersistence'
 import { prepareSessionVocabulary } from '@/features/study/sessionVocabulary'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
@@ -29,6 +29,7 @@ import type { RelationType, VocabularyItem } from '@/types/vocabulary.types'
 import { speak } from '@/utils/audio'
 import type { ReviewAction, ReviewResult } from '@/utils/spacedRepetition'
 import { scheduleReview } from '@/utils/spacedRepetition'
+import { filterActiveVocabulary } from '@/utils/vocabulary'
 
 const AUTO_AUDIO_DELAY_MS = 600
 const DEFAULT_AUTO_CARD_SECONDS = 6
@@ -201,17 +202,60 @@ function AutoCountdownBadge({
   )
 }
 
-function EndSessionButton({ onClick }: { onClick: () => void }) {
+function RememberConfirmationOverlay({
+  remainingSeconds,
+  shortcut,
+  buttonRef,
+  onRemember,
+}: {
+  remainingSeconds: number
+  shortcut: string | null
+  buttonRef: RefObject<HTMLButtonElement | null>
+  onRemember: () => void
+}) {
   const { t } = useI18n()
 
+  return (
+    <div className="absolute inset-0 z-30 grid place-items-center rounded-md bg-background/80 p-6 backdrop-blur-[2px]">
+      <div className="grid justify-items-center gap-4 text-center">
+        <button
+          ref={buttonRef}
+          type="button"
+          aria-label={t('study.confirmRemember')}
+          className="neo-button grid h-44 w-44 content-center justify-items-center gap-3 rounded-md border-2 border-border bg-primary px-4 text-primary-foreground active:neo-button-active"
+          onClick={onRemember}
+        >
+          <span className="text-2xl font-black">{t('study.confirmRemember')}</span>
+          <span
+            aria-live="polite"
+            aria-label={t('study.confirmSecondsRemaining', { seconds: remainingSeconds })}
+            className="font-mono text-lg font-black"
+          >
+            {remainingSeconds}s
+          </span>
+        </button>
+        <p className="rounded-md border-2 border-border bg-card px-4 py-2 font-black">
+          {t('study.confirmDefaultForgot')}
+        </p>
+        {shortcut ? (
+          <p className="text-sm font-black text-muted-foreground">
+            {t('study.confirmHotkey')}: <kbd className="rounded border-2 border-border bg-card px-2 py-1 font-mono text-foreground">{formatStudyHotkey(shortcut)}</kbd>
+          </p>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function EndSessionButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <Button
       type="button"
       variant="ghost"
-      className="absolute left-4 top-4 z-20 min-h-0 px-3 py-1.5 text-xs md:left-5 md:top-5"
+      className="absolute left-4 top-4 z-40 min-h-0 px-3 py-1.5 text-xs md:left-5 md:top-5"
       onClick={onClick}
     >
-      {t('study.endSession')}
+      {label}
     </Button>
   )
 }
@@ -345,7 +389,7 @@ export function FlashcardStudyPage() {
   const { sessionId } = useParams()
   const { t } = useI18n()
   const user = useAuthStore((state) => state.user)
-  const { mode, cardLimit, shuffle, selectedDeckId } = useStudyStore()
+  const { mode, cardLimit, shuffle, selectedDeckId, requireRememberConfirmation, rememberConfirmationSeconds, hotkeys } = useStudyStore()
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
   const isReviewSession = sessionId === 'review-session'
   const fallbackSessionKey = buildStudySessionStorageKey({
@@ -367,25 +411,24 @@ export function FlashcardStudyPage() {
   const [flipped, setFlipped] = useState((initialStoredSession?.mode ?? mode) === 'one_side')
   const [autoEnabled, setAutoEnabled] = useState(false)
   const [autoSettingsOpen, setAutoSettingsOpen] = useState(false)
-  const [autoRepeat, setAutoRepeat] = useState(false)
   const [autoCardSeconds, setAutoCardSeconds] = useState(DEFAULT_AUTO_CARD_SECONDS)
   const [autoRemainingSeconds, setAutoRemainingSeconds] = useState(DEFAULT_AUTO_CARD_SECONDS)
+  const [confirmationOpen, setConfirmationOpen] = useState(false)
+  const [confirmationRemainingSeconds, setConfirmationRemainingSeconds] = useState<number>(initialStoredSession?.rememberConfirmationSeconds ?? rememberConfirmationSeconds)
+  const [completeAfterConfirmation, setCompleteAfterConfirmation] = useState(false)
   const [pendingAction, setPendingAction] = useState<ReviewAction | null>(null)
-  const [endSessionOpen, setEndSessionOpen] = useState(false)
+  const [sessionModal, setSessionModal] = useState<'discard' | 'complete' | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [cachedVocabulary, setCachedVocabulary] = useState<VocabularyItem[]>([])
-  const [rememberedCount, setRememberedCount] = useState(0)
-  const [forgotCount, setForgotCount] = useState(0)
   const [viewedTermIds, setViewedTermIds] = useState<string[]>(initialStoredSession?.viewedTermIds ?? [])
   const [flushedViewTermIds, setFlushedViewTermIds] = useState<string[]>(initialStoredSession?.flushedViewTermIds ?? [])
-  const [sessionSnapshot, setSessionSnapshot] = useState<{ key: string, vocabulary: VocabularyItem[], mode: typeof mode, viewedTermIds: string[], flushedViewTermIds: string[] } | null>(
+  const confirmationButtonRef = useRef<HTMLButtonElement>(null)
+  const resolveConfirmationRef = useRef<(action: 'know' | 'dont_know') => void>(() => undefined)
+  const [sessionSnapshot, setSessionSnapshot] = useState<(StoredStudySession & { key: string }) | null>(
     initialStoredSession
       ? {
           key: sessionKey,
-          vocabulary: initialStoredSession.vocabulary,
-          mode: initialStoredSession.mode,
-          viewedTermIds: initialStoredSession.viewedTermIds,
-          flushedViewTermIds: initialStoredSession.flushedViewTermIds,
+          ...initialStoredSession,
         }
       : null,
   )
@@ -409,10 +452,10 @@ export function FlashcardStudyPage() {
       ? cachedVocabulary
       : remoteSource
 
-    if (!isReviewSession) return source
+    if (!isReviewSession) return filterActiveVocabulary(source)
 
     const now = new Date()
-    return source.filter((entry) => entry.status === 'difficult' || (entry.next_review_at && new Date(entry.next_review_at) <= now))
+    return filterActiveVocabulary(source.filter((entry) => entry.status === 'difficult' || (entry.next_review_at && new Date(entry.next_review_at) <= now)))
   }, [cachedVocabulary, deckTermsQuery.data, isReviewSession, selectedDeckId, shouldUseRemoteData, vocabularyQuery.data])
   const preparedVocabulary = useMemo(
     () => prepareSessionVocabulary(rawVocabulary, { limit: cardLimit, shuffle: !isReviewSession && shuffle }),
@@ -434,10 +477,7 @@ export function FlashcardStudyPage() {
         if (current?.key === sessionKey) return current
         return {
           key: sessionKey,
-          vocabulary: storedSession.vocabulary,
-          mode: storedSession.mode,
-          viewedTermIds: storedSession.viewedTermIds,
-          flushedViewTermIds: storedSession.flushedViewTermIds,
+          ...storedSession,
         }
       })
       setIndex(storedSession.index)
@@ -448,20 +488,41 @@ export function FlashcardStudyPage() {
     }
 
     if (!isSourceReady && !hasLocalFallback) return
-    writeStoredStudySession(sessionKey, { vocabulary: preparedVocabulary, index: 0, mode, viewedTermIds: [], flushedViewTermIds: [] })
-    void studyLocalDb.saveActiveSession(sessionKey, { vocabulary: preparedVocabulary, index: 0, mode, viewedTermIds: [], flushedViewTermIds: [] })
+    const newSession: StoredStudySession = {
+      vocabulary: preparedVocabulary,
+      index: 0,
+      mode,
+      viewedTermIds: [],
+      flushedViewTermIds: [],
+      requireRememberConfirmation,
+      rememberConfirmationSeconds,
+      ratingsByTermId: {},
+      reviewActionsByTermId: {},
+      hasReachedLastCard: preparedVocabulary.length <= 1,
+    }
+    writeStoredStudySession(sessionKey, newSession)
+    void studyLocalDb.saveActiveSession(sessionKey, newSession)
     setSessionSnapshot((current) => {
       if (current?.key === sessionKey) return current
-      return { key: sessionKey, vocabulary: preparedVocabulary, mode, viewedTermIds: [], flushedViewTermIds: [] }
+      return { key: sessionKey, ...newSession }
     })
     setIndex(0)
     setFlipped(mode === 'one_side')
     setViewedTermIds([])
     setFlushedViewTermIds([])
-  }, [hasLocalFallback, isSourceReady, mode, preparedVocabulary, sessionKey, sessionSnapshot?.key])
+  }, [hasLocalFallback, isSourceReady, mode, preparedVocabulary, rememberConfirmationSeconds, requireRememberConfirmation, sessionKey, sessionSnapshot?.key])
 
   const vocabulary = sessionSnapshot?.key === sessionKey ? sessionSnapshot.vocabulary : preparedVocabulary
   const sessionMode = sessionSnapshot?.key === sessionKey ? sessionSnapshot.mode : initialStoredSession?.mode ?? mode
+  const sessionRequiresConfirmation = sessionSnapshot?.key === sessionKey
+    ? sessionSnapshot.requireRememberConfirmation
+    : initialStoredSession?.requireRememberConfirmation ?? requireRememberConfirmation
+  const sessionConfirmationSeconds = sessionSnapshot?.key === sessionKey
+    ? sessionSnapshot.rememberConfirmationSeconds
+    : initialStoredSession?.rememberConfirmationSeconds ?? rememberConfirmationSeconds
+  const hasReachedLastCard = sessionSnapshot?.key === sessionKey
+    ? sessionSnapshot.hasReachedLastCard || index >= vocabulary.length - 1
+    : index >= vocabulary.length - 1
   const autoCardMs = autoCardSeconds * 1000
 
   useEffect(() => {
@@ -472,6 +533,11 @@ export function FlashcardStudyPage() {
       mode: sessionSnapshot.mode,
       viewedTermIds,
       flushedViewTermIds,
+      requireRememberConfirmation: sessionSnapshot.requireRememberConfirmation,
+      rememberConfirmationSeconds: sessionSnapshot.rememberConfirmationSeconds,
+      ratingsByTermId: sessionSnapshot.ratingsByTermId,
+      reviewActionsByTermId: sessionSnapshot.reviewActionsByTermId,
+      hasReachedLastCard: sessionSnapshot.hasReachedLastCard,
     })
     void studyLocalDb.saveActiveSession(sessionKey, {
       vocabulary: sessionSnapshot.vocabulary,
@@ -479,6 +545,11 @@ export function FlashcardStudyPage() {
       mode: sessionSnapshot.mode,
       viewedTermIds,
       flushedViewTermIds,
+      requireRememberConfirmation: sessionSnapshot.requireRememberConfirmation,
+      rememberConfirmationSeconds: sessionSnapshot.rememberConfirmationSeconds,
+      ratingsByTermId: sessionSnapshot.ratingsByTermId,
+      reviewActionsByTermId: sessionSnapshot.reviewActionsByTermId,
+      hasReachedLastCard: sessionSnapshot.hasReachedLastCard,
     })
   }, [flushedViewTermIds, index, sessionKey, sessionSnapshot, viewedTermIds])
 
@@ -515,10 +586,9 @@ export function FlashcardStudyPage() {
         if (!storedSession) return
         setSessionSnapshot({
           key: sessionKey,
-          vocabulary: storedSession.vocabulary,
-          mode: storedSession.mode,
-          viewedTermIds: storedSession.viewedTermIds,
-          flushedViewTermIds: storedSession.flushedViewTermIds,
+          ...storedSession,
+          reviewActionsByTermId: storedSession.reviewActionsByTermId ?? {},
+          hasReachedLastCard: storedSession.hasReachedLastCard === true,
         })
         setIndex(storedSession.index)
         setFlipped(storedSession.mode === 'one_side')
@@ -532,15 +602,34 @@ export function FlashcardStudyPage() {
     if (viewedTermIds.includes(item.id)) return
 
     setViewedTermIds((current) => current.includes(item.id) ? current : [...current, item.id])
-    if (user) void studyLocalDb.addPendingViewTermIds(user.id, [item.id])
-  }, [item, sessionKey, sessionSnapshot?.key, shouldUseRemoteData, user, viewedTermIds])
+  }, [item, sessionKey, sessionSnapshot?.key, shouldUseRemoteData, viewedTermIds])
 
   useEffect(() => {
-    if (!autoEnabled) setAutoRepeat(false)
-  }, [autoEnabled])
+    if (!item || sessionSnapshot?.key !== sessionKey || index < vocabulary.length - 1 || sessionSnapshot.hasReachedLastCard) return
+    setSessionSnapshot((current) => current?.key === sessionKey ? { ...current, hasReachedLastCard: true } : current)
+  }, [index, item, sessionKey, sessionSnapshot, vocabulary.length])
 
-  async function flushStudyChanges(extraTermIds: string[] = [], sessionPatch?: Parameters<typeof studyService.flushStudyChanges>[0]['sessionPatch']) {
+  useEffect(() => {
+    if (!confirmationOpen) return
+
+    setConfirmationRemainingSeconds(sessionConfirmationSeconds)
+    confirmationButtonRef.current?.focus()
+    const countdown = window.setInterval(() => {
+      setConfirmationRemainingSeconds((current) => Math.max(0, current - 1))
+    }, 1000)
+    const expiry = window.setTimeout(() => {
+      resolveConfirmationRef.current('dont_know')
+    }, sessionConfirmationSeconds * 1000)
+
+    return () => {
+      window.clearInterval(countdown)
+      window.clearTimeout(expiry)
+    }
+  }, [confirmationOpen, sessionConfirmationSeconds])
+
+  async function flushStudyChanges(reviewActions: StoredReviewAction[] = [], extraTermIds: string[] = [], sessionPatch?: Parameters<typeof studyService.flushStudyChanges>[0]['sessionPatch']) {
     if (!shouldUseRemoteData || !user) return
+    for (const action of reviewActions) await studyLocalDb.addPendingReviewAction(user.id, action)
     const pendingIds = Array.from(new Set([...viewedTermIds, ...extraTermIds]))
       .filter((id) => !flushedViewTermIds.includes(id))
     if (pendingIds.length > 0) await studyLocalDb.addPendingViewTermIds(user.id, pendingIds)
@@ -570,45 +659,37 @@ export function FlashcardStudyPage() {
     return Array.from(new Set([...viewedTermIds, ...extraTermIds])).length
   }
 
-  async function saveSessionSummary(extraTermIds: string[] = [], extraRemembered = 0, extraForgot = 0) {
+  async function saveSessionSummary(extraTermIds: string[] = []) {
     if (!shouldUseRemoteData || !user || !sessionId) return
+    const ratings = Object.values(sessionSnapshot?.ratingsByTermId ?? {})
     const sessionPatch = {
       total_cards: vocabulary.length,
       viewed_cards: countViewed(extraTermIds),
-      remembered_count: rememberedCount + extraRemembered,
-      difficult_count: forgotCount + extraForgot,
+      remembered_count: ratings.filter((rating) => rating === 'know').length,
+      difficult_count: ratings.filter((rating) => rating === 'dont_know').length,
     }
-    await flushStudyChanges(extraTermIds, sessionPatch)
+    await flushStudyChanges(Object.values(sessionSnapshot?.reviewActionsByTermId ?? {}), extraTermIds, sessionPatch)
     if (!syncError) await studyService.pruneHistory(user.id)
   }
 
-  function finishSession(extraRemembered = 0, extraForgot = 0) {
+  function clearSessionAndReturn() {
+    clearStoredStudySession(sessionKey)
+    void studyLocalDb.clearActiveSession(sessionKey)
+    clearActiveStudySession({ userId: user?.id, sessionId, remote: shouldUseRemoteData })
+    navigate('/app/study')
+  }
+
+  function discardIncompleteSession() {
+    setAutoEnabled(false)
+    setAutoSettingsOpen(false)
+    clearSessionAndReturn()
+  }
+
+  function completeSession() {
     setAutoEnabled(false)
     setAutoSettingsOpen(false)
     const extraTermIds = item ? [item.id] : []
-    void saveSessionSummary(extraTermIds, extraRemembered, extraForgot).finally(() => {
-      clearStoredStudySession(sessionKey)
-      void studyLocalDb.clearActiveSession(sessionKey)
-      clearActiveStudySession({ userId: user?.id, sessionId, remote: shouldUseRemoteData })
-      navigate('/app/study')
-    })
-  }
-
-  function next(extraRemembered = 0, extraForgot = 0) {
-    if (index >= vocabulary.length - 1) {
-      const extraTermIds = item ? [item.id] : []
-      void saveSessionSummary(extraTermIds, extraRemembered, extraForgot).finally(() => {
-        clearStoredStudySession(sessionKey)
-        void studyLocalDb.clearActiveSession(sessionKey)
-        clearActiveStudySession({ userId: user?.id, sessionId, remote: shouldUseRemoteData })
-        navigate('/app/study')
-      })
-      return
-    }
-    prefetchCard(index + 1)
-    setAutoRemainingSeconds(autoCardSeconds)
-    setIndex(index + 1)
-    setFlipped(sessionMode === 'one_side')
+    void saveSessionSummary(extraTermIds).finally(clearSessionAndReturn)
   }
 
   function browseTo(nextIndex: number) {
@@ -617,6 +698,41 @@ export function FlashcardStudyPage() {
     setAutoRemainingSeconds(autoCardSeconds)
     setIndex(nextIndex)
     setFlipped(sessionMode === 'one_side')
+  }
+
+  function requestNextCard() {
+    if (index >= vocabulary.length - 1) {
+      requestCompletion()
+      return
+    }
+    if (sessionRequiresConfirmation && item && !sessionSnapshot?.ratingsByTermId[item.id]) {
+      setCompleteAfterConfirmation(false)
+      setConfirmationRemainingSeconds(sessionConfirmationSeconds)
+      setConfirmationOpen(true)
+      return
+    }
+    browseTo(index + 1)
+  }
+
+  function openCardSessionAction() {
+    setConfirmationOpen(false)
+    setCompleteAfterConfirmation(false)
+    if (hasReachedLastCard) {
+      requestCompletion()
+      return
+    }
+    setSessionModal('discard')
+  }
+
+  function requestCompletion() {
+    if (sessionRequiresConfirmation && item && !sessionSnapshot?.ratingsByTermId[item.id]) {
+      setCompleteAfterConfirmation(true)
+      setConfirmationRemainingSeconds(sessionConfirmationSeconds)
+      setConfirmationOpen(true)
+      return
+    }
+    setAutoEnabled(false)
+    setSessionModal('complete')
   }
 
   function prefetchCard(cardIndex: number) {
@@ -632,13 +748,13 @@ export function FlashcardStudyPage() {
 
   function autoAdvance() {
     if (index >= vocabulary.length - 1) {
-      if (autoRepeat && vocabulary.length > 1) {
-        setAutoRemainingSeconds(autoCardSeconds)
-        setIndex(0)
-        setFlipped(sessionMode === 'one_side')
-        return
-      }
-      setAutoEnabled(false)
+      requestCompletion()
+      return
+    }
+    if (sessionRequiresConfirmation && item && !sessionSnapshot?.ratingsByTermId[item.id]) {
+      setCompleteAfterConfirmation(false)
+      setConfirmationRemainingSeconds(sessionConfirmationSeconds)
+      setConfirmationOpen(true)
       return
     }
     setAutoRemainingSeconds(autoCardSeconds)
@@ -646,14 +762,25 @@ export function FlashcardStudyPage() {
     setFlipped(sessionMode === 'one_side')
   }
 
-  function record(action: ReviewAction) {
-    if (!item) return
-    if (!shouldUseRemoteData) {
-      next()
+  function advanceAfterRating() {
+    if (index >= vocabulary.length - 1) {
+      if (completeAfterConfirmation) {
+        setCompleteAfterConfirmation(false)
+        setAutoEnabled(false)
+        setSessionModal('complete')
+      }
       return
     }
-    const rememberedIncrement = action === 'know' ? 1 : 0
-    const forgotIncrement = action === 'dont_know' ? 1 : 0
+    browseTo(index + 1)
+  }
+
+  function record(action: ReviewAction) {
+    if (!item || (action !== 'know' && action !== 'dont_know')) return
+    if (sessionSnapshot?.ratingsByTermId[item.id]) {
+      advanceAfterRating()
+      return
+    }
+    setConfirmationOpen(false)
     const reviewedAt = new Date().toISOString()
     const result = scheduleReview(action, {
       correctCount: item.correct_count,
@@ -663,6 +790,12 @@ export function FlashcardStudyPage() {
       easeFactor: item.srs_ease_factor,
     })
     const updatedItem = applyReviewResult(item, result, reviewedAt)
+    const provisionalAction: StoredReviewAction = {
+      termId: item.id,
+      action,
+      reviewedAt,
+      result: serializeReviewResult(result),
+    }
 
     setPendingAction(action)
     setSessionSnapshot((current) => {
@@ -670,34 +803,74 @@ export function FlashcardStudyPage() {
       return {
         ...current,
         vocabulary: current.vocabulary.map((entry) => entry.id === item.id ? updatedItem : entry),
+        ratingsByTermId: { ...current.ratingsByTermId, [item.id]: action },
+        reviewActionsByTermId: { ...current.reviewActionsByTermId, [item.id]: provisionalAction },
       }
     })
-    if (user) {
-      void studyLocalDb.addPendingReviewAction(user.id, {
-        termId: item.id,
-        action,
-        reviewedAt,
-        result: serializeReviewResult(result),
-      }).catch((error) => setSyncError(error instanceof Error ? error.message : t('study.syncPending')))
-    }
-    setRememberedCount((current) => current + rememberedIncrement)
-    setForgotCount((current) => current + forgotIncrement)
     setPendingAction(null)
-    next(rememberedIncrement, forgotIncrement)
+    advanceAfterRating()
   }
 
   useEffect(() => {
-    if (!autoEnabled || !item) return
+    resolveConfirmationRef.current = (action) => record(action)
+  })
+
+  useEffect(() => {
+    function handleHotkey(event: KeyboardEvent) {
+      const target = event.target
+      if (target instanceof HTMLElement && (
+        target.isContentEditable ||
+        target.tagName === 'INPUT' ||
+        target.tagName === 'SELECT' ||
+        target.tagName === 'TEXTAREA'
+      )) return
+      if (sessionModal) return
+
+      const hotkey = hotkeyFromKeyboardEvent(event)
+      if (!hotkey) return
+      if (confirmationOpen) {
+        if (hotkey === hotkeys.confirmRemember) {
+          event.preventDefault()
+          record('know')
+        }
+        return
+      }
+
+      let handled = true
+      if (hotkey === hotkeys.know && !sessionRequiresConfirmation) record('know')
+      else if (hotkey === hotkeys.dontKnow && !sessionRequiresConfirmation) record('dont_know')
+      else if (hotkey === hotkeys.flip && sessionMode === 'two_side') setFlipped((current) => !current)
+      else if (hotkey === hotkeys.previous && index > 0) browseTo(index - 1)
+      else if (hotkey === hotkeys.next) requestNextCard()
+      else if (hotkey === hotkeys.playAudio) speak(item.source_text)
+      else if (hotkey === hotkeys.toggleAuto) {
+        setAutoRemainingSeconds(autoCardSeconds)
+        setAutoEnabled((enabled) => !enabled)
+        setAutoSettingsOpen(false)
+      } else if (hotkey === hotkeys.endSession) openCardSessionAction()
+      else handled = false
+
+      if (handled) event.preventDefault()
+    }
+
+    document.addEventListener('keydown', handleHotkey)
+    return () => document.removeEventListener('keydown', handleHotkey)
+  // Existing handlers intentionally provide current component state to keyboard dispatch.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoCardSeconds, confirmationOpen, hotkeys, index, item, sessionModal, sessionMode, sessionRequiresConfirmation, sessionSnapshot, vocabulary.length])
+
+  useEffect(() => {
+    if (!autoEnabled || !item || confirmationOpen) return
 
     const timer = window.setTimeout(() => {
       speak(item.source_text)
     }, AUTO_AUDIO_DELAY_MS)
 
     return () => window.clearTimeout(timer)
-  }, [autoEnabled, index, item])
+  }, [autoEnabled, confirmationOpen, index, item])
 
   useEffect(() => {
-    if (!autoEnabled || !item) return
+    if (!autoEnabled || !item || confirmationOpen) return
 
     if (sessionMode === 'two_side') {
       setFlipped(false)
@@ -715,10 +888,10 @@ export function FlashcardStudyPage() {
     const advanceTimer = window.setTimeout(autoAdvance, autoCardMs)
     return () => window.clearTimeout(advanceTimer)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoCardMs, autoEnabled, autoRepeat, index, item, sessionMode, vocabulary.length])
+  }, [autoCardMs, autoEnabled, confirmationOpen, index, item, sessionMode, vocabulary.length])
 
   useEffect(() => {
-    if (!autoEnabled || !item) return
+    if (!autoEnabled || !item || confirmationOpen) return
 
     const countdownTimers = Array.from({ length: Math.max(0, autoCardSeconds - 1) }, (_, index) => {
       const elapsedSeconds = index + 1
@@ -728,7 +901,7 @@ export function FlashcardStudyPage() {
     })
 
     return () => countdownTimers.forEach((timer) => window.clearTimeout(timer))
-  }, [autoCardSeconds, autoEnabled, index, item])
+  }, [autoCardSeconds, autoEnabled, confirmationOpen, index, item])
 
   if (!hasLocalFallback && (vocabularyQuery.isLoading || deckTermsQuery.isLoading)) {
     return <Card className="font-black">{t('vocabulary.loading')}</Card>
@@ -757,18 +930,31 @@ export function FlashcardStudyPage() {
   return (
     <div className="pb-44 md:pb-8">
       <ConfirmModal
-        open={endSessionOpen}
-        title={t('study.endSessionTitle')}
-        description={t('study.endSessionDescription')}
-        confirmLabel={t('study.endSessionConfirm')}
-        cancelLabel={t('study.continueSession')}
-        variant="primary"
+        open={sessionModal !== null}
+        title={t(sessionModal === 'complete' ? 'study.completeSessionTitle' : 'study.discardSessionTitle')}
+        description={t(sessionModal === 'complete' ? 'study.completeSessionDescription' : 'study.discardSessionDescription')}
+        confirmLabel={t(sessionModal === 'complete' ? 'study.saveSessionResults' : 'study.discardSessionConfirm')}
+        cancelLabel={t(sessionModal === 'complete' ? 'study.reviewCards' : 'study.continueSession')}
+        variant={sessionModal === 'complete' ? 'primary' : 'danger'}
         onConfirm={() => {
-          setEndSessionOpen(false)
-          finishSession()
+          const modal = sessionModal
+          setSessionModal(null)
+          if (modal === 'complete') completeSession()
+          else discardIncompleteSession()
         }}
-        onCancel={() => setEndSessionOpen(false)}
-      />
+        onCancel={() => setSessionModal(null)}
+      >
+        {sessionModal === 'discard' ? (
+          <div className="rounded-md border-2 border-border bg-muted p-4 text-center">
+            <CloudRain aria-hidden="true" className="mx-auto h-10 w-10 text-secondary" strokeWidth={2.5} />
+            <p className="mt-2 text-sm font-black">{t('study.discardSessionEncouragement')}</p>
+          </div>
+        ) : sessionModal === 'complete' ? (
+          <div className="rounded-md border-2 border-border bg-primary/20 p-4 text-center">
+            <BadgeCheck aria-hidden="true" className="mx-auto h-10 w-10 text-secondary" strokeWidth={2.5} />
+          </div>
+        ) : null}
+      </ConfirmModal>
       <div className="mx-auto mt-6 flex max-w-5xl items-start gap-2 md:gap-4">
         {syncError ? <p className="sr-only">{syncError}</p> : null}
         <div className="grid grid-cols-[3rem_minmax(0,1fr)_3rem] md:grid-cols-[4rem_minmax(0,1fr)_4rem] items-start gap-2 md:gap-4 flex-1 min-w-0">
@@ -776,7 +962,7 @@ export function FlashcardStudyPage() {
           type="button"
           variant="ghost"
           aria-label={t('study.previousCard')}
-          disabled={index === 0}
+          disabled={confirmationOpen || index === 0}
           className="sticky top-[50vh] -translate-y-1/2 h-12 min-h-12 w-12 px-0 md:h-14 md:min-h-14 md:w-14 justify-self-center"
           onClick={() => browseTo(index - 1)}
         >
@@ -789,8 +975,8 @@ export function FlashcardStudyPage() {
               data-flipped={flipped ? 'true' : 'false'}
               className="flashcard-shell relative"
             >
-              <EndSessionButton onClick={() => setEndSessionOpen(true)} />
-              {autoEnabled ? <AutoCountdownBadge remainingSeconds={autoRemainingSeconds} /> : null}
+              <EndSessionButton label={t(hasReachedLastCard ? 'study.completeSession' : 'study.endSession')} onClick={openCardSessionAction} />
+              {autoEnabled && !confirmationOpen ? <AutoCountdownBadge remainingSeconds={autoRemainingSeconds} /> : null}
               <div className="flashcard-inner">
                 <Card
                   data-testid="flashcard-front"
@@ -808,25 +994,41 @@ export function FlashcardStudyPage() {
                   <FlashcardDetails item={cardItem} relationships={relationships} />
                 </Card>
               </div>
+              {confirmationOpen ? (
+                <RememberConfirmationOverlay
+                  remainingSeconds={confirmationRemainingSeconds}
+                  shortcut={hotkeys.confirmRemember}
+                  buttonRef={confirmationButtonRef}
+                  onRemember={() => record('know')}
+                />
+              ) : null}
             </div>
           ) : (
             <Card className="relative min-h-96 p-8 text-center">
-              <EndSessionButton onClick={() => setEndSessionOpen(true)} />
-              {autoEnabled ? <AutoCountdownBadge remainingSeconds={autoRemainingSeconds} /> : null}
+              <EndSessionButton label={t(hasReachedLastCard ? 'study.completeSession' : 'study.endSession')} onClick={openCardSessionAction} />
+              {autoEnabled && !confirmationOpen ? <AutoCountdownBadge remainingSeconds={autoRemainingSeconds} /> : null}
               <FlashcardFaceContent item={cardItem} current={index + 1} total={vocabulary.length} />
               <FlashcardDetails item={cardItem} relationships={relationships} />
+              {confirmationOpen ? (
+                <RememberConfirmationOverlay
+                  remainingSeconds={confirmationRemainingSeconds}
+                  shortcut={hotkeys.confirmRemember}
+                  buttonRef={confirmationButtonRef}
+                  onRemember={() => record('know')}
+                />
+              ) : null}
             </Card>
           )}
         </AnimatedStudyCardFrame>
         <Button
           type="button"
           variant="ghost"
-          aria-label={t('study.nextCard')}
-          disabled={index >= vocabulary.length - 1}
+          aria-label={t(index >= vocabulary.length - 1 ? 'study.completeSession' : 'study.nextCard')}
+          disabled={confirmationOpen}
           className="sticky top-[50vh] -translate-y-1/2 h-12 min-h-12 w-12 px-0 md:h-14 md:min-h-14 md:w-14 justify-self-center"
-          onClick={() => browseTo(index + 1)}
+          onClick={requestNextCard}
         >
-          <ChevronRight aria-hidden="true" size={28} />
+          {index >= vocabulary.length - 1 ? <Check aria-hidden="true" size={28} /> : <ChevronRight aria-hidden="true" size={28} />}
         </Button>
         </div>
         <div
@@ -904,33 +1106,26 @@ export function FlashcardStudyPage() {
               </div>
             ) : null}
           </div>
-          <StudyToolbarButton
-            label={t('study.autoRepeat')}
-            icon={repeatIcon}
-            active={autoRepeat}
-            disabled={!autoEnabled}
-            aria-pressed={autoRepeat}
-            onClick={() => {
-              if (!autoEnabled) return
-              setAutoRepeat((repeat) => !repeat)
-            }}
-          />
-          <span className="mx-1 hidden h-10 w-0.5 bg-border md:mx-0 md:block md:h-0.5 md:w-10" aria-hidden="true" />
-          <StudyToolbarButton
-            label={t('study.dontKnow')}
-            icon={dontRememberIcon}
-            disabled={pendingAction === 'dont_know'}
-            className={`h-14 min-h-14 w-16 md:w-20${pendingAction && pendingAction !== 'dont_know' ? ' pointer-events-none' : ''}`}
-            onClick={() => record('dont_know')}
-          />
-          <StudyToolbarButton
-            label={t('study.know')}
-            icon={rememberIcon}
-            tone="primary"
-            disabled={pendingAction === 'know'}
-            className={`h-14 min-h-14 w-16 md:w-20${pendingAction && pendingAction !== 'know' ? ' pointer-events-none' : ''}`}
-            onClick={() => record('know')}
-          />
+          {!sessionRequiresConfirmation ? (
+            <>
+              <span className="mx-1 hidden h-10 w-0.5 bg-border md:mx-0 md:block md:h-0.5 md:w-10" aria-hidden="true" />
+              <StudyToolbarButton
+                label={t('study.dontKnow')}
+                icon={dontRememberIcon}
+                disabled={pendingAction === 'dont_know'}
+                className={`h-14 min-h-14 w-16 md:w-20${pendingAction && pendingAction !== 'dont_know' ? ' pointer-events-none' : ''}`}
+                onClick={() => record('dont_know')}
+              />
+              <StudyToolbarButton
+                label={t('study.know')}
+                icon={rememberIcon}
+                tone="primary"
+                disabled={pendingAction === 'know'}
+                className={`h-14 min-h-14 w-16 md:w-20${pendingAction && pendingAction !== 'know' ? ' pointer-events-none' : ''}`}
+                onClick={() => record('know')}
+              />
+            </>
+          ) : null}
         </div>
         </div>
       </div>

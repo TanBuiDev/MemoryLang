@@ -9,6 +9,7 @@ import { isSupabaseConfigured } from '@/services/supabase/client'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useStudyStore } from '@/stores/useStudyStore'
+import { filterActiveVocabulary } from '@/utils/vocabulary'
 
 export function ReviewTodayPage() {
   const { t } = useI18n()
@@ -20,7 +21,7 @@ export function ReviewTodayPage() {
     queryFn: () => vocabularyService.list(user!.id),
     enabled: shouldUseRemoteData,
   })
-  const vocabulary = shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary
+  const vocabulary = filterActiveVocabulary(shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary)
   const due = vocabulary.filter((item) => item.next_review_at && new Date(item.next_review_at) <= new Date())
   const difficult = vocabulary.filter((item) => item.status === 'difficult')
   const isLoading = shouldUseRemoteData && vocabularyQuery.isLoading

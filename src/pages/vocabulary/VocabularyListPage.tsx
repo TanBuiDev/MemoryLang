@@ -11,6 +11,7 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Select } from '@/components/ui/input'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { useDebounce } from '@/hooks/useDebounce'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useI18n } from '@/i18n'
 import { studyLocalDb } from '@/services/local/studyLocalDb'
 import { isSupabaseConfigured } from '@/services/supabase/client'
@@ -18,6 +19,7 @@ import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import type { VocabularyItem, VocabularyStatus } from '@/types/vocabulary.types'
 import { speak } from '@/utils/audio'
+import { filterActiveVocabulary } from '@/utils/vocabulary'
 
 const statusLabelKeys: Record<VocabularyStatus, string> = {
   new: 'vocabulary.statusNew',
@@ -54,9 +56,9 @@ export function VocabularyListPage() {
   const [filterStatus, setFilterStatus] = useState<VocabularyStatus | 'all'>('all')
   const [searchText, setSearchText] = useState('')
   const debouncedSearch = useDebounce(searchText, 300)
-  const rawVocabulary = shouldUseRemoteData
+  const rawVocabulary = filterActiveVocabulary(shouldUseRemoteData
     ? vocabularyQuery.data ?? cachedVocabulary
-    : demoVocabulary
+    : demoVocabulary)
   const vocabulary = useMemo(() => {
     const normalizedSearch = debouncedSearch.trim().toLowerCase()
     const filtered = filterStatus === 'all'
@@ -67,6 +69,53 @@ export function VocabularyListPage() {
       item.source_text.toLowerCase().includes(normalizedSearch)
     )
   }, [debouncedSearch, filterStatus, rawVocabulary])
+
+  const online = useOnlineStatus()
+
+  useEffect(() => {
+    if (!online || !user) return
+    void studyLocalDb.flushPendingMutations(
+      user.id,
+      (userId, payload) => vocabularyService.create(userId, {
+        source_text: payload.source_text,
+        source_language: payload.source_language,
+        native_language: payload.native_language,
+        item_type: payload.item_type,
+        part_of_speech: payload.part_of_speech ?? undefined,
+        ipa: payload.ipa ?? undefined,
+        pronunciation_text: payload.pronunciation_text ?? undefined,
+        audio_url: payload.audio_url ?? undefined,
+        image_url: payload.image_url ?? undefined,
+        note: payload.note ?? undefined,
+        meanings: payload.meanings,
+        translation: payload.translation ?? undefined,
+        examples: payload.examples,
+        tags: payload.tags,
+        deck_ids: [],
+      }),
+      (payload) => vocabularyService.update(payload.id, {
+        source_text: payload.source_text,
+        source_language: payload.source_language,
+        native_language: payload.native_language,
+        item_type: payload.item_type,
+        status: payload.status,
+        part_of_speech: payload.part_of_speech ?? undefined,
+        ipa: payload.ipa ?? undefined,
+        pronunciation_text: payload.pronunciation_text ?? undefined,
+        audio_url: payload.audio_url ?? undefined,
+        image_url: payload.image_url ?? undefined,
+        note: payload.note ?? undefined,
+        meanings: payload.meanings,
+        translation: payload.translation ?? undefined,
+        examples: payload.examples,
+        tags: payload.tags,
+        deck_ids: [],
+      }),
+      (ids) => vocabularyService.removeMany(ids),
+    ).then(() => {
+      void queryClient.invalidateQueries({ queryKey: ['vocabulary', user.id] })
+    })
+  }, [online, user, queryClient])
 
   useEffect(() => {
     if (!shouldUseRemoteData || !user) return
@@ -103,6 +152,22 @@ export function VocabularyListPage() {
         queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] }),
         queryClient.invalidateQueries({ queryKey: ['statistics', user?.id] }),
       ])
+    },
+    onError: async (_error, ids) => {
+      if (!user) return
+      const now = new Date().toISOString()
+      for (const id of ids) {
+        const item = rawVocabulary.find((v) => v.id === id)
+        if (item) {
+          await studyLocalDb.enqueueMutation({
+            id: `${id}-delete-${Date.now()}`,
+            userId: user.id,
+            type: 'delete',
+            payload: item,
+            createdAt: now,
+          })
+        }
+      }
     },
   })
 
@@ -261,7 +326,7 @@ export function VocabularyListPage() {
                       {selectMode ? null : (
                         <>
                           <Button asChild variant="secondary"><Link to={`/app/vocabulary/${item.id}/edit`}>{t('vocabulary.edit')}</Link></Button>
-                          <Button variant="ghost" disabled={!shouldUseRemoteData} onClick={() => requestDeleteSingle(item.id, item.source_text)} className="text-danger">{t('vocabulary.delete')}</Button>
+                          <Button variant="ghost" onClick={() => requestDeleteSingle(item.id, item.source_text)} className="text-danger">{t('vocabulary.delete')}</Button>
                         </>
                       )}
                     </div>
