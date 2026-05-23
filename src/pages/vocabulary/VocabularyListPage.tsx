@@ -201,7 +201,6 @@ export function VocabularyListPage() {
           <option value="wrong">{t('vocabulary.sortWrong')}</option>
         </Select>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
       {vocabularyQuery.isLoading ? <Card className="font-black">{t('vocabulary.loading')}</Card> : null}
       {vocabularyQuery.error ? <Card className="font-black text-danger">{vocabularyQuery.error.message}</Card> : null}
       {!vocabularyQuery.isLoading && vocabulary.length === 0 ? (
