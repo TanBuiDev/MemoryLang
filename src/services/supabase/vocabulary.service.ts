@@ -93,11 +93,11 @@ export const vocabularyService = {
     return data as VocabularyItem
   },
   async remove(id: string) {
-    const { error } = await supabase.from('user_terms').delete().eq('id', id)
+    const { error } = await supabase.from('user_terms').update({ deleted_at: new Date().toISOString() }).eq('id', id)
     if (error) throw error
   },
   async removeMany(ids: string[]) {
-    const { error } = await supabase.from('user_terms').delete().in('id', ids)
+    const { error } = await supabase.from('user_terms').update({ deleted_at: new Date().toISOString() }).in('id', ids)
     if (error) throw error
   },
 }
