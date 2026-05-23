@@ -25,6 +25,17 @@ const statusLabelKeys: Record<VocabularyStatus, string> = {
   need_review: 'vocabulary.statusNeedReview',
 }
 
+const statusBorderClasses: Record<VocabularyStatus, string> = {
+  new: 'border-l-slate-400',
+  learning: 'border-l-blue-500',
+  familiar: 'border-l-emerald-500',
+  memorized: 'border-l-secondary',
+  difficult: 'border-l-destructive',
+  need_review: 'border-l-amber-500',
+}
+
+const statusFilterOptions: Array<VocabularyStatus | 'all'> = ['all', 'new', 'learning', 'familiar', 'memorized', 'difficult', 'need_review']
+
 export function VocabularyListPage() {
   const { t } = useI18n()
   const user = useAuthStore((state) => state.user)
@@ -35,11 +46,13 @@ export function VocabularyListPage() {
     queryFn: () => vocabularyService.list(user!.id),
     enabled: shouldUseRemoteData,
   })
-  const vocabulary = shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary
+  const rawVocabulary = shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary
+  const vocabulary = filterStatus === 'all' ? rawVocabulary : rawVocabulary.filter((item) => item.status === filterStatus)
 
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [pendingDelete, setPendingDelete] = useState<{ ids: string[]; word?: string } | null>(null)
+  const [filterStatus, setFilterStatus] = useState<VocabularyStatus | 'all'>('all')
 
   const deleteVocabulary = useMutation({
     mutationFn: (ids: string[]) => vocabularyService.removeMany(ids),
@@ -122,11 +135,30 @@ export function VocabularyListPage() {
           </Button>
         </div>
       ) : null}
-      <div className="mb-4 grid gap-3 md:grid-cols-4">
+      <div className="mb-4 grid gap-3 md:grid-cols-[2fr_auto_1fr]">
         <Input placeholder={t('vocabulary.search')} />
-        <Select defaultValue="all"><option value="all">{t('vocabulary.allStatuses')}</option><option value="difficult">{t('vocabulary.statusDifficult')}</option><option value="need_review">{t('vocabulary.statusNeedReview')}</option></Select>
-        <Select defaultValue="created"><option value="created">{t('vocabulary.sortCreated')}</option><option value="next_review">{t('vocabulary.sortReview')}</option><option value="wrong">{t('vocabulary.sortWrong')}</option></Select>
-        <Select defaultValue="all"><option value="all">{t('vocabulary.allPartsOfSpeech')}</option><option value="noun">{t('vocabulary.noun')}</option><option value="idiom">{t('vocabulary.idiom')}</option></Select>
+        <div className="flex flex-wrap gap-1">
+          {statusFilterOptions.map((status) => (
+            <button
+              key={status}
+              type="button"
+              onClick={() => setFilterStatus(status)}
+              className={[
+                'neo-button min-h-10 rounded-md border-2 border-border px-3 py-2 text-sm font-black',
+                filterStatus === status
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-card text-foreground hover:bg-muted',
+              ].join(' ')}
+            >
+              {status === 'all' ? t('vocabulary.filterAll') : t(statusLabelKeys[status])}
+            </button>
+          ))}
+        </div>
+        <Select defaultValue="created">
+          <option value="created">{t('vocabulary.sortCreated')}</option>
+          <option value="next_review">{t('vocabulary.sortReview')}</option>
+          <option value="wrong">{t('vocabulary.sortWrong')}</option>
+        </Select>
       </div>
       <div className="grid gap-3">
         {vocabularyQuery.isLoading ? <Card className="font-black">{t('vocabulary.loading')}</Card> : null}
@@ -139,7 +171,7 @@ export function VocabularyListPage() {
           </Card>
         ) : null}
         {vocabulary.map((item) => (
-          <Card key={item.id} className="grid gap-3 md:grid-cols-[auto_1fr_auto] md:items-center">
+          <Card key={item.id} className={`grid gap-3 md:grid-cols-[auto_1fr_auto] md:items-center border-l-4 ${statusBorderClasses[item.status]}`}>
             {selectMode ? (
               <input
                 type="checkbox"
