@@ -46,13 +46,13 @@ export function VocabularyListPage() {
     queryFn: () => vocabularyService.list(user!.id),
     enabled: shouldUseRemoteData,
   })
+  const [filterStatus, setFilterStatus] = useState<VocabularyStatus | 'all'>('all')
   const rawVocabulary = shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary
   const vocabulary = filterStatus === 'all' ? rawVocabulary : rawVocabulary.filter((item) => item.status === filterStatus)
 
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [pendingDelete, setPendingDelete] = useState<{ ids: string[]; word?: string } | null>(null)
-  const [filterStatus, setFilterStatus] = useState<VocabularyStatus | 'all'>('all')
 
   const deleteVocabulary = useMutation({
     mutationFn: (ids: string[]) => vocabularyService.removeMany(ids),
