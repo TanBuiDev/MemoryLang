@@ -25,6 +25,7 @@ Ban dau tap trung vao kha nang tu nho lai dap an va hoan thanh mot bai kiem tra 
 - Cham dap an theo cach khop gan dung, de chap nhan sai khac trinh bay nho ma khong qua de dai.
 - Khi tra loi sai, cho thu lai va chi hien dap an khi nguoi hoc chu dong bam xem.
 - Neu da xem dap an, buoc nguoi hoc go lai dap an dung de tiep tuc, nhung cau do khong duoc cong diem.
+- Phan biet ro truong hop khong co tu de kiem tra voi truong hop he thong khong tai duoc tu vung.
 - Khi hoan thanh, hien diem toi gian va cho phep lam bai moi.
 
 ## Khong Thuoc Pham Vi Ban Dau
@@ -75,6 +76,20 @@ Nguon cau hoi hop le:
 - Neu bo the/toan bo tu khong co tu hop le, hien empty state giai thich can them ban dich truoc khi kiem tra.
 - Neu so tu hop le it hon muc `5` hoac `10`, tao bai voi tat ca tu hop le thay vi chan nguoi dung.
 
+### 1.1. Trang Thai Tai Du Lieu Va Loi
+
+Trang setup nen tai danh sach tu dung duoc cua nguon dang chon truoc khi bat dau, de nguoi dung khong bi dua vao mot phien rong. Trang session van phai bao ve lai cung cac trang thai neu nguon thay doi hoac request that bai sau khi dieu huong.
+
+| Trang thai | Khi nao xay ra | Hien thi | Hanh dong |
+| --- | --- | --- | --- |
+| Dang tai | Dang lay tu vung hoac cac tu trong bo the | `Dang tai tu vung...` | Vo hieu hoa `Bat dau kiem tra` |
+| Khong co tu vung | Nguon khong co item dang hoat dong | `Chua co tu vung de kiem tra` | Link/nut sang trang them tu vung |
+| Khong co ban dich hop le | Co item nhung khong item nao co `translation` khong rong | `Chua co tu vung co ban dich de kiem tra` | Link/nut sang trang tu vung de bo sung ban dich |
+| Tai that bai | Query danh sach tu vung hoac deck terms tra loi loi | `Khong lay duoc tu vung. Vui long thu lai.` | Nut `Thu lai` goi lai query |
+| San sang | Co it nhat mot item co ban dich | Hien so cau san sang | Cho phep bat dau |
+
+Loi tai du lieu khong duoc hien bang empty state `Chua co tu vung`, vi hai truong hop dan toi hanh dong khac nhau: du lieu rong can them/sua tu, con request loi can thu lai.
+
 ### 2. The Cau Hoi
 
 Moi the hien:
@@ -90,7 +105,7 @@ Moi the khong hien:
 - `translation` truoc khi nguoi hoc mo dap an.
 - `meanings`, cau vi du, ghi chu, hinh anh, hoac cac tu lien quan.
 
-Nguoi dung co the gui dap an bang nut `Kiem tra`; trien khai nen cho phep phim `Enter` khi focus nam trong o nhap mot dong.
+Nguoi dung co the gui dap an bang nut `Kiem tra` hoac phim `Enter` khi focus nam trong o nhap mot dong.
 
 ### 3. Tra Loi Dung
 
@@ -111,7 +126,7 @@ Sau mot lan nhap sai:
 
 - Giu nguyen the hien tai.
 - Hien thong bao ngan rang dap an chua dung.
-- Khong xoa input bat buoc; co the select/focus lai o nhap de sua nhanh.
+- Giu noi dung vua nhap va dua focus lai o nhap de nguoi hoc sua nhanh.
 - Hien hanh dong `Xem dap an`.
 
 Khi bam `Xem dap an`:
@@ -132,6 +147,17 @@ Sau khi dap an cuoi cung duoc hoan tat:
 - Hien nut `Lam bai moi` quay lai trang setup.
 
 Ban dau trang ket qua chi hien tile diem `X/Y` va hanh dong `Lam bai moi`; khong hien ti le chinh xac, so cau sai, danh sach cau sai, hay luu DB.
+
+### 6. Khoi Phuc Loi Trong Phien
+
+Neu trang session khong tai duoc nguon tu vung truoc khi tao snapshot:
+
+- Khong tao snapshot rong.
+- Hien thong bao `Khong lay duoc tu vung. Vui long thu lai.` va nut `Thu lai`.
+- Nut `Thu lai` refetch dung nguon hien tai: toan bo tu vung hoac bo the da chon.
+- Neu retry thanh cong, tao de mot lan va bat dau tu cau dau.
+
+Neu trang session tai thanh cong nhung nguon khong co cau hop le, hien empty state phu hop va nut quay ve setup/quan ly tu vung; khong hien thong bao loi mang.
 
 ## Cham Khop Gan Dung
 
@@ -238,15 +264,19 @@ Nguoi hoc co the nho dung nghia nhung dung tu dong nghia khac voi `translation` 
 
 Quiz dung/sai cu dua vao `meanings`, con che do moi phu thuoc `translation`. Viec tai su dung bo the co the tao bai rong du da co tu. Empty state va so cau thuc te phai dua tren tap tu duoc phep thi, khong dua tren tong so tu trong bo.
 
-### 4. Phuc Hoi Sau Reload
+### 4. Phan Biet Rong Va Loi Tai Du Lieu
+
+UI hien tai co the roi vao thong bao chung `Chua co tu vung` khi khong sinh duoc cau hoi. Che do moi can kiem tra ket qua query truoc ket qua generator: request bi loi phai hien `Khong lay duoc tu vung` va cho retry, con request thanh cong nhung rong/khong co ban dich moi hien trang thai huong dan them du lieu.
+
+### 5. Phuc Hoi Sau Reload
 
 Trang thai `revealed` anh huong truc tiep den diem. Neu reload lam mat co nay, nguoi dung co the mo dap an roi nhan diem bang cach tai lai trang. Snapshot phien phai luu co goi y va diem sau moi bien doi quan trong.
 
-### 5. Tuong Thich Voi Quiz Cu
+### 6. Tuong Thich Voi Quiz Cu
 
 UI se thay doi hoan toan, nhung types, test, noi dung landing page va persistence dang gan voi `true_false`. Xoa sach trong cung dot co the tang pham vi khong can thiet. Ban dau nen an luong cu tren UI, bo sung loai moi ro rang, va chi don dep cu khi co yeu cau san pham rieng.
 
-### 6. Thong Ke Va Luu Ket Qua
+### 7. Thong Ke Va Luu Ket Qua
 
 Bang ket qua hien co ton tai, nhung UI hien tai chua luu phien quiz. Neu che do moi tu dong goi luu DB trong khi ket qua san pham van toi gian, dashboard se thay doi hanh vi ngoai pham vi. Ban dau khong ghi DB; viec tich hop statistics can mot spec rieng.
 
@@ -254,8 +284,8 @@ Bang ket qua hien co ton tai, nhung UI hien tai chua luu phien quiz. Neu che do 
 
 ### UI Va Dieu Huong
 
-- `src/pages/quiz/QuizSetupPage.tsx`: bo chon loai; doi noi dung gioi thieu.
-- `src/pages/quiz/QuizSessionPage.tsx`: thay nut dung/sai bang o nhap, feedback, goi y va luong cham.
+- `src/pages/quiz/QuizSetupPage.tsx`: bo chon loai, doi noi dung gioi thieu, va kiem tra nguon dang chon de vo hieu hoa bat dau khi rong/loi.
+- `src/pages/quiz/QuizSessionPage.tsx`: thay nut dung/sai bang o nhap, feedback, goi y, retry loi tai va luong cham.
 - `src/pages/quiz/QuizResultPage.tsx`: thu gon cam ket thong tin ket qua.
 - `src/i18n/index.ts`: cap nhat noi dung quiz va cac thong diep moi; cap nhat landing page khong con quang ba dung/sai.
 
@@ -271,6 +301,7 @@ Bang ket qua hien co ton tai, nhung UI hien tai chua luu phien quiz. Neu che do 
 - Them unit test cho normalization va khop gan dung.
 - Them unit test cho generator: loc thieu ban dich, ngau nhien/gioi han so cau.
 - Cap nhat test setup va session cho luong nhap, thu lai, mo dap an, diem va restore snapshot.
+- Them test UI phan biet nguon rong, nguon thieu ban dich va query tai that bai co nut retry.
 - Kiem tra song ngu cho thong diep UI moi neu cac test hien co bao phu.
 
 ## Chien Luoc Kiem Thu
@@ -288,6 +319,14 @@ Bang ket qua hien co ton tai, nhung UI hien tai chua luu phien quiz. Neu che do 
 - Chon dung deck hoac tat ca tu vung.
 - Cat dung so cau khi du nguon; dung toan bo cau dung duoc khi nguon it hon gioi han.
 - Danh sach cau khong doi sau reload.
+
+### Loi Tai Va Empty State
+
+- Setup vo hieu hoa bat dau trong khi dang tai hoac khi query that bai.
+- Query that bai hien thong bao khong lay duoc tu vung va nut `Thu lai`, khong hien nhu du lieu rong.
+- Nguon khong co item hien thong bao chua co tu vung de kiem tra.
+- Nguon co item nhung khong co `translation` hien thong bao can bo sung ban dich.
+- Retry thanh cong tu session tao de va hien cau hoi dau tien.
 
 ### Tuong Tac Phien
 
@@ -308,6 +347,8 @@ Bang ket qua hien co ton tai, nhung UI hien tai chua luu phien quiz. Neu che do 
 
 - Nguoi dung khong con thay lua chon hoac phien kiem tra `Dung / Sai` tren `/app/quiz`.
 - Nguoi dung tao duoc bai nhap ban dich tu toan bo tu vung hoac mot bo the voi so cau ngau nhien.
+- Trang setup va session phan biet `Chua co tu vung de kiem tra`, `Chua co tu vung co ban dich de kiem tra`, va `Khong lay duoc tu vung`.
+- Khi tai tu vung that bai, nguoi dung co the bam `Thu lai` ma khong can roi khoi trang.
 - Cau hoi chi lo tu goc, IPA va tu loai neu co.
 - Dap an khop gan dung theo quy tac da test duoc chuyen sang cau tiep theo.
 - Dap an sai cho phep thu lai va cho phep chu dong xem dap an.
