@@ -12,7 +12,7 @@ interface QuizState {
 }
 
 export const useQuizStore = create<QuizState>((set) => ({
-  quizType: 'true_false',
+  quizType: 'translation_input',
   questionCount: 10,
   selectedDeckId: null,
   setQuizType: (quizType) => set({ quizType }),

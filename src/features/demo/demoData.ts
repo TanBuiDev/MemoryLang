@@ -15,7 +15,7 @@ export const demoDecks: Deck[] = [
     icon: 'message-circle',
     created_at: now.toISOString(),
     updated_at: now.toISOString(),
-    term_count: 4,
+    term_count: 3,
   },
   {
     id: 'interview',
@@ -130,3 +130,14 @@ export const demoVocabulary: VocabularyItem[] = [
     updated_at: now.toISOString(),
   },
 ]
+
+const demoDeckTermIds: Record<string, string[]> = {
+  'daily-english': ['apple', 'break-the-ice', 'looking-forward'],
+  interview: ['break-the-ice', 'looking-forward'],
+}
+
+export function getDemoVocabularyForDeck(deckId: string | null) {
+  if (!deckId) return demoVocabulary
+  const termIds = new Set(demoDeckTermIds[deckId] ?? [])
+  return demoVocabulary.filter((item) => termIds.has(item.id))
+}

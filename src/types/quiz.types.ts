@@ -1,4 +1,4 @@
-export type QuizType = 'true_false' | 'matching' | 'fill_blank' | 'mixed'
+export type QuizType = 'true_false' | 'translation_input' | 'matching' | 'fill_blank' | 'mixed'
 
 export interface TrueFalseQuestion {
   id: string
@@ -6,6 +6,15 @@ export interface TrueFalseQuestion {
   prompt: string
   statement: string
   expectedAnswer: boolean
+}
+
+export interface TranslationInputQuestion {
+  id: string
+  userTermId: string
+  sourceText: string
+  ipa: string | null
+  partOfSpeech: string | null
+  expectedTranslation: string
 }
 
 export interface QuizResult {
