@@ -37,6 +37,7 @@ export function SettingsPage() {
   const [targetLanguage, setTargetLanguage] = useState<LanguageCode>(initialProfile.targetLanguage)
   const [uiLanguage, setUiLanguage] = useState<UiLanguageCode>(initialProfile.uiLanguage)
   const [profileSaved, setProfileSaved] = useState(false)
+  const [savingUiLanguage, setSavingUiLanguage] = useState(false)
   const [capturingHotkey, setCapturingHotkey] = useState<StudyHotkeyAction | null>(null)
   const [hotkeysOpen, setHotkeysOpen] = useState(false)
 
@@ -55,25 +56,35 @@ export function SettingsPage() {
   const hasProfileChanged =
     displayName !== initialProfile.displayName ||
     nativeLanguage !== initialProfile.nativeLanguage ||
-    targetLanguage !== initialProfile.targetLanguage ||
-    uiLanguage !== initialProfile.uiLanguage
+    targetLanguage !== initialProfile.targetLanguage
 
   const saveProfileRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   saveProfileRef.current = useCallback(async () => {
-    if (!hasProfileChanged || !isSupabaseConfigured || !user || !profile) return
+    if (!isSupabaseConfigured || !user || !profile) return
+    const changed = displayName !== initialProfile.displayName
+      || nativeLanguage !== initialProfile.nativeLanguage
+      || targetLanguage !== initialProfile.targetLanguage
+    const uiChanged = uiLanguage !== initialProfile.uiLanguage
+
+    if (!changed && !uiChanged) return
+
     try {
-      const updated = await authService.updateProfile(user.id, {
-        display_name: displayName || null,
-        native_language: nativeLanguage,
-        current_target_language: targetLanguage,
-        ui_language: uiLanguage,
-      })
+      const update: Record<string, unknown> = {}
+      if (changed) {
+        update.display_name = displayName || null
+        update.native_language = nativeLanguage
+        update.current_target_language = targetLanguage
+      }
+      if (uiChanged) {
+        update.ui_language = uiLanguage
+      }
+      const updated = await authService.updateProfile(user.id, update as Parameters<typeof authService.updateProfile>[1])
       setProfile(updated)
       setProfileSaved(true)
     } catch { /* silently ignore */ }
-  }, [displayName, hasProfileChanged, nativeLanguage, targetLanguage, uiLanguage, user, profile, setProfile])
+  }, [displayName, nativeLanguage, targetLanguage, uiLanguage, initialProfile, user, profile, setProfile])
 
   useEffect(() => {
     if (!hasProfileChanged) return
@@ -86,7 +97,7 @@ export function SettingsPage() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [displayName, nativeLanguage, targetLanguage, uiLanguage, hasProfileChanged])
+  }, [displayName, nativeLanguage, targetLanguage, hasProfileChanged])
 
   useEffect(() => {
     function flushBeforeUnload() {
@@ -113,6 +124,16 @@ export function SettingsPage() {
     const timer = setTimeout(() => setProfileSaved(false), 2000)
     return () => clearTimeout(timer)
   }, [profileSaved])
+
+  async function saveUiLanguage() {
+    if (!isSupabaseConfigured || !user || !profile) return
+    setSavingUiLanguage(true)
+    try {
+      const updated = await authService.updateProfile(user.id, { ui_language: uiLanguage })
+      setProfile(updated)
+    } catch { /* silently ignore */ }
+    finally { setSavingUiLanguage(false) }
+  }
 
   async function deleteAccount() {
     if (deleteConfirmText !== 'DELETE') return
@@ -212,7 +233,7 @@ export function SettingsPage() {
         <Card>
           <CardTitle>{t('settings.languages')}</CardTitle>
           <div className="mt-4 grid gap-4">
-            <div><Label>{t('settings.interfaceLanguage')}</Label><Select value={uiLanguage} onChange={(event) => setUiLanguage(event.target.value as UiLanguageCode)}>{uiLanguageOptions.map((item) => <option key={item.code} value={item.code}>{t(`language.${item.code}`)}</option>)}</Select></div>
+            <div><Label>{t('settings.interfaceLanguage')}</Label><div className="flex gap-2"><Select className="flex-1" value={uiLanguage} onChange={(event) => setUiLanguage(event.target.value as UiLanguageCode)}>{uiLanguageOptions.map((item) => <option key={item.code} value={item.code}>{t(`language.${item.code}`)}</option>)}</Select>{uiLanguage !== initialProfile.uiLanguage ? <Button variant="primary" className="min-h-10 shrink-0" onClick={() => void saveUiLanguage()} disabled={savingUiLanguage}>{savingUiLanguage ? '...' : t('actions.saveChanges')}</Button> : null}</div></div>
             <div><Label>{t('settings.nativeLanguage')}</Label><Select value={nativeLanguage} onChange={(event) => setNativeLanguage(event.target.value as LanguageCode)}>{languageOptions.map((item) => <option key={item.code} value={item.code}>{t(`language.${item.code}`)}</option>)}</Select></div>
             <div><Label>{t('settings.targetLanguage')}</Label><Select value={targetLanguage} onChange={(event) => setTargetLanguage(event.target.value as LanguageCode)}>{languageOptions.map((item) => <option key={item.code} value={item.code}>{t(`language.${item.code}`)}</option>)}</Select></div>
           </div>
