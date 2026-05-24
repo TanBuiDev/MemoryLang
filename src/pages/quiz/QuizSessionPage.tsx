@@ -1,15 +1,22 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
+import { Input, Label } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
-import { demoVocabulary } from '@/features/demo/demoData'
-import { buildQuizSessionStorageKey, clearStoredQuizSession, readActiveQuizSessionStorageKey, readStoredQuizSession, writeStoredQuizSession } from '@/features/quiz/sessionPersistence'
-import { generateTrueFalseQuestions } from '@/features/quiz/trueFalseQuiz'
-import { prepareSessionVocabulary } from '@/features/study/sessionVocabulary'
+import { getDemoVocabularyForDeck } from '@/features/demo/demoData'
+import {
+  buildQuizSessionStorageKey,
+  clearStoredQuizSession,
+  readActiveQuizSessionStorageKey,
+  readStoredQuizSession,
+  type StoredQuizSession,
+  writeStoredQuizSession,
+} from '@/features/quiz/sessionPersistence'
+import { generateTranslationQuestions, isTranslationAnswerCorrect } from '@/features/quiz/translationInputQuiz'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { deckService } from '@/services/supabase/deck.service'
@@ -18,12 +25,17 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useQuizStore } from '@/stores/useQuizStore'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
 
+function appendUnique(ids: string[], id: string) {
+  return ids.includes(id) ? ids : [...ids, id]
+}
+
 export function QuizSessionPage() {
   const navigate = useNavigate()
   const { sessionId } = useParams()
   const { t } = useI18n()
   const user = useAuthStore((state) => state.user)
-  const { quizType, questionCount, selectedDeckId } = useQuizStore()
+  const { questionCount, selectedDeckId } = useQuizStore()
+  const quizType = 'translation_input' as const
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
   const fallbackSessionKey = buildQuizSessionStorageKey({
     userId: user?.id,
@@ -38,10 +50,9 @@ export function QuizSessionPage() {
     sessionId,
     remote: shouldUseRemoteData,
   }) ?? fallbackSessionKey
-  const initialStoredSession = readStoredQuizSession(sessionKey)
-  const [index, setIndex] = useState(initialStoredSession?.index ?? 0)
-  const [score, setScore] = useState(initialStoredSession?.score ?? 0)
-  const [quizSnapshot, setQuizSnapshot] = useState(initialStoredSession ? { key: sessionKey, questions: initialStoredSession.questions } : null)
+  const [session, setSession] = useState<StoredQuizSession | null>(() => readStoredQuizSession(sessionKey))
+  const [answerText, setAnswerText] = useState('')
+  const [isIncorrect, setIsIncorrect] = useState(false)
   const vocabularyQuery = useQuery({
     queryKey: ['vocabulary', user?.id],
     queryFn: () => vocabularyService.list(user!.id),
@@ -52,95 +63,134 @@ export function QuizSessionPage() {
     queryFn: () => deckService.listTerms(selectedDeckId!),
     enabled: shouldUseRemoteData && Boolean(selectedDeckId),
   })
-  const vocabulary = useMemo(
-    () => {
-      const source = shouldUseRemoteData
-        ? selectedDeckId
-          ? deckTermsQuery.data ?? []
-          : vocabularyQuery.data ?? []
-        : demoVocabulary
-      return prepareSessionVocabulary(filterActiveVocabulary(source), { limit: questionCount, shuffle: true })
-    },
-    [deckTermsQuery.data, questionCount, selectedDeckId, shouldUseRemoteData, vocabularyQuery.data],
+  const sourceVocabulary = useMemo(() => {
+    const source = shouldUseRemoteData
+      ? selectedDeckId
+        ? deckTermsQuery.data ?? []
+        : vocabularyQuery.data ?? []
+      : getDemoVocabularyForDeck(selectedDeckId)
+    return filterActiveVocabulary(source)
+  }, [deckTermsQuery.data, selectedDeckId, shouldUseRemoteData, vocabularyQuery.data])
+  const generatedQuestions = useMemo(
+    () => generateTranslationQuestions(sourceVocabulary, questionCount),
+    [questionCount, sourceVocabulary],
   )
-  const generatedQuestions = useMemo(() => generateTrueFalseQuestions(vocabulary, questionCount), [questionCount, vocabulary])
-  const isSourceReady = shouldUseRemoteData
-    ? selectedDeckId
-      ? deckTermsQuery.isSuccess
-      : vocabularyQuery.isSuccess
-    : true
+  const sourceQuery = selectedDeckId ? deckTermsQuery : vocabularyQuery
+  const isSourceReady = shouldUseRemoteData ? sourceQuery.isSuccess : true
 
   useEffect(() => {
-    if (quizSnapshot?.key === sessionKey) return
-
-    const storedSession = readStoredQuizSession(sessionKey)
-    if (storedSession) {
-      setQuizSnapshot({ key: sessionKey, questions: storedSession.questions })
-      setIndex(storedSession.index)
-      setScore(storedSession.score)
-      return
+    if (session || !isSourceReady || generatedQuestions.length === 0) return
+    const initialSession: StoredQuizSession = {
+      questions: generatedQuestions,
+      index: 0,
+      score: 0,
+      revealedQuestionIds: [],
+      completedQuestionIds: [],
     }
-
-    if (!isSourceReady || generatedQuestions.length === 0) return
-    writeStoredQuizSession(sessionKey, { questions: generatedQuestions, index: 0, score: 0 })
-    setQuizSnapshot({ key: sessionKey, questions: generatedQuestions })
-    setIndex(0)
-    setScore(0)
-  }, [generatedQuestions, isSourceReady, quizSnapshot?.key, sessionKey])
-
-  const questions = quizSnapshot?.key === sessionKey ? quizSnapshot.questions : generatedQuestions
+    writeStoredQuizSession(sessionKey, initialSession)
+    setSession(initialSession)
+  }, [generatedQuestions, isSourceReady, session, sessionKey])
 
   useEffect(() => {
-    if (quizSnapshot?.key !== sessionKey) return
-    writeStoredQuizSession(sessionKey, { questions: quizSnapshot.questions, index, score })
-  }, [index, quizSnapshot, score, sessionKey])
+    if (!session) return
+    writeStoredQuizSession(sessionKey, session)
+  }, [session, sessionKey])
 
-  const question = questions[index]
+  const question = session?.questions[session.index]
+  const isRevealed = question ? session?.revealedQuestionIds.includes(question.id) ?? false : false
 
-  function answer(value: boolean) {
-    const nextScore = score + (value === question.expectedAnswer ? 1 : 0)
-    setScore(nextScore)
-    if (index >= questions.length - 1) {
-      clearStoredQuizSession(sessionKey)
-      navigate(`/app/quiz/result/demo-result?score=${nextScore}&total=${questions.length}`)
-      return
-    }
-    setIndex(index + 1)
+  function revealAnswer() {
+    if (!session || !question) return
+    setSession({
+      ...session,
+      revealedQuestionIds: appendUnique(session.revealedQuestionIds, question.id),
+    })
   }
 
-  if (vocabularyQuery.isLoading || deckTermsQuery.isLoading) {
+  function submitAnswer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!session || !question) return
+
+    if (!isTranslationAnswerCorrect(answerText, question.expectedTranslation)) {
+      setIsIncorrect(true)
+      return
+    }
+
+    const completedQuestionIds = appendUnique(session.completedQuestionIds, question.id)
+    const nextScore = session.score + (isRevealed ? 0 : 1)
+    if (session.index >= session.questions.length - 1) {
+      clearStoredQuizSession(sessionKey)
+      navigate(`/app/quiz/result/demo-result?score=${nextScore}&total=${session.questions.length}`)
+      return
+    }
+
+    setSession({
+      ...session,
+      index: session.index + 1,
+      score: nextScore,
+      completedQuestionIds,
+    })
+    setAnswerText('')
+    setIsIncorrect(false)
+  }
+
+  if (shouldUseRemoteData && sourceQuery.isLoading && !session) {
     return <Card className="font-black">{t('vocabulary.loading')}</Card>
   }
 
-  const error =
-    vocabularyQuery.error instanceof Error ? vocabularyQuery.error.message :
-    deckTermsQuery.error instanceof Error ? deckTermsQuery.error.message :
-    null
+  if (shouldUseRemoteData && sourceQuery.isError && !session) {
+    return (
+      <Card className="flex flex-wrap items-center justify-between gap-3 font-black text-danger">
+        <p>{t('quiz.loadError')}</p>
+        <Button variant="ghost" onClick={() => sourceQuery.refetch()}>{t('quiz.retryLoad')}</Button>
+      </Card>
+    )
+  }
 
-  if (error) {
-    return <Card className="font-black text-danger">{error}</Card>
+  if (!question && generatedQuestions.length > 0) {
+    return <Card className="font-black">{t('vocabulary.loading')}</Card>
   }
 
   if (!question) {
-    return (
-      <Card className="text-center">
-        <p className="text-xl font-black">{t('vocabulary.emptyTitle')}</p>
-        <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.emptyDescription')}</p>
-      </Card>
-    )
+    const emptyMessage = sourceVocabulary.length === 0 ? t('quiz.noVocabulary') : t('quiz.noTranslatedVocabulary')
+    return <Card className="text-center text-xl font-black">{emptyMessage}</Card>
   }
 
   return (
     <>
       <PageHeader title={t('quiz.sessionTitle')} description={t('quiz.sessionDescription')} />
-      <Progress value={((index + 1) / questions.length) * 100} />
-      <Card className="mx-auto mt-6 max-w-2xl p-8 text-center">
-        <p className="text-sm font-black uppercase text-muted-foreground">{t('quiz.question', { number: index + 1 })}</p>
-        <CardTitle className="mt-6 text-4xl">{question.prompt}</CardTitle>
-        <div className="mt-8 flex justify-center gap-3">
-          <Button onClick={() => answer(true)}>{t('quiz.true')}</Button>
-          <Button variant="secondary" onClick={() => answer(false)}>{t('quiz.false')}</Button>
+      <Progress value={((session.index + 1) / session.questions.length) * 100} />
+      <Card className="mx-auto mt-6 max-w-2xl p-8">
+        <p className="text-center text-sm font-black uppercase text-muted-foreground">{t('quiz.question', { number: session.index + 1 })}</p>
+        <CardTitle className="mt-6 text-center text-4xl">{question.sourceText}</CardTitle>
+        <div className="mt-3 flex flex-wrap justify-center gap-2 text-sm font-black text-muted-foreground">
+          {question.ipa ? <span className="rounded-md border-2 border-border bg-background px-3 py-1">{question.ipa}</span> : null}
+          {question.partOfSpeech ? <span className="rounded-md border-2 border-border bg-background px-3 py-1">{question.partOfSpeech}</span> : null}
         </div>
+        <form className="mt-8 grid gap-4" onSubmit={submitAnswer}>
+          <div>
+            <Label htmlFor="translation-answer">{t('quiz.answerLabel')}</Label>
+            <Input
+              id="translation-answer"
+              autoComplete="off"
+              autoFocus
+              value={answerText}
+              onChange={(event) => setAnswerText(event.target.value)}
+            />
+          </div>
+          {isIncorrect ? <p aria-live="polite" className="font-black text-danger">{t('quiz.incorrect')}</p> : null}
+          {isRevealed ? (
+            <div className="rounded-md border-2 border-border bg-primary p-3 shadow-[2px_2px_0_var(--border)]">
+              <p className="text-xs font-black uppercase">{t('quiz.expectedTranslation')}</p>
+              <p className="mt-1 text-lg font-black">{question.expectedTranslation}</p>
+              <p className="mt-2 text-sm font-bold">{t('quiz.revealedNotice')}</p>
+            </div>
+          ) : null}
+          <div className="flex flex-wrap gap-3">
+            <Button type="submit">{t('quiz.checkAnswer')}</Button>
+            {isIncorrect && !isRevealed ? <Button type="button" variant="ghost" onClick={revealAnswer}>{t('quiz.revealAnswer')}</Button> : null}
+          </div>
+        </form>
       </Card>
     </>
   )
