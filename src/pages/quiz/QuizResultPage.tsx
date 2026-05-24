@@ -13,10 +13,8 @@ export function QuizResultPage() {
   return (
     <>
       <PageHeader title={t('quiz.resultTitle')} description={t('quiz.resultDescription')} actions={<Button asChild><Link to="/app/quiz">{t('quiz.retry')}</Link></Button>} />
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid max-w-sm gap-4">
         <StatTile label={t('quiz.score')} value={`${score}/${total}`} />
-        <StatTile label={t('quiz.accuracy')} value={`${Math.round((score / total) * 100)}%`} />
-        <StatTile label={t('quiz.wrongAnswers')} value={total - score} />
       </div>
     </>
   )

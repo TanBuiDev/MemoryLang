@@ -232,8 +232,8 @@ export function LandingPage() {
                 <p className="mt-2 font-mono font-black">/ˈweðər kənˈdɪʃən/</p>
               </div>
               <div className="rounded-md border-2 border-border bg-secondary p-4 text-secondary-foreground shadow-[3px_3px_0_var(--border)]">
-                <p className="text-sm font-black uppercase opacity-80">{t('quiz.trueFalse')}</p>
-                <p className="mt-2 text-2xl font-black">Correct?</p>
+                <p className="text-sm font-black uppercase opacity-80">{t('quiz.translationInput')}</p>
+                <p className="mt-2 text-2xl font-black">Meaning?</p>
               </div>
             </div>
           </div>
