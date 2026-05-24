@@ -29,6 +29,9 @@ images/
 *.sw?
 .claude/settings.json
 .claude/settings.local.json
+.agents/
+.claude/skills/
+skills-lock.json
 
 # Playwright
 /test-results/
