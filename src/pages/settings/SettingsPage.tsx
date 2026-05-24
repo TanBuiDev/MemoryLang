@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -24,12 +24,18 @@ export function SettingsPage() {
   const navigate = useNavigate()
   const hotkeys = useStudyStore((state) => state.hotkeys)
   const setHotkeys = useStudyStore((state) => state.setHotkeys)
-  const savedRef = useRef(false)
 
-  const [displayName, setDisplayName] = useState(profile?.display_name ?? '')
-  const [nativeLanguage, setNativeLanguage] = useState<LanguageCode>(profile?.native_language ?? 'vi')
-  const [targetLanguage, setTargetLanguage] = useState<LanguageCode>(profile?.current_target_language ?? 'en')
-  const [uiLanguage, setUiLanguage] = useState<UiLanguageCode>(profile?.ui_language ?? 'vi')
+  const initialProfile = useMemo(() => ({
+    displayName: profile?.display_name ?? '',
+    nativeLanguage: profile?.native_language ?? 'vi',
+    targetLanguage: profile?.current_target_language ?? 'en',
+    uiLanguage: profile?.ui_language ?? 'vi',
+  }), []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const [displayName, setDisplayName] = useState(initialProfile.displayName)
+  const [nativeLanguage, setNativeLanguage] = useState<LanguageCode>(initialProfile.nativeLanguage)
+  const [targetLanguage, setTargetLanguage] = useState<LanguageCode>(initialProfile.targetLanguage)
+  const [uiLanguage, setUiLanguage] = useState<UiLanguageCode>(initialProfile.uiLanguage)
   const [profileSaved, setProfileSaved] = useState(false)
   const [capturingHotkey, setCapturingHotkey] = useState<StudyHotkeyAction | null>(null)
   const [hotkeysOpen, setHotkeysOpen] = useState(false)
@@ -46,9 +52,17 @@ export function SettingsPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const profileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const saveProfile = useCallback(async () => {
-    if (!isSupabaseConfigured || !user || !profile) return
+  const hasProfileChanged =
+    displayName !== initialProfile.displayName ||
+    nativeLanguage !== initialProfile.nativeLanguage ||
+    targetLanguage !== initialProfile.targetLanguage ||
+    uiLanguage !== initialProfile.uiLanguage
+
+  const saveProfileRef = useRef<() => Promise<void>>(() => Promise.resolve())
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  saveProfileRef.current = useCallback(async () => {
+    if (!hasProfileChanged || !isSupabaseConfigured || !user || !profile) return
     try {
       const updated = await authService.updateProfile(user.id, {
         display_name: displayName || null,
@@ -59,14 +73,40 @@ export function SettingsPage() {
       setProfile(updated)
       setProfileSaved(true)
     } catch { /* silently ignore */ }
-  }, [displayName, nativeLanguage, targetLanguage, uiLanguage, user, profile, setProfile])
+  }, [displayName, hasProfileChanged, nativeLanguage, targetLanguage, uiLanguage, user, profile, setProfile])
 
   useEffect(() => {
-    if (!savedRef.current) { savedRef.current = true; return }
-    if (profileTimerRef.current) clearTimeout(profileTimerRef.current)
-    profileTimerRef.current = setTimeout(() => { void saveProfile() }, 800)
-    return () => { if (profileTimerRef.current) clearTimeout(profileTimerRef.current) }
-  }, [displayName, nativeLanguage, targetLanguage, uiLanguage, saveProfile])
+    if (!hasProfileChanged) return
+
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      void saveProfileRef.current()
+    }, 800)
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [displayName, nativeLanguage, targetLanguage, uiLanguage, hasProfileChanged])
+
+  useEffect(() => {
+    function flushBeforeUnload() {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      void saveProfileRef.current()
+    }
+
+    function handleVisibility() {
+      if (document.visibilityState === 'hidden') flushBeforeUnload()
+    }
+
+    window.addEventListener('beforeunload', flushBeforeUnload)
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      flushBeforeUnload()
+      window.removeEventListener('beforeunload', flushBeforeUnload)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [])
 
   useEffect(() => {
     if (!profileSaved) return
