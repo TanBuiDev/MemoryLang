@@ -52,11 +52,11 @@ The overlay is a focused prompt, not a general modal. Existing end-session confi
 
 ### Interaction Outcome
 
-| Interaction | Recorded action | Result |
-|---|---|---|
-| Click `Da nho` before countdown ends | Provisional `know` | Close overlay and advance, or proceed to completion confirmation on the final card |
-| Countdown expires | Provisional `dont_know` | Close overlay and advance, or proceed to completion confirmation on the final card |
-| End an incomplete session while viewing an unrated card | None | Open discard-warning modal; confirming discards all provisional session results |
+| Interaction                                             | Recorded action         | Result                                                                             |
+| ------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------- |
+| Click `Da nho` before countdown ends                    | Provisional `know`      | Close overlay and advance, or proceed to completion confirmation on the final card |
+| Countdown expires                                       | Provisional `dont_know` | Close overlay and advance, or proceed to completion confirmation on the final card |
+| End an incomplete session while viewing an unrated card | None                    | Open discard-warning modal; confirming discards all provisional session results    |
 
 When reduced motion is enabled, the overlay appears and disappears without scale or motion effects; the timer remains visible and functional.
 
@@ -105,15 +105,15 @@ If required remember confirmation is enabled and the final card is still unrated
 
 ### Top Card Action And Modal Tone
 
-| Progress state | Card action | Modal behavior |
-|---|---|---|
-| Final card has not been reached | `End` / `Kết thúc` | Warn that all provisional results will be discarded |
-| Final card has been reached, including after navigation backward | `Complete` / `Hoàn thành` | Offer to save results and update SRS |
+| Progress state                                                   | Card action               | Modal behavior                                      |
+| ---------------------------------------------------------------- | ------------------------- | --------------------------------------------------- |
+| Final card has not been reached                                  | `End` / `Kết thúc`        | Warn that all provisional results will be discarded |
+| Final card has been reached, including after navigation backward | `Complete` / `Hoàn thành` | Offer to save results and update SRS                |
 
 The incomplete-session modal presents a gentle sad-state icon or illustration with encouraging language, not blame:
 
 - Title: `Bạn muốn dừng lại ở đây?`
-- Message: `Bạn chưa hoàn thành phiên học. Toàn bộ kết quả Nhớ / Không nhớ trong phiên này sẽ không được ghi nhận vào lịch ôn SRS.`
+- Message: `Bạn chưa hoàn thành phiên học. Toàn bộ kết quả Nhớ / Không nhớ trong phiên này sẽ không được ghi nhận.`
 - Encouragement: `Chỉ còn một chút nữa thôi. Hoàn thành phiên để lưu tiến độ nhé.`
 - Confirm action: `Bỏ kết quả và kết thúc`
 - Cancel action: `Tiếp tục học`
@@ -131,10 +131,10 @@ The completion modal is positive:
 
 Add local study preferences:
 
-| Field | Type | Default | Purpose |
-|---|---|---:|---|
-| `requireRememberConfirmation` | `boolean` | `false` | Enables the confirmation overlay workflow |
-| `rememberConfirmationSeconds` | `1 \| 2 \| 3 \| 5` | `2` | Time allowed to click `Da nho` |
+| Field                         | Type               | Default | Purpose                                   |
+| ----------------------------- | ------------------ | ------: | ----------------------------------------- |
+| `requireRememberConfirmation` | `boolean`          | `false` | Enables the confirmation overlay workflow |
+| `rememberConfirmationSeconds` | `1 \| 2 \| 3 \| 5` |     `2` | Time allowed to click `Da nho`            |
 
 These preferences should persist in browser storage through the study settings state. They do not require backend persistence.
 
@@ -142,13 +142,13 @@ These preferences should persist in browser storage through the study settings s
 
 Snapshot the preferences when a session begins so an active session is stable across navigation and reloads:
 
-| Field | Purpose |
-|---|---|
-| `requireRememberConfirmation` | Locks confirmation behavior for this session |
-| `rememberConfirmationSeconds` | Locks confirmation timing for this session |
-| `ratingsByTermId` | Records provisional `know` or `dont_know` once per evaluated card |
-| `reviewActionsByTermId` | Stores serialized provisional SRS actions until completion |
-| `hasReachedLastCard` | Preserves completion eligibility across navigation and reloads |
+| Field                         | Purpose                                                           |
+| ----------------------------- | ----------------------------------------------------------------- |
+| `requireRememberConfirmation` | Locks confirmation behavior for this session                      |
+| `rememberConfirmationSeconds` | Locks confirmation timing for this session                        |
+| `ratingsByTermId`             | Records provisional `know` or `dont_know` once per evaluated card |
+| `reviewActionsByTermId`       | Stores serialized provisional SRS actions until completion        |
+| `hasReachedLastCard`          | Preserves completion eligibility across navigation and reloads    |
 
 The stored session format will require a version update or backward-compatible defaults so sessions saved before this feature load with confirmation disabled and no existing ratings.
 
@@ -156,11 +156,11 @@ The stored session format will require a version update or backward-compatible d
 
 Each card is in one of three rating states:
 
-| State | Meaning | Can prompt again? |
-|---|---|---|
-| `unrated` | No provisional answer selected this session | Yes, when attempting to advance |
-| `remembered` | Provisional `know` stored in the snapshot | No |
-| `forgotten` | Provisional `dont_know` stored in the snapshot | No |
+| State        | Meaning                                        | Can prompt again?               |
+| ------------ | ---------------------------------------------- | ------------------------------- |
+| `unrated`    | No provisional answer selected this session    | Yes, when attempting to advance |
+| `remembered` | Provisional `know` stored in the snapshot      | No                              |
+| `forgotten`  | Provisional `dont_know` stored in the snapshot | No                              |
 
 This state prevents repeated provisional evaluations if learners move backward and forward through previously evaluated cards. No SRS queue write occurs until completion is confirmed.
 
