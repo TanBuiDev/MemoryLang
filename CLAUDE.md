@@ -91,6 +91,7 @@ src/
 
 ### Dual-mode data layer
 Every page checks `isSupabaseConfigured && Boolean(user)`. If false, uses hardcoded demo data from `features/demo/demoData.ts`. Allows full offline/demo operation.
+Demo mode currently exposes deck selection for study and quiz without a deck-to-term mapping; selecting a demo deck still uses the shared `demoVocabulary` list until that flow is explicitly scoped.
 
 ### Vocabulary data model
 - `meanings` = definition/explanation of the word (from dictionary API, English)
