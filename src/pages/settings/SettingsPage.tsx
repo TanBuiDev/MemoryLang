@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -25,17 +25,10 @@ export function SettingsPage() {
   const hotkeys = useStudyStore((state) => state.hotkeys)
   const setHotkeys = useStudyStore((state) => state.setHotkeys)
 
-  const initialProfile = useMemo(() => ({
-    displayName: profile?.display_name ?? '',
-    nativeLanguage: profile?.native_language ?? 'vi',
-    targetLanguage: profile?.current_target_language ?? 'en',
-    uiLanguage: profile?.ui_language ?? 'vi',
-  }), []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const [displayName, setDisplayName] = useState(initialProfile.displayName)
-  const [nativeLanguage, setNativeLanguage] = useState<LanguageCode>(initialProfile.nativeLanguage)
-  const [targetLanguage, setTargetLanguage] = useState<LanguageCode>(initialProfile.targetLanguage)
-  const [uiLanguage, setUiLanguage] = useState<UiLanguageCode>(initialProfile.uiLanguage)
+  const [displayName, setDisplayName] = useState(profile?.display_name ?? '')
+  const [nativeLanguage, setNativeLanguage] = useState<LanguageCode>(profile?.native_language ?? 'vi')
+  const [targetLanguage, setTargetLanguage] = useState<LanguageCode>(profile?.current_target_language ?? 'en')
+  const [uiLanguage, setUiLanguage] = useState<UiLanguageCode>(profile?.ui_language ?? 'vi')
   const [profileSaved, setProfileSaved] = useState(false)
   const [savingUiLanguage, setSavingUiLanguage] = useState(false)
   const [capturingHotkey, setCapturingHotkey] = useState<StudyHotkeyAction | null>(null)
@@ -54,19 +47,19 @@ export function SettingsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
 
   const hasProfileChanged =
-    displayName !== initialProfile.displayName ||
-    nativeLanguage !== initialProfile.nativeLanguage ||
-    targetLanguage !== initialProfile.targetLanguage
+    displayName !== (profile?.display_name ?? '') ||
+    nativeLanguage !== (profile?.native_language ?? 'vi') ||
+    targetLanguage !== (profile?.current_target_language ?? 'en')
 
   const saveProfileRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   saveProfileRef.current = useCallback(async () => {
     if (!isSupabaseConfigured || !user || !profile) return
-    const changed = displayName !== initialProfile.displayName
-      || nativeLanguage !== initialProfile.nativeLanguage
-      || targetLanguage !== initialProfile.targetLanguage
-    const uiChanged = uiLanguage !== initialProfile.uiLanguage
+    const changed = displayName !== (profile.display_name ?? '')
+      || nativeLanguage !== profile.native_language
+      || targetLanguage !== profile.current_target_language
+    const uiChanged = uiLanguage !== profile.ui_language
 
     if (!changed && !uiChanged) return
 
@@ -84,7 +77,7 @@ export function SettingsPage() {
       setProfile(updated)
       setProfileSaved(true)
     } catch { /* silently ignore */ }
-  }, [displayName, nativeLanguage, targetLanguage, uiLanguage, initialProfile, user, profile, setProfile])
+  }, [displayName, nativeLanguage, targetLanguage, uiLanguage, profile, user, setProfile])
 
   useEffect(() => {
     if (!hasProfileChanged) return
@@ -233,7 +226,7 @@ export function SettingsPage() {
         <Card>
           <CardTitle>{t('settings.languages')}</CardTitle>
           <div className="mt-4 grid gap-4">
-            <div><Label>{t('settings.interfaceLanguage')}</Label><div className="flex gap-2"><Select className="flex-1" value={uiLanguage} onChange={(event) => setUiLanguage(event.target.value as UiLanguageCode)}>{uiLanguageOptions.map((item) => <option key={item.code} value={item.code}>{t(`language.${item.code}`)}</option>)}</Select><Button variant="primary" className="min-h-10 shrink-0" onClick={() => void saveUiLanguage()} disabled={uiLanguage === initialProfile.uiLanguage || savingUiLanguage}>{savingUiLanguage ? '...' : t('actions.saveChanges')}</Button></div></div>
+            <div><Label>{t('settings.interfaceLanguage')}</Label><div className="flex gap-2"><Select className="flex-1" value={uiLanguage} onChange={(event) => setUiLanguage(event.target.value as UiLanguageCode)}>{uiLanguageOptions.map((item) => <option key={item.code} value={item.code}>{t(`language.${item.code}`)}</option>)}</Select><Button variant="primary" className="min-h-10 shrink-0" onClick={() => void saveUiLanguage()} disabled={uiLanguage === (profile?.ui_language ?? 'vi') || savingUiLanguage}>{savingUiLanguage ? '...' : t('actions.saveChanges')}</Button></div></div>
             <div><Label>{t('settings.nativeLanguage')}</Label><Select value={nativeLanguage} onChange={(event) => setNativeLanguage(event.target.value as LanguageCode)}>{languageOptions.map((item) => <option key={item.code} value={item.code}>{t(`language.${item.code}`)}</option>)}</Select></div>
             <div><Label>{t('settings.targetLanguage')}</Label><Select value={targetLanguage} onChange={(event) => setTargetLanguage(event.target.value as LanguageCode)}>{languageOptions.map((item) => <option key={item.code} value={item.code}>{t(`language.${item.code}`)}</option>)}</Select></div>
           </div>
