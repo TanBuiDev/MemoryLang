@@ -43,7 +43,7 @@ src/
     vocabulary/     # RelatedTermsSection, relationshipDisplay
   features/
     demo/           # Hardcoded demo data (3 vocab, 2 decks)
-    quiz/           # True/false question generator
+    quiz/           # Translation-input quiz domain, legacy true/false generator, session persistence
     study/          # Study mode labels
     vocabulary/     # Zod form schema
   i18n/             # Custom i18n (vi/en, ~130 keys each)
@@ -70,8 +70,8 @@ src/
 | `deck_terms` | Many-to-many join (decks <-> user_terms) |
 | `flashcard_templates` | Card templates (MVP 2 placeholder) |
 | `study_sessions` | Study session records |
-| `quiz_results` | Quiz attempt records |
-| `quiz_answers` | Individual quiz answers |
+| `quiz_results` | Legacy quiz attempt records (retained; translation-input MVP does not write results) |
+| `quiz_answers` | Legacy individual quiz answers (retained; translation-input MVP does not write answers) |
 
 ## Routing
 **Public:** `/` (full branded homepage with feature/workflow/product-preview sections), `/login`, `/register`, `/forgot-password`, `/onboarding`
@@ -91,7 +91,7 @@ src/
 
 ### Dual-mode data layer
 Every page checks `isSupabaseConfigured && Boolean(user)`. If false, uses hardcoded demo data from `features/demo/demoData.ts`. Allows full offline/demo operation.
-Demo mode currently exposes deck selection for study and quiz without a deck-to-term mapping; selecting a demo deck still uses the shared `demoVocabulary` list until that flow is explicitly scoped.
+Quiz demo sessions scope vocabulary by deck through `getDemoVocabularyForDeck()`. Study demo mode still uses the shared `demoVocabulary` list when a deck is selected until that flow is explicitly scoped.
 
 ### Vocabulary data model
 - `meanings` = definition/explanation of the word (from dictionary API, English)
@@ -101,7 +101,8 @@ Demo mode currently exposes deck selection for study and quiz without a deck-to-
 - Vocabulary detail uses `relationshipService.getCard(id)` to load the main term plus grouped `term_relationships`. Edit vocabulary can create/delete related-term links; `synonym`, `antonym`, and `related` are stored bidirectionally, while `derivative`, `collocation`, and `idiom` are stored one-way.
 - Flashcard study uses `relationshipService.getCard(currentTermId)` for the active card so one-side cards and flipped two-side cards can show translation fallback, examples, notes, images, and compact related terms. `/app/study` is a study command center with session setup, optional resume card, and Supabase-backed recent study history. Remote study sessions create a `study_sessions` row at start, update viewed/remembered/forgot counts only on confirmed completion, prune history to the latest 30 sessions, and return to `/app/study` instead of a separate result screen. Users can delete individual history rows or clear all saved study history; vocabulary and review schedules are unaffected. Study sessions freeze a prepared vocabulary snapshot at session start and persist the snapshot, current card index, selected study mode, active session key, provisional ratings, and whether the final card has been reached in `sessionStorage`, so browser reloads and backward navigation preserve completion eligibility. Two-side cards use a lightweight CSS 3D flip with fixed-height front/back faces; one-side card height changes use a measured 180ms height transition. The study session UI normally exposes two review choices (`remember`/`forgot`) mapped to `know`/`dont_know`; setup can optionally require a timed centered `Đã nhớ` confirmation before forward or auto advancement, where click or its configured hotkey selects provisional `know` and timeout selects provisional `dont_know`. When confirmation mode is enabled, toolbar grading buttons are hidden and already rated cards do not prompt again. Settings exposes locally persisted flashcard hotkeys for confirm, grading, navigation, flip, auto-play, and session ending; hotkeys accept single keys or modifier combinations, do not run inside editable controls or completion/discard modals, and duplicate assignments are blocked before save. Once the final card is displayed, the right control and top card action become `Hoàn thành`; completing from either location opens one save-results modal. Before the final card is reached, `Kết thúc` opens an encouraging discard warning and abandoning the session records no SRS result. Auto-play stops and opens completion confirmation after traversing the final card.
 - Flashcard sessions collect viewed term IDs and calculated SM-2 review actions provisionally inside the persisted session snapshot while cards are shown or rated. Only explicit completion enqueues actions, viewed IDs, and the session summary in Dexie/IndexedDB, then flushes them through the `apply_study_review_batch` Supabase RPC; ending an incomplete session clears its active snapshot without enqueuing those results. Completed pending changes retain the local-first transactional read-merge-write queue so simultaneous completion writes cannot overwrite review progress, and they retry on app startup after login, starting another session, and best-effort on `visibilitychange`/`pagehide`. Vocabulary remains cached per user/deck for offline fallback. Legacy `increment_term_view_counts` still exists, but flashcard study uses the combined batch sync path.
-- True/false quiz sessions persist generated questions, current index, score, and the active session key in `sessionStorage`, so leaving the route or reloading can restore the in-progress quiz. Starting a fresh quiz from setup clears the stored quiz snapshot for the selected options.
+- Translation-input quiz setup selects all vocabulary or a deck, validates that active items have saved translations, and distinguishes empty, untranslated, and failed-to-load sources before allowing start. The prompt shows source text plus optional IPA and part of speech; learners type the translation, retry incorrect input, or explicitly reveal the answer. Revealing persists a no-point penalty for that question.
+- Translation-input quiz sessions freeze generated questions and persist versioned progress (`index`, `score`, revealed/completed question IDs, and active session key) in `sessionStorage`, so reloads preserve order and reveal penalties without storing the draft input. Results currently show score only and do not write quiz statistics or update SRS. The legacy true/false generator and quiz database tables remain for compatibility, but are not exposed by the current quiz UI.
 
 ### Service abstraction
 All Supabase calls wrapped in service objects (`authService`, `vocabularyService`, `deckService`, `studyService`, `quizService`, `statisticsService`). Never call Supabase client directly from components.
@@ -138,7 +139,7 @@ Authenticated app shell includes a `nav.home` link back to `/` so users can reac
 The authenticated `nav.study` sidebar link resumes an active stored flashcard session from normal app pages, but on `/app/study/result/:sessionId` it links to `/app/study` so finishing a legacy/result session and clicking `Học` starts from the study setup screen instead of reopening the completed session.
 
 ## Current State / MVP Status
-- **MVP 1 (current):** Core vocab CRUD, deck CRUD/membership management, all-vocabulary or deck-scoped flashcard study (two-side/one-side) with numeric/all card limits, all-vocabulary or deck-scoped true/false quiz with numeric/all question limits, review sessions from due/difficult SRS items, dashboard stats, i18n (vi/en)
+- **MVP 1 (current):** Core vocab CRUD, deck CRUD/membership management, all-vocabulary or deck-scoped flashcard study (two-side/one-side) with numeric/all card limits, all-vocabulary or deck-scoped translation-input quiz with numeric/all question limits and score-only results, review sessions from due/difficult SRS items, dashboard stats, i18n (vi/en)
 - **MVP 2 (placeholder):** Custom flashcard templates, template builder
 - **MVP 3 (planned):** Matching quiz, fill-blank quiz, mixed quiz
 - **Not yet used:** `react-hook-form` (declared but forms use manual useState), `framer-motion` (declared, not used)

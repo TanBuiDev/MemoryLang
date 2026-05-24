@@ -7,7 +7,7 @@ Vocabulary learning & spaced-repetition flashcard web app. Primary audience: Vie
 - **Vocabulary CRUD** — Add, edit, delete words/phrases/idioms/sentences
 - **AI-powered enrichment** — Auto-generate IPA, definitions, translations, and example sentences via Edge Function
 - **Flashcard study** — Two-side and one-side card modes with progress tracking
-- **True/false quiz** — Test vocabulary knowledge with generated questions
+- **Translation quiz** — Choose all vocabulary or a deck, type translations, reveal answers when stuck, and receive a score
 - **Spaced repetition** — Review scheduling based on recall performance
 - **Dashboard stats** — Total words, accuracy rate, deck progress
 - **i18n** — Vietnamese and English interface
@@ -78,7 +78,7 @@ src/
     ui/             # Button, Card, Badge, Progress, Input
   features/
     demo/           # Hardcoded demo data
-    quiz/           # True/false question generator
+    quiz/           # Translation quiz logic and session persistence
     study/          # Study mode labels
     vocabulary/     # Zod form schema
   i18n/             # Custom i18n (vi/en)
