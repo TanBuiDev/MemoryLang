@@ -29,6 +29,12 @@ vi.mock('@/services/supabase/study.service', () => ({
   },
 }))
 
+vi.mock('@/services/supabase/vocabulary.service', () => ({
+  vocabularyService: {
+    list: vi.fn(),
+  },
+}))
+
 vi.mock('@/services/local/studySync.service', () => ({
   studySyncService: {
     flushPendingStudyChanges: vi.fn(),
@@ -74,6 +80,24 @@ describe('StudySetupPage', () => {
 
     expect(screen.getByRole('option', { name: 'Tất cả' })).toBeInTheDocument()
     expect(cardLimitSelect).toHaveValue('20')
+  })
+
+  it('configures required remember confirmation and its separate timer', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    const confirmation = screen.getByRole('checkbox', { name: 'Xác nhận Đã nhớ trước khi chuyển thẻ' })
+    expect(confirmation).not.toBeChecked()
+    expect(screen.queryByRole('combobox', { name: 'Thời gian xác nhận' })).not.toBeInTheDocument()
+
+    await user.click(confirmation)
+
+    const seconds = screen.getByRole('combobox', { name: 'Thời gian xác nhận' })
+    expect(seconds).toHaveValue('2')
+    await user.selectOptions(seconds, '3')
+
+    expect(useStudyStore.getState().requireRememberConfirmation).toBe(true)
+    expect(useStudyStore.getState().rememberConfirmationSeconds).toBe(3)
   })
 
   it('clears the stored deck session when starting a fresh session', async () => {
@@ -149,6 +173,44 @@ describe('StudySetupPage', () => {
     expect(await screen.findByText('8 nhớ')).toBeInTheDocument()
     expect(await screen.findByText('4 không nhớ')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Xóa lịch sử' })).toBeInTheDocument()
+  })
+
+  it('shows a review queue forecast for signed-in users', async () => {
+    const { deckService } = await import('@/services/supabase/deck.service')
+    const { studyService } = await import('@/services/supabase/study.service')
+    const { vocabularyService } = await import('@/services/supabase/vocabulary.service')
+    useAuthStore.setState({ user: { id: 'user-1' } as never, profile: null })
+    vi.mocked(deckService.list).mockResolvedValue([])
+    vi.mocked(studyService.listRecentSessions).mockResolvedValue([])
+    vi.mocked(vocabularyService.list).mockResolvedValue([
+      {
+        id: 'due-1',
+        status: 'learning',
+        wrong_count: 0,
+        next_review_at: '2026-05-21T08:00:00.000Z',
+      },
+      {
+        id: 'new-1',
+        status: 'new',
+        wrong_count: 0,
+        next_review_at: null,
+      },
+      {
+        id: 'hard-1',
+        status: 'difficult',
+        wrong_count: 3,
+        next_review_at: '2027-05-23T08:00:00.000Z',
+      },
+    ] as never)
+
+    renderPage()
+
+    expect(await screen.findByText('Hàng đợi ôn hôm nay')).toBeInTheDocument()
+    expect(await screen.findByText('1 đến hạn')).toBeInTheDocument()
+    expect(screen.getByText('1 từ mới')).toBeInTheDocument()
+    expect(screen.getByText('1 từ khó')).toBeInTheDocument()
+    expect(screen.getByText('~2 phút')).toBeInTheDocument()
+    expect(screen.getByText('Ưu tiên 1 thẻ đến hạn trước khi học thêm từ mới.')).toBeInTheDocument()
   })
 
   it('deletes a history session from the study page', async () => {

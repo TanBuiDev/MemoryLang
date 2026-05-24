@@ -172,6 +172,18 @@ describe('FlashcardStudyPage', () => {
       cardLimit: 20,
       shuffle: false,
       selectedDeckId: 'deck-1',
+      requireRememberConfirmation: false,
+      rememberConfirmationSeconds: 2,
+      hotkeys: {
+        confirmRemember: 'Space',
+        know: '1',
+        dontKnow: '2',
+        flip: 'F',
+        previous: 'ArrowLeft',
+        next: 'ArrowRight',
+        toggleAuto: null,
+        endSession: null,
+      },
     })
   })
 
@@ -193,6 +205,118 @@ describe('FlashcardStudyPage', () => {
     expect(screen.queryByRole('button', { name: 'Đã ghi nhớ' })).not.toBeInTheDocument()
   })
 
+  it('opens a timed remember confirmation before manually advancing an unrated card', async () => {
+    const user = userEvent.setup()
+    const { studyLocalDb } = await import('@/services/local/studyLocalDb')
+    useStudyStore.setState({ requireRememberConfirmation: true, rememberConfirmationSeconds: 2 })
+    await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
+
+    expect(await screen.findByText('produce')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Nhớ' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Không nhớ' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Thẻ tiếp theo' }))
+
+    expect(screen.getByRole('button', { name: 'Đã nhớ' })).toBeInTheDocument()
+    expect(screen.getByText('Không bấm = Không nhớ')).toBeInTheDocument()
+    expect(screen.getByText('produce')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Đã nhớ' }))
+
+    expect(studyLocalDb.addPendingReviewAction).not.toHaveBeenCalled()
+    expect(await screen.findByText('transfer')).toBeInTheDocument()
+  })
+
+  it('uses the configured shortcut to confirm remembered from the centered prompt', async () => {
+    useStudyStore.setState({ requireRememberConfirmation: true, rememberConfirmationSeconds: 2 })
+    await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Thẻ tiếp theo' }))
+
+    expect(screen.getByText('Space')).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: ' ' })
+
+    expect(await screen.findByText('transfer')).toBeInTheDocument()
+  })
+
+  it('runs normal configured shortcuts and ignores them while a session modal is open', async () => {
+    const { studyLocalDb } = await import('@/services/local/studyLocalDb')
+    await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển'), makeItem('collect', 'collect', 'thu thập')])
+
+    await waitFor(() => expect(studyLocalDb.saveActiveSession).toHaveBeenCalled())
+    fireEvent.keyDown(document, { key: '1' })
+    expect(await screen.findByText('transfer')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Kết thúc' }))
+    expect(screen.getByText('Bạn muốn dừng lại ở đây?')).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'ArrowRight' })
+
+    expect(screen.getByText('transfer')).toBeInTheDocument()
+    expect(screen.queryByText('collect')).not.toBeInTheDocument()
+  })
+
+  it('ignores flashcard shortcuts while editing an input', async () => {
+    await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
+    fireEvent.click(await screen.findByRole('button', { name: 'Bật tự động' }))
+    const secondsInput = screen.getByRole('spinbutton', { name: 'Giây/thẻ' })
+
+    secondsInput.focus()
+    fireEvent.keyDown(secondsInput, { key: 'ArrowRight' })
+
+    expect(screen.getByText('produce')).toBeInTheDocument()
+    expect(screen.queryByText('transfer')).not.toBeInTheDocument()
+  })
+
+  it('defaults an unanswered remember confirmation to forgot when its timer ends', async () => {
+    const { studyLocalDb } = await import('@/services/local/studyLocalDb')
+    useStudyStore.setState({ requireRememberConfirmation: true, rememberConfirmationSeconds: 2 })
+    await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
+    const nextButton = await screen.findByRole('button', { name: 'Thẻ tiếp theo' })
+
+    vi.useFakeTimers()
+    try {
+      fireEvent.click(nextButton)
+      act(() => vi.advanceTimersByTime(2000))
+      expect(studyLocalDb.addPendingReviewAction).not.toHaveBeenCalled()
+      expect(screen.getByText('transfer')).toBeInTheDocument()
+    } finally {
+      vi.clearAllTimers()
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not ask for a second rating after revisiting a rated card', async () => {
+    const user = userEvent.setup()
+    const { studyLocalDb } = await import('@/services/local/studyLocalDb')
+    useStudyStore.setState({ requireRememberConfirmation: true, rememberConfirmationSeconds: 2 })
+    await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
+
+    await user.click(await screen.findByRole('button', { name: 'Thẻ tiếp theo' }))
+    await user.click(screen.getByRole('button', { name: 'Đã nhớ' }))
+    await user.click(await screen.findByRole('button', { name: 'Thẻ trước' }))
+    await user.click(screen.getByRole('button', { name: 'Thẻ tiếp theo' }))
+
+    expect(screen.queryByRole('button', { name: 'Đã nhớ' })).not.toBeInTheDocument()
+    expect(screen.getByText('transfer')).toBeInTheDocument()
+    expect(studyLocalDb.addPendingReviewAction).not.toHaveBeenCalled()
+  })
+
+  it('requires the final remember confirmation before completing from the card action', async () => {
+    const user = userEvent.setup()
+    useStudyStore.setState({ requireRememberConfirmation: true, rememberConfirmationSeconds: 2 })
+    await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
+
+    await user.click(await screen.findByRole('button', { name: 'Thẻ tiếp theo' }))
+    await user.click(screen.getByRole('button', { name: 'Đã nhớ' }))
+    await user.click(screen.getAllByRole('button', { name: 'Hoàn thành' })[0])
+
+    expect(screen.queryByText('Hoàn thành phiên học?')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Đã nhớ' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Đã nhớ' }))
+    expect(screen.getByText('Hoàn thành phiên học?')).toBeInTheDocument()
+  })
+
   it('keeps study controls in a responsive fixed icon toolbar', async () => {
     await renderPage()
 
@@ -208,23 +332,16 @@ describe('FlashcardStudyPage', () => {
     expect(toolbar).toContainElement(screen.getByRole('button', { name: 'Bật tự động' }))
     expect(screen.queryByRole('spinbutton', { name: 'Giây/thẻ' })).not.toBeInTheDocument()
     expect(screen.queryAllByRole('button', { name: 'Bật tự động' })).toHaveLength(1)
-    expect(toolbar).toContainElement(screen.getByRole('button', { name: 'Lặp lại' }))
+    expect(screen.queryByRole('button', { name: 'Lặp lại' })).not.toBeInTheDocument()
     expect(toolbar).toContainElement(screen.getByRole('button', { name: 'Không nhớ' }))
     expect(toolbar).toContainElement(screen.getByRole('button', { name: 'Nhớ' }))
     expect(screen.getByRole('button', { name: 'Nhớ' })).toHaveClass('study-toolbar-button')
   })
 
-  it('disables repeat until automatic playback is enabled', async () => {
+  it('does not offer automatic repeat because every completed pass requires confirmation', async () => {
     await renderPage()
 
-    const repeatButton = await screen.findByRole('button', { name: 'Lặp lại' })
-    expect(repeatButton).toBeDisabled()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Bật tự động' }))
-    const panel = screen.getByRole('dialog', { name: 'Giây/thẻ' })
-    fireEvent.click(within(panel).getByRole('button', { name: 'Bật tự động' }))
-
-    expect(repeatButton).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Lặp lại' })).not.toBeInTheDocument()
   })
 
   it('opens a floating auto timer panel from the clock icon', async () => {
@@ -337,7 +454,7 @@ describe('FlashcardStudyPage', () => {
     expect(studyService.applyReviewAction).not.toHaveBeenCalled()
   })
 
-  it('batches viewed cards and flushes them when the study session completes', async () => {
+  it('batches provisional reviews and viewed cards only after completion is confirmed', async () => {
     const user = userEvent.setup()
     const { studyService } = await import('@/services/supabase/study.service')
     const { studyLocalDb } = await import('@/services/local/studyLocalDb')
@@ -361,11 +478,15 @@ describe('FlashcardStudyPage', () => {
     expect(await screen.findByText('transfer')).toBeInTheDocument()
     expect(studyService.flushTermViews).not.toHaveBeenCalled()
 
-    await user.click(screen.getByRole('button', { name: 'Thẻ trước' }))
-    expect(await screen.findByText('produce')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Thẻ tiếp theo' }))
     await user.click(screen.getByRole('button', { name: 'Nhớ' }))
+    expect(studyLocalDb.addPendingReviewAction).not.toHaveBeenCalled()
+    expect(screen.getAllByRole('button', { name: 'Hoàn thành' })).not.toHaveLength(0)
 
+    await user.click(screen.getAllByRole('button', { name: 'Hoàn thành' })[1])
+    expect(screen.getByText('Hoàn thành phiên học?')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Lưu kết quả' }))
+
+    await waitFor(() => expect(studyLocalDb.addPendingReviewAction).toHaveBeenCalledWith('user-1', expect.objectContaining({ action: 'know' })))
     await waitFor(() => expect(studyService.flushStudyChanges).toHaveBeenCalledTimes(1))
     expect(studyService.flushStudyChanges).toHaveBeenCalledWith(expect.objectContaining({
       viewedTermIds: ['produce', 'transfer'],
@@ -373,7 +494,7 @@ describe('FlashcardStudyPage', () => {
     expect(studyService.applyReviewAction).not.toHaveBeenCalled()
   })
 
-  it('confirms before ending an in-progress study session from the card', async () => {
+  it('warns and discards provisional SRS when ending an incomplete study session', async () => {
     const user = userEvent.setup()
     const { studyService } = await import('@/services/supabase/study.service')
     const { studyLocalDb } = await import('@/services/local/studyLocalDb')
@@ -388,26 +509,32 @@ describe('FlashcardStudyPage', () => {
         difficult_count: 0,
       },
     })
-    await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
+    await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển'), makeItem('collect', 'collect', 'thu thập')])
 
     expect(await screen.findByText('produce')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Nhớ' }))
+    expect(await screen.findByText('transfer')).toBeInTheDocument()
+    expect(studyLocalDb.addPendingReviewAction).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Kết thúc' }))
 
-    expect(screen.getByText('Kết thúc phiên học?')).toBeInTheDocument()
+    expect(screen.getByText('Bạn muốn dừng lại ở đây?')).toBeInTheDocument()
+    expect(screen.getByText('Bạn chưa hoàn thành phiên học. Toàn bộ kết quả Nhớ / Không nhớ trong phiên này sẽ không được ghi nhận vào lịch ôn SRS.')).toBeInTheDocument()
+    expect(screen.getByText('Chỉ còn một chút nữa thôi. Hoàn thành phiên để lưu tiến độ nhé.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Tiếp tục học' }))
-    expect(screen.queryByText('Kết thúc phiên học?')).not.toBeInTheDocument()
-    expect(screen.getByText('produce')).toBeInTheDocument()
+    expect(screen.queryByText('Bạn muốn dừng lại ở đây?')).not.toBeInTheDocument()
+    expect(screen.getByText('transfer')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Kết thúc' }))
-    await user.click(screen.getByRole('button', { name: 'Kết thúc phiên' }))
+    await user.click(screen.getByRole('button', { name: 'Bỏ kết quả và kết thúc' }))
 
-    await waitFor(() => expect(studyService.flushStudyChanges).toHaveBeenCalledWith(expect.objectContaining({
-      viewedTermIds: ['produce'],
-    })))
+    expect(studyLocalDb.addPendingReviewAction).not.toHaveBeenCalled()
+    expect(studyLocalDb.addPendingViewTermIds).not.toHaveBeenCalled()
+    expect(studyLocalDb.savePendingSessionSummary).not.toHaveBeenCalled()
+    expect(studyService.flushStudyChanges).not.toHaveBeenCalled()
     expect(await screen.findByText('Study setup reached')).toBeInTheDocument()
   })
 
-  it('records the remote study summary before returning to setup', async () => {
+  it('uses the top card action to complete after reaching the last card and returning backward', async () => {
     const user = userEvent.setup()
     const { studyService } = await import('@/services/supabase/study.service')
     const { studyLocalDb } = await import('@/services/local/studyLocalDb')
@@ -425,8 +552,11 @@ describe('FlashcardStudyPage', () => {
     await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
 
     await user.click(await screen.findByRole('button', { name: 'Nhớ' }))
-    await user.click(await screen.findByRole('button', { name: 'Kết thúc' }))
-    await user.click(screen.getByRole('button', { name: 'Kết thúc phiên' }))
+    expect(screen.getAllByRole('button', { name: 'Hoàn thành' })).not.toHaveLength(0)
+    await user.click(screen.getByRole('button', { name: 'Thẻ trước' }))
+    expect(screen.getByRole('button', { name: 'Hoàn thành' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Hoàn thành' }))
+    await user.click(screen.getByRole('button', { name: 'Lưu kết quả' }))
 
     await waitFor(() => expect(studyService.flushStudyChanges).toHaveBeenCalledWith(expect.objectContaining({
       sessionId: 'deck-session',
@@ -562,6 +692,30 @@ describe('FlashcardStudyPage', () => {
     }
   })
 
+  it('pauses automatic advance for remember confirmation and defaults to forgot', async () => {
+    const { studyLocalDb } = await import('@/services/local/studyLocalDb')
+    useStudyStore.setState({ requireRememberConfirmation: true, rememberConfirmationSeconds: 2 })
+    await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
+    fireEvent.click(await screen.findByRole('button', { name: 'Bật tự động' }))
+    const autoButton = screen.getByRole('dialog', { name: 'Giây/thẻ' }).querySelector('button[aria-label="Bật tự động"]') as HTMLButtonElement
+
+    vi.useFakeTimers()
+    try {
+      fireEvent.click(autoButton)
+      act(() => vi.advanceTimersByTime(6000))
+
+      expect(screen.getByRole('button', { name: 'Đã nhớ' })).toBeInTheDocument()
+      expect(screen.getByText('produce')).toBeInTheDocument()
+
+      act(() => vi.advanceTimersByTime(2000))
+      expect(studyLocalDb.addPendingReviewAction).not.toHaveBeenCalled()
+      expect(screen.getByText('transfer')).toBeInTheDocument()
+    } finally {
+      vi.clearAllTimers()
+      vi.useRealTimers()
+    }
+  })
+
   it('shows an auto-advance countdown on the card while automatic mode is enabled', async () => {
     await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
     expect(await screen.findByText('produce')).toBeInTheDocument()
@@ -591,23 +745,45 @@ describe('FlashcardStudyPage', () => {
     }
   })
 
-  it('loops to the first card when automatic repeat is enabled', async () => {
+  it('opens completion confirmation after automatic playback reaches the final card', async () => {
     await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
     expect(await screen.findByText('produce')).toBeInTheDocument()
-    const repeatButton = screen.getByRole('button', { name: 'Lặp lại' })
     fireEvent.click(screen.getByRole('button', { name: 'Bật tự động' }))
     const autoButton = screen.getByRole('dialog', { name: 'Giây/thẻ' }).querySelector('button[aria-label="Bật tự động"]') as HTMLButtonElement
 
     vi.useFakeTimers()
     try {
       fireEvent.click(autoButton)
-      fireEvent.click(repeatButton)
 
       act(() => vi.advanceTimersByTime(6000))
       expect(screen.getByText('transfer')).toBeInTheDocument()
 
       act(() => vi.advanceTimersByTime(6000))
-      expect(screen.getByText('produce')).toBeInTheDocument()
+      expect(screen.getByText('Hoàn thành phiên học?')).toBeInTheDocument()
+    } finally {
+      vi.clearAllTimers()
+      vi.useRealTimers()
+    }
+  })
+
+  it('opens completion confirmation after the final required remember decision in auto mode', async () => {
+    useStudyStore.setState({ requireRememberConfirmation: true, rememberConfirmationSeconds: 2 })
+    await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
+    expect(await screen.findByText('produce')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Bật tự động' }))
+    const autoButton = screen.getByRole('dialog', { name: 'Giây/thẻ' }).querySelector('button[aria-label="Bật tự động"]') as HTMLButtonElement
+
+    vi.useFakeTimers()
+    try {
+      fireEvent.click(autoButton)
+
+      act(() => vi.advanceTimersByTime(6000))
+      fireEvent.click(screen.getByRole('button', { name: 'Đã nhớ' }))
+      expect(screen.getByText('transfer')).toBeInTheDocument()
+
+      act(() => vi.advanceTimersByTime(6000))
+      fireEvent.click(screen.getByRole('button', { name: 'Đã nhớ' }))
+      expect(screen.getByText('Hoàn thành phiên học?')).toBeInTheDocument()
     } finally {
       vi.clearAllTimers()
       vi.useRealTimers()
