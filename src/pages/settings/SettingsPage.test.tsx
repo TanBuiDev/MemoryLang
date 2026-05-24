@@ -34,27 +34,42 @@ describe('SettingsPage study hotkeys', () => {
     useStudyStore.setState({ hotkeys: defaultStudyHotkeys })
   })
 
-  it('captures shortcuts and prevents saving duplicate assignments', async () => {
+  it('auto-saves captured shortcuts immediately to store and localStorage', async () => {
     const user = userEvent.setup()
     renderPage()
 
     expect(screen.getByText('Phím tắt khi học')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Mở rộng phím tắt' }))
     const confirmCapture = screen.getByRole('button', { name: /Gán phím.*Đã nhớ/ })
+
+    await user.click(confirmCapture)
+    fireEvent.keyDown(confirmCapture, { key: 'r', ctrlKey: true })
+
+    expect(confirmCapture).toHaveTextContent('Ctrl + R')
+    expect(useStudyStore.getState().hotkeys.confirmRemember).toBe('Ctrl+R')
+
+    const stored = JSON.parse(window.localStorage.getItem('memorylang.study.preferences') ?? '{}')
+    expect(stored.hotkeys?.confirmRemember).toBe('Ctrl+R')
+  })
+
+  it('shows duplicate warning when two actions share the same shortcut', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(screen.getByRole('button', { name: 'Mở rộng phím tắt' }))
+
+    const confirmCapture = screen.getByRole('button', { name: /Gán phím.*Đã nhớ/ })
     const rememberCapture = screen.getByRole('button', { name: /Gán phím.*Nhớ$/ })
 
     await user.click(confirmCapture)
     fireEvent.keyDown(confirmCapture, { key: 'r' })
-    expect(confirmCapture).toHaveTextContent('R')
 
     await user.click(rememberCapture)
     fireEvent.keyDown(rememberCapture, { key: 'r' })
 
     expect(screen.getByText('Phím tắt đang bị trùng. Hãy chọn phím khác trước khi lưu.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Lưu cài đặt' })).toBeDisabled()
   })
 
-  it('resets configured shortcuts to their defaults before saving', async () => {
+  it('resets configured shortcuts to their defaults immediately', async () => {
     const user = userEvent.setup()
     renderPage()
     await user.click(screen.getByRole('button', { name: 'Mở rộng phím tắt' }))
@@ -63,14 +78,9 @@ describe('SettingsPage study hotkeys', () => {
     await user.click(confirmCapture)
     fireEvent.keyDown(confirmCapture, { key: 'r', ctrlKey: true })
     expect(confirmCapture).toHaveTextContent('Ctrl + R')
+
     await user.click(screen.getByRole('button', { name: 'Khôi phục mặc định' }))
-
     expect(confirmCapture).toHaveTextContent('Space')
-
-    await user.click(confirmCapture)
-    fireEvent.keyDown(confirmCapture, { key: 'r', ctrlKey: true })
-    await user.click(screen.getByRole('button', { name: 'Lưu cài đặt' }))
-
-    expect(useStudyStore.getState().hotkeys.confirmRemember).toBe('Ctrl+R')
+    expect(useStudyStore.getState().hotkeys.confirmRemember).toBe('Space')
   })
 })

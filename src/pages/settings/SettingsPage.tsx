@@ -1,6 +1,6 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
@@ -24,13 +24,13 @@ export function SettingsPage() {
   const navigate = useNavigate()
   const hotkeys = useStudyStore((state) => state.hotkeys)
   const setHotkeys = useStudyStore((state) => state.setHotkeys)
+  const savedRef = useRef(false)
+
   const [displayName, setDisplayName] = useState(profile?.display_name ?? '')
   const [nativeLanguage, setNativeLanguage] = useState<LanguageCode>(profile?.native_language ?? 'vi')
   const [targetLanguage, setTargetLanguage] = useState<LanguageCode>(profile?.current_target_language ?? 'en')
   const [uiLanguage, setUiLanguage] = useState<UiLanguageCode>(profile?.ui_language ?? 'vi')
-  const [isSaving, setIsSaving] = useState(false)
-  const [message, setMessage] = useState('')
-  const [draftHotkeys, setDraftHotkeys] = useState<StudyHotkeyMap>(hotkeys)
+  const [profileSaved, setProfileSaved] = useState(false)
   const [capturingHotkey, setCapturingHotkey] = useState<StudyHotkeyAction | null>(null)
   const [hotkeysOpen, setHotkeysOpen] = useState(false)
 
@@ -40,11 +40,39 @@ export function SettingsPage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [passwordMessage, setPasswordMessage] = useState('')
   const [passwordError, setPasswordError] = useState('')
-  const duplicateHotkeys = duplicateStudyHotkeys(draftHotkeys)
+  const duplicateHotkeySet = duplicateStudyHotkeys(hotkeys)
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
+
+  const profileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const saveProfile = useCallback(async () => {
+    if (!isSupabaseConfigured || !user || !profile) return
+    try {
+      const updated = await authService.updateProfile(user.id, {
+        display_name: displayName || null,
+        native_language: nativeLanguage,
+        current_target_language: targetLanguage,
+        ui_language: uiLanguage,
+      })
+      setProfile(updated)
+      setProfileSaved(true)
+    } catch { /* silently ignore */ }
+  }, [displayName, nativeLanguage, targetLanguage, uiLanguage, user, profile, setProfile])
+
+  useEffect(() => {
+    if (!savedRef.current) { savedRef.current = true; return }
+    if (profileTimerRef.current) clearTimeout(profileTimerRef.current)
+    profileTimerRef.current = setTimeout(() => { void saveProfile() }, 800)
+    return () => { if (profileTimerRef.current) clearTimeout(profileTimerRef.current) }
+  }, [displayName, nativeLanguage, targetLanguage, uiLanguage, saveProfile])
+
+  useEffect(() => {
+    if (!profileSaved) return
+    const timer = setTimeout(() => setProfileSaved(false), 2000)
+    return () => clearTimeout(timer)
+  }, [profileSaved])
 
   async function deleteAccount() {
     if (deleteConfirmText !== 'DELETE') return
@@ -62,39 +90,6 @@ export function SettingsPage() {
     setConfirmNewPassword('')
     setPasswordMessage('')
     setPasswordError('')
-  }
-
-  async function saveSettings() {
-    if (duplicateHotkeys.size > 0) return
-    setMessage('')
-    setIsSaving(true)
-
-    try {
-      if (isSupabaseConfigured && user) {
-        const updatedProfile = await authService.updateProfile(user.id, {
-          display_name: displayName || null,
-          native_language: nativeLanguage,
-          current_target_language: targetLanguage,
-          ui_language: uiLanguage,
-        })
-        setProfile(updatedProfile)
-      } else if (profile) {
-        setProfile({
-          ...profile,
-          display_name: displayName || null,
-          native_language: nativeLanguage,
-          current_target_language: targetLanguage,
-          ui_language: uiLanguage,
-        })
-      }
-
-      setHotkeys(draftHotkeys)
-      setMessage(t('settings.saved'))
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('settings.saveError'))
-    } finally {
-      setIsSaving(false)
-    }
   }
 
   async function changePassword() {
@@ -116,9 +111,6 @@ export function SettingsPage() {
       await authService.setPassword(newPassword)
       setShowPasswordModal(false)
       resetPasswordForm()
-      setMessage(t('settings.passwordChanged'))
-      await authService.signOutAllDevices()
-      navigate('/login')
     } catch (error) {
       const msg = error instanceof Error ? error.message : ''
       setPasswordError(/same|different|old|giống|khác|cũ/i.test(msg) ? t('auth.passwordSameAsOld') : t('settings.passwordChangeError'))
@@ -150,9 +142,9 @@ export function SettingsPage() {
   function captureHotkey(action: StudyHotkeyAction, event: KeyboardEvent<HTMLButtonElement>) {
     if (capturingHotkey !== action) return
     event.preventDefault()
-    const hotkey = hotkeyFromKeyboardEvent(event)
-    if (!hotkey) return
-    setDraftHotkeys((current) => ({ ...current, [action]: hotkey }))
+    const key = hotkeyFromKeyboardEvent(event)
+    if (!key) return
+    setHotkeys({ ...hotkeys, [action]: key })
     setCapturingHotkey(null)
   }
 
@@ -161,7 +153,7 @@ export function SettingsPage() {
       <PageHeader
         title={t('settings.title')}
         description={t('settings.description')}
-        actions={<Button onClick={() => void saveSettings()} disabled={isSaving || duplicateHotkeys.size > 0}>{isSaving ? t('actions.saving') : t('actions.saveSettings')}</Button>}
+        actions={profileSaved ? <span className="flex items-center gap-1 text-sm font-bold text-secondary"><Check className="h-4 w-4" /> {t('settings.saved')}</span> : null}
       />
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -206,7 +198,7 @@ export function SettingsPage() {
               <CardDescription className="mt-2">{t('settings.studyHotkeysDescription')}</CardDescription>
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" onClick={() => { setDraftHotkeys({ ...defaultStudyHotkeys }); setCapturingHotkey(null) }}>
+              <Button variant="ghost" onClick={() => { setHotkeys({ ...defaultStudyHotkeys }); setCapturingHotkey(null) }}>
                 {t('settings.hotkeyReset')}
               </Button>
               <Button variant="ghost" className="h-10 min-h-0 w-10 p-0" aria-label={hotkeysOpen ? t('settings.hotkeyCollapse') : t('settings.hotkeyExpand')} onClick={() => setHotkeysOpen((open) => !open)}>
@@ -224,7 +216,7 @@ export function SettingsPage() {
                   <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
                     {group.actions.map((action) => {
                     const label = t(hotkeyLabelKeys[action])
-                    const isDuplicate = Boolean(draftHotkeys[action] && duplicateHotkeys.has(draftHotkeys[action]!))
+                    const isDuplicate = Boolean(hotkeys[action] && duplicateHotkeySet.has(hotkeys[action]!))
                     return (
                       <div key={action} className={`rounded-md border-2 p-3 ${isDuplicate ? 'border-destructive bg-destructive/10' : 'border-border bg-background'}`}>
                         <p className="text-sm font-black">{label}</p>
@@ -239,15 +231,15 @@ export function SettingsPage() {
                           >
                             {capturingHotkey === action
                               ? t('settings.hotkeyPressKeys')
-                              : draftHotkeys[action]
-                                ? formatStudyHotkey(draftHotkeys[action])
+                              : hotkeys[action]
+                                ? formatStudyHotkey(hotkeys[action])
                                 : t('settings.hotkeyUnassigned')}
                           </button>
                           <Button
                             variant="ghost"
                             className="min-h-10 px-3"
                             aria-label={t('settings.hotkeyClearAction', { action: label })}
-                            onClick={() => setDraftHotkeys((current) => ({ ...current, [action]: null }))}
+                            onClick={() => setHotkeys({ ...hotkeys, [action]: null })}
                           >
                             {t('settings.hotkeyClear')}
                           </Button>
@@ -260,7 +252,7 @@ export function SettingsPage() {
               </div>
             ))}
           </div>
-          {duplicateHotkeys.size > 0 ? (
+          {duplicateHotkeySet.size > 0 ? (
             <p role="alert" className="mt-4 text-sm font-black text-destructive">{t('settings.hotkeyDuplicateError')}</p>
           ) : null}
             </>
@@ -280,7 +272,6 @@ export function SettingsPage() {
             </div>
           ) : null}
         </Card>
-        {message ? <p className="lg:col-span-2 text-sm font-black text-secondary">{message}</p> : null}
       </div>
 
       <ConfirmModal
