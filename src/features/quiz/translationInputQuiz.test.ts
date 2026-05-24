@@ -30,6 +30,18 @@ describe('generateTranslationQuestions', () => {
 })
 
 describe('isTranslationAnswerCorrect', () => {
+  it('normalizes decomposed Vietnamese Unicode before comparing answers', () => {
+    expect(isTranslationAnswerCorrect('qua\u0309 ta\u0301o', 'quả táo')).toBe(true)
+  })
+
+  it('allows one edit when the normalized expected answer is exactly eight characters', () => {
+    expect(isTranslationAnswerCorrect('abcdefgx', ' Abcdefgh! ')).toBe(true)
+  })
+
+  it('rejects one edit below the normalized expected answer length threshold', () => {
+    expect(isTranslationAnswerCorrect('abcdefx', ' Abcdefg! ')).toBe(false)
+  })
+
   it.each([
     ['Qua chuoi', 'qua chuoi', true],
     ['  qua   chuoi! ', 'qua chuoi', true],
