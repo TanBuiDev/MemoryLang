@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
+import { TranslationChips } from '@/components/ui/translation-chips'
 import { vocabularyFormSchema, type VocabularyFormValues } from '@/features/vocabulary/vocabulary.schema'
 import { useI18n } from '@/i18n'
 import { studyLocalDb } from '@/services/local/studyLocalDb'
@@ -223,7 +224,7 @@ export function AddVocabularyPage() {
             <div><Label>{t('vocabulary.ipa')}</Label><Input value={ipa} onChange={(event) => setIpa(event.target.value)} /></div>
             <div><Label>{t('vocabulary.meaning')}</Label><Textarea value={meaning} onChange={(event) => setMeaning(event.target.value)} /></div>
             <div><Label>{t('vocabulary.example')}</Label><Textarea value={example} onChange={(event) => setExample(event.target.value)} /></div>
-            <div><Label>{t('vocabulary.translation')}</Label><Textarea value={translation} onChange={(event) => setTranslation(event.target.value)} /></div>
+            <div><Label>{t('vocabulary.translation')}</Label><TranslationChips value={translation} onChange={setTranslation} /></div>
             <div><Label>{t('vocabulary.note')}</Label><Textarea value={note} onChange={(event) => setNote(event.target.value)} /></div>
             <Button type="submit" disabled={createVocabulary.isPending || isDuplicate}>{createVocabulary.isPending ? '...' : t('vocabulary.save')}</Button>
             {!isDuplicate && message ? <p className="text-sm font-bold text-danger">{message}</p> : null}

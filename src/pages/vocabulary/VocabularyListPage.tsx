@@ -315,6 +315,7 @@ export function VocabularyListPage() {
   ) : (
     <div className="flex gap-2">
       <Button variant="ghost" disabled={!shouldUseRemoteData} onClick={enterSelectMode}>{t('vocabulary.select')}</Button>
+      <Button variant="ghost" disabled={!shouldUseRemoteData} asChild><Link to="/app/vocabulary/split">{t('vocabulary.splitTitle')}</Link></Button>
       <Button asChild><Link to="/app/vocabulary/new">{t('vocabulary.add')}</Link></Button>
     </div>
   )

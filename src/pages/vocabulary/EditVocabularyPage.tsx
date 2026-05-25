@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -7,10 +7,12 @@ import { relationshipDisplayOrder, relationshipLabelKeys } from '@/components/vo
 import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
+import { TranslationChips } from '@/components/ui/translation-chips'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { vocabularyUpdateFormSchema } from '@/features/vocabulary/vocabulary.schema'
 import { useI18n } from '@/i18n'
 import { studyLocalDb } from '@/services/local/studyLocalDb'
+import { enrichVocabulary } from '@/services/api/enrichVocabulary.api'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { createEmptyRelationshipGroups, relationshipService } from '@/services/supabase/relationship.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
@@ -55,6 +57,10 @@ export function EditVocabularyPage() {
   const [targetId, setTargetId] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [removingKey, setRemovingKey] = useState<string | null>(null)
+  const [enrichingIpa, setEnrichingIpa] = useState(false)
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const fieldsLoadedRef = useRef(false)
+  const formRef = useRef<HTMLFormElement>(null)
 
   const vocabularyCardQuery = useQuery({
     queryKey: ['vocabulary-card', id],
@@ -115,10 +121,16 @@ export function EditVocabularyPage() {
     onSuccess: async (updated) => {
       setFormError(null)
       await invalidateVocabularyQueries()
-      navigate(`/app/vocabulary/${updated.id}`)
+      if (isAutoSavingRef.current) {
+        setAutoSaveStatus('saved')
+        setTimeout(() => setAutoSaveStatus('idle'), 2000)
+      } else {
+        navigate(`/app/vocabulary/${updated.id}`)
+      }
     },
     onError: async (error) => {
       setFormError(error instanceof Error ? error.message : String(error))
+      setAutoSaveStatus('idle')
       if (user && item) {
         await studyLocalDb.enqueueMutation({
           id: `${item.id}-update-${Date.now()}`,
@@ -178,7 +190,84 @@ export function EditVocabularyPage() {
     setExample(item.examples[0]?.sentence ?? '')
     setExampleTranslation(item.examples[0]?.translation ?? '')
     setNote(item.note ?? '')
+    fieldsLoadedRef.current = true
   }, [item])
+
+  const isAutoSavingRef = useRef(false)
+
+  const saveForm = useCallback(async (silent: boolean) => {
+    if (!item || !id) return
+    if (
+      sourceText === item.source_text &&
+      status === item.status &&
+      itemType === item.item_type &&
+      ipa === (item.ipa ?? '') &&
+      partOfSpeech === (item.part_of_speech ?? '') &&
+      meaning === (item.meanings[0]?.text ?? item.translation ?? '') &&
+      translation === (item.translation ?? '') &&
+      example === (item.examples[0]?.sentence ?? '') &&
+      exampleTranslation === (item.examples[0]?.translation ?? '') &&
+      note === (item.note ?? '')
+    ) return
+
+    try {
+      setAutoSaveStatus('saving')
+      isAutoSavingRef.current = silent
+      await updateMutation.mutateAsync()
+    } catch {
+      setAutoSaveStatus('idle')
+    }
+  }, [item, id, sourceText, status, itemType, ipa, partOfSpeech, meaning, translation, example, exampleTranslation, note, updateMutation])
+
+  const handleBlur = useCallback((event: FocusEvent) => {
+    if (formRef.current && !formRef.current.contains(event.relatedTarget as Node)) {
+      void saveForm(true)
+    }
+  }, [saveForm])
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+        event.preventDefault()
+        void saveForm(true)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [saveForm])
+
+  const isDirty = item
+    ? sourceText !== item.source_text ||
+      status !== item.status ||
+      itemType !== item.item_type ||
+      ipa !== (item.ipa ?? '') ||
+      partOfSpeech !== (item.part_of_speech ?? '') ||
+      meaning !== (item.meanings[0]?.text ?? item.translation ?? '') ||
+      translation !== (item.translation ?? '') ||
+      example !== (item.examples[0]?.sentence ?? '') ||
+      exampleTranslation !== (item.examples[0]?.translation ?? '') ||
+      note !== (item.note ?? '')
+    : false
+
+  useEffect(() => {
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      if (isDirty) {
+        event.preventDefault()
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isDirty])
+
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden' && isDirty) {
+        void saveForm(true)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [isDirty, saveForm])
 
   if (shouldUseRemoteData && vocabularyCardQuery.isLoading) {
     return <Card className="font-black">{t('vocabulary.loading')}</Card>
@@ -203,7 +292,7 @@ export function EditVocabularyPage() {
       <PageHeader title={t('vocabulary.editTitle')} description={t('vocabulary.editDescription')} />
       <div className="grid gap-4 xl:grid-cols-[1fr_0.8fr]">
         <Card>
-          <form className="grid gap-4 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); updateMutation.mutate() }}>
+          <form ref={formRef} className="grid gap-4 md:grid-cols-2" onBlur={handleBlur} onSubmit={(event) => { event.preventDefault(); void saveForm(false) }}>
             <div>
               <Label>{t('vocabulary.sourceText')}</Label>
               <Input value={sourceText} onChange={(event) => setSourceText(event.target.value)} />
@@ -221,8 +310,37 @@ export function EditVocabularyPage() {
               </Select>
             </div>
             <div>
-              <Label>{t('vocabulary.ipa')}</Label>
-              <Input value={ipa} onChange={(event) => setIpa(event.target.value)} />
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <Label>{t('vocabulary.ipa')}</Label>
+                  <Input value={ipa} onChange={(event) => setIpa(event.target.value)} />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="mb-0.5 min-w-[80px]"
+                  disabled={enrichingIpa}
+                  onClick={async () => {
+                    setEnrichingIpa(true)
+                    try {
+                      const enriched = await enrichVocabulary(sourceText, item!.source_language, item!.native_language)
+                      setIpa(enriched.ipa ?? '')
+                      if (enriched.partOfSpeech) setPartOfSpeech(enriched.partOfSpeech)
+                    } catch { /* keep values unchanged */ }
+                    setEnrichingIpa(false)
+                  }}
+                >
+                  {enrichingIpa ? (
+                    <span className="inline-flex items-center gap-0.5">
+                      <span className="inline-block animate-bounce [animation-delay:0ms]">.</span>
+                      <span className="inline-block animate-bounce [animation-delay:150ms]">.</span>
+                      <span className="inline-block animate-bounce [animation-delay:300ms]">.</span>
+                    </span>
+                  ) : (
+                    t('vocabulary.regenerateIpa')
+                  )}
+                </Button>
+              </div>
             </div>
             <div>
               <Label>{t('vocabulary.partOfSpeech')}</Label>
@@ -234,7 +352,7 @@ export function EditVocabularyPage() {
             </div>
             <div className="md:col-span-2">
               <Label>{t('vocabulary.translation')}</Label>
-              <Textarea value={translation} onChange={(event) => setTranslation(event.target.value)} />
+              <TranslationChips value={translation} onChange={setTranslation} />
             </div>
             <div className="md:col-span-2">
               <Label>{t('vocabulary.example')}</Label>
@@ -249,8 +367,13 @@ export function EditVocabularyPage() {
               <Textarea value={note} onChange={(event) => setNote(event.target.value)} />
             </div>
             {formError ? <p className="font-black text-danger md:col-span-2">{formError}</p> : null}
-            <div className="flex flex-wrap gap-2 md:col-span-2">
+            <div className="flex flex-wrap items-center gap-2 md:col-span-2">
               <Button type="submit" disabled={updateMutation.isPending}>{t('actions.saveChanges')}</Button>
+              {autoSaveStatus === 'saving' ? (
+                <span className="text-xs font-bold text-muted-foreground">{t('vocabulary.autoSaving')}</span>
+              ) : autoSaveStatus === 'saved' ? (
+                <span className="text-xs font-bold text-success">{t('vocabulary.saved')}</span>
+              ) : null}
               <Button asChild variant="ghost"><Link to={`/app/vocabulary/${item.id}`}>{t('actions.cancel')}</Link></Button>
             </div>
           </form>
