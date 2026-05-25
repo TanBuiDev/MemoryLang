@@ -1,4 +1,5 @@
 import { supabase } from '@/services/supabase/client'
+import type { LessonDraft } from '@/features/decks/bulkLessons'
 import type { Deck } from '@/types/deck.types'
 import type { LanguageCode } from '@/types/language.types'
 import type { VocabularyItem } from '@/types/vocabulary.types'
@@ -11,6 +12,16 @@ export interface DeckInput {
   native_language: LanguageCode
   color?: string
   icon?: string
+}
+
+export interface CreateLessonBatchInput {
+  base: Omit<DeckInput, 'name'>
+  lessons: LessonDraft[]
+}
+
+export interface CreateLessonBatchResult {
+  createdDecks: Deck[]
+  error: unknown | null
 }
 
 export const deckService = {
@@ -45,6 +56,37 @@ export const deckService = {
     const { data, error } = await supabase.from('decks').insert(input).select('*').single()
     if (error) throw error
     return data as Deck
+  },
+  async createLessonBatch({ base, lessons }: CreateLessonBatchInput): Promise<CreateLessonBatchResult> {
+    const createdDecks: Deck[] = []
+
+    try {
+      for (const lesson of lessons) {
+        const deck = await deckService.create({ ...base, name: lesson.name })
+
+        const { error } = await supabase.from('deck_terms').insert(
+          lesson.termIds.map((user_term_id) => ({ deck_id: deck.id, user_term_id })),
+        )
+        if (error) {
+          try {
+            await deckService.remove(deck.id)
+          } catch (cleanupError) {
+            return {
+              createdDecks,
+              error: new AggregateError([error, cleanupError], 'Failed to link lesson terms and clean up deck'),
+            }
+          }
+
+          return { createdDecks, error }
+        }
+
+        createdDecks.push(deck)
+      }
+
+      return { createdDecks, error: null }
+    } catch (error) {
+      return { createdDecks, error }
+    }
   },
   async update(id: string, input: Partial<DeckInput>): Promise<Deck> {
     const { data, error } = await supabase.from('decks').update(input).eq('id', id).select('*').single()
