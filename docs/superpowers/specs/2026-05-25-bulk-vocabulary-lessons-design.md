@@ -202,11 +202,14 @@ flowchart TD
   C --> D[Chia nhom toi da x tu]
   D --> E[Tao decks Bai hoc NN]
   E --> F[Them deck_terms]
-  F --> G[Mo mot bai hoc]
-  G --> H[Hoc flashcard theo deck_id]
-  H --> I[Hoan thanh va luu ket qua study]
-  I --> J[Card Kiem tra bai nay tai Study Setup]
-  J --> K[Quiz translation_input theo cung deck_id]
+  F --> G[Thong bao ket qua tai /app/vocabulary]
+  G -->|Mo danh sach bai| H[/app/decks]
+  G -->|Dong thong bao| L[O lai /app/vocabulary]
+  H --> I[Mo bai hoc da chon]
+  I --> J[Hoc flashcard theo deck_id]
+  J --> K[Hoan thanh va luu ket qua study]
+  K --> M[Card Kiem tra bai nay tai Study Setup]
+  M --> N[Quiz translation_input theo cung deck_id]
 ```
 
 ## Xu Ly Bien Va Loi
