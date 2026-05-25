@@ -142,18 +142,25 @@ describe('QuizSetupPage', () => {
     vi.mocked(deckService.listTerms).mockResolvedValue([
       demoVocabulary[0]!,
       { ...demoVocabulary[1]!, id: 'missing-term', source_text: 'be known for', translation: null },
+      { ...demoVocabulary[2]!, id: 'missing-prep', source_text: 'prep', translation: null },
     ] as VocabularyItem[])
 
     renderPage()
     await screen.findByText('3 từ sẵn sàng kiểm tra')
     await user.selectOptions(screen.getAllByRole('combobox')[0], 'lesson-1')
 
-    expect(await screen.findByText('1/2 từ sẵn sàng kiểm tra')).toBeInTheDocument()
-    expect(screen.getByText('1 từ chưa có bản dịch sẽ không xuất hiện trong bài kiểm tra.')).toBeInTheDocument()
+    expect(await screen.findByText('1/3 từ sẵn sàng kiểm tra')).toBeInTheDocument()
+    expect(screen.getByText('2 từ chưa có bản dịch sẽ không xuất hiện trong bài kiểm tra.')).toBeInTheDocument()
     expect(screen.getByText('be known for')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Bổ sung bản dịch' })).toHaveAttribute(
+    expect(screen.getByText('prep')).toBeInTheDocument()
+    expect(screen.getAllByText('Bổ sung bản dịch')).toHaveLength(2)
+    expect(screen.getByRole('link', { name: 'Bổ sung bản dịch cho be known for' })).toHaveAttribute(
       'href',
       '/app/vocabulary/missing-term/edit',
+    )
+    expect(screen.getByRole('link', { name: 'Bổ sung bản dịch cho prep' })).toHaveAttribute(
+      'href',
+      '/app/vocabulary/missing-prep/edit',
     )
     expect(screen.getByRole('button', { name: 'Bắt đầu kiểm tra' })).toBeEnabled()
   })

@@ -190,7 +190,12 @@ export function QuizSetupPage() {
                         <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border-2 border-border bg-card p-2">
                           <span className="text-sm font-black">{item.source_text}</span>
                           <Button asChild variant="ghost" className="text-xs">
-                            <Link to={`/app/vocabulary/${item.id}/edit`}>{t('quiz.addTranslation')}</Link>
+                            <Link
+                              to={`/app/vocabulary/${item.id}/edit`}
+                              aria-label={t('quiz.addTranslationFor', { term: item.source_text })}
+                            >
+                              {t('quiz.addTranslation')}
+                            </Link>
                           </Button>
                         </div>
                       ))}
