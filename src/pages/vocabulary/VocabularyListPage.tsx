@@ -8,15 +8,18 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { Input, Select } from '@/components/ui/input'
+import { Input, Label, Select } from '@/components/ui/input'
+import { buildLessonBatch } from '@/features/decks/bulkLessons'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useI18n } from '@/i18n'
 import { studyLocalDb } from '@/services/local/studyLocalDb'
 import { isSupabaseConfigured } from '@/services/supabase/client'
+import { deckService } from '@/services/supabase/deck.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import type { Deck } from '@/types/deck.types'
 import type { VocabularyItem, VocabularyStatus } from '@/types/vocabulary.types'
 import { speak } from '@/utils/audio'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
@@ -44,6 +47,7 @@ const statusFilterOptions: Array<VocabularyStatus | 'all'> = ['all', 'new', 'lea
 export function VocabularyListPage() {
   const { t } = useI18n()
   const user = useAuthStore((state) => state.user)
+  const profile = useAuthStore((state) => state.profile)
   const queryClient = useQueryClient()
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
   const vocabularyQuery = useQuery({
@@ -51,6 +55,11 @@ export function VocabularyListPage() {
     queryFn: () => vocabularyService.list(user!.id),
     enabled: shouldUseRemoteData,
     staleTime: 5 * 60 * 1000,
+  })
+  const decksQuery = useQuery({
+    queryKey: ['decks', user?.id],
+    queryFn: () => deckService.list(user!.id),
+    enabled: shouldUseRemoteData,
   })
   const [searchParams, setSearchParams] = useSearchParams()
   const [cachedVocabulary, setCachedVocabulary] = useState<VocabularyItem[]>([])
@@ -174,6 +183,23 @@ export function VocabularyListPage() {
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [pendingDelete, setPendingDelete] = useState<{ ids: string[]; word?: string } | null>(null)
+  const [lessonModalOpen, setLessonModalOpen] = useState(false)
+  const [wordsPerLesson, setWordsPerLesson] = useState('10')
+  const [lessonFeedback, setLessonFeedback] = useState<{ createdDecks: Deck[]; partial: boolean } | null>(null)
+  const parsedWordsPerLesson = Number(wordsPerLesson)
+  const hasValidLessonSize = Number.isInteger(parsedWordsPerLesson) && parsedWordsPerLesson > 0
+  const plannedLessons = useMemo(() => {
+    if (!hasValidLessonSize || selectedIds.size === 0) return []
+    try {
+      return buildLessonBatch(Array.from(selectedIds), parsedWordsPerLesson, decksQuery.data ?? [])
+    } catch {
+      return []
+    }
+  }, [decksQuery.data, hasValidLessonSize, parsedWordsPerLesson, selectedIds])
+  const canCreateLessons = shouldUseRemoteData
+    && plannedLessons.length > 0
+    && !decksQuery.isLoading
+    && !decksQuery.isError
 
   const deleteVocabulary = useMutation({
     mutationFn: (ids: string[]) => vocabularyService.removeMany(ids),
@@ -198,6 +224,26 @@ export function VocabularyListPage() {
           })
         }
       }
+    },
+  })
+  const createLessonsMutation = useMutation({
+    mutationFn: async () => {
+      const result = await deckService.createLessonBatch({
+        base: {
+          user_id: user!.id,
+          source_language: profile?.current_target_language ?? 'en',
+          native_language: profile?.native_language ?? 'vi',
+        },
+        lessons: plannedLessons,
+      })
+      if (result.error && result.createdDecks.length === 0) throw result.error
+      return result
+    },
+    onSuccess: async (result) => {
+      setLessonModalOpen(false)
+      setLessonFeedback({ createdDecks: result.createdDecks, partial: Boolean(result.error) })
+      if (!result.error) exitSelectMode()
+      await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
     },
   })
 
@@ -253,6 +299,16 @@ export function VocabularyListPage() {
     <div className="flex gap-2">
       <Button variant="ghost" onClick={exitSelectMode}>{t('actions.cancel')}</Button>
       <span className="self-center text-sm font-bold">{t('vocabulary.selected', { count: selectedIds.size })}</span>
+      <Button
+        variant="secondary"
+        disabled={selectedIds.size === 0 || !shouldUseRemoteData}
+        onClick={() => {
+          createLessonsMutation.reset()
+          setLessonModalOpen(true)
+        }}
+      >
+        {t('vocabulary.createLessons')}
+      </Button>
       <Button variant="danger" disabled={selectedIds.size === 0} onClick={requestDeleteSelected}>{t('vocabulary.deleteSelected')}</Button>
     </div>
   ) : (
@@ -265,6 +321,22 @@ export function VocabularyListPage() {
   return (
     <>
       <PageHeader title={t('vocabulary.title')} description={t('vocabulary.description')} actions={headerActions} />
+      {lessonFeedback ? (
+        <Card className="mb-4">
+          <p className="font-black">
+            {t(lessonFeedback.partial ? 'vocabulary.lessonsPartiallyCreated' : 'vocabulary.lessonsCreated', {
+              count: lessonFeedback.createdDecks.length,
+            })}
+          </p>
+          {lessonFeedback.createdDecks[0] ? (
+            <Button asChild className="mt-3">
+              <Link to={`/app/decks/${lessonFeedback.createdDecks[0].id}`}>
+                {t('vocabulary.openCreatedLesson', { name: lessonFeedback.createdDecks[0].name })}
+              </Link>
+            </Button>
+          ) : null}
+        </Card>
+      ) : null}
       {selectMode && vocabulary.length > 0 ? (
         <div className="mb-3">
           <Button variant="ghost" onClick={toggleSelectAll}>
@@ -368,6 +440,32 @@ export function VocabularyListPage() {
           })}
         </div>
       </div>
+      <ConfirmModal
+        open={lessonModalOpen}
+        title={t('vocabulary.createLessonsTitle')}
+        confirmLabel={t('vocabulary.confirmCreateLessons')}
+        cancelLabel={t('actions.cancel')}
+        variant="primary"
+        confirmDisabled={!canCreateLessons || createLessonsMutation.isPending}
+        onConfirm={() => createLessonsMutation.mutate()}
+        onCancel={() => setLessonModalOpen(false)}
+      >
+        <Label htmlFor="words-per-lesson">{t('vocabulary.wordsPerLesson')}</Label>
+        <Input
+          id="words-per-lesson"
+          className="mt-2"
+          type="number"
+          min={1}
+          value={wordsPerLesson}
+          onChange={(event) => setWordsPerLesson(event.target.value)}
+        />
+        {canCreateLessons ? (
+          <p className="mt-3 font-black">{t('vocabulary.lessonProjection', { count: plannedLessons.length })}</p>
+        ) : null}
+        {createLessonsMutation.error instanceof Error ? (
+          <p className="mt-3 text-sm font-black text-danger">{t('vocabulary.lessonCreateFailed')}</p>
+        ) : null}
+      </ConfirmModal>
       <ConfirmModal
         open={pendingDelete !== null}
         title={pendingDelete?.word ? t('vocabulary.deleteConfirmSingle', { word: pendingDelete.word }) : t('vocabulary.deleteConfirm', { count: pendingDelete?.ids.length ?? 0 })}
