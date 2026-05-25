@@ -122,4 +122,28 @@ describe('VocabularyListPage bulk lessons', () => {
     expect(screen.getByText('Đã chọn 2')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Xem bộ thẻ' })).not.toBeInTheDocument()
   })
+
+  it('clears previous lesson feedback when a later batch fails completely', async () => {
+    const user = userEvent.setup()
+    vi.mocked(deckService.createLessonBatch)
+      .mockResolvedValueOnce({
+        createdDecks: [{ id: 'deck-5', name: 'Bai hoc 05' } as never],
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        createdDecks: [],
+        error: new Error('insert failed'),
+      })
+    renderPage()
+
+    await selectAllAndOpenLessonModal(user)
+    await user.click(screen.getByRole('button', { name: 'Xác nhận tạo bài' }))
+    expect(await screen.findByRole('link', { name: 'Xem bộ thẻ' })).toBeInTheDocument()
+
+    await selectAllAndOpenLessonModal(user)
+    await user.click(screen.getByRole('button', { name: 'Xác nhận tạo bài' }))
+
+    expect(await screen.findByText('Không thể tạo bài học. Vui lòng thử lại.')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Xem bộ thẻ' })).not.toBeInTheDocument()
+  })
 })

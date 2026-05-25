@@ -304,6 +304,7 @@ export function VocabularyListPage() {
         disabled={selectedIds.size === 0 || !shouldUseRemoteData}
         onClick={() => {
           createLessonsMutation.reset()
+          setLessonFeedback(null)
           setLessonModalOpen(true)
         }}
       >
