@@ -472,7 +472,7 @@ describe('VocabularyListPage bulk lessons', () => {
     await user.click(screen.getByRole('button', { name: 'Tạo bài học' }))
     await user.click(screen.getByRole('button', { name: 'Xác nhận tạo bài' }))
     expect(await screen.findByText('Không thể tạo bài học. Vui lòng thử lại.')).toBeInTheDocument()
-    expect(screen.getByText('2 đã chọn')).toBeInTheDocument()
+    expect(screen.getByText('Đã chọn 2')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Xem bộ thẻ' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Đóng' })).not.toBeInTheDocument()
   })
