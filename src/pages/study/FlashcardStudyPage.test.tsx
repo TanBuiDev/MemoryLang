@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildStudySessionStorageKey, writeActiveStudySessionStorageKey } from '@/features/study/sessionPersistence'
 import { FlashcardStudyPage } from '@/pages/study/FlashcardStudyPage'
@@ -125,6 +125,12 @@ function makeItem(id: string, sourceText: string, translation: string): Vocabula
   }
 }
 
+function StudySetupProbe() {
+  const location = useLocation()
+  const state = location.state as { completedDeckId?: string } | null
+  return <div>Study setup reached {state?.completedDeckId ?? 'without-completed-deck'}</div>
+}
+
 async function renderPage(items: VocabularyItem[] = [baseItem], lookupItems: VocabularyItem[] = items, mockListTerms = true) {
   const { deckService } = await import('@/services/supabase/deck.service')
   const { relationshipService, createEmptyRelationshipGroups } = await import('@/services/supabase/relationship.service')
@@ -152,7 +158,7 @@ async function renderPage(items: VocabularyItem[] = [baseItem], lookupItems: Voc
         <Routes>
           <Route path="/app/study/session/:sessionId" element={<FlashcardStudyPage />} />
           <Route path="/app/study/result/:sessionId" element={<div>Study result reached</div>} />
-          <Route path="/app/study" element={<div>Study setup reached</div>} />
+          <Route path="/app/study" element={<StudySetupProbe />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -531,7 +537,7 @@ describe('FlashcardStudyPage', () => {
     expect(studyLocalDb.addPendingViewTermIds).not.toHaveBeenCalled()
     expect(studyLocalDb.savePendingSessionSummary).not.toHaveBeenCalled()
     expect(studyService.flushStudyChanges).not.toHaveBeenCalled()
-    expect(await screen.findByText('Study setup reached')).toBeInTheDocument()
+    expect(await screen.findByText('Study setup reached without-completed-deck')).toBeInTheDocument()
   })
 
   it('uses the top card action to complete after reaching the last card and returning backward', async () => {
@@ -568,7 +574,7 @@ describe('FlashcardStudyPage', () => {
       },
     })))
     expect(studyService.pruneHistory).toHaveBeenCalledWith('user-1')
-    expect(await screen.findByText('Study setup reached')).toBeInTheDocument()
+    expect(await screen.findByText('Study setup reached deck-1')).toBeInTheDocument()
   })
 
   it('keeps the original session order after recording a review action refetches deck terms', async () => {

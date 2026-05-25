@@ -1,11 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { demoVocabulary } from '@/features/demo/demoData'
 import { buildStudySessionStorageKey } from '@/features/study/sessionPersistence'
 import { StudySetupPage } from '@/pages/study/StudySetupPage'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useQuizStore } from '@/stores/useQuizStore'
 import { useStudyStore } from '@/stores/useStudyStore'
 import type { StudySession } from '@/types/study.types'
 
@@ -17,6 +19,7 @@ vi.mock('@/services/supabase/client', () => ({
 vi.mock('@/services/supabase/deck.service', () => ({
   deckService: {
     list: vi.fn(),
+    listTerms: vi.fn(),
   },
 }))
 
@@ -41,15 +44,18 @@ vi.mock('@/services/local/studySync.service', () => ({
   },
 }))
 
-function renderPage() {
+function renderPage(initialEntry: string | { pathname: string; state?: unknown } = '/app/study') {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
-        <StudySetupPage />
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <Routes>
+          <Route path="/app/study" element={<StudySetupPage />} />
+          <Route path="/app/quiz" element={<div>Quiz setup reached</div>} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -61,6 +67,7 @@ describe('StudySetupPage', () => {
     window.sessionStorage.clear()
     useAuthStore.setState({ user: null, profile: null })
     useStudyStore.setState({ mode: 'one_side', cardLimit: 20, shuffle: false, selectedDeckId: null })
+    useQuizStore.setState({ selectedDeckId: null })
   })
 
   it('allows starting a study session from all vocabulary by default', () => {
@@ -239,5 +246,53 @@ describe('StudySetupPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Xóa phiên học' }))
 
     expect(studyService.deleteSession).toHaveBeenCalledWith('session-1')
+  })
+
+  it('offers a quiz for the just-completed deck when it has translated terms', async () => {
+    const user = userEvent.setup()
+    const { deckService } = await import('@/services/supabase/deck.service')
+    const { studyService } = await import('@/services/supabase/study.service')
+    vi.mocked(deckService.list).mockResolvedValue([])
+    vi.mocked(deckService.listTerms).mockResolvedValue([{ ...demoVocabulary[0]!, translation: 'qua tao' }])
+    vi.mocked(studyService.listRecentSessions).mockResolvedValue([])
+    useAuthStore.setState({ user: { id: 'user-1' } as never, profile: null })
+
+    renderPage({ pathname: '/app/study', state: { completedDeckId: 'deck-1' } })
+    await user.click(await screen.findByRole('button', { name: 'Kiểm tra bài này' }))
+
+    expect(useQuizStore.getState().selectedDeckId).toBe('deck-1')
+    expect(await screen.findByText('Quiz setup reached')).toBeInTheDocument()
+  })
+
+  it('explains why a completed deck cannot be tested when no translations exist', async () => {
+    const { deckService } = await import('@/services/supabase/deck.service')
+    const { studyService } = await import('@/services/supabase/study.service')
+    vi.mocked(deckService.list).mockResolvedValue([])
+    vi.mocked(deckService.listTerms).mockResolvedValue([{ ...demoVocabulary[0]!, translation: null }])
+    vi.mocked(studyService.listRecentSessions).mockResolvedValue([])
+    useAuthStore.setState({ user: { id: 'user-1' } as never, profile: null })
+
+    renderPage({ pathname: '/app/study', state: { completedDeckId: 'deck-1' } })
+
+    expect(await screen.findByText('Bổ sung bản dịch trước khi kiểm tra bài này.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Kiểm tra bài này' })).toBeDisabled()
+  })
+
+  it('allows retrying completed-deck quiz availability after loading fails', async () => {
+    const user = userEvent.setup()
+    const { deckService } = await import('@/services/supabase/deck.service')
+    const { studyService } = await import('@/services/supabase/study.service')
+    vi.mocked(deckService.list).mockResolvedValue([])
+    vi.mocked(deckService.listTerms)
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce([{ ...demoVocabulary[0]!, translation: 'qua tao' }])
+    vi.mocked(studyService.listRecentSessions).mockResolvedValue([])
+    useAuthStore.setState({ user: { id: 'user-1' } as never, profile: null })
+
+    renderPage({ pathname: '/app/study', state: { completedDeckId: 'deck-1' } })
+    expect(await screen.findByText('Không kiểm tra được dữ liệu bài. Hãy tải lại và thử lại.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Thử lại' }))
+
+    expect(await screen.findByRole('button', { name: 'Kiểm tra bài này' })).toBeEnabled()
   })
 })

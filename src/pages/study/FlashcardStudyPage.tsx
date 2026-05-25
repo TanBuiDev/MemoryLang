@@ -672,11 +672,15 @@ export function FlashcardStudyPage() {
     if (!syncError) await studyService.pruneHistory(user.id)
   }
 
-  function clearSessionAndReturn() {
+  function clearSessionAndReturn(completed = false) {
     clearStoredStudySession(sessionKey)
     void studyLocalDb.clearActiveSession(sessionKey)
     clearActiveStudySession({ userId: user?.id, sessionId, remote: shouldUseRemoteData })
-    navigate('/app/study')
+    navigate('/app/study', {
+      state: completed && selectedDeckId && !isReviewSession
+        ? { completedDeckId: selectedDeckId }
+        : undefined,
+    })
   }
 
   function discardIncompleteSession() {
@@ -689,7 +693,7 @@ export function FlashcardStudyPage() {
     setAutoEnabled(false)
     setAutoSettingsOpen(false)
     const extraTermIds = item ? [item.id] : []
-    void saveSessionSummary(extraTermIds).finally(clearSessionAndReturn)
+    void saveSessionSummary(extraTermIds).finally(() => clearSessionAndReturn(true))
   }
 
   function browseTo(nextIndex: number) {

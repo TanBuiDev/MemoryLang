@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Label, Select } from '@/components/ui/input'
-import { demoDecks, demoVocabulary } from '@/features/demo/demoData'
+import { demoDecks, demoVocabulary, getDemoVocabularyForDeck } from '@/features/demo/demoData'
+import { hasTranslation } from '@/features/quiz/translationInputQuiz'
 import { buildStudySessionStorageKey, clearStoredStudySession, hasActiveStudySession, writeActiveStudySessionStorageKey } from '@/features/study/sessionPersistence'
 import { mvpStudyModes } from '@/features/study/studyLabels'
 import { useI18n } from '@/i18n'
@@ -15,6 +16,7 @@ import { studySyncService } from '@/services/local/studySync.service'
 import { studyService } from '@/services/supabase/study.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useQuizStore } from '@/stores/useQuizStore'
 import { rememberConfirmationOptions, useStudyStore, type RememberConfirmationSeconds } from '@/stores/useStudyStore'
 import type { VocabularyItem } from '@/types/vocabulary.types'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
@@ -36,9 +38,13 @@ function getStudyForecast(vocabulary: VocabularyItem[], cardLimit: number | 'all
 
 export function StudySetupPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const { t } = useI18n()
   const user = useAuthStore((state) => state.user)
+  const setQuizDeckId = useQuizStore((state) => state.setSelectedDeckId)
+  const completionState = location.state as { completedDeckId?: string } | null
+  const completedDeckId = completionState?.completedDeckId ?? null
   const {
     mode,
     setMode,
@@ -64,6 +70,17 @@ export function StudySetupPage() {
     () => shouldUseRemoteData ? decksQuery.data ?? [] : demoDecks,
     [decksQuery.data, shouldUseRemoteData],
   )
+  const completedDeckTermsQuery = useQuery({
+    queryKey: ['deck-terms', completedDeckId],
+    queryFn: () => deckService.listTerms(completedDeckId!),
+    enabled: shouldUseRemoteData && Boolean(completedDeckId),
+  })
+  const completedDeckVocabulary = filterActiveVocabulary(completedDeckId
+    ? shouldUseRemoteData
+      ? completedDeckTermsQuery.data ?? []
+      : getDemoVocabularyForDeck(completedDeckId)
+    : [])
+  const canQuizCompletedDeck = completedDeckVocabulary.some(hasTranslation)
   const sourceVocabularyQuery = useQuery({
     queryKey: selectedDeckId ? ['deck-terms', selectedDeckId] : ['vocabulary', user?.id],
     queryFn: () => selectedDeckId ? deckService.listTerms(selectedDeckId) : vocabularyService.list(user!.id),
@@ -98,6 +115,12 @@ export function StudySetupPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['study-history', user?.id] }),
   })
   const activeStudyTo = hasActiveStudySession()
+
+  function openCompletedDeckQuiz() {
+    if (!completedDeckId || !canQuizCompletedDeck) return
+    setQuizDeckId(completedDeckId)
+    navigate('/app/quiz')
+  }
 
   async function startSession() {
     if (shouldUseRemoteData && user) await studySyncService.flushPendingStudyChanges(user.id)
@@ -138,6 +161,30 @@ export function StudySetupPage() {
         }}
         onCancel={() => setClearHistoryOpen(false)}
       />
+      {completedDeckId ? (
+        <Card className="mb-4 bg-primary">
+          <CardTitle>{t('study.completedLessonTitle')}</CardTitle>
+          <CardDescription className="mt-2">{t('study.completedLessonDescription')}</CardDescription>
+          {completedDeckTermsQuery.isError ? (
+            <div className="mt-3">
+              <p className="font-black text-danger">{t('study.completedLessonQuizLoadError')}</p>
+              <Button variant="ghost" className="mt-2" onClick={() => void completedDeckTermsQuery.refetch()}>
+                {t('quiz.retryLoad')}
+              </Button>
+            </div>
+          ) : null}
+          {!completedDeckTermsQuery.isLoading && !completedDeckTermsQuery.isError && !canQuizCompletedDeck ? (
+            <p className="mt-3 font-black">{t('study.completedLessonNeedsTranslation')}</p>
+          ) : null}
+          <Button
+            className="mt-4"
+            disabled={completedDeckTermsQuery.isLoading || !canQuizCompletedDeck}
+            onClick={openCompletedDeckQuiz}
+          >
+            {t('study.quizCompletedLesson')}
+          </Button>
+        </Card>
+      ) : null}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
         <Card className="p-5">
           <CardTitle>{t('study.sessionOptions')}</CardTitle>
