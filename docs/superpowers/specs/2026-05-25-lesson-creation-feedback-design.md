@@ -1,7 +1,7 @@
 # Thiet Ke Thong Bao Sau Khi Tao Bai Hoc
 
 **Ngay:** 2026-05-25
-**Trang thai:** Cho nguoi dung xem lai spec
+**Trang thai:** Da duoc duyet
 
 ## Muc Tieu
 
