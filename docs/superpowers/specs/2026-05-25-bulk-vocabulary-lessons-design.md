@@ -117,12 +117,12 @@ Ket qua bat buoc:
 
 ### 4. Ket Qua Tao Bai
 
-Sau khi tao thanh cong, UI giu nguoi dung o Kho tu vung, bo tap chon da xu ly, hien thong bao so bai da tao va cung cap link mo `Bai hoc NN` dau tien cua lo vua tao. Cach nay de nguoi dung tiep tuc chon tu hoac bat dau hoc ngay ma khong mat ngu canh.
+Sau khi tao thanh cong hoac mot phan, UI giu nguoi dung o `/app/vocabulary`, hien thong bao so bai da tao thanh cong va cung cap hanh dong mo `/app/decks` hoac dong thong bao. UI khong tu dong mo mot `Bai hoc NN` vua tao. Sau khi tao thanh cong toan bo, tap chon da xu ly duoc bo de nguoi dung tiep tuc lam viec ma khong mat ngu canh.
 
 Loi ghi du lieu duoc xu ly ro rang:
 
 - Neu khong tao duoc deck nao, hien loi va giu tap chon de nguoi dung thu lai.
-- Neu loi xay ra sau khi mot so deck da duoc tao, hien ro so bai da tao thanh cong va ten cac bai do; khong hien trang thai thanh cong cho ca lo.
+- Neu loi xay ra sau khi mot so deck da duoc tao, hien ro so bai da tao thanh cong voi hanh dong mo `/app/decks` hoac dong thong bao; khong hien trang thai thanh cong cho ca lo.
 - Mot deck chi duoc tinh la bai da tao khi viec gan `deck_terms` thanh cong. Neu gan term cua deck hien tai that bai, service co gang xoa deck dang do; cac bai hoan tat truoc do van la deck hop le de nguoi dung mo, hoc, hoac xoa qua quan ly deck.
 - Transaction hoac Supabase RPC de dam bao tao tat ca hoac khong tao gi ca la nang cap sau MVP.
 
@@ -273,6 +273,7 @@ flowchart TD
 - He thong tron cac tu da chon, tao du so deck `Bai hoc NN`, va moi deck co toi da `x` tu.
 - Mot term khong bi mat khoi Kho tu vung va co the thuoc nhieu bai/deck.
 - So thu tu cua bai moi tiep noi cac deck `Bai hoc NN` hien co cua nguoi dung.
+- Sau khi tao thanh cong hoac mot phan, `/app/vocabulary` thong bao so bai da hoan tat va cho phep mo `/app/decks` hoac dong thong bao, khong tu dong mo bai vua tao.
 - Nguoi dung co the mo tung bai moi va hoc bang flashcard theo dung noi dung deck.
 - Sau khi hoan thanh flashcard cua mot deck, nguoi dung thay hanh dong `Kiem tra bai nay`.
 - Hanh dong kiem tra mo quiz nhap ban dich theo dung deck vua hoc.
@@ -295,7 +296,7 @@ Tu dong chuyen co ve lien mach nhung co the ep nguoi hoc vao bai kiem tra khi ho
 
 ## Ghi Chu Cho Buoc Lap Ke Hoach
 
-- Ke hoach can hien thuc hanh vi sau khi tao thanh cong: giu o Kho tu vung va co link mo bai dau tien cua lo.
+- Ke hoach can hien thuc hanh vi sau khi tao thanh cong hoac mot phan: giu o `/app/vocabulary`, thong bao so bai da hoan tat va cho phep mo `/app/decks` hoac dong thong bao, khong tu dong mo bai vua tao.
 - Ke hoach can dam bao demo/offline mode khong mo phong tao deck khong the luu; UI phai noi ro can dang nhap/de luu bai hoc.
 - Can uu tien helper thuan va test cho viec shuffle/chunk/danh so truoc khi noi UI.
 - Can bao ve thay doi dang co trong cac file quiz/study cua workspace khi trien khai; khong ghi de cong viec khac.
