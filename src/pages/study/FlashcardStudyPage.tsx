@@ -26,7 +26,7 @@ import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useStudyStore } from '@/stores/useStudyStore'
 import type { RelationType, VocabularyItem } from '@/types/vocabulary.types'
-import { speak } from '@/utils/audio'
+import { speak, speakVI } from '@/utils/audio'
 import type { ReviewAction, ReviewResult } from '@/utils/spacedRepetition'
 import { scheduleReview } from '@/utils/spacedRepetition'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
@@ -413,6 +413,7 @@ export function FlashcardStudyPage() {
   const [autoSettingsOpen, setAutoSettingsOpen] = useState(false)
   const [autoCardSeconds, setAutoCardSeconds] = useState(DEFAULT_AUTO_CARD_SECONDS)
   const [autoRemainingSeconds, setAutoRemainingSeconds] = useState(DEFAULT_AUTO_CARD_SECONDS)
+  const [speakViEnabled, setSpeakViEnabled] = useState(false)
   const [confirmationOpen, setConfirmationOpen] = useState(false)
   const [confirmationRemainingSeconds, setConfirmationRemainingSeconds] = useState<number>(initialStoredSession?.rememberConfirmationSeconds ?? rememberConfirmationSeconds)
   const [completeAfterConfirmation, setCompleteAfterConfirmation] = useState(false)
@@ -424,6 +425,8 @@ export function FlashcardStudyPage() {
   const [flushedViewTermIds, setFlushedViewTermIds] = useState<string[]>(initialStoredSession?.flushedViewTermIds ?? [])
   const confirmationButtonRef = useRef<HTMLButtonElement>(null)
   const resolveConfirmationRef = useRef<(action: 'know' | 'dont_know') => void>(() => undefined)
+  const speechPendingRef = useRef(false)
+  const speechRetryRef = useRef<number>()
   const [sessionSnapshot, setSessionSnapshot] = useState<(StoredStudySession & { key: string }) | null>(
     initialStoredSession
       ? {
@@ -751,6 +754,11 @@ export function FlashcardStudyPage() {
   }
 
   function autoAdvance() {
+    if (speechPendingRef.current) {
+      window.clearTimeout(speechRetryRef.current)
+      speechRetryRef.current = window.setTimeout(() => autoAdvance(), 300)
+      return
+    }
     if (index >= vocabulary.length - 1) {
       requestCompletion()
       return
@@ -866,12 +874,31 @@ export function FlashcardStudyPage() {
   useEffect(() => {
     if (!autoEnabled || !item || confirmationOpen) return
 
+    speechPendingRef.current = true
+    let viTimer: number | undefined
+
     const timer = window.setTimeout(() => {
-      speak(item.source_text)
+      const spoke = speak(item.source_text, {
+        onEnd: () => {
+          if (speakViEnabled && item.translation) {
+            viTimer = window.setTimeout(() => {
+              speakVI(item.translation, () => { speechPendingRef.current = false })
+            }, 2000)
+          } else {
+            speechPendingRef.current = false
+          }
+        },
+      })
+      if (!spoke) speechPendingRef.current = false
     }, AUTO_AUDIO_DELAY_MS)
 
-    return () => window.clearTimeout(timer)
-  }, [autoEnabled, confirmationOpen, index, item])
+    return () => {
+      speechPendingRef.current = false
+      window.clearTimeout(timer)
+      window.clearTimeout(viTimer)
+      window.speechSynthesis?.cancel()
+    }
+  }, [autoEnabled, confirmationOpen, index, item, speakViEnabled])
 
   useEffect(() => {
     if (!autoEnabled || !item || confirmationOpen) return
@@ -886,11 +913,15 @@ export function FlashcardStudyPage() {
       return () => {
         window.clearTimeout(flipTimer)
         window.clearTimeout(advanceTimer)
+        window.clearTimeout(speechRetryRef.current)
       }
     }
 
     const advanceTimer = window.setTimeout(autoAdvance, autoCardMs)
-    return () => window.clearTimeout(advanceTimer)
+    return () => {
+      window.clearTimeout(advanceTimer)
+      window.clearTimeout(speechRetryRef.current)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoCardMs, autoEnabled, confirmationOpen, index, item, sessionMode, vocabulary.length])
 
@@ -1106,6 +1137,18 @@ export function FlashcardStudyPage() {
                   ) : (
                     <Play aria-hidden="true" className="h-7 w-7" fill="currentColor" strokeWidth={3} />
                   )}
+                </button>
+                <button
+                  type="button"
+                  aria-label={t('study.speakVietnamese')}
+                  title={t('study.speakVietnamese')}
+                  className={[
+                    'neo-button inline-flex h-10 min-h-10 w-10 items-center justify-center rounded-md border-2 border-border p-1.5 text-xs font-black active:neo-button-active',
+                    speakViEnabled ? 'bg-secondary text-secondary-foreground' : 'bg-background text-muted-foreground',
+                  ].join(' ')}
+                  onClick={() => setSpeakViEnabled((enabled) => !enabled)}
+                >
+                  VI
                 </button>
               </div>
             ) : null}

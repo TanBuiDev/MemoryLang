@@ -69,6 +69,7 @@ vi.mock('@/services/local/studyLocalDb', async (importOriginal) => {
 
 vi.mock('@/utils/audio', () => ({
   speak: vi.fn(),
+  speakVI: vi.fn(),
 }))
 
 const baseItem: VocabularyItem = {
@@ -681,7 +682,7 @@ describe('FlashcardStudyPage', () => {
       fireEvent.click(autoButton)
 
       act(() => vi.advanceTimersByTime(600))
-      expect(speak).toHaveBeenCalledWith('produce')
+      expect(speak).toHaveBeenCalledWith('produce', expect.any(Object))
       expect(screen.getByTestId('flashcard-shell')).toHaveAttribute('data-flipped', 'false')
 
       act(() => vi.advanceTimersByTime(2100))
@@ -691,7 +692,7 @@ describe('FlashcardStudyPage', () => {
       expect(screen.getAllByText('transfer')[0]).toBeInTheDocument()
 
       act(() => vi.advanceTimersByTime(600))
-      expect(speak).toHaveBeenLastCalledWith('transfer')
+      expect(speak).toHaveBeenLastCalledWith('transfer', expect.any(Object))
     } finally {
       vi.runOnlyPendingTimers()
       vi.useRealTimers()
