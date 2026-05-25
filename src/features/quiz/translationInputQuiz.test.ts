@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { demoVocabulary } from '@/features/demo/demoData'
 import {
+  checkTranslationAnswer,
   generateTranslationQuestions,
   isTranslationAnswerCorrect,
 } from '@/features/quiz/translationInputQuiz'
@@ -53,6 +54,13 @@ describe('isTranslationAnswerCorrect', () => {
     expect(isTranslationAnswerCorrect('lời hứa', 'hứa\n(n) lời hứa')).toBe(true)
   })
 
+  it('accepts any part of a translation separated by forward slashes', () => {
+    expect(isTranslationAnswerCorrect('khảo sát', 'khảo sát/nghiên cứu/điều tra')).toBe(true)
+    expect(isTranslationAnswerCorrect('nghiên cứu', 'khảo sát/nghiên cứu/điều tra')).toBe(true)
+    expect(isTranslationAnswerCorrect('điều tra', 'khảo sát/nghiên cứu/điều tra')).toBe(true)
+    expect(isTranslationAnswerCorrect('không liên quan', 'khảo sát/nghiên cứu/điều tra')).toBe(false)
+  })
+
   it.each([
     ['Qua chuoi', 'qua chuoi', true],
     ['  qua   chuoi! ', 'qua chuoi', true],
@@ -63,5 +71,72 @@ describe('isTranslationAnswerCorrect', () => {
     ['', 'quả táo', false],
   ])('checks "%s" against "%s"', (answer, expected, isCorrect) => {
     expect(isTranslationAnswerCorrect(answer, expected)).toBe(isCorrect)
+  })
+})
+
+describe('checkTranslationAnswer', () => {
+  it('returns exact for a perfect match', () => {
+    const result = checkTranslationAnswer('quả táo', 'quả táo')
+    expect(result.result).toBe('exact')
+    expect(result.matchedCandidate).toBe('quả táo')
+  })
+
+  it('returns exact for a normalized match', () => {
+    const result = checkTranslationAnswer('  Qua Chuoi! ', 'qua chuoi')
+    expect(result.result).toBe('exact')
+    expect(result.matchedCandidate).toBe('qua chuoi')
+  })
+
+  it('returns exact for decomposed Vietnamese Unicode', () => {
+    const result = checkTranslationAnswer('qua\u0309 ta\u0301o', 'quả táo')
+    expect(result.result).toBe('exact')
+    expect(result.matchedCandidate).toBe('quả táo')
+  })
+
+  it('returns exact for one of multiple comma-separated answers', () => {
+    const result = checkTranslationAnswer('lời hứa', 'hứa, (n) lời hứa')
+    expect(result.result).toBe('exact')
+    expect(result.matchedCandidate).toBe('lời hứa')
+  })
+
+  it('returns exact for one of multiple slash-separated answers', () => {
+    const result = checkTranslationAnswer('nghiên cứu', 'khảo sát/nghiên cứu/điều tra')
+    expect(result.result).toBe('exact')
+    expect(result.matchedCandidate).toBe('nghiên cứu')
+  })
+
+  it('handles mixed comma and slash separators', () => {
+    const result = checkTranslationAnswer('điều tra', 'kiểm tra, khảo sát/nghiên cứu/điều tra')
+    expect(result.result).toBe('exact')
+    expect(result.matchedCandidate).toBe('điều tra')
+  })
+
+  it('returns fuzzy when one edit away and expected text is >= 8 characters', () => {
+    const result = checkTranslationAnswer('phá vở sự ngại ngùng', 'phá vỡ sự ngại ngùng')
+    expect(result.result).toBe('fuzzy')
+    expect(result.matchedCandidate).toBe('phá vỡ sự ngại ngùng')
+  })
+
+  it('returns incorrect when one edit away but expected text is < 8 characters', () => {
+    const result = checkTranslationAnswer('mèo', 'mẹo')
+    expect(result.result).toBe('incorrect')
+    expect(result.matchedCandidate).toBeNull()
+  })
+
+  it('returns incorrect for completely different answers', () => {
+    const result = checkTranslationAnswer('chuột', 'quả táo')
+    expect(result.result).toBe('incorrect')
+    expect(result.matchedCandidate).toBeNull()
+  })
+
+  it('returns incorrect for empty answer', () => {
+    const result = checkTranslationAnswer('', 'quả táo')
+    expect(result.result).toBe('incorrect')
+    expect(result.matchedCandidate).toBeNull()
+  })
+
+  it('prefers exact match over fuzzy when both possible', () => {
+    const result = checkTranslationAnswer('abcdefgh', 'abcdefgh')
+    expect(result.result).toBe('exact')
   })
 })

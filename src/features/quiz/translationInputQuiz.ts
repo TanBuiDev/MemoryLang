@@ -62,9 +62,14 @@ function levenshteinDistance(left: string, right: string): number {
   return previous[rightCharacters.length]!
 }
 
-function matchesNormalizedAnswer(normalizedAnswer: string, normalizedExpected: string): boolean {
+function matchesExact(normalizedAnswer: string, normalizedExpected: string): boolean {
   if (!normalizedExpected) return false
-  if (normalizedAnswer === normalizedExpected) return true
+  return normalizedAnswer === normalizedExpected
+}
+
+function matchesFuzzy(normalizedAnswer: string, normalizedExpected: string): boolean {
+  if (!normalizedExpected) return false
+  if (normalizedAnswer === normalizedExpected) return false
   if (Array.from(normalizedExpected).length < 8) return false
 
   return levenshteinDistance(normalizedAnswer, normalizedExpected) <= 1
@@ -72,7 +77,7 @@ function matchesNormalizedAnswer(normalizedAnswer: string, normalizedExpected: s
 
 function getExpectedAnswerCandidates(expectedAnswer: string): string[] {
   const alternatives = expectedAnswer
-    .split(/[,;\n]+/)
+    .split(/[\/,;\n]+/)
     .map((candidate) => candidate.replace(/^\s*\([^)]*\)\s*/, ''))
 
   return [expectedAnswer, ...alternatives]
@@ -80,10 +85,34 @@ function getExpectedAnswerCandidates(expectedAnswer: string): string[] {
     .filter((candidate, index, candidates) => candidate && candidates.indexOf(candidate) === index)
 }
 
-export function isTranslationAnswerCorrect(answer: string, expectedAnswer: string): boolean {
-  const normalizedAnswer = normalizeTranslationAnswer(answer)
-  if (!normalizedAnswer) return false
+export type AnswerCheckResult = 'exact' | 'fuzzy' | 'incorrect'
 
-  return getExpectedAnswerCandidates(expectedAnswer)
-    .some((candidate) => matchesNormalizedAnswer(normalizedAnswer, candidate))
+export interface AnswerCheckDetail {
+  result: AnswerCheckResult
+  matchedCandidate: string | null
+}
+
+export function checkTranslationAnswer(answer: string, expectedAnswer: string): AnswerCheckDetail {
+  const normalizedAnswer = normalizeTranslationAnswer(answer)
+  if (!normalizedAnswer) return { result: 'incorrect', matchedCandidate: null }
+
+  const candidates = getExpectedAnswerCandidates(expectedAnswer)
+
+  for (const candidate of candidates) {
+    if (matchesExact(normalizedAnswer, candidate)) {
+      return { result: 'exact', matchedCandidate: candidate }
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (matchesFuzzy(normalizedAnswer, candidate)) {
+      return { result: 'fuzzy', matchedCandidate: candidate }
+    }
+  }
+
+  return { result: 'incorrect', matchedCandidate: null }
+}
+
+export function isTranslationAnswerCorrect(answer: string, expectedAnswer: string): boolean {
+  return checkTranslationAnswer(answer, expectedAnswer).result !== 'incorrect'
 }
