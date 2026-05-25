@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -7,6 +7,7 @@ import {
   isSplittable,
   type SplitInput,
   splitMultiTermEntry,
+  adaptSplitResultsForCreate,
 } from '@/features/vocabulary/multiTermSplit'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
@@ -14,11 +15,12 @@ import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
 
-type SplitState = Record<string, { applied: boolean; createdCount: number }>
+type SplitState = Record<string, { applied: boolean; createdCount: number; error?: string }>
 
 export function VocabularySplitPage() {
   const { t } = useI18n()
   const user = useAuthStore((state) => state.user)
+  const queryClient = useQueryClient()
   const [splitState, setSplitState] = useState<SplitState>({})
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -60,7 +62,7 @@ export function VocabularySplitPage() {
     if (parts.length === 0) return
 
     try {
-      const created = await vocabularyService.splitAndCreateTerms(entry.id, entry.deck_ids, parts as any)
+      const created = await vocabularyService.splitAndCreateTerms(entry.id, entry.deck_ids, adaptSplitResultsForCreate(parts))
       const state = splitState[entry.id]
       const previousCount = state?.createdCount ?? 0
       setSplitState((prev) => ({
@@ -68,8 +70,12 @@ export function VocabularySplitPage() {
         [entry.id]: { applied: true, createdCount: previousCount + created.length },
       }))
       setExpandedId(null)
-    } catch {
-      // Keep expanded so user can retry
+      queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] })
+    } catch (err) {
+      setSplitState((prev) => ({
+        ...prev,
+        [entry.id]: { ...prev[entry.id], error: t('vocabulary.splitError', { error: err instanceof Error ? err.message : 'Unknown error' }) },
+      }))
     }
   }
 
@@ -124,6 +130,9 @@ export function VocabularySplitPage() {
                   </Button>
                 )}
               </div>
+              {state?.error ? (
+                <p className="mt-2 text-sm font-black text-destructive">{state.error}</p>
+              ) : null}
               {expandedId === entry.id && !applied && parts.length > 0 ? (
                 <div className="mt-4 border-t-2 border-border pt-4">
                   <p className="mb-2 text-xs font-black uppercase text-muted-foreground">

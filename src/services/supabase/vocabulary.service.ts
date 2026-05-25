@@ -1,6 +1,7 @@
 import { supabase } from '@/services/supabase/client'
 import type { VocabularyFormValues, VocabularyUpdateFormValues } from '@/features/vocabulary/vocabulary.schema'
 import type { VocabularyItem } from '@/types/vocabulary.types'
+import type { SplitCreateTerm } from '@/features/vocabulary/multiTermSplit'
 import { normalizeTranslationAnswer } from '@/features/quiz/translationInputQuiz'
 import { normalizeText } from '@/utils/normalizeText'
 
@@ -137,7 +138,7 @@ export const vocabularyService = {
   async splitAndCreateTerms(
     originalId: string,
     originalDeckIds: string[],
-    newTerms: Array<Omit<VocabularyFormValues, 'deck_ids'> & { deck_ids: string[] }>,
+    newTerms: SplitCreateTerm[],
   ): Promise<VocabularyItem[]> {
     const created: VocabularyItem[] = []
     for (const term of newTerms) {
@@ -160,7 +161,7 @@ export const vocabularyService = {
           meanings: term.meanings ?? [],
           examples: term.examples ?? [],
           tags: term.tags ?? [],
-          status: (term as { status?: string }).status || 'new',
+          status: term.status || 'new',
         })
         .select('*')
         .single()
@@ -178,6 +179,8 @@ export const vocabularyService = {
         if (linkError) throw new Error(`Failed to link split term to decks: ${linkError.message}`)
       }
     }
+
+    await supabase.from('user_terms').update({ deleted_at: new Date().toISOString() }).eq('id', originalId)
 
     return created
   },

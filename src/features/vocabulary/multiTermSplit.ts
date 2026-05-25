@@ -79,6 +79,16 @@ export function getSplitParts(text: string | null): string[] {
   return rawParts
 }
 
+export type SplitCreateTerm = Omit<SplitResult, 'original_id' | 'relationship_ids'> & {
+  pronunciation_text?: string
+  audio_url?: string
+  image_url?: string
+}
+
+export function adaptSplitResultsForCreate(parts: SplitResult[]): SplitCreateTerm[] {
+  return parts.map(({ original_id, relationship_ids, ...rest }) => rest)
+}
+
 export function splitMultiTermEntry(entry: SplitInput): SplitResult[] {
   if (!isSplittable(entry)) return []
 
