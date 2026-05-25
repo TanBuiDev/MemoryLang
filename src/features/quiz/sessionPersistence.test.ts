@@ -24,6 +24,7 @@ describe('translation quiz session persistence', () => {
       score: 1,
       revealedQuestionIds: ['apple-0'],
       completedQuestionIds: ['apple-0'],
+      fuzzyCorrectQuestionIds: [],
     })
 
     expect(readStoredQuizSession(storageKey)).toEqual({
@@ -35,6 +36,7 @@ describe('translation quiz session persistence', () => {
       score: 1,
       revealedQuestionIds: ['apple-0'],
       completedQuestionIds: ['apple-0'],
+      fuzzyCorrectQuestionIds: [],
     })
 
     const payload = JSON.parse(window.sessionStorage.getItem(storageKey) ?? '{}') as Record<string, unknown>
@@ -84,6 +86,7 @@ describe('translation quiz session persistence', () => {
       score: 0,
       revealedQuestionIds: [],
       completedQuestionIds: [],
+      fuzzyCorrectQuestionIds: [],
     })
   })
 
@@ -103,6 +106,7 @@ describe('translation quiz session persistence', () => {
       score: 0,
       revealedQuestionIds: ['apple-0'],
       completedQuestionIds: ['apple-0'],
+      fuzzyCorrectQuestionIds: [],
     })
   })
 

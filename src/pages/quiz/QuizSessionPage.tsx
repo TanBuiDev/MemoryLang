@@ -1,12 +1,12 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useQuery } from '@tanstack/react-query'
+import { Volume2 } from 'lucide-react'
 import { type FormEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { PageHeader } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label } from '@/components/ui/input'
-import { Progress } from '@/components/ui/progress'
 import { getDemoVocabularyForDeck } from '@/features/demo/demoData'
 import {
   buildQuizSessionStorageKey,
@@ -16,14 +16,17 @@ import {
   type StoredQuizSession,
   writeStoredQuizSession,
 } from '@/features/quiz/sessionPersistence'
-import { generateTranslationQuestions, isTranslationAnswerCorrect } from '@/features/quiz/translationInputQuiz'
+import { addTranslationSuggestion } from '@/features/quiz/translationSuggestions'
+import { checkTranslationAnswer, generateTranslationQuestions } from '@/features/quiz/translationInputQuiz'
 import { formatStudyHotkey, hotkeyFromKeyboardEvent } from '@/features/study/studyHotkeys'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { deckService } from '@/services/supabase/deck.service'
+import { quizService } from '@/services/supabase/quiz.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useQuizStore } from '@/stores/useQuizStore'
+import { speak } from '@/utils/audio'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
 
 function appendUnique(ids: string[], id: string) {
@@ -32,16 +35,23 @@ function appendUnique(ids: string[], id: string) {
 
 const quizHotkeys = {
   checkAnswer: 'Enter',
-  revealAnswer: 'Alt+R',
+  revealAnswer: 'Alt+A',
   clearAnswer: 'Escape',
+  playAudio: 'Ctrl+Space',
 } as const
+
+type AnswerFeedback =
+  | { type: 'none' }
+  | { type: 'exact' }
+  | { type: 'fuzzy'; matchedAnswer: string }
+  | { type: 'incorrect' }
 
 export function QuizSessionPage() {
   const navigate = useNavigate()
   const { sessionId } = useParams()
   const { language, t } = useI18n()
   const user = useAuthStore((state) => state.user)
-  const { questionCount, selectedDeckId } = useQuizStore()
+  const { questionCount, autoPlayAudio, setAutoPlayAudio, selectedDeckId, audioRate, setAudioRate, audioRepeat, setAudioRepeat, playAudioOnReveal, setPlayAudioOnReveal, playAudioOnCorrect, setPlayAudioOnCorrect } = useQuizStore()
   const quizType = 'translation_input' as const
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
   const fallbackSessionKey = buildQuizSessionStorageKey({
@@ -59,9 +69,17 @@ export function QuizSessionPage() {
   }) ?? fallbackSessionKey
   const [session, setSession] = useState<StoredQuizSession | null>(() => readStoredQuizSession(sessionKey))
   const [answerText, setAnswerText] = useState('')
-  const [isIncorrect, setIsIncorrect] = useState(false)
+  const [answerFeedback, setAnswerFeedback] = useState<AnswerFeedback>({ type: 'none' })
   const [answerShakeIteration, setAnswerShakeIteration] = useState(0)
+  const [isEndQuizModalOpen, setIsEndQuizModalOpen] = useState(false)
+  const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
   const answerInputRef = useRef<HTMLInputElement>(null)
+  const playedAudioForQuestionRef = useRef<string | null>(null)
+  const startedAtRef = useRef(Date.now())
+
+  function speakQuestion(text: string) {
+    speak(text, { rate: audioRate, repeat: audioRepeat })
+  }
   const vocabularyQuery = useQuery({
     queryKey: ['vocabulary', user?.id],
     queryFn: () => vocabularyService.list(user!.id),
@@ -95,6 +113,7 @@ export function QuizSessionPage() {
       score: 0,
       revealedQuestionIds: [],
       completedQuestionIds: [],
+      fuzzyCorrectQuestionIds: [],
     }
     writeStoredQuizSession(sessionKey, initialSession)
     setSession(initialSession)
@@ -112,40 +131,76 @@ export function QuizSessionPage() {
     return () => window.clearTimeout(timer)
   }, [answerShakeIteration])
 
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimerRef.current) {
+        clearTimeout(autoAdvanceTimerRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!autoPlayAudio || !session) return
+    const currentQuestion = session.questions[session.index]
+    if (currentQuestion) {
+      playedAudioForQuestionRef.current = currentQuestion.id
+      speakQuestion(currentQuestion.sourceText)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.index, autoPlayAudio])
+
   const question = session?.questions[session.index]
   const isRevealed = question ? session?.revealedQuestionIds.includes(question.id) ?? false : false
   const hotkeyHint = language === 'vi'
-    ? `Phím tắt: ${formatStudyHotkey(quizHotkeys.checkAnswer)} kiểm tra, ${formatStudyHotkey(quizHotkeys.revealAnswer)} xem đáp án, ${formatStudyHotkey(quizHotkeys.clearAnswer)} xóa nhanh`
-    : `Shortcuts: ${formatStudyHotkey(quizHotkeys.checkAnswer)} check, ${formatStudyHotkey(quizHotkeys.revealAnswer)} reveal, ${formatStudyHotkey(quizHotkeys.clearAnswer)} clear`
+    ? `Phím tắt: ${formatStudyHotkey(quizHotkeys.checkAnswer)} kiểm tra, ${formatStudyHotkey(quizHotkeys.revealAnswer)} xem đáp án, ${formatStudyHotkey(quizHotkeys.clearAnswer)} xóa nhanh, ${formatStudyHotkey(quizHotkeys.playAudio)} phát âm`
+    : `Shortcuts: ${formatStudyHotkey(quizHotkeys.checkAnswer)} check, ${formatStudyHotkey(quizHotkeys.revealAnswer)} reveal, ${formatStudyHotkey(quizHotkeys.clearAnswer)} clear, ${formatStudyHotkey(quizHotkeys.playAudio)} play audio`
+
+  useEffect(() => {
+    if (question && playedAudioForQuestionRef.current !== question.id) {
+      playedAudioForQuestionRef.current = null
+    }
+  }, [question])
+
+  useEffect(() => {
+    function handleGlobalKeyDown(event: KeyboardEvent) {
+      const hotkey = hotkeyFromKeyboardEvent(event as unknown as import('react').KeyboardEvent<HTMLElement>)
+      if (hotkey === quizHotkeys.playAudio && question) {
+        event.preventDefault()
+        speakQuestion(question.sourceText)
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown as unknown as EventListener)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown as unknown as EventListener)
+  }, [question])
 
   function triggerAnswerShake() {
     setAnswerShakeIteration((value) => value + 1)
   }
 
-  function revealAnswer() {
-    if (!session || !question) return
-    setSession({
-      ...session,
-      revealedQuestionIds: appendUnique(session.revealedQuestionIds, question.id),
-    })
+  function clearAutoAdvance() {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current)
+      autoAdvanceTimerRef.current = null
+    }
   }
 
-  function submitAnswer(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  function advanceToNext(isFuzzyMatch: boolean, alwaysAwardPoint = false, clearRevealed = false) {
     if (!session || !question) return
 
-    if (!isTranslationAnswerCorrect(answerText, question.expectedTranslation)) {
-      setIsIncorrect(true)
-      triggerAnswerShake()
-      answerInputRef.current?.focus()
-      answerInputRef.current?.select()
-      return
-    }
-
     const completedQuestionIds = appendUnique(session.completedQuestionIds, question.id)
-    const nextScore = session.score + (isRevealed ? 0 : 1)
+    const fuzzyCorrectQuestionIds = isFuzzyMatch
+      ? appendUnique(session.fuzzyCorrectQuestionIds, question.id)
+      : session.fuzzyCorrectQuestionIds
+    const revealedQuestionIds = clearRevealed
+      ? session.revealedQuestionIds.filter((id) => id !== question.id)
+      : session.revealedQuestionIds
+    const nextScore = alwaysAwardPoint
+      ? session.score + 1
+      : session.score + (isRevealed ? 0 : 1)
+
     if (session.index >= session.questions.length - 1) {
       clearStoredQuizSession(sessionKey)
+      void saveQuizResult()
       navigate(`/app/quiz/result/demo-result?score=${nextScore}&total=${session.questions.length}`)
       return
     }
@@ -155,15 +210,119 @@ export function QuizSessionPage() {
       index: session.index + 1,
       score: nextScore,
       completedQuestionIds,
+      fuzzyCorrectQuestionIds,
+      revealedQuestionIds,
     })
     setAnswerText('')
-    setIsIncorrect(false)
+    setAnswerFeedback({ type: 'none' })
     setAnswerShakeIteration(0)
+  }
+
+  function revealAnswer() {
+    if (!session || !question) return
+    setSession({
+      ...session,
+      revealedQuestionIds: appendUnique(session.revealedQuestionIds, question.id),
+    })
+    if (playAudioOnReveal && playedAudioForQuestionRef.current !== question.id) {
+      playedAudioForQuestionRef.current = question.id
+      speakQuestion(question.sourceText)
+    }
+  }
+
+  function submitAnswer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!session || !question) return
+
+    if (answerFeedback.type === 'fuzzy') {
+      advanceToNext(true)
+      return
+    }
+
+    const result = checkTranslationAnswer(answerText, question.expectedTranslation)
+
+    if (result.result === 'exact') {
+      setAnswerFeedback({ type: 'exact' })
+      clearAutoAdvance()
+      autoAdvanceTimerRef.current = setTimeout(() => advanceToNext(false), 500)
+      if (playAudioOnCorrect && playedAudioForQuestionRef.current !== question.id) {
+        playedAudioForQuestionRef.current = question.id
+        speakQuestion(question.sourceText)
+      }
+      return
+    }
+
+    if (result.result === 'fuzzy') {
+      setAnswerFeedback({ type: 'fuzzy', matchedAnswer: result.matchedCandidate ?? question.expectedTranslation })
+      return
+    }
+
+    setAnswerFeedback({ type: 'incorrect' })
+    triggerAnswerShake()
+    answerInputRef.current?.focus()
+    answerInputRef.current?.select()
+  }
+
+  function overrideAsCorrect() {
+    if (!session || !question || answerFeedback.type !== 'incorrect') return
+    clearAutoAdvance()
+
+    if (shouldUseRemoteData && answerText.trim()) {
+      addTranslationSuggestion(
+        {
+          userTermId: question.userTermId,
+          sourceText: question.sourceText,
+          suggestedTranslation: answerText.trim(),
+          existingTranslation: question.expectedTranslation,
+          createdAt: Date.now(),
+        },
+        user?.id,
+      )
+    }
+
+    advanceToNext(false, true, true)
+  }
+
+  function endQuiz() {
+    if (!session) return
+    void saveQuizResult()
+    clearStoredQuizSession(sessionKey)
+    navigate(`/app/quiz/result/demo-result?score=${session.score}&total=${session.questions.length}`)
+  }
+
+  async function saveQuizResult() {
+    if (!session || !shouldUseRemoteData || !user) return
+    const durationMs = Date.now() - startedAtRef.current
+    try {
+      await quizService.saveResult({
+        userId: user.id,
+        deckId: selectedDeckId,
+        quizType,
+        totalQuestions: session.questions.length,
+        correctAnswers: session.score,
+        wrongAnswers: session.questions.length - session.score,
+        durationMs,
+        answers: [],
+      })
+      await quizService.pruneHistory(user.id)
+    } catch {
+      // save failures are non-critical
+    }
+  }
+
+  function goToQuestion(index: number) {
+    if (!session || index === session.index) return
+    clearAutoAdvance()
+    setAnswerText('')
+    setAnswerFeedback({ type: 'none' })
+    setAnswerShakeIteration(0)
+    setSession({ ...session, index })
   }
 
   function clearAnswer() {
     setAnswerText('')
-    setIsIncorrect(false)
+    setAnswerFeedback({ type: 'none' })
+    clearAutoAdvance()
     setAnswerShakeIteration(0)
     answerInputRef.current?.focus()
   }
@@ -178,13 +337,21 @@ export function QuizSessionPage() {
       return
     }
 
-    if (hotkey === quizHotkeys.revealAnswer && isIncorrect && !isRevealed) {
+    if (hotkey === quizHotkeys.revealAnswer && !isRevealed) {
       event.preventDefault()
       revealAnswer()
     }
   }
 
   const isAnswerShaking = answerShakeIteration > 0
+  const inputBorderClass = answerFeedback.type === 'exact'
+    ? isRevealed ? 'quiz-input-revealed' : 'quiz-input-success'
+    : answerFeedback.type === 'fuzzy'
+      ? 'quiz-input-warning'
+      : answerFeedback.type === 'incorrect'
+        ? 'quiz-input-danger'
+        : undefined
+  const shouldShake = isAnswerShaking && answerFeedback.type === 'incorrect'
 
   if (shouldUseRemoteData && sourceQuery.isLoading && !session) {
     return <Card className="font-black">{t('vocabulary.loading')}</Card>
@@ -210,49 +377,188 @@ export function QuizSessionPage() {
 
   return (
     <>
-      <PageHeader title={t('quiz.sessionTitle')} description={t('quiz.sessionDescription')} />
-      <Progress value={((session.index + 1) / session.questions.length) * 100} />
-      <Card className="mx-auto mt-6 max-w-2xl p-8">
-        <p className="text-center text-sm font-black uppercase text-muted-foreground">{t('quiz.question', { number: session.index + 1 })}</p>
-        <CardTitle className="mt-6 text-center text-4xl">{question.sourceText}</CardTitle>
-        <div className="mt-3 flex flex-wrap justify-center gap-2 text-sm font-black text-muted-foreground">
-          {question.ipa ? <span className="rounded-md border-2 border-border bg-background px-3 py-1">{question.ipa}</span> : null}
-          {question.partOfSpeech ? <span className="rounded-md border-2 border-border bg-background px-3 py-1">{question.partOfSpeech}</span> : null}
-        </div>
-        <form className="mt-8 grid gap-4" onSubmit={submitAnswer}>
-          <div>
-            <Label htmlFor="translation-answer">{t('quiz.answerLabel')}</Label>
-            <Input
-              id="translation-answer"
-              autoComplete="off"
-              autoFocus
-              ref={answerInputRef}
-              value={answerText}
-              className={isAnswerShaking ? 'quiz-answer-input-shake' : undefined}
-              style={isAnswerShaking ? { animationName: answerShakeIteration % 2 === 0 ? 'quiz-answer-shake-a' : 'quiz-answer-shake-b' } : undefined}
-              onAnimationEnd={() => setAnswerShakeIteration(0)}
-              onChange={(event) => {
-                setAnswerText(event.target.value)
-                if (isAnswerShaking) setAnswerShakeIteration(0)
-              }}
-              onKeyDown={handleAnswerKeyDown}
-            />
-          </div>
-          {isIncorrect ? <p aria-live="polite" className="font-black text-danger">{t('quiz.incorrect')}</p> : null}
-          {isRevealed ? (
-            <div className="rounded-md border-2 border-border bg-primary p-3 shadow-[2px_2px_0_var(--border)]">
-              <p className="text-xs font-black uppercase">{t('quiz.expectedTranslation')}</p>
-              <p className="mt-1 text-lg font-black">{question.expectedTranslation}</p>
-              <p className="mt-2 text-sm font-bold">{t('quiz.revealedNotice')}</p>
+      <div className="flex w-full gap-8 px-8 items-start">
+        <div className="flex-1">
+          <div className="mt-6">
+            <div className="mx-auto max-w-2xl">
+              <Card className="relative p-8">
+                <button
+                  type="button"
+                  className="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-md border-2 border-border bg-secondary text-secondary-foreground shadow-[2px_2px_0_var(--border)] hover:bg-[#321fb0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)]"
+                  onClick={() => { playedAudioForQuestionRef.current = question.id; speakQuestion(question.sourceText) }}
+                  aria-label={language === 'vi' ? 'Phát âm thanh' : 'Play audio'}
+                >
+                  <Volume2 size={18} />
+                </button>
+                <p className="text-center text-sm font-black uppercase text-muted-foreground">{t('quiz.question', { number: session.index + 1 })}</p>
+                <CardTitle className="mt-6 text-center text-4xl">
+                  {question.sourceText}
+                </CardTitle>
+                <div className="mt-3 flex flex-wrap justify-center gap-2 text-sm font-black text-muted-foreground">
+                  {question.ipa ? <span className="rounded-md border-2 border-border bg-background px-3 py-1">{question.ipa}</span> : null}
+                  {question.partOfSpeech ? <span className="rounded-md border-2 border-border bg-background px-3 py-1">{question.partOfSpeech}</span> : null}
+                </div>
+                <form className="mt-8 grid gap-4" onSubmit={submitAnswer}>
+                  <div>
+                    <Label htmlFor="translation-answer">{t('quiz.answerLabel')}</Label>
+                    <Input
+                      id="translation-answer"
+                      autoComplete="off"
+                      autoFocus
+                      ref={answerInputRef}
+                      value={answerText}
+                      readOnly={answerFeedback.type === 'exact'}
+                      className={shouldShake ? 'quiz-input-shake' : inputBorderClass}
+                      style={shouldShake ? { animationName: answerShakeIteration % 2 === 0 ? 'quiz-answer-shake-a' : 'quiz-answer-shake-b' } : undefined}
+                      onAnimationEnd={() => setAnswerShakeIteration(0)}
+                      onChange={(event) => {
+                        setAnswerText(event.target.value)
+                        if (answerFeedback.type !== 'none') setAnswerFeedback({ type: 'none' })
+                        if (isAnswerShaking) setAnswerShakeIteration(0)
+                      }}
+                      onKeyDown={handleAnswerKeyDown}
+                    />
+                  </div>
+                  {answerFeedback.type === 'exact' ? <p aria-live="polite" className={`font-black ${isRevealed ? 'text-muted-foreground' : 'text-success'}`}>{isRevealed ? t('quiz.correctRevealed') : t('quiz.correct')}</p> : null}
+                  {answerFeedback.type === 'fuzzy' ? (
+                    <p aria-live="polite" className="font-black text-warning">
+                      {t('quiz.fuzzyWarning', { answer: answerFeedback.matchedAnswer })}
+                    </p>
+                  ) : null}
+                  {answerFeedback.type === 'incorrect' ? <p aria-live="polite" className="font-black text-danger">{t('quiz.incorrect')}</p> : null}
+                  {isRevealed ? (
+                    <div className="rounded-md border-2 border-border bg-primary p-3 shadow-[2px_2px_0_var(--border)]">
+                      <p className="text-xs font-black uppercase">{t('quiz.expectedTranslation')}</p>
+                      <p className="mt-1 text-lg font-black">{question.expectedTranslation}</p>
+                      <p className="mt-2 text-sm font-bold">{t('quiz.revealedNotice')}</p>
+                    </div>
+                  ) : null}
+                  <div className="flex flex-wrap gap-3">
+                    {answerFeedback.type === 'fuzzy' ? (
+                      <Button type="submit">{t('quiz.continue')}</Button>
+                    ) : (
+                      <Button type="submit" disabled={answerFeedback.type === 'exact'}>{t('quiz.checkAnswer')}</Button>
+                    )}
+                    {answerFeedback.type === 'incorrect' && !isRevealed ? <Button type="button" variant="ghost" onClick={revealAnswer}>{t('quiz.revealAnswer')}</Button> : null}
+                    {answerFeedback.type === 'incorrect' ? (
+                      <Button type="button" variant="ghost" className="px-3 text-xs" onClick={overrideAsCorrect}>
+                        {t('quiz.overrideButton')}
+                      </Button>
+                    ) : null}
+                  </div>
+                  <p className="text-xs font-black text-muted-foreground">{hotkeyHint}</p>
+                </form>
+              </Card>
             </div>
-          ) : null}
-          <div className="flex flex-wrap gap-3">
-            <Button type="submit">{t('quiz.checkAnswer')}</Button>
-            {isIncorrect && !isRevealed ? <Button type="button" variant="ghost" onClick={revealAnswer}>{t('quiz.revealAnswer')}</Button> : null}
           </div>
-          <p className="text-xs font-black text-muted-foreground">{hotkeyHint}</p>
-        </form>
-      </Card>
+        </div>
+        <aside className="w-72 flex-shrink-0 sticky top-8 space-y-3 rounded-xl border-2 border-border bg-background/95 p-4 shadow-[3px_3px_0_var(--border)]">
+          <p className="text-xs font-black uppercase text-muted-foreground">{t('quiz.audioSettings')}</p>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                id="auto-play-audio"
+                type="checkbox"
+                checked={autoPlayAudio}
+                onChange={(event) => setAutoPlayAudio(event.target.checked)}
+                className="h-4 w-4 accent-secondary"
+              />
+              <label htmlFor="auto-play-audio" className="text-xs font-black cursor-pointer select-none">{t('quiz.autoPlayAudio')}</label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="play-audio-on-reveal"
+                type="checkbox"
+                checked={playAudioOnReveal}
+                onChange={(event) => setPlayAudioOnReveal(event.target.checked)}
+                className="h-4 w-4 accent-secondary"
+              />
+              <label htmlFor="play-audio-on-reveal" className="text-xs font-black cursor-pointer select-none">{t('quiz.playAudioOnReveal')}</label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="play-audio-on-correct"
+                type="checkbox"
+                checked={playAudioOnCorrect}
+                onChange={(event) => setPlayAudioOnCorrect(event.target.checked)}
+                className="h-4 w-4 accent-secondary"
+              />
+              <label htmlFor="play-audio-on-correct" className="text-xs font-black cursor-pointer select-none">{t('quiz.playAudioOnCorrect')}</label>
+            </div>
+            <div>
+              <label htmlFor="audio-rate" className="mb-1 block text-xs font-black text-muted-foreground">{t('quiz.audioRate')}</label>
+              <select
+                id="audio-rate"
+                value={audioRate}
+                onChange={(event) => setAudioRate(Number.parseFloat(event.target.value))}
+                className="h-9 w-full rounded-md border-2 border-border bg-card px-2 text-xs font-semibold shadow-[2px_2px_0_var(--border)] focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value={0.5}>0.5x</option>
+                <option value={0.75}>{t('quiz.audioRateSlow')}</option>
+                <option value={1}>{t('quiz.audioRateNormal')}</option>
+                <option value={1.25}>{t('quiz.audioRateFast')}</option>
+                <option value={1.5}>1.5x</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="audio-repeat" className="mb-1 block text-xs font-black text-muted-foreground">{t('quiz.audioRepeat')}</label>
+              <select
+                id="audio-repeat"
+                value={audioRepeat}
+                onChange={(event) => setAudioRepeat(Number.parseInt(event.target.value, 10))}
+                className="h-9 w-full rounded-md border-2 border-border bg-card px-2 text-xs font-semibold shadow-[2px_2px_0_var(--border)] focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value={1}>{t('quiz.audioRepeatSingle')}</option>
+                <option value={2}>{t('quiz.audioRepeatDouble')}</option>
+                <option value={3}>{t('quiz.audioRepeatTriple')}</option>
+              </select>
+            </div>
+          </div>
+          <hr className="border-border" />
+          <div>
+            <p className="mb-2 text-xs font-black uppercase text-muted-foreground">
+              {session.completedQuestionIds.length}/{session.questions.length}
+            </p>
+            <div className="grid grid-cols-5 gap-1.5">
+              {session.questions.map((q, i) => {
+                const isCurrent = i === session.index
+                const isCompleted = session.completedQuestionIds.includes(q.id)
+                const isFuzzy = session.fuzzyCorrectQuestionIds.includes(q.id)
+                const isRevealedQ = session.revealedQuestionIds.includes(q.id)
+                let bg = 'bg-muted text-muted-foreground hover:bg-muted/70'
+                if (isCurrent) bg = 'bg-primary text-primary-foreground'
+                else if (isRevealedQ) bg = 'bg-danger/30 text-danger'
+                else if (isCompleted && isFuzzy) bg = 'bg-warning/30 text-warning'
+                else if (isCompleted) bg = 'bg-success/30 text-success'
+
+                return (
+                  <button
+                    key={q.id}
+                    type="button"
+                    className={`flex h-7 w-7 items-center justify-center rounded border-2 border-border text-xs font-black transition-colors ${bg} active:translate-x-[1px] active:translate-y-[1px]`}
+                    onClick={() => goToQuestion(i)}
+                  >
+                    {i + 1}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <Button type="button" variant="ghost" className="w-full text-xs" onClick={() => setIsEndQuizModalOpen(true)}>
+            {t('quiz.endQuiz')}
+          </Button>
+        </aside>
+      </div>
+      <ConfirmModal
+        open={isEndQuizModalOpen}
+        title={t('quiz.endQuizTitle')}
+        description={t('quiz.endQuizDescription')}
+        confirmLabel={t('quiz.endQuizConfirm')}
+        cancelLabel={t('quiz.endQuizCancel')}
+        variant="danger"
+        onConfirm={endQuiz}
+        onCancel={() => setIsEndQuizModalOpen(false)}
+      />
     </>
   )
 }

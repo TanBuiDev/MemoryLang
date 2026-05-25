@@ -166,6 +166,26 @@
   box-shadow: 2px 2px 0 var(--border);
 }
 
+.quiz-input-success {
+  border-color: var(--success);
+  box-shadow: 2px 2px 0 var(--border);
+}
+
+.quiz-input-warning {
+  border-color: var(--warning);
+  box-shadow: 2px 2px 0 var(--border);
+}
+
+.quiz-input-danger {
+  border-color: var(--danger);
+  box-shadow: 2px 2px 0 var(--border);
+}
+
+.quiz-input-revealed {
+  border-color: var(--secondary);
+  box-shadow: 2px 2px 0 var(--border);
+}
+
 .flashcard-shell {
   min-height: 28rem;
   perspective: 1400px;

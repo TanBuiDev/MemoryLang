@@ -172,7 +172,7 @@ describe('QuizSessionPage', () => {
     const answerInput = await screen.findByRole('textbox', { name: 'Bản dịch' })
     await user.type(answerInput, 'chuối')
     await user.click(screen.getByRole('button', { name: 'Kiểm tra' }))
-    await user.keyboard('{Alt>}r{/Alt}')
+    await user.keyboard('{Alt>}a{/Alt}')
 
     expect(screen.getByText('quả táo')).toBeInTheDocument()
     expect(screen.getByText('Câu này sẽ không được tính điểm.')).toBeInTheDocument()

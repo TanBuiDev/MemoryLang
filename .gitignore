@@ -38,4 +38,5 @@ skills-lock.json
 /test-results/
 /playwright-report/
 /playwright/.cache/
-docs/superpowers/plans/2026-05-16-brand-refresh.md
+docs/superpowers/plans/
+.playwright-mcp/

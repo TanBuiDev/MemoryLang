@@ -26,6 +26,7 @@ export interface StoredQuizSession {
   score: number
   revealedQuestionIds: string[]
   completedQuestionIds: string[]
+  fuzzyCorrectQuestionIds: string[]
 }
 
 interface StoredQuizSessionPayload extends StoredQuizSession {
@@ -113,6 +114,9 @@ export function readStoredQuizSession(key: string): StoredQuizSession | null {
       completedQuestionIds: Array.isArray(payload.completedQuestionIds)
         ? payload.completedQuestionIds.filter((id): id is string => typeof id === 'string')
         : [],
+      fuzzyCorrectQuestionIds: Array.isArray(payload.fuzzyCorrectQuestionIds)
+        ? payload.fuzzyCorrectQuestionIds.filter((id): id is string => typeof id === 'string')
+        : [],
     }
   } catch {
     return null
@@ -130,6 +134,7 @@ export function writeStoredQuizSession(key: string, session: StoredQuizSession) 
     score: Math.max(0, Math.trunc(session.score)),
     revealedQuestionIds: session.revealedQuestionIds,
     completedQuestionIds: session.completedQuestionIds,
+    fuzzyCorrectQuestionIds: session.fuzzyCorrectQuestionIds,
   }
 
   try {
