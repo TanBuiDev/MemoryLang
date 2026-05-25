@@ -70,7 +70,7 @@ describe('VocabularyListPage bulk lessons', () => {
     expect(screen.getByText('Sẽ tạo 2 bài học')).toBeInTheDocument()
   })
 
-  it('creates named lesson batches from selected vocabulary and links to the first result', async () => {
+  it('creates named lesson batches and offers the deck list from feedback', async () => {
     const user = userEvent.setup()
     vi.mocked(deckService.createLessonBatch).mockResolvedValue({
       createdDecks: [{ id: 'deck-5', name: 'Bai hoc 05' } as never],
@@ -85,7 +85,11 @@ describe('VocabularyListPage bulk lessons', () => {
       base: expect.objectContaining({ user_id: 'user-1', source_language: 'en', native_language: 'vi' }),
       lessons: [expect.objectContaining({ name: 'Bai hoc 05' })],
     }))
-    expect(await screen.findByRole('link', { name: 'Mở Bai hoc 05' })).toHaveAttribute('href', '/app/decks/deck-5')
+    expect(await screen.findByRole('link', { name: 'Xem bộ thẻ' })).toHaveAttribute('href', '/app/decks')
+    expect(screen.queryByRole('link', { name: 'Mở Bai hoc 05' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Đóng' }))
+    expect(screen.queryByText('Đã tạo 1 bài học.')).not.toBeInTheDocument()
   })
 
   it('reports created lessons without claiming full success when persistence is partial', async () => {
@@ -100,6 +104,7 @@ describe('VocabularyListPage bulk lessons', () => {
     await user.click(screen.getByRole('button', { name: 'Xác nhận tạo bài' }))
 
     expect(await screen.findByText('Đã tạo 1 bài học, nhưng lô tạo chưa hoàn tất.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Xem bộ thẻ' })).toHaveAttribute('href', '/app/decks')
   })
 
   it('reports failure and retains selection when no lesson can be created', async () => {
@@ -115,5 +120,6 @@ describe('VocabularyListPage bulk lessons', () => {
 
     expect(await screen.findByText('Không thể tạo bài học. Vui lòng thử lại.')).toBeInTheDocument()
     expect(screen.getByText('Đã chọn 2')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Xem bộ thẻ' })).not.toBeInTheDocument()
   })
 })

@@ -328,13 +328,14 @@ export function VocabularyListPage() {
               count: lessonFeedback.createdDecks.length,
             })}
           </p>
-          {lessonFeedback.createdDecks[0] ? (
-            <Button asChild className="mt-3">
-              <Link to={`/app/decks/${lessonFeedback.createdDecks[0].id}`}>
-                {t('vocabulary.openCreatedLesson', { name: lessonFeedback.createdDecks[0].name })}
-              </Link>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button asChild>
+              <Link to="/app/decks">{t('vocabulary.viewDecks')}</Link>
             </Button>
-          ) : null}
+            <Button variant="ghost" onClick={() => setLessonFeedback(null)}>
+              {t('vocabulary.dismissLessonFeedback')}
+            </Button>
+          </div>
         </Card>
       ) : null}
       {selectMode && vocabulary.length > 0 ? (
