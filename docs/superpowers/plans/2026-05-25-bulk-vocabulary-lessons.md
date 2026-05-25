@@ -27,7 +27,7 @@
 | `src/services/supabase/deck.service.ts` | Persist a prepared batch of lesson decks and return complete or partial results. |
 | `src/services/supabase/deck.service.test.ts` | Protect insert/link calls and failure-after-partial-creation reporting. |
 | `src/pages/vocabulary/VocabularyListPage.tsx` | Reuse selection mode, render create-lessons modal/feedback, and invoke the domain/service flow. |
-| `src/pages/vocabulary/VocabularyListPage.test.tsx` | Exercise selection, projected lesson count, mutation inputs, success link, and partial error UI. |
+| `src/pages/vocabulary/VocabularyListPage.test.tsx` | Exercise selection, projected lesson count, mutation inputs, deck-list/dismiss feedback actions, partial results, and stale-feedback clearing after total failure. |
 | `src/pages/study/FlashcardStudyPage.tsx` | Include the completed `deck_id` in navigation state only after confirmed completion. |
 | `src/pages/study/FlashcardStudyPage.test.tsx` | Prove completion passes a deck handoff while discard does not. |
 | `src/pages/study/StudySetupPage.tsx` | Render the recent-completion CTA, preflight translated terms, and preselect quiz source. |
@@ -413,7 +413,7 @@ describe('VocabularyListPage bulk lessons', () => {
     expect(screen.getByText('Sẽ tạo 2 bài học')).toBeInTheDocument()
   })
 
-  it('creates named lesson batches from selected vocabulary and links to the first result', async () => {
+  it('creates named lesson batches from selected vocabulary and links feedback to the deck list', async () => {
     const user = userEvent.setup()
     vi.mocked(deckService.createLessonBatch).mockResolvedValue({
       createdDecks: [{ id: 'deck-5', name: 'Bai hoc 05' } as never],
@@ -429,7 +429,9 @@ describe('VocabularyListPage bulk lessons', () => {
       base: expect.objectContaining({ user_id: 'user-1', source_language: 'en', native_language: 'vi' }),
       lessons: [expect.objectContaining({ name: 'Bai hoc 05' })],
     }))
-    expect(await screen.findByRole('link', { name: 'Mở Bai hoc 05' })).toHaveAttribute('href', '/app/decks/deck-5')
+    expect(await screen.findByRole('link', { name: 'Xem bộ thẻ' })).toHaveAttribute('href', '/app/decks')
+    await user.click(screen.getByRole('button', { name: 'Đóng' }))
+    expect(screen.queryByRole('link', { name: 'Xem bộ thẻ' })).not.toBeInTheDocument()
   })
 
   it('reports created lessons without claiming full success when persistence is partial', async () => {
@@ -444,21 +446,35 @@ describe('VocabularyListPage bulk lessons', () => {
     await user.click(screen.getByRole('button', { name: 'Tạo bài học' }))
     await user.click(screen.getByRole('button', { name: 'Xác nhận tạo bài' }))
     expect(await screen.findByText('Đã tạo 1 bài học, nhưng lô tạo chưa hoàn tất.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Xem bộ thẻ' })).toHaveAttribute('href', '/app/decks')
   })
 
-  it('reports failure and retains selection when no lesson can be created', async () => {
+  it('reports failure, retains selection, and exposes no stale feedback action after a prior success', async () => {
     const user = userEvent.setup()
-    vi.mocked(deckService.createLessonBatch).mockResolvedValue({
-      createdDecks: [],
-      error: new Error('insert failed'),
-    })
+    vi.mocked(deckService.createLessonBatch)
+      .mockResolvedValueOnce({
+        createdDecks: [{ id: 'deck-5', name: 'Bai hoc 05' } as never],
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        createdDecks: [],
+        error: new Error('insert failed'),
+      })
     renderPage()
     await user.click(await screen.findByRole('button', { name: 'Chọn' }))
     await user.click(screen.getByRole('button', { name: 'Chọn tất cả' }))
     await user.click(screen.getByRole('button', { name: 'Tạo bài học' }))
     await user.click(screen.getByRole('button', { name: 'Xác nhận tạo bài' }))
+    expect(await screen.findByRole('link', { name: 'Xem bộ thẻ' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Chọn' }))
+    await user.click(screen.getByRole('button', { name: 'Chọn tất cả' }))
+    await user.click(screen.getByRole('button', { name: 'Tạo bài học' }))
+    await user.click(screen.getByRole('button', { name: 'Xác nhận tạo bài' }))
     expect(await screen.findByText('Không thể tạo bài học. Vui lòng thử lại.')).toBeInTheDocument()
     expect(screen.getByText('2 đã chọn')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Xem bộ thẻ' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Đóng' })).not.toBeInTheDocument()
   })
 })
 ```
@@ -487,7 +503,8 @@ Modify both locale sections in `src/i18n/index.ts` with equivalent visible strin
 'vocabulary.confirmCreateLessons': 'Create lessons',
 'vocabulary.lessonsCreated': 'Created {count} lessons.',
 'vocabulary.lessonsPartiallyCreated': 'Created {count} lessons, but the batch did not finish.',
-'vocabulary.openCreatedLesson': 'Open {name}',
+'vocabulary.viewCreatedLessons': 'View decks',
+'vocabulary.dismissLessonFeedback': 'Close',
 'vocabulary.lessonCreateFailed': 'Could not create lessons. Please try again.',
 ```
 
@@ -499,13 +516,14 @@ Modify both locale sections in `src/i18n/index.ts` with equivalent visible strin
 'vocabulary.confirmCreateLessons': 'Xác nhận tạo bài',
 'vocabulary.lessonsCreated': 'Đã tạo {count} bài học.',
 'vocabulary.lessonsPartiallyCreated': 'Đã tạo {count} bài học, nhưng lô tạo chưa hoàn tất.',
-'vocabulary.openCreatedLesson': 'Mở {name}',
+'vocabulary.viewCreatedLessons': 'Xem bộ thẻ',
+'vocabulary.dismissLessonFeedback': 'Đóng',
 'vocabulary.lessonCreateFailed': 'Không thể tạo bài học. Vui lòng thử lại.',
 ```
 
 - [ ] **Step 4: Add a decks query and lesson mutation to `VocabularyListPage`**
 
-Import `Label`, `buildLessonBatch`, `deckService`, and `Deck`. Add the query and state next to the current selection/delete state:
+Import `Label`, `buildLessonBatch`, and `deckService`. Add the query and state next to the current selection/delete state:
 
 ```ts
 const profile = useAuthStore((state) => state.profile)
@@ -516,7 +534,7 @@ const decksQuery = useQuery({
 })
 const [lessonModalOpen, setLessonModalOpen] = useState(false)
 const [wordsPerLesson, setWordsPerLesson] = useState('10')
-const [lessonFeedback, setLessonFeedback] = useState<{ createdDecks: Deck[]; partial: boolean } | null>(null)
+const [lessonFeedback, setLessonFeedback] = useState<{ createdCount: number; partial: boolean } | null>(null)
 const parsedWordsPerLesson = Number(wordsPerLesson)
 const canCreateLessons = selectedIds.size > 0
   && Number.isInteger(parsedWordsPerLesson)
@@ -530,6 +548,9 @@ Add the mutation:
 
 ```ts
 const createLessonsMutation = useMutation({
+  onMutate: () => {
+    setLessonFeedback(null)
+  },
   mutationFn: async () => {
     const result = await deckService.createLessonBatch({
       base: {
@@ -548,14 +569,17 @@ const createLessonsMutation = useMutation({
   },
   onSuccess: async (result) => {
     setLessonModalOpen(false)
-    setLessonFeedback({ createdDecks: result.createdDecks, partial: Boolean(result.error) })
+    setLessonFeedback({ createdCount: result.createdDecks.length, partial: Boolean(result.error) })
     if (!result.error) exitSelectMode()
     await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
+  },
+  onError: () => {
+    setLessonFeedback(null)
   },
 })
 ```
 
-When `result.error` is present, retain selection so the learner can inspect the incomplete result before choosing how to proceed. Do not enqueue offline mutations for deck creation.
+When `result.error` is present with completed lessons, retain selection so the learner can inspect the incomplete result before choosing how to proceed. When no lesson is created, clear prior feedback so a failed attempt cannot leave stale deck-list or dismiss actions visible. Do not enqueue offline mutations for deck creation.
 
 - [ ] **Step 5: Extend existing selection actions and render the creation modal/feedback**
 
@@ -578,16 +602,17 @@ Render feedback near the header and use the reusable `ConfirmModal` for input:
   <Card className="mb-4">
     <p className="font-black">
       {t(lessonFeedback.partial ? 'vocabulary.lessonsPartiallyCreated' : 'vocabulary.lessonsCreated', {
-        count: lessonFeedback.createdDecks.length,
+        count: lessonFeedback.createdCount,
       })}
     </p>
-    {lessonFeedback.createdDecks[0] ? (
-      <Button asChild className="mt-3">
-        <Link to={`/app/decks/${lessonFeedback.createdDecks[0].id}`}>
-          {t('vocabulary.openCreatedLesson', { name: lessonFeedback.createdDecks[0].name })}
-        </Link>
+    <div className="mt-3 flex gap-2">
+      <Button asChild>
+        <Link to="/app/decks">{t('vocabulary.viewCreatedLessons')}</Link>
       </Button>
-    ) : null}
+      <Button variant="ghost" onClick={() => setLessonFeedback(null)}>
+        {t('vocabulary.dismissLessonFeedback')}
+      </Button>
+    </div>
   </Card>
 ) : null}
 <ConfirmModal
@@ -918,7 +943,7 @@ pnpm dev
 Use the Browser plugin against the local URL and verify a signed-in flow:
 
 1. On `/app/vocabulary`, enter selection mode, choose several terms, open `Tạo bài học`, change `Số từ mỗi bài`, and confirm the projected count changes.
-2. Create the batch and confirm the success card links to its first `Bai hoc NN` deck.
+2. Create the batch and confirm the success card links `Xem bộ thẻ` to `/app/decks`; confirm `Đóng` hides the card, and a subsequent totally failed creation attempt does not expose either stale action.
 3. Open that deck, complete its flashcard session, and confirm `/app/study` displays `Kiểm tra bài này`.
 4. Click the CTA and confirm `/app/quiz` has that deck selected and still blocks start if its terms lack translations.
 
