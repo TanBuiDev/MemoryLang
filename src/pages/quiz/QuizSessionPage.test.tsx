@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -149,6 +149,45 @@ describe('QuizSessionPage', () => {
     await user.click(screen.getByRole('button', { name: 'Kiểm tra' }))
 
     expect(await screen.findByText('?score=0&total=1')).toBeInTheDocument()
+  })
+
+  it('shakes the input after a wrong answer until the animation ends', async () => {
+    const user = userEvent.setup()
+    await renderPage([baseItem])
+
+    const answerInput = await screen.findByRole('textbox', { name: 'Bản dịch' })
+    await user.type(answerInput, 'chuối')
+    await user.click(screen.getByRole('button', { name: 'Kiểm tra' }))
+
+    expect(answerInput).toHaveClass('quiz-answer-input-shake')
+
+    fireEvent.animationEnd(answerInput)
+    await waitFor(() => expect(answerInput).not.toHaveClass('quiz-answer-input-shake'))
+  })
+
+  it('reveals the answer with Alt+R after an incorrect try', async () => {
+    const user = userEvent.setup()
+    await renderPage([baseItem])
+
+    const answerInput = await screen.findByRole('textbox', { name: 'Bản dịch' })
+    await user.type(answerInput, 'chuối')
+    await user.click(screen.getByRole('button', { name: 'Kiểm tra' }))
+    await user.keyboard('{Alt>}r{/Alt}')
+
+    expect(screen.getByText('quả táo')).toBeInTheDocument()
+    expect(screen.getByText('Câu này sẽ không được tính điểm.')).toBeInTheDocument()
+  })
+
+  it('clears the draft answer with Escape', async () => {
+    const user = userEvent.setup()
+    await renderPage([baseItem])
+
+    const answerInput = await screen.findByRole('textbox', { name: 'Bản dịch' })
+    await user.type(answerInput, 'chuối')
+    await user.keyboard('{Escape}')
+
+    expect(answerInput).toHaveValue('')
+    expect(answerInput).toHaveFocus()
   })
 
   it('preserves a revealed answer penalty after the session page reloads', async () => {

@@ -42,6 +42,17 @@ describe('isTranslationAnswerCorrect', () => {
     expect(isTranslationAnswerCorrect('abcdefx', ' Abcdefg! ')).toBe(false)
   })
 
+  it('accepts individual comma-separated translations and ignores part-of-speech labels', () => {
+    expect(isTranslationAnswerCorrect('hứa', 'hứa, (n) lời hứa')).toBe(true)
+    expect(isTranslationAnswerCorrect('lời hứa', 'hứa, (n) lời hứa')).toBe(true)
+    expect(isTranslationAnswerCorrect('n', 'hứa, (n) lời hứa')).toBe(false)
+  })
+
+  it('accepts saved translation alternatives separated by semicolons or new lines', () => {
+    expect(isTranslationAnswerCorrect('cam kết', 'hứa; cam kết')).toBe(true)
+    expect(isTranslationAnswerCorrect('lời hứa', 'hứa\n(n) lời hứa')).toBe(true)
+  })
+
   it.each([
     ['Qua chuoi', 'qua chuoi', true],
     ['  qua   chuoi! ', 'qua chuoi', true],

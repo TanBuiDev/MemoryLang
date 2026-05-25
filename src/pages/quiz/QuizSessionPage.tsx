@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useQuery } from '@tanstack/react-query'
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ import {
   writeStoredQuizSession,
 } from '@/features/quiz/sessionPersistence'
 import { generateTranslationQuestions, isTranslationAnswerCorrect } from '@/features/quiz/translationInputQuiz'
+import { formatStudyHotkey, hotkeyFromKeyboardEvent } from '@/features/study/studyHotkeys'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { deckService } from '@/services/supabase/deck.service'
@@ -29,10 +30,16 @@ function appendUnique(ids: string[], id: string) {
   return ids.includes(id) ? ids : [...ids, id]
 }
 
+const quizHotkeys = {
+  checkAnswer: 'Enter',
+  revealAnswer: 'Alt+R',
+  clearAnswer: 'Escape',
+} as const
+
 export function QuizSessionPage() {
   const navigate = useNavigate()
   const { sessionId } = useParams()
-  const { t } = useI18n()
+  const { language, t } = useI18n()
   const user = useAuthStore((state) => state.user)
   const { questionCount, selectedDeckId } = useQuizStore()
   const quizType = 'translation_input' as const
@@ -53,6 +60,8 @@ export function QuizSessionPage() {
   const [session, setSession] = useState<StoredQuizSession | null>(() => readStoredQuizSession(sessionKey))
   const [answerText, setAnswerText] = useState('')
   const [isIncorrect, setIsIncorrect] = useState(false)
+  const [answerShakeIteration, setAnswerShakeIteration] = useState(0)
+  const answerInputRef = useRef<HTMLInputElement>(null)
   const vocabularyQuery = useQuery({
     queryKey: ['vocabulary', user?.id],
     queryFn: () => vocabularyService.list(user!.id),
@@ -96,8 +105,22 @@ export function QuizSessionPage() {
     writeStoredQuizSession(sessionKey, session)
   }, [session, sessionKey])
 
+  useEffect(() => {
+    if (answerShakeIteration === 0) return
+
+    const timer = window.setTimeout(() => setAnswerShakeIteration(0), 320)
+    return () => window.clearTimeout(timer)
+  }, [answerShakeIteration])
+
   const question = session?.questions[session.index]
   const isRevealed = question ? session?.revealedQuestionIds.includes(question.id) ?? false : false
+  const hotkeyHint = language === 'vi'
+    ? `Phím tắt: ${formatStudyHotkey(quizHotkeys.checkAnswer)} kiểm tra, ${formatStudyHotkey(quizHotkeys.revealAnswer)} xem đáp án, ${formatStudyHotkey(quizHotkeys.clearAnswer)} xóa nhanh`
+    : `Shortcuts: ${formatStudyHotkey(quizHotkeys.checkAnswer)} check, ${formatStudyHotkey(quizHotkeys.revealAnswer)} reveal, ${formatStudyHotkey(quizHotkeys.clearAnswer)} clear`
+
+  function triggerAnswerShake() {
+    setAnswerShakeIteration((value) => value + 1)
+  }
 
   function revealAnswer() {
     if (!session || !question) return
@@ -113,6 +136,9 @@ export function QuizSessionPage() {
 
     if (!isTranslationAnswerCorrect(answerText, question.expectedTranslation)) {
       setIsIncorrect(true)
+      triggerAnswerShake()
+      answerInputRef.current?.focus()
+      answerInputRef.current?.select()
       return
     }
 
@@ -132,7 +158,33 @@ export function QuizSessionPage() {
     })
     setAnswerText('')
     setIsIncorrect(false)
+    setAnswerShakeIteration(0)
   }
+
+  function clearAnswer() {
+    setAnswerText('')
+    setIsIncorrect(false)
+    setAnswerShakeIteration(0)
+    answerInputRef.current?.focus()
+  }
+
+  function handleAnswerKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    const hotkey = hotkeyFromKeyboardEvent(event)
+    if (!hotkey) return
+
+    if (hotkey === quizHotkeys.clearAnswer) {
+      event.preventDefault()
+      clearAnswer()
+      return
+    }
+
+    if (hotkey === quizHotkeys.revealAnswer && isIncorrect && !isRevealed) {
+      event.preventDefault()
+      revealAnswer()
+    }
+  }
+
+  const isAnswerShaking = answerShakeIteration > 0
 
   if (shouldUseRemoteData && sourceQuery.isLoading && !session) {
     return <Card className="font-black">{t('vocabulary.loading')}</Card>
@@ -174,8 +226,16 @@ export function QuizSessionPage() {
               id="translation-answer"
               autoComplete="off"
               autoFocus
+              ref={answerInputRef}
               value={answerText}
-              onChange={(event) => setAnswerText(event.target.value)}
+              className={isAnswerShaking ? 'quiz-answer-input-shake' : undefined}
+              style={isAnswerShaking ? { animationName: answerShakeIteration % 2 === 0 ? 'quiz-answer-shake-a' : 'quiz-answer-shake-b' } : undefined}
+              onAnimationEnd={() => setAnswerShakeIteration(0)}
+              onChange={(event) => {
+                setAnswerText(event.target.value)
+                if (isAnswerShaking) setAnswerShakeIteration(0)
+              }}
+              onKeyDown={handleAnswerKeyDown}
             />
           </div>
           {isIncorrect ? <p aria-live="polite" className="font-black text-danger">{t('quiz.incorrect')}</p> : null}
@@ -190,6 +250,7 @@ export function QuizSessionPage() {
             <Button type="submit">{t('quiz.checkAnswer')}</Button>
             {isIncorrect && !isRevealed ? <Button type="button" variant="ghost" onClick={revealAnswer}>{t('quiz.revealAnswer')}</Button> : null}
           </div>
+          <p className="text-xs font-black text-muted-foreground">{hotkeyHint}</p>
         </form>
       </Card>
     </>

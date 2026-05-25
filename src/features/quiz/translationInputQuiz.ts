@@ -62,13 +62,28 @@ function levenshteinDistance(left: string, right: string): number {
   return previous[rightCharacters.length]!
 }
 
-export function isTranslationAnswerCorrect(answer: string, expectedAnswer: string): boolean {
-  const normalizedAnswer = normalizeTranslationAnswer(answer)
-  const normalizedExpected = normalizeTranslationAnswer(expectedAnswer)
-
-  if (!normalizedAnswer || !normalizedExpected) return false
+function matchesNormalizedAnswer(normalizedAnswer: string, normalizedExpected: string): boolean {
+  if (!normalizedExpected) return false
   if (normalizedAnswer === normalizedExpected) return true
   if (Array.from(normalizedExpected).length < 8) return false
 
   return levenshteinDistance(normalizedAnswer, normalizedExpected) <= 1
+}
+
+function getExpectedAnswerCandidates(expectedAnswer: string): string[] {
+  const alternatives = expectedAnswer
+    .split(/[,;\n]+/)
+    .map((candidate) => candidate.replace(/^\s*\([^)]*\)\s*/, ''))
+
+  return [expectedAnswer, ...alternatives]
+    .map(normalizeTranslationAnswer)
+    .filter((candidate, index, candidates) => candidate && candidates.indexOf(candidate) === index)
+}
+
+export function isTranslationAnswerCorrect(answer: string, expectedAnswer: string): boolean {
+  const normalizedAnswer = normalizeTranslationAnswer(answer)
+  if (!normalizedAnswer) return false
+
+  return getExpectedAnswerCandidates(expectedAnswer)
+    .some((candidate) => matchesNormalizedAnswer(normalizedAnswer, candidate))
 }
