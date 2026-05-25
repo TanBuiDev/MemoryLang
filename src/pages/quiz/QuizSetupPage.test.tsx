@@ -125,7 +125,37 @@ describe('QuizSetupPage', () => {
     await user.selectOptions(screen.getAllByRole('combobox')[0], 'deck-1')
 
     expect(await screen.findByText('1 từ sẵn sàng kiểm tra')).toBeInTheDocument()
+    expect(screen.queryByText(/chưa có bản dịch sẽ không xuất hiện/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Bổ sung bản dịch' })).not.toBeInTheDocument()
     expect(deckService.listTerms).toHaveBeenCalledWith('deck-1')
+  })
+
+  it('explains partial readiness and links to edit untranslated deck terms', async () => {
+    const user = userEvent.setup()
+    const { deckService } = await import('@/services/supabase/deck.service')
+    const { vocabularyService } = await import('@/services/supabase/vocabulary.service')
+    useAuthStore.setState({ user: { id: 'user-1' } as never, profile: null })
+    vi.mocked(deckService.list).mockResolvedValue([
+      { id: 'lesson-1', name: 'Bai hoc 01' },
+    ] as never)
+    vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary)
+    vi.mocked(deckService.listTerms).mockResolvedValue([
+      demoVocabulary[0]!,
+      { ...demoVocabulary[1]!, id: 'missing-term', source_text: 'be known for', translation: null },
+    ] as VocabularyItem[])
+
+    renderPage()
+    await screen.findByText('3 từ sẵn sàng kiểm tra')
+    await user.selectOptions(screen.getAllByRole('combobox')[0], 'lesson-1')
+
+    expect(await screen.findByText('1/2 từ sẵn sàng kiểm tra')).toBeInTheDocument()
+    expect(screen.getByText('1 từ chưa có bản dịch sẽ không xuất hiện trong bài kiểm tra.')).toBeInTheDocument()
+    expect(screen.getByText('be known for')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Bổ sung bản dịch' })).toHaveAttribute(
+      'href',
+      '/app/vocabulary/missing-term/edit',
+    )
+    expect(screen.getByRole('button', { name: 'Bắt đầu kiểm tra' })).toBeEnabled()
   })
 
   it('retries a failed remote vocabulary query before enabling start', async () => {

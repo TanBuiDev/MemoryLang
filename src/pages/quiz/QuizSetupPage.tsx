@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -49,6 +49,10 @@ export function QuizSetupPage() {
   )
   const availableVocabulary = useMemo(
     () => sourceVocabulary.filter(hasTranslation),
+    [sourceVocabulary],
+  )
+  const missingTranslationVocabulary = useMemo(
+    () => sourceVocabulary.filter((item) => !hasTranslation(item)),
     [sourceVocabulary],
   )
   const typeDistribution = useMemo(() => {
@@ -169,7 +173,30 @@ export function QuizSetupPage() {
                 ) : null}
                 {!vocabularyLoading && !vocabularyError && sourceVocabulary.length === 0 ? <p className="text-sm font-black text-danger">{t('quiz.noVocabulary')}</p> : null}
                 {!vocabularyLoading && !vocabularyError && sourceVocabulary.length > 0 && availableVocabulary.length === 0 ? <p className="text-sm font-black text-danger">{t('quiz.noTranslatedVocabulary')}</p> : null}
-                {!vocabularyLoading && !vocabularyError && availableVocabulary.length > 0 ? <p className="text-sm font-black text-success">{t('quiz.availableCount', { count: availableVocabulary.length })}</p> : null}
+                {!vocabularyLoading && !vocabularyError && availableVocabulary.length > 0 && missingTranslationVocabulary.length === 0 ? <p className="text-sm font-black text-success">{t('quiz.availableCount', { count: availableVocabulary.length })}</p> : null}
+                {!vocabularyLoading && !vocabularyError && availableVocabulary.length > 0 && missingTranslationVocabulary.length > 0 ? (
+                  <div className="grid gap-3">
+                    <p className="text-sm font-black text-warning">
+                      {t('quiz.partialAvailableCount', {
+                        available: availableVocabulary.length,
+                        total: sourceVocabulary.length,
+                      })}
+                    </p>
+                    <p className="text-sm font-bold text-muted-foreground">
+                      {t('quiz.missingTranslationNotice', { count: missingTranslationVocabulary.length })}
+                    </p>
+                    <div className="grid gap-2">
+                      {missingTranslationVocabulary.map((item) => (
+                        <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border-2 border-border bg-card p-2">
+                          <span className="text-sm font-black">{item.source_text}</span>
+                          <Button asChild variant="ghost" className="text-xs">
+                            <Link to={`/app/vocabulary/${item.id}/edit`}>{t('quiz.addTranslation')}</Link>
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
               <Button disabled={cannotStart} onClick={startQuiz}>{t('quiz.start')}</Button>
             </div>
