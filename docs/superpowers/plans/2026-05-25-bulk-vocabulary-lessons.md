@@ -503,8 +503,8 @@ Modify both locale sections in `src/i18n/index.ts` with equivalent visible strin
 'vocabulary.confirmCreateLessons': 'Create lessons',
 'vocabulary.lessonsCreated': 'Created {count} lessons.',
 'vocabulary.lessonsPartiallyCreated': 'Created {count} lessons, but the batch did not finish.',
-'vocabulary.viewCreatedLessons': 'View decks',
-'vocabulary.dismissLessonFeedback': 'Close',
+'vocabulary.viewDecks': 'View decks',
+'vocabulary.dismissLessonFeedback': 'Dismiss',
 'vocabulary.lessonCreateFailed': 'Could not create lessons. Please try again.',
 ```
 
@@ -516,14 +516,14 @@ Modify both locale sections in `src/i18n/index.ts` with equivalent visible strin
 'vocabulary.confirmCreateLessons': 'Xác nhận tạo bài',
 'vocabulary.lessonsCreated': 'Đã tạo {count} bài học.',
 'vocabulary.lessonsPartiallyCreated': 'Đã tạo {count} bài học, nhưng lô tạo chưa hoàn tất.',
-'vocabulary.viewCreatedLessons': 'Xem bộ thẻ',
+'vocabulary.viewDecks': 'Xem bộ thẻ',
 'vocabulary.dismissLessonFeedback': 'Đóng',
 'vocabulary.lessonCreateFailed': 'Không thể tạo bài học. Vui lòng thử lại.',
 ```
 
 - [ ] **Step 4: Add a decks query and lesson mutation to `VocabularyListPage`**
 
-Import `Label`, `buildLessonBatch`, and `deckService`. Add the query and state next to the current selection/delete state:
+Import `Label`, `buildLessonBatch`, `deckService`, and `Deck`. Add the query and state next to the current selection/delete state:
 
 ```ts
 const profile = useAuthStore((state) => state.profile)
@@ -534,7 +534,7 @@ const decksQuery = useQuery({
 })
 const [lessonModalOpen, setLessonModalOpen] = useState(false)
 const [wordsPerLesson, setWordsPerLesson] = useState('10')
-const [lessonFeedback, setLessonFeedback] = useState<{ createdCount: number; partial: boolean } | null>(null)
+const [lessonFeedback, setLessonFeedback] = useState<{ createdDecks: Deck[]; partial: boolean } | null>(null)
 const parsedWordsPerLesson = Number(wordsPerLesson)
 const canCreateLessons = selectedIds.size > 0
   && Number.isInteger(parsedWordsPerLesson)
@@ -548,9 +548,6 @@ Add the mutation:
 
 ```ts
 const createLessonsMutation = useMutation({
-  onMutate: () => {
-    setLessonFeedback(null)
-  },
   mutationFn: async () => {
     const result = await deckService.createLessonBatch({
       base: {
@@ -569,17 +566,14 @@ const createLessonsMutation = useMutation({
   },
   onSuccess: async (result) => {
     setLessonModalOpen(false)
-    setLessonFeedback({ createdCount: result.createdDecks.length, partial: Boolean(result.error) })
+    setLessonFeedback({ createdDecks: result.createdDecks, partial: Boolean(result.error) })
     if (!result.error) exitSelectMode()
     await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
-  },
-  onError: () => {
-    setLessonFeedback(null)
   },
 })
 ```
 
-When `result.error` is present with completed lessons, retain selection so the learner can inspect the incomplete result before choosing how to proceed. When no lesson is created, clear prior feedback so a failed attempt cannot leave stale deck-list or dismiss actions visible. Do not enqueue offline mutations for deck creation.
+When `result.error` is present with completed lessons, retain selection so the learner can inspect the incomplete result before choosing how to proceed. Clear prior feedback when opening a new creation attempt so a later total failure cannot leave stale deck-list or dismiss actions visible. Do not enqueue offline mutations for deck creation.
 
 - [ ] **Step 5: Extend existing selection actions and render the creation modal/feedback**
 
@@ -589,7 +583,11 @@ In `headerActions`, add the create action before delete:
 <Button
   variant="secondary"
   disabled={selectedIds.size === 0 || !shouldUseRemoteData}
-  onClick={() => setLessonModalOpen(true)}
+  onClick={() => {
+    createLessonsMutation.reset()
+    setLessonFeedback(null)
+    setLessonModalOpen(true)
+  }}
 >
   {t('vocabulary.createLessons')}
 </Button>
@@ -602,12 +600,12 @@ Render feedback near the header and use the reusable `ConfirmModal` for input:
   <Card className="mb-4">
     <p className="font-black">
       {t(lessonFeedback.partial ? 'vocabulary.lessonsPartiallyCreated' : 'vocabulary.lessonsCreated', {
-        count: lessonFeedback.createdCount,
+        count: lessonFeedback.createdDecks.length,
       })}
     </p>
     <div className="mt-3 flex gap-2">
       <Button asChild>
-        <Link to="/app/decks">{t('vocabulary.viewCreatedLessons')}</Link>
+        <Link to="/app/decks">{t('vocabulary.viewDecks')}</Link>
       </Button>
       <Button variant="ghost" onClick={() => setLessonFeedback(null)}>
         {t('vocabulary.dismissLessonFeedback')}
