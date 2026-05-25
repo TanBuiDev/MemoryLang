@@ -8,6 +8,7 @@ Vocabulary learning & spaced-repetition flashcard web app. Primary audience: Vie
 - **AI-powered enrichment** — Auto-generate IPA, definitions, translations, and example sentences via Edge Function
 - **Flashcard study** — Two-side and one-side card modes with progress tracking
 - **Translation quiz** — Choose all vocabulary or a deck, type translations, reveal answers when stuck, and receive a score
+- **Generated lessons** — Split selected vocabulary into randomized lesson decks, then quiz a completed lesson immediately
 - **Spaced repetition** — Review scheduling based on recall performance
 - **Dashboard stats** — Total words, accuracy rate, deck progress
 - **i18n** — Vietnamese and English interface

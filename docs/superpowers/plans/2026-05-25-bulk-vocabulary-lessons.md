@@ -4,7 +4,7 @@
 
 **Goal:** Let signed-in learners split selected vocabulary into randomized lesson decks and open a deck-scoped translation quiz after completing that lesson's flashcards.
 
-**Architecture:** Keep `decks` and `deck_terms` as the only persisted lesson model. Add a pure lesson-batch planner for shuffle/chunk/name logic, add a service orchestration method that reports partial creation honestly, connect it to the vocabulary selection UI, and pass a completed deck handoff from flashcard study back to the existing validated quiz setup flow.
+**Architecture:** Keep `decks` and `deck_terms` as the only persisted lesson model. Add a pure lesson-batch planner for shuffle/chunk/name logic, add a service orchestration method that reports completed lessons honestly and best-effort removes a currently unlinked deck, connect it to the vocabulary selection UI, and pass a completed deck handoff from flashcard study back to the existing validated quiz setup flow.
 
 **Tech Stack:** React 19, TypeScript 6, Zustand, TanStack React Query, React Router, Supabase, Vitest, Testing Library, Tailwind CSS v4.
 
@@ -279,11 +279,18 @@ Add this method inside `deckService` after `create()`:
     try {
       for (const lesson of lessons) {
         const deck = await deckService.create({ ...base, name: lesson.name })
-        createdDecks.push(deck)
         const { error } = await supabase.from('deck_terms').insert(
           lesson.termIds.map((user_term_id) => ({ deck_id: deck.id, user_term_id })),
         )
-        if (error) throw error
+        if (error) {
+          try {
+            await deckService.remove(deck.id)
+          } catch (cleanupError) {
+            return { createdDecks, error: new AggregateError([error, cleanupError]) }
+          }
+          return { createdDecks, error }
+        }
+        createdDecks.push(deck)
       }
 
       return { createdDecks, error: null }
@@ -293,15 +300,16 @@ Add this method inside `deckService` after `create()`:
   },
 ```
 
-This intentionally does not delete a deck created before a later failure. If linking fails after deck creation, that deck is included in `createdDecks` and the UI reports an incomplete batch rather than promising a complete lesson.
+Completed earlier lessons are not rolled back after a later failure. If linking terms for the current deck fails, that incomplete deck is removed best-effort and is not included in `createdDecks`; the UI still reports the incomplete batch honestly. If cleanup also fails, the returned error preserves both failures.
 
-- [ ] **Step 4: Cover a term-link failure as a partial created batch**
+- [ ] **Step 4: Cover cleanup when term linking fails**
 
 Add to `src/services/supabase/deck.service.test.ts`:
 
 ```ts
-  it('includes a created deck when linking its terms fails', async () => {
+  it('removes the current deck when linking its terms fails', async () => {
     vi.spyOn(deckService, 'create').mockResolvedValueOnce(createdDeck('deck-1', 'Bai hoc 01'))
+    vi.spyOn(deckService, 'remove').mockResolvedValueOnce(undefined)
     from.mockReturnValue({ insert: vi.fn().mockResolvedValue({ error: new Error('link failed') }) })
 
     const result = await deckService.createLessonBatch({
@@ -309,7 +317,8 @@ Add to `src/services/supabase/deck.service.test.ts`:
       lessons: [{ name: 'Bai hoc 01', termIds: ['term-1'] }],
     })
 
-    expect(result.createdDecks.map((deck) => deck.id)).toEqual(['deck-1'])
+    expect(deckService.remove).toHaveBeenCalledWith('deck-1')
+    expect(result.createdDecks).toEqual([])
     expect(result.error).toBeInstanceOf(Error)
   })
 ```

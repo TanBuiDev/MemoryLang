@@ -123,7 +123,7 @@ Loi ghi du lieu duoc xu ly ro rang:
 
 - Neu khong tao duoc deck nao, hien loi va giu tap chon de nguoi dung thu lai.
 - Neu loi xay ra sau khi mot so deck da duoc tao, hien ro so bai da tao thanh cong va ten cac bai do; khong hien trang thai thanh cong cho ca lo.
-- Cac deck da tao mot phan van la deck hop le de nguoi dung mo, hoc, hoac xoa qua quan ly deck.
+- Mot deck chi duoc tinh la bai da tao khi viec gan `deck_terms` thanh cong. Neu gan term cua deck hien tai that bai, service co gang xoa deck dang do; cac bai hoan tat truoc do van la deck hop le de nguoi dung mo, hoc, hoac xoa qua quan ly deck.
 - Transaction hoac Supabase RPC de dam bao tao tat ca hoac khong tao gi ca la nang cap sau MVP.
 
 ## Luong Hoc Va Kiem Tra
@@ -220,7 +220,7 @@ flowchart TD
 | Term da thuoc deck khac | Van cho phep them vao bai moi |
 | Da co cac deck `Bai hoc NN` | Danh so tiep tu chi so lon nhat |
 | Tao deck that bai ngay tu dau | Bao loi, khong bao thanh cong |
-| Tao lo that bai mot phan | Bao ro cac bai da tao; khong tu dong xoa chung |
+| Tao lo that bai mot phan | Bao ro cac bai da hoan tat; co gang xoa deck hien tai neu chua gan duoc term |
 | Session hoc toan bo tu vung, khong theo deck | Khong hien CTA `Kiem tra bai nay` theo bai |
 | Deck vua hoc khong co ban dich hop le | Khong bat dau quiz; huong dan bo sung ban dich |
 | Query check du lieu quiz that bai | Hien loi va kha nang thu lai |
