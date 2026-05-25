@@ -10,8 +10,8 @@ describe('isSplittable', () => {
     expect(isSplittable({ source_text: 'conduct a survey / a study / an inspection', translation: 'tiến hành một cuộc khảo sát/nghiên cứu/điều tra' })).toBe(true)
   })
 
-  it('detects when only translation has slashes', () => {
-    expect(isSplittable({ source_text: 'interest', translation: 'mối quan tâm/ lợi nhuận' })).toBe(true)
+  it('returns false when only translation has slashes (translation enriches answers, not split)', () => {
+    expect(isSplittable({ source_text: 'decrease', translation: 'giảm / giảm bớt / sụt giảm' })).toBe(false)
   })
 
   it('returns false for single-term entries', () => {

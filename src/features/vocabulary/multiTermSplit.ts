@@ -47,9 +47,9 @@ export function isSplittable(entry: { source_text: string; translation: string |
   const sourceSlashes = countSlashes(entry.source_text)
   const translationSlashes = countSlashes(entry.translation)
 
-  if (sourceSlashes === 0 && translationSlashes === 0) return false
+  if (sourceSlashes === 0) return false
 
-  if (sourceSlashes > 0 && translationSlashes > 0 && sourceSlashes !== translationSlashes) {
+  if (translationSlashes > 0 && sourceSlashes !== translationSlashes) {
     return false
   }
 
