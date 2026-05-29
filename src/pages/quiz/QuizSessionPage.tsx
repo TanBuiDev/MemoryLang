@@ -20,6 +20,7 @@ import { addTranslationSuggestion } from '@/features/quiz/translationSuggestions
 import { checkTranslationAnswer, generateTranslationQuestions } from '@/features/quiz/translationInputQuiz'
 import { formatStudyHotkey, hotkeyFromKeyboardEvent } from '@/features/study/studyHotkeys'
 import { useI18n } from '@/i18n'
+import { shuffle } from '@/utils/shuffle'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { deckService } from '@/services/supabase/deck.service'
 import { quizService } from '@/services/supabase/quiz.service'
@@ -78,6 +79,7 @@ export function QuizSessionPage() {
   const answerInputRef = useRef<HTMLInputElement>(null)
   const playedAudioForQuestionRef = useRef<string | null>(null)
   const startedAtRef = useRef(Date.now())
+  const [isCompleted, setIsCompleted] = useState(false)
 
   function speakQuestion(text: string, audioUrl?: string | null) {
     speak(text, { rate: audioRate, repeat: audioRepeat, audioUrl })
@@ -117,6 +119,8 @@ export function QuizSessionPage() {
       completedQuestionIds: [],
       fuzzyCorrectQuestionIds: [],
       deckId: selectedDeckId,
+      wrongQuestionIds: [],
+      totalQuestionIds: [],
     }
     writeStoredQuizSession(sessionKey, initialSession)
     setSession(initialSession)
@@ -211,9 +215,27 @@ export function QuizSessionPage() {
       : session.score + (isRevealed ? 0 : 1)
 
     if (session.index >= session.questions.length - 1) {
-      clearStoredQuizSession(sessionKey)
+      const totalIds = session.totalQuestionIds.length > 0
+        ? session.totalQuestionIds
+        : session.questions.map((q) => q.userTermId)
+      const wrongIds = session.questions
+        .filter((q) => session.revealedQuestionIds.includes(q.id))
+        .map((q) => q.userTermId)
+
+      const newSession = {
+        ...session,
+        index: session.index,
+        score: nextScore,
+        completedQuestionIds,
+        fuzzyCorrectQuestionIds,
+        revealedQuestionIds,
+        wrongQuestionIds: wrongIds,
+        totalQuestionIds: totalIds,
+      }
+      writeStoredQuizSession(sessionKey, newSession)
+      setSession(newSession)
+      setIsCompleted(true)
       void saveQuizResult()
-      navigate('/app/quiz')
       return
     }
 
@@ -228,6 +250,29 @@ export function QuizSessionPage() {
     setAnswerText('')
     setAnswerFeedback({ type: 'none' })
     setAnswerShakeIteration(0)
+  }
+
+  function retryWrong() {
+    if (!session) return
+    const wrongQuestions = session.questions.filter(
+      (q) => session.wrongQuestionIds.includes(q.userTermId)
+    )
+    const newSession: StoredQuizSession = {
+      questions: shuffle(wrongQuestions),
+      index: 0,
+      score: 0,
+      revealedQuestionIds: [],
+      completedQuestionIds: [],
+      fuzzyCorrectQuestionIds: [],
+      deckId: session.deckId,
+      wrongQuestionIds: [],
+      totalQuestionIds: session.totalQuestionIds,
+    }
+    writeStoredQuizSession(sessionKey, newSession)
+    setSession(newSession)
+    setIsCompleted(false)
+    setAnswerText('')
+    setAnswerFeedback({ type: 'none' })
   }
 
   function revealAnswer() {
@@ -289,7 +334,6 @@ export function QuizSessionPage() {
 
   function endQuiz() {
     if (!session) return
-    void saveQuizResult()
     clearStoredQuizSession(sessionKey)
     navigate('/app/quiz')
   }
@@ -382,6 +426,40 @@ export function QuizSessionPage() {
   if (!question) {
     const emptyMessage = sourceVocabulary.length === 0 ? t('quiz.noVocabulary') : t('quiz.noTranslatedVocabulary')
     return <Card className="text-center text-xl font-black">{emptyMessage}</Card>
+  }
+
+  if (isCompleted && session) {
+    const totalQuestions = session.totalQuestionIds.length || session.questions.length
+    const correctCount = session.score
+    const wrongCount = session.wrongQuestionIds.length
+    const accuracy = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0
+    const isPerfect = wrongCount === 0
+
+    return (
+      <div className="flex w-full justify-center pt-8">
+        <Card className="max-w-md w-full p-8 text-center">
+          <p className="text-lg font-black uppercase text-muted-foreground">{t('quiz.resultTitle')}</p>
+          <p className="mt-2 text-5xl font-black">{correctCount}/{totalQuestions}</p>
+          <p className="mt-1 text-sm font-black text-muted-foreground">
+            {t('quiz.accuracy')}: {accuracy}%
+          </p>
+          {!isPerfect ? (
+            <p className="mt-3 text-sm font-bold text-muted-foreground">
+              {t('quiz.wrongAnswers')}: {wrongCount}/{totalQuestions}
+            </p>
+          ) : null}
+          {isPerfect ? (
+            <p className="mt-3 text-lg font-black text-success">{t('quiz.resultPerfect')}</p>
+          ) : null}
+          <div className="mt-6 flex justify-center gap-3">
+            {!isPerfect ? (
+              <Button onClick={retryWrong}>{t('quiz.resultRetryWrong')}</Button>
+            ) : null}
+            <Button variant="ghost" onClick={endQuiz}>{t('quiz.resultEnd')}</Button>
+          </div>
+        </Card>
+      </div>
+    )
   }
 
   return (
