@@ -23,7 +23,6 @@ import { AddVocabularyPage } from '@/pages/vocabulary/AddVocabularyPage'
 import { EditVocabularyPage } from '@/pages/vocabulary/EditVocabularyPage'
 import { VocabularyDetailPage } from '@/pages/vocabulary/VocabularyDetailPage'
 import { VocabularyListPage } from '@/pages/vocabulary/VocabularyListPage'
-import { VocabularySplitPage } from '@/pages/vocabulary/VocabularySplitPage'
 
 export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
@@ -43,7 +42,6 @@ export const router = createBrowserRouter([
           { path: 'dashboard', element: <DashboardPage /> },
           { path: 'vocabulary', element: <VocabularyListPage /> },
           { path: 'vocabulary/new', element: <AddVocabularyPage /> },
-          { path: 'vocabulary/split', element: <VocabularySplitPage /> },
           { path: 'vocabulary/:id', element: <VocabularyDetailPage /> },
           { path: 'vocabulary/:id/edit', element: <EditVocabularyPage /> },
           { path: 'decks', element: <DeckListPage /> },

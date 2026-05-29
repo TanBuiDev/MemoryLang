@@ -1,7 +1,6 @@
 import { supabase } from '@/services/supabase/client'
 import type { VocabularyFormValues, VocabularyUpdateFormValues } from '@/features/vocabulary/vocabulary.schema'
 import type { VocabularyItem } from '@/types/vocabulary.types'
-import type { SplitCreateTerm } from '@/features/vocabulary/multiTermSplit'
 import { normalizeTranslationAnswer } from '@/features/quiz/translationInputQuiz'
 import { normalizeText } from '@/utils/normalizeText'
 
@@ -135,53 +134,12 @@ export const vocabularyService = {
     if (error) throw error
     return data as VocabularyItem
   },
-  async splitAndCreateTerms(
-    originalId: string,
-    originalDeckIds: string[],
-    newTerms: SplitCreateTerm[],
-  ): Promise<VocabularyItem[]> {
-    const created: VocabularyItem[] = []
-    for (const term of newTerms) {
-      const { data, error: createError } = await supabase
-        .from('user_terms')
-        .insert({
-          user_id: term.user_id,
-          source_text: term.source_text,
-          normalized_text: normalizeText(term.source_text),
-          source_language: term.source_language,
-          native_language: term.native_language,
-          item_type: term.item_type,
-          part_of_speech: term.part_of_speech || null,
-          ipa: term.ipa || null,
-          pronunciation_text: term.pronunciation_text || null,
-          audio_url: term.audio_url || null,
-          image_url: term.image_url || null,
-          note: term.note || null,
-          translation: term.translation || null,
-          meanings: term.meanings ?? [],
-          examples: term.examples ?? [],
-          tags: term.tags ?? [],
-          status: term.status || 'new',
-        })
-        .select('*')
-        .single()
-
-      if (createError) throw new Error(`Failed to create split term: ${createError.message}`)
-
-      const newItem = data as VocabularyItem
-      created.push(newItem)
-
-      const deckIds = originalDeckIds.length > 0 ? originalDeckIds : term.deck_ids
-      if (deckIds.length > 0) {
-        const { error: linkError } = await supabase
-          .from('deck_terms')
-          .insert(deckIds.map((deckId) => ({ deck_id: deckId, user_term_id: data.id })))
-        if (linkError) throw new Error(`Failed to link split term to decks: ${linkError.message}`)
-      }
-    }
-
-    await supabase.from('user_terms').update({ deleted_at: new Date().toISOString() }).eq('id', originalId)
-
-    return created
+  async flagTerm(id: string): Promise<void> {
+    const { error } = await supabase.from('user_terms').update({ flagged: true }).eq('id', id)
+    if (error) throw error
+  },
+  async unflagTerm(id: string): Promise<void> {
+    const { error } = await supabase.from('user_terms').update({ flagged: false }).eq('id', id)
+    if (error) throw error
   },
 }

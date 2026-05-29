@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Volume2 } from 'lucide-react'
+import { Volume2, Flag } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -42,7 +42,7 @@ const statusBorderClasses: Record<VocabularyStatus, string> = {
   need_review: 'border-l-amber-500',
 }
 
-const statusFilterOptions: Array<VocabularyStatus | 'all'> = ['all', 'new', 'learning', 'familiar', 'memorized', 'difficult', 'need_review']
+const statusFilterOptions: Array<VocabularyStatus | 'all' | 'flagged'> = ['all', 'flagged', 'new', 'learning', 'familiar', 'memorized', 'difficult', 'need_review']
 
 export function VocabularyListPage() {
   const { t } = useI18n()
@@ -63,8 +63,8 @@ export function VocabularyListPage() {
   })
   const [searchParams, setSearchParams] = useSearchParams()
   const [cachedVocabulary, setCachedVocabulary] = useState<VocabularyItem[]>([])
-  const filterStatus = (searchParams.get('status') as VocabularyStatus | 'all') || 'all'
-  const setFilterStatus = (value: VocabularyStatus | 'all') => {
+  const filterStatus = (searchParams.get('status') as VocabularyStatus | 'all' | 'flagged') || 'all'
+  const setFilterStatus = (value: VocabularyStatus | 'all' | 'flagged') => {
     setSearchParams((prev) => {
       if (value === 'all') { prev.delete('status') } else { prev.set('status', value) }
       return prev
@@ -92,7 +92,9 @@ export function VocabularyListPage() {
     const normalizedSearch = debouncedSearch.trim().toLowerCase()
     let filtered = filterStatus === 'all'
       ? rawVocabulary
-      : rawVocabulary.filter((item) => item.status === filterStatus)
+      : filterStatus === 'flagged'
+        ? rawVocabulary.filter((item) => item.flagged)
+        : rawVocabulary.filter((item) => item.status === filterStatus)
     if (normalizedSearch) {
       filtered = filtered.filter((item) =>
         item.source_text.toLowerCase().includes(normalizedSearch),
@@ -315,7 +317,6 @@ export function VocabularyListPage() {
   ) : (
     <div className="flex gap-2">
       <Button variant="ghost" disabled={!shouldUseRemoteData} onClick={enterSelectMode}>{t('vocabulary.select')}</Button>
-      <Button variant="ghost" disabled={!shouldUseRemoteData} asChild><Link to="/app/vocabulary/split">{t('vocabulary.splitTitle')}</Link></Button>
       <Button asChild><Link to="/app/vocabulary/new">{t('vocabulary.add')}</Link></Button>
     </div>
   )
@@ -362,7 +363,7 @@ export function VocabularyListPage() {
                   : 'bg-card text-foreground hover:bg-muted',
               ].join(' ')}
             >
-              {status === 'all' ? t('vocabulary.filterAll') : t(statusLabelKeys[status])}
+              {status === 'all' ? t('vocabulary.filterAll') : status === 'flagged' ? t('vocabulary.flag') : t(statusLabelKeys[status])}
             </button>
           ))}
         </div>
@@ -419,6 +420,7 @@ export function VocabularyListPage() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <Link to={`/app/vocabulary/${item.id}`} className="text-xl font-black underline">{item.source_text}</Link>
+                        {item.flagged ? <Flag className="h-4 w-4 text-warning" fill="currentColor" /> : null}
                         <Badge>{t(statusLabelKeys[item.status])}</Badge>
                         {item.part_of_speech ? <Badge className="bg-muted">{item.part_of_speech}</Badge> : null}
                         <Button variant="ghost" className="h-6 min-h-0 w-6 p-0" onClick={() => speak(item.source_text)}><Volume2 className="h-4 w-4" /></Button>
