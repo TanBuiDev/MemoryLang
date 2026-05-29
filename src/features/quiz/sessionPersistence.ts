@@ -28,6 +28,8 @@ export interface StoredQuizSession {
   completedQuestionIds: string[]
   fuzzyCorrectQuestionIds: string[]
   deckId: string | null
+  wrongQuestionIds: string[]
+  totalQuestionIds: string[]
 }
 
 interface StoredQuizSessionPayload extends StoredQuizSession {
@@ -119,6 +121,12 @@ export function readStoredQuizSession(key: string): StoredQuizSession | null {
         ? payload.fuzzyCorrectQuestionIds.filter((id): id is string => typeof id === 'string')
         : [],
       deckId: typeof payload.deckId === 'string' ? payload.deckId : null,
+      wrongQuestionIds: Array.isArray(payload.wrongQuestionIds)
+        ? payload.wrongQuestionIds.filter((id): id is string => typeof id === 'string')
+        : [],
+      totalQuestionIds: Array.isArray(payload.totalQuestionIds)
+        ? payload.totalQuestionIds.filter((id): id is string => typeof id === 'string')
+        : [],
     }
   } catch {
     return null
@@ -138,6 +146,8 @@ export function writeStoredQuizSession(key: string, session: StoredQuizSession) 
     completedQuestionIds: session.completedQuestionIds,
     fuzzyCorrectQuestionIds: session.fuzzyCorrectQuestionIds,
     deckId: session.deckId,
+    wrongQuestionIds: session.wrongQuestionIds ?? [],
+    totalQuestionIds: session.totalQuestionIds ?? [],
   }
 
   try {
@@ -151,4 +161,44 @@ export function clearStoredQuizSession(key: string) {
   const storage = getStorage()
   if (!storage) return
   storage.removeItem(key)
+}
+
+export function findActiveQuizSession(userIdentifier: string): { session: StoredQuizSession; storageKey: string; sessionId: string } | null {
+  const storage = getStorage()
+  if (!storage) return null
+
+  const prefix = ACTIVE_STORAGE_PREFIX + encodeURIComponent(userIdentifier) + ':'
+
+  for (let i = 0; i < storage.length; i++) {
+    const key = storage.key(i)
+    if (!key || !key.startsWith(prefix)) continue
+
+    const sessionStorageKey = storage.getItem(key)
+    if (!sessionStorageKey) continue
+
+    const session = readStoredQuizSession(sessionStorageKey)
+    if (!session) continue
+
+    const sessionId = decodeURIComponent(key.slice(prefix.length))
+
+    return { session, storageKey: sessionStorageKey, sessionId }
+  }
+
+  return null
+}
+
+export function abandonActiveQuizSession(userIdentifier: string) {
+  const storage = getStorage()
+  if (!storage) return
+
+  const prefix = ACTIVE_STORAGE_PREFIX + encodeURIComponent(userIdentifier) + ':'
+
+  for (let i = 0; i < storage.length; i++) {
+    const key = storage.key(i)
+    if (!key || !key.startsWith(prefix)) continue
+
+    const sessionStorageKey = storage.getItem(key)
+    if (sessionStorageKey) storage.removeItem(sessionStorageKey)
+    storage.removeItem(key)
+  }
 }
