@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -11,6 +11,8 @@ import { demoDecks } from '@/features/demo/demoData'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { deckService } from '@/services/supabase/deck.service'
+import { quizService } from '@/services/supabase/quiz.service'
+import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useStudyStore } from '@/stores/useStudyStore'
 
@@ -23,7 +25,10 @@ export function DeckListPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [fillWithUnused, setFillWithUnused] = useState(false)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
   const decksQuery = useQuery({
     queryKey: ['decks', user?.id],
@@ -31,17 +36,33 @@ export function DeckListPage() {
     enabled: shouldUseRemoteData,
   })
   const decks = shouldUseRemoteData ? decksQuery.data ?? [] : demoDecks
+  const attemptCountsQuery = useQuery({
+    queryKey: ['quiz-attempt-counts', user?.id],
+    queryFn: () => quizService.getAttemptCounts(user!.id),
+    enabled: shouldUseRemoteData,
+  })
+  const attemptCounts = attemptCountsQuery.data ?? {}
   const createMutation = useMutation({
-    mutationFn: () => deckService.create({
-      user_id: user!.id,
-      name: name.trim(),
-      description: description.trim() || undefined,
-      source_language: profile?.current_target_language ?? 'en',
-      native_language: profile?.native_language ?? 'vi',
-    }),
+    mutationFn: async () => {
+      const deck = await deckService.create({
+        user_id: user!.id,
+        name: name.trim(),
+        description: description.trim() || undefined,
+        source_language: profile?.current_target_language ?? 'en',
+        native_language: profile?.native_language ?? 'vi',
+      })
+      if (fillWithUnused) {
+        const deckedIds = await deckService.getDeckedTermIds(user!.id)
+        const allVocab = await vocabularyService.list(user!.id)
+        const unusedIds = allVocab.filter((v) => !deckedIds.has(v.id)).map((v) => v.id)
+        await Promise.all(unusedIds.map((termId) => deckService.addTerm(deck.id, termId)))
+      }
+      return deck
+    },
     onSuccess: async () => {
       setName('')
       setDescription('')
+      setFillWithUnused(false)
       setShowCreate(false)
       await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
     },
@@ -50,6 +71,13 @@ export function DeckListPage() {
     mutationFn: (deckId: string) => deckService.remove(deckId),
     onSuccess: async () => {
       setPendingDeleteId(null)
+      await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
+    },
+  })
+  const updateMutation = useMutation({
+    mutationFn: ({ id, name: newName }: { id: string; name: string }) => deckService.update(id, { name: newName, user_id: user!.id }),
+    onSuccess: async () => {
+      setEditingId(null)
       await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
     },
   })
@@ -70,6 +98,15 @@ export function DeckListPage() {
               <Label>{t('decks.descriptionLabel')}</Label>
               <Textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder={t('decks.descriptionPlaceholder')} />
             </div>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={fillWithUnused}
+                onChange={(event) => setFillWithUnused(event.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+              <span className="text-sm font-black">{t('decks.fillWithUnused')}</span>
+            </label>
             {createMutation.error instanceof Error ? <p className="text-sm font-black text-danger">{createMutation.error.message}</p> : null}
             {!shouldUseRemoteData ? <p className="text-sm font-black text-muted-foreground">{t('decks.demoCreateDisabled')}</p> : null}
             <div className="flex gap-2">
@@ -92,12 +129,43 @@ export function DeckListPage() {
           <Card key={deck.id}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <CardTitle>{deck.name}</CardTitle>
+                {editingId === deck.id ? (
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      value={editName}
+                      onChange={(event) => setEditName(event.target.value)}
+                      className="min-w-[200px]"
+                      autoFocus
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') updateMutation.mutate({ id: deck.id, name: editName.trim() })
+                        if (event.key === 'Escape') setEditingId(null)
+                      }}
+                    />
+                    <Button variant="primary" className="text-xs" disabled={!editName.trim() || updateMutation.isPending} onClick={() => updateMutation.mutate({ id: deck.id, name: editName.trim() })}>{t('decks.saveEdit')}</Button>
+                    <Button variant="ghost" className="text-xs" onClick={() => setEditingId(null)}>{t('decks.cancelEdit')}</Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <CardTitle>{deck.name}</CardTitle>
+                    {shouldUseRemoteData ? (
+                      <button
+                        type="button"
+                        title={t('decks.edit')}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded border-2 border-border bg-secondary text-secondary-foreground opacity-60 shadow-[1px_1px_0_var(--border)] hover:opacity-100"
+                        onClick={() => { setEditingId(deck.id); setEditName(deck.name) }}
+                      >
+                        <Pencil size={12} />
+                      </button>
+                    ) : null}
+                  </div>
+                )}
                 <CardDescription className="mt-2">{deck.description}</CardDescription>
               </div>
-              <Badge>{deck.source_language}/{deck.native_language}</Badge>
             </div>
             <p className="mt-4 text-3xl font-black">{t('decks.words', { count: deck.term_count ?? 0 })}</p>
+            {shouldUseRemoteData ? (
+              <p className="mt-1 text-sm font-bold text-muted-foreground">{t('decks.quizAttempts', { count: attemptCounts[deck.id] ?? 0 })}</p>
+            ) : null}
             <div className="mt-4 flex gap-2">
               <Button asChild><Link to={`/app/decks/${deck.id}`}>{t('decks.open')}</Link></Button>
               <Button asChild variant="secondary"><Link to="/app/study" onClick={() => setSelectedDeckId(deck.id)}>{t('decks.study')}</Link></Button>

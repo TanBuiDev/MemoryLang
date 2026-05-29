@@ -9,6 +9,7 @@ const question = {
   ipa: null,
   partOfSpeech: null,
   expectedTranslation: 'qua tao',
+  audioUrl: null,
 }
 
 describe('translation quiz session persistence', () => {
@@ -25,6 +26,7 @@ describe('translation quiz session persistence', () => {
       revealedQuestionIds: ['apple-0'],
       completedQuestionIds: ['apple-0'],
       fuzzyCorrectQuestionIds: [],
+      deckId: null,
     })
 
     expect(readStoredQuizSession(storageKey)).toEqual({
@@ -37,6 +39,7 @@ describe('translation quiz session persistence', () => {
       revealedQuestionIds: ['apple-0'],
       completedQuestionIds: ['apple-0'],
       fuzzyCorrectQuestionIds: [],
+      deckId: null,
     })
 
     const payload = JSON.parse(window.sessionStorage.getItem(storageKey) ?? '{}') as Record<string, unknown>
@@ -87,6 +90,7 @@ describe('translation quiz session persistence', () => {
       revealedQuestionIds: [],
       completedQuestionIds: [],
       fuzzyCorrectQuestionIds: [],
+      deckId: null,
     })
   })
 
@@ -107,6 +111,7 @@ describe('translation quiz session persistence', () => {
       revealedQuestionIds: ['apple-0'],
       completedQuestionIds: ['apple-0'],
       fuzzyCorrectQuestionIds: [],
+      deckId: null,
     })
   })
 

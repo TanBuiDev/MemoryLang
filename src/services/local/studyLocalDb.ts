@@ -43,6 +43,13 @@ interface PendingStudyRecord {
   updatedAt: string
 }
 
+interface AudioCacheRecord {
+  word: string
+  blob: Blob
+  audioUrl: string
+  cachedAt: string
+}
+
 export interface PendingMutation {
   id: string
   userId: string
@@ -56,6 +63,7 @@ class StudyLocalDatabase extends Dexie {
   activeSessions!: Table<ActiveStudySessionRecord, string>
   pendingStudy!: Table<PendingStudyRecord, string>
   pendingMutations!: Table<PendingMutation, string>
+  audioCache!: Table<AudioCacheRecord, string>
 
   constructor() {
     super('memorylang-study')
@@ -69,6 +77,13 @@ class StudyLocalDatabase extends Dexie {
       activeSessions: 'key',
       pendingStudy: 'userId,updatedAt',
       pendingMutations: 'id,userId,createdAt',
+    })
+    this.version(3).stores({
+      cachedVocabulary: 'key,userId,deckId,updatedAt',
+      activeSessions: 'key',
+      pendingStudy: 'userId,updatedAt',
+      pendingMutations: 'id,userId,createdAt',
+      audioCache: 'word,cachedAt',
     })
   }
 }

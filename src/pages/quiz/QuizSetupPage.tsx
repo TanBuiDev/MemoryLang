@@ -162,7 +162,53 @@ export function QuizSetupPage() {
                   {decks.map((deck) => <option key={deck.id} value={deck.id}>{deck.name}</option>)}
                 </Select>
               </div>
-              <div><Label>{t('quiz.questionCount')}</Label><Select value={questionCount} onChange={(event) => setQuestionCount(event.target.value === 'all' ? 'all' : Number(event.target.value))}><option value={5}>{t('quiz.questions', { count: 5 })}</option><option value={10}>{t('quiz.questions', { count: 10 })}</option><option value="all">{t('quiz.allQuestions')}</option></Select></div>
+              <div>
+                <Label>{t('quiz.questionCount')}</Label>
+                <div className="flex items-center gap-3 mt-1">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={questionCount === 'all'}
+                      onChange={(event) => setQuestionCount(event.target.checked ? 'all' : Math.min(10, availableVocabulary.length || 10))}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span className="text-sm font-black">{t('quiz.allQuestions')}</span>
+                  </label>
+                  {questionCount !== 'all' ? (
+                    <div className="flex items-center rounded-md border-2 border-border bg-card shadow-[2px_2px_0_var(--border)]">
+                      <button
+                        type="button"
+                        className="h-9 w-8 flex items-center justify-center text-sm font-black hover:bg-muted disabled:opacity-30"
+                        disabled={questionCount <= 1}
+                        onClick={() => setQuestionCount(Math.max(1, (questionCount as number) - 1))}
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        value={questionCount}
+                        min={1}
+                        max={availableVocabulary.length || 100}
+                        onChange={(event) => {
+                          const value = Number.parseInt(event.target.value, 10)
+                          if (!Number.isNaN(value) && value >= 1) {
+                            setQuestionCount(Math.min(value, availableVocabulary.length || 100))
+                          }
+                        }}
+                        className="h-9 w-14 text-center text-sm font-black bg-transparent tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <button
+                        type="button"
+                        className="h-9 w-8 flex items-center justify-center text-sm font-black hover:bg-muted disabled:opacity-30"
+                        disabled={questionCount >= (availableVocabulary.length || 100)}
+                        onClick={() => setQuestionCount(Math.min(availableVocabulary.length || 100, (questionCount as number) + 1))}
+                      >
+                        +
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
               <div aria-live="polite" className="rounded-md border-2 border-border bg-background p-3 shadow-[2px_2px_0_var(--border)]">
                 {vocabularyLoading ? <p className="text-sm font-black">{t('vocabulary.loading')}</p> : null}
                 {vocabularyError ? (

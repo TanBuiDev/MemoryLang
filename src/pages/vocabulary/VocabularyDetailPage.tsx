@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
+import { Flag } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatTile } from '@/components/common/StatTile'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +10,7 @@ import { demoVocabulary } from '@/features/demo/demoData'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { createEmptyRelationshipGroups, relationshipService } from '@/services/supabase/relationship.service'
+import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import type { VocabularyItemType, VocabularyStatus } from '@/types/vocabulary.types'
 import { speak } from '@/utils/audio'
@@ -33,6 +35,7 @@ const statusLabelKeys: Record<VocabularyStatus, string> = {
 export function VocabularyDetailPage() {
   const { id } = useParams()
   const { t } = useI18n()
+  const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
   const vocabularyCardQuery = useQuery({
@@ -63,7 +66,7 @@ export function VocabularyDetailPage() {
 
   return (
     <>
-      <PageHeader title={item.source_text} description={item.translation ?? item.meanings[0]?.text ?? t('vocabulary.detailFallback')} actions={<Button asChild><Link to={`/app/vocabulary/${item.id}/edit`}>{t('vocabulary.edit')}</Link></Button>} />
+      <PageHeader title={item.source_text} description={item.translation ?? item.meanings[0]?.text ?? t('vocabulary.detailFallback')} actions={<div className="flex gap-2">{item.flagged ? <Button variant="ghost" onClick={async () => { await vocabularyService.unflagTerm(item.id); queryClient.invalidateQueries({ queryKey: ['vocabulary-card', id] }); queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] }) }}><Flag className="h-4 w-4 text-warning" fill="currentColor" /></Button> : null}<Button asChild><Link to={`/app/vocabulary/${item.id}/edit`}>{t('vocabulary.edit')}</Link></Button></div>} />
       <div className="mb-4 flex flex-wrap gap-2">
         <Badge>{t(itemTypeLabelKeys[item.item_type])}</Badge><Badge>{t(statusLabelKeys[item.status])}</Badge>{item.part_of_speech ? <Badge>{item.part_of_speech}</Badge> : null}
       </div>

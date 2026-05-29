@@ -15,6 +15,7 @@ export interface TranslationInputQuestion {
   ipa: string | null
   partOfSpeech: string | null
   expectedTranslation: string
+  audioUrl: string | null
 }
 
 export interface QuizResult {

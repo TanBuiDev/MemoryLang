@@ -97,4 +97,20 @@ export const quizService = {
       if (error) throw error
     }
   },
+
+  async getAttemptCounts(userId: string): Promise<Record<string, number>> {
+    const { data, error } = await supabase
+      .from('quiz_results')
+      .select('deck_id')
+      .eq('user_id', userId)
+      .not('deck_id', 'is', null)
+    if (error) throw error
+
+    const counts: Record<string, number> = {}
+    for (const row of data ?? []) {
+      const deckId = row.deck_id as string
+      counts[deckId] = (counts[deckId] ?? 0) + 1
+    }
+    return counts
+  },
 }

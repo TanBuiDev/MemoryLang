@@ -25,6 +25,7 @@ export function generateTranslationQuestions(
     ipa: item.ipa,
     partOfSpeech: item.part_of_speech,
     expectedTranslation: item.translation.trim(),
+    audioUrl: item.audio_url,
   }))
 }
 

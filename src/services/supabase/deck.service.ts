@@ -111,4 +111,12 @@ export const deckService = {
       .eq('user_term_id', userTermId)
     if (error) throw error
   },
+  async getDeckedTermIds(userId: string): Promise<Set<string>> {
+    const { data, error } = await supabase
+      .from('deck_terms')
+      .select('user_term_id, deck:decks!inner(user_id)')
+      .eq('deck.user_id', userId)
+    if (error) throw error
+    return new Set((data ?? []).map((row) => row.user_term_id))
+  },
 }

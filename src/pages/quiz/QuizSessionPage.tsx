@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useQuery } from '@tanstack/react-query'
-import { Volume2 } from 'lucide-react'
+import { Volume2, Flag } from 'lucide-react'
 import { type FormEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -38,6 +38,7 @@ const quizHotkeys = {
   revealAnswer: 'Alt+A',
   clearAnswer: 'Escape',
   playAudio: 'Ctrl+Space',
+  overrideCorrect: 'Alt+O',
 } as const
 
 type AnswerFeedback =
@@ -51,7 +52,7 @@ export function QuizSessionPage() {
   const { sessionId } = useParams()
   const { language, t } = useI18n()
   const user = useAuthStore((state) => state.user)
-  const { questionCount, autoPlayAudio, setAutoPlayAudio, selectedDeckId, audioRate, setAudioRate, audioRepeat, setAudioRepeat, playAudioOnReveal, setPlayAudioOnReveal, playAudioOnCorrect, setPlayAudioOnCorrect } = useQuizStore()
+  const { questionCount, autoPlayAudio, setAutoPlayAudio, selectedDeckId, audioRate, setAudioRate, audioRepeat, setAudioRepeat } = useQuizStore()
   const quizType = 'translation_input' as const
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
   const fallbackSessionKey = buildQuizSessionStorageKey({
@@ -72,13 +73,14 @@ export function QuizSessionPage() {
   const [answerFeedback, setAnswerFeedback] = useState<AnswerFeedback>({ type: 'none' })
   const [answerShakeIteration, setAnswerShakeIteration] = useState(0)
   const [isEndQuizModalOpen, setIsEndQuizModalOpen] = useState(false)
+  const [flaggedTermIds, setFlaggedTermIds] = useState<Set<string>>(new Set())
   const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
   const answerInputRef = useRef<HTMLInputElement>(null)
   const playedAudioForQuestionRef = useRef<string | null>(null)
   const startedAtRef = useRef(Date.now())
 
-  function speakQuestion(text: string) {
-    speak(text, { rate: audioRate, repeat: audioRepeat })
+  function speakQuestion(text: string, audioUrl?: string | null) {
+    speak(text, { rate: audioRate, repeat: audioRepeat, audioUrl })
   }
   const vocabularyQuery = useQuery({
     queryKey: ['vocabulary', user?.id],
@@ -114,6 +116,7 @@ export function QuizSessionPage() {
       revealedQuestionIds: [],
       completedQuestionIds: [],
       fuzzyCorrectQuestionIds: [],
+      deckId: selectedDeckId,
     }
     writeStoredQuizSession(sessionKey, initialSession)
     setSession(initialSession)
@@ -144,16 +147,25 @@ export function QuizSessionPage() {
     const currentQuestion = session.questions[session.index]
     if (currentQuestion) {
       playedAudioForQuestionRef.current = currentQuestion.id
-      speakQuestion(currentQuestion.sourceText)
+      speakQuestion(currentQuestion.sourceText, currentQuestion.audioUrl)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.index, autoPlayAudio])
 
+  useEffect(() => {
+    if (!session || !answerInputRef.current) return
+    answerInputRef.current.focus()
+  }, [session?.index])
+
   const question = session?.questions[session.index]
   const isRevealed = question ? session?.revealedQuestionIds.includes(question.id) ?? false : false
-  const hotkeyHint = language === 'vi'
+  const baseHint = language === 'vi'
     ? `Phím tắt: ${formatStudyHotkey(quizHotkeys.checkAnswer)} kiểm tra, ${formatStudyHotkey(quizHotkeys.revealAnswer)} xem đáp án, ${formatStudyHotkey(quizHotkeys.clearAnswer)} xóa nhanh, ${formatStudyHotkey(quizHotkeys.playAudio)} phát âm`
     : `Shortcuts: ${formatStudyHotkey(quizHotkeys.checkAnswer)} check, ${formatStudyHotkey(quizHotkeys.revealAnswer)} reveal, ${formatStudyHotkey(quizHotkeys.clearAnswer)} clear, ${formatStudyHotkey(quizHotkeys.playAudio)} play audio`
+  const overrideHint = language === 'vi'
+    ? `, ${formatStudyHotkey(quizHotkeys.overrideCorrect)} tôi đã trả lời đúng`
+    : `, ${formatStudyHotkey(quizHotkeys.overrideCorrect)} I answered correctly`
+  const hotkeyHint = answerFeedback.type === 'incorrect' ? baseHint + overrideHint : baseHint
 
   useEffect(() => {
     if (question && playedAudioForQuestionRef.current !== question.id) {
@@ -166,7 +178,7 @@ export function QuizSessionPage() {
       const hotkey = hotkeyFromKeyboardEvent(event as unknown as import('react').KeyboardEvent<HTMLElement>)
       if (hotkey === quizHotkeys.playAudio && question) {
         event.preventDefault()
-        speakQuestion(question.sourceText)
+        speakQuestion(question.sourceText, question.audioUrl)
       }
     }
     window.addEventListener('keydown', handleGlobalKeyDown as unknown as EventListener)
@@ -201,7 +213,7 @@ export function QuizSessionPage() {
     if (session.index >= session.questions.length - 1) {
       clearStoredQuizSession(sessionKey)
       void saveQuizResult()
-      navigate(`/app/quiz/result/demo-result?score=${nextScore}&total=${session.questions.length}`)
+      navigate('/app/quiz')
       return
     }
 
@@ -224,10 +236,6 @@ export function QuizSessionPage() {
       ...session,
       revealedQuestionIds: appendUnique(session.revealedQuestionIds, question.id),
     })
-    if (playAudioOnReveal && playedAudioForQuestionRef.current !== question.id) {
-      playedAudioForQuestionRef.current = question.id
-      speakQuestion(question.sourceText)
-    }
   }
 
   function submitAnswer(event: FormEvent<HTMLFormElement>) {
@@ -245,10 +253,6 @@ export function QuizSessionPage() {
       setAnswerFeedback({ type: 'exact' })
       clearAutoAdvance()
       autoAdvanceTimerRef.current = setTimeout(() => advanceToNext(false), 500)
-      if (playAudioOnCorrect && playedAudioForQuestionRef.current !== question.id) {
-        playedAudioForQuestionRef.current = question.id
-        speakQuestion(question.sourceText)
-      }
       return
     }
 
@@ -287,7 +291,7 @@ export function QuizSessionPage() {
     if (!session) return
     void saveQuizResult()
     clearStoredQuizSession(sessionKey)
-    navigate(`/app/quiz/result/demo-result?score=${session.score}&total=${session.questions.length}`)
+    navigate('/app/quiz')
   }
 
   async function saveQuizResult() {
@@ -296,7 +300,7 @@ export function QuizSessionPage() {
     try {
       await quizService.saveResult({
         userId: user.id,
-        deckId: selectedDeckId,
+        deckId: session.deckId,
         quizType,
         totalQuestions: session.questions.length,
         correctAnswers: session.score,
@@ -340,6 +344,11 @@ export function QuizSessionPage() {
     if (hotkey === quizHotkeys.revealAnswer && !isRevealed) {
       event.preventDefault()
       revealAnswer()
+    }
+
+    if (hotkey === quizHotkeys.overrideCorrect && answerFeedback.type === 'incorrect') {
+      event.preventDefault()
+      overrideAsCorrect()
     }
   }
 
@@ -385,10 +394,23 @@ export function QuizSessionPage() {
                 <button
                   type="button"
                   className="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-md border-2 border-border bg-secondary text-secondary-foreground shadow-[2px_2px_0_var(--border)] hover:bg-[#321fb0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)]"
-                  onClick={() => { playedAudioForQuestionRef.current = question.id; speakQuestion(question.sourceText) }}
+                  onClick={() => { playedAudioForQuestionRef.current = question.id; speakQuestion(question.sourceText, question.audioUrl) }}
                   aria-label={language === 'vi' ? 'Phát âm thanh' : 'Play audio'}
                 >
                   <Volume2 size={18} />
+                </button>
+                <button
+                  type="button"
+                  className={`absolute top-3 right-16 inline-flex h-10 w-10 items-center justify-center rounded-md border-2 shadow-[2px_2px_0_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)] ${flaggedTermIds.has(question.userTermId) ? 'border-warning bg-warning/20 text-warning' : 'border-border bg-background text-muted-foreground hover:bg-warning/10 hover:border-warning hover:text-warning'}`}
+                  onClick={() => {
+                    if (shouldUseRemoteData) {
+                      vocabularyService.flagTerm(question.userTermId).catch(() => { /* non-critical */ })
+                    }
+                    setFlaggedTermIds((prev) => new Set(prev).add(question.userTermId))
+                  }}
+                  aria-label={language === 'vi' ? 'Đánh dấu cần kiểm tra' : 'Flag for review'}
+                >
+                  <Flag size={16} fill={flaggedTermIds.has(question.userTermId) ? 'currentColor' : 'none'} />
                 </button>
                 <p className="text-center text-sm font-black uppercase text-muted-foreground">{t('quiz.question', { number: session.index + 1 })}</p>
                 <CardTitle className="mt-6 text-center text-4xl">
@@ -429,7 +451,7 @@ export function QuizSessionPage() {
                   {isRevealed ? (
                     <div className="rounded-md border-2 border-border bg-primary p-3 shadow-[2px_2px_0_var(--border)]">
                       <p className="text-xs font-black uppercase">{t('quiz.expectedTranslation')}</p>
-                      <p className="mt-1 text-lg font-black">{question.expectedTranslation}</p>
+                      <p className="mt-1 text-lg font-black">{question.expectedTranslation.split(/[\/,;\n]+/).map(s => s.trim()).filter(Boolean).join(' / ')}</p>
                       <p className="mt-2 text-sm font-bold">{t('quiz.revealedNotice')}</p>
                     </div>
                   ) : null}
@@ -464,26 +486,6 @@ export function QuizSessionPage() {
                 className="h-4 w-4 accent-secondary"
               />
               <label htmlFor="auto-play-audio" className="text-xs font-black cursor-pointer select-none">{t('quiz.autoPlayAudio')}</label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                id="play-audio-on-reveal"
-                type="checkbox"
-                checked={playAudioOnReveal}
-                onChange={(event) => setPlayAudioOnReveal(event.target.checked)}
-                className="h-4 w-4 accent-secondary"
-              />
-              <label htmlFor="play-audio-on-reveal" className="text-xs font-black cursor-pointer select-none">{t('quiz.playAudioOnReveal')}</label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                id="play-audio-on-correct"
-                type="checkbox"
-                checked={playAudioOnCorrect}
-                onChange={(event) => setPlayAudioOnCorrect(event.target.checked)}
-                className="h-4 w-4 accent-secondary"
-              />
-              <label htmlFor="play-audio-on-correct" className="text-xs font-black cursor-pointer select-none">{t('quiz.playAudioOnCorrect')}</label>
             </div>
             <div>
               <label htmlFor="audio-rate" className="mb-1 block text-xs font-black text-muted-foreground">{t('quiz.audioRate')}</label>

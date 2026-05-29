@@ -8,8 +8,6 @@ interface QuizPreferences {
   autoPlayAudio: boolean
   audioRate: number
   audioRepeat: number
-  playAudioOnReveal: boolean
-  playAudioOnCorrect: boolean
 }
 
 interface QuizState extends QuizPreferences {
@@ -22,16 +20,12 @@ interface QuizState extends QuizPreferences {
   setAutoPlayAudio: (autoPlayAudio: boolean) => void
   setAudioRate: (audioRate: number) => void
   setAudioRepeat: (audioRepeat: number) => void
-  setPlayAudioOnReveal: (playAudioOnReveal: boolean) => void
-  setPlayAudioOnCorrect: (playAudioOnCorrect: boolean) => void
 }
 
 const defaultPreferences: QuizPreferences = {
   autoPlayAudio: false,
   audioRate: 1,
   audioRepeat: 1,
-  playAudioOnReveal: false,
-  playAudioOnCorrect: false,
 }
 
 function loadPreferences(): QuizPreferences {
@@ -44,8 +38,6 @@ function loadPreferences(): QuizPreferences {
       autoPlayAudio: typeof parsed.autoPlayAudio === 'boolean' ? parsed.autoPlayAudio : defaultPreferences.autoPlayAudio,
       audioRate: typeof parsed.audioRate === 'number' && parsed.audioRate >= 0.5 && parsed.audioRate <= 2 ? parsed.audioRate : defaultPreferences.audioRate,
       audioRepeat: typeof parsed.audioRepeat === 'number' && parsed.audioRepeat >= 1 && parsed.audioRepeat <= 3 ? Math.round(parsed.audioRepeat) : defaultPreferences.audioRepeat,
-      playAudioOnReveal: typeof parsed.playAudioOnReveal === 'boolean' ? parsed.playAudioOnReveal : defaultPreferences.playAudioOnReveal,
-      playAudioOnCorrect: typeof parsed.playAudioOnCorrect === 'boolean' ? parsed.playAudioOnCorrect : defaultPreferences.playAudioOnCorrect,
     }
   } catch {
     return { ...defaultPreferences }
@@ -68,8 +60,6 @@ function audioPrefs(state: QuizState): QuizPreferences {
     autoPlayAudio: state.autoPlayAudio,
     audioRate: state.audioRate,
     audioRepeat: state.audioRepeat,
-    playAudioOnReveal: state.playAudioOnReveal,
-    playAudioOnCorrect: state.playAudioOnCorrect,
   }
 }
 
@@ -89,11 +79,5 @@ export const useQuizStore = create<QuizState>((set) => ({
   },
   setAudioRepeat: (audioRepeat) => {
     set((state) => { savePreferences(audioPrefs({ ...state, audioRepeat })); return { audioRepeat } })
-  },
-  setPlayAudioOnReveal: (playAudioOnReveal) => {
-    set((state) => { savePreferences(audioPrefs({ ...state, playAudioOnReveal })); return { playAudioOnReveal } })
-  },
-  setPlayAudioOnCorrect: (playAudioOnCorrect) => {
-    set((state) => { savePreferences(audioPrefs({ ...state, playAudioOnCorrect })); return { playAudioOnCorrect } })
   },
 }))

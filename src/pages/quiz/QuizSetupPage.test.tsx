@@ -55,7 +55,7 @@ describe('QuizSetupPage', () => {
 
     const deckSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement
 
-    expect(screen.getAllByRole('combobox')).toHaveLength(2)
+    expect(screen.getAllByRole('combobox')).toHaveLength(1)
     expect(screen.getByRole('option', { name: 'Tất cả từ vựng' })).toBeInTheDocument()
     expect(deckSelect.value).toBe('')
     expect(screen.queryByText('Đúng / Sai')).not.toBeInTheDocument()
@@ -75,10 +75,9 @@ describe('QuizSetupPage', () => {
   it('allows using every usable vocabulary item as quiz questions', () => {
     renderPage()
 
-    const questionCountSelect = screen.getAllByRole('combobox')[1] as HTMLSelectElement
-
-    expect(screen.getByRole('option', { name: 'Tất cả' })).toBeInTheDocument()
-    expect(questionCountSelect).toHaveValue('10')
+    expect(screen.getByRole('checkbox', { name: 'Tất cả' })).toBeInTheDocument()
+    const numberInput = screen.getByRole('spinbutton')
+    expect(numberInput).toHaveValue(10)
   })
 
   it('disables starting a remote quiz when vocabulary has no saved translation', async () => {

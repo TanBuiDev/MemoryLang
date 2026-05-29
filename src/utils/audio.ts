@@ -4,14 +4,23 @@ export interface SpeakOptions {
   pitch?: number
   repeat?: number
   onEnd?: () => void
+  audioUrl?: string | null
 }
 
-export function speak(text: string, options: SpeakOptions = {}) {
+let lastSpeakId = 0
+
+export async function speak(text: string, options: SpeakOptions = {}) {
+  if (options.audioUrl) {
+    const { playCachedOrFetch } = await import('@/services/local/audioCache')
+    const played = await playCachedOrFetch(text, options.audioUrl)
+    if (played) return true
+  }
+
   if (!('speechSynthesis' in window)) return false
 
-  if (window.speechSynthesis.speaking) {
-    window.speechSynthesis.cancel()
-  }
+  window.speechSynthesis.cancel()
+  lastSpeakId++
+  const speakId = lastSpeakId
 
   const utterance = new SpeechSynthesisUtterance(text)
   utterance.lang = options.lang ?? 'en-US'
@@ -22,6 +31,7 @@ export function speak(text: string, options: SpeakOptions = {}) {
   let completed = 0
 
   function speakOnce() {
+    if (speakId !== lastSpeakId) return
     completed++
     if (completed <= repeat) {
       utterance.onend = completed < repeat ? speakOnce : (options.onEnd ?? undefined)
@@ -36,9 +46,7 @@ export function speak(text: string, options: SpeakOptions = {}) {
 export function speakVI(text: string, onEnd?: () => void) {
   if (!('speechSynthesis' in window)) return false
 
-  if (window.speechSynthesis.speaking) {
-    window.speechSynthesis.cancel()
-  }
+  window.speechSynthesis.cancel()
 
   const utterance = new SpeechSynthesisUtterance(text)
   utterance.lang = 'vi-VN'
