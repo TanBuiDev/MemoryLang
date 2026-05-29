@@ -113,7 +113,9 @@ describe('QuizSessionPage', () => {
     await user.type(screen.getByRole('textbox', { name: 'Bản dịch' }), 'quả táo')
     await user.click(screen.getByRole('button', { name: 'Kiểm tra' }))
 
-    expect(await screen.findByText('/app/quiz')).toBeInTheDocument()
+    expect(await screen.findByText('Kết quả kiểm tra')).toBeInTheDocument()
+    expect(screen.getByText('1/1')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Kết thúc' })).toBeInTheDocument()
   })
 
   it('keeps a wrong question active and still awards a point after a correct retry without reveal', async () => {
@@ -131,7 +133,8 @@ describe('QuizSessionPage', () => {
     await user.type(screen.getByRole('textbox', { name: 'Bản dịch' }), 'quả táo')
     await user.keyboard('{Enter}')
 
-    expect(await screen.findByText('/app/quiz')).toBeInTheDocument()
+    expect(await screen.findByText('Kết quả kiểm tra')).toBeInTheDocument()
+    expect(screen.getByText('1/1')).toBeInTheDocument()
   })
 
   it('reveals the answer on request and gives no point once revealed', async () => {
@@ -149,7 +152,9 @@ describe('QuizSessionPage', () => {
     await user.type(screen.getByRole('textbox', { name: 'Bản dịch' }), 'quả táo')
     await user.click(screen.getByRole('button', { name: 'Kiểm tra' }))
 
-    expect(await screen.findByText('/app/quiz')).toBeInTheDocument()
+    expect(await screen.findByText('Kết quả kiểm tra')).toBeInTheDocument()
+    expect(screen.getByText('0/1')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Làm lại từ sai' })).toBeInTheDocument()
   })
 
   it('shakes the input after a wrong answer until the animation ends', async () => {
@@ -206,7 +211,8 @@ describe('QuizSessionPage', () => {
     await user.type(screen.getByRole('textbox', { name: 'Bản dịch' }), 'quả táo')
     await user.click(screen.getByRole('button', { name: 'Kiểm tra' }))
 
-    expect(await screen.findByText('/app/quiz')).toBeInTheDocument()
+    expect(await screen.findByText('Kết quả kiểm tra')).toBeInTheDocument()
+    expect(screen.getByText('0/1')).toBeInTheDocument()
   })
 
   it('retries loading the selected source after a fetch failure', async () => {
