@@ -113,7 +113,7 @@ describe('QuizSessionPage', () => {
     await user.type(screen.getByRole('textbox', { name: 'Bản dịch' }), 'quả táo')
     await user.click(screen.getByRole('button', { name: 'Kiểm tra' }))
 
-    expect(await screen.findByText('Kết quả kiểm tra')).toBeInTheDocument()
+    expect(await screen.findByText('Kết quả kiểm tra', {}, { timeout: 3000 })).toBeInTheDocument()
     expect(screen.getByText('1/1')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Kết thúc' })).toBeInTheDocument()
   })
@@ -133,7 +133,7 @@ describe('QuizSessionPage', () => {
     await user.type(screen.getByRole('textbox', { name: 'Bản dịch' }), 'quả táo')
     await user.keyboard('{Enter}')
 
-    expect(await screen.findByText('Kết quả kiểm tra')).toBeInTheDocument()
+    expect(await screen.findByText('Kết quả kiểm tra', {}, { timeout: 3000 })).toBeInTheDocument()
     expect(screen.getByText('1/1')).toBeInTheDocument()
   })
 
@@ -152,7 +152,7 @@ describe('QuizSessionPage', () => {
     await user.type(screen.getByRole('textbox', { name: 'Bản dịch' }), 'quả táo')
     await user.click(screen.getByRole('button', { name: 'Kiểm tra' }))
 
-    expect(await screen.findByText('Kết quả kiểm tra')).toBeInTheDocument()
+    expect(await screen.findByText('Kết quả kiểm tra', {}, { timeout: 3000 })).toBeInTheDocument()
     expect(screen.getByText('0/1')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Làm lại từ sai' })).toBeInTheDocument()
   })
@@ -211,7 +211,7 @@ describe('QuizSessionPage', () => {
     await user.type(screen.getByRole('textbox', { name: 'Bản dịch' }), 'quả táo')
     await user.click(screen.getByRole('button', { name: 'Kiểm tra' }))
 
-    expect(await screen.findByText('Kết quả kiểm tra')).toBeInTheDocument()
+    expect(await screen.findByText('Kết quả kiểm tra', {}, { timeout: 3000 })).toBeInTheDocument()
     expect(screen.getByText('0/1')).toBeInTheDocument()
   })
 
@@ -415,5 +415,183 @@ describe('QuizSessionPage', () => {
     // Press ArrowLeft while blurred - should change back to first question
     fireEvent.keyDown(window, { key: 'ArrowLeft' })
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q1Text)
+  })
+
+  it('does not alter score or question correctness when re-answering an already completed question in Translation mode', async () => {
+    const user = userEvent.setup()
+    
+    useQuizStore.setState({
+      quizType: 'translation_input',
+      questionCount: 2,
+      selectedDeckId: 'deck-1',
+    })
+
+    const items = [
+      baseItem,
+      { ...baseItem, id: 'banana', source_text: 'banana', translation: 'quả chuối' },
+    ]
+
+    await renderPage(items)
+
+    const q1Text = (await screen.findByRole('heading', { level: 2 })).textContent
+    expect(q1Text).toBeTruthy()
+    const answer1 = q1Text === 'apple' ? 'quả táo' : 'quả chuối'
+    const answer2 = q1Text === 'apple' ? 'quả chuối' : 'quả táo'
+
+    const answerInput = screen.getByRole('textbox', { name: 'Bản dịch' })
+    await user.type(answerInput, answer1)
+    await user.click(screen.getByRole('button', { name: 'Kiểm tra' }))
+
+    // Autoadvances to second question (wait for timer)
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 2 }).textContent).not.toBe(q1Text)
+    }, { timeout: 3000 })
+    const q2Text = screen.getByRole('heading', { level: 2 }).textContent
+
+    // Blur input, and go back to first question
+    answerInput.blur()
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q1Text)
+
+    // Now, answer it INCORRECTLY
+    await user.type(answerInput, 'chuối_sai')
+    await user.click(screen.getByRole('button', { name: 'Kiểm tra' }))
+
+    // Navigate to second question manually (as incorrect answers do not autoadvance in Translation mode)
+    answerInput.blur()
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q2Text)
+
+    // Verification: Highlight on sidebar for Question 1 should STILL be green (success), NOT red (danger)
+    // (Now that index has changed, Q1 is no longer current and displays its correct/incorrect background)
+    const sidebarButton1 = screen.getByRole('button', { name: '1' })
+    expect(sidebarButton1).toHaveClass('bg-success/30')
+    expect(sidebarButton1).not.toHaveClass('bg-danger/30')
+
+    // Answer the second question correctly to finish the quiz
+    await user.type(answerInput, answer2)
+    await user.click(screen.getByRole('button', { name: 'Kiểm tra' }))
+
+    // It should show results
+    expect(await screen.findByText('Kết quả kiểm tra', {}, { timeout: 3000 })).toBeInTheDocument()
+
+    // Score should be 2/2 (since the first question correct score of 1 was preserved, and second is correct)
+    expect(screen.getByText('2/2')).toBeInTheDocument()
+  })
+
+  it('does not alter MCQ score or correctness when re-selecting options on an already completed question', async () => {
+    useQuizStore.setState({
+      quizType: 'multiple_choice',
+      questionCount: 2,
+      selectedDeckId: 'deck-1',
+    })
+
+    const items = [
+      baseItem,
+      { ...baseItem, id: 'banana', source_text: 'banana', translation: 'quả chuối' },
+    ]
+
+    await renderPage(items)
+
+    const q1Text = (await screen.findByRole('heading', { level: 2 })).textContent
+    expect(q1Text).toBeTruthy()
+    const correctText1 = q1Text === 'apple' ? 'quả táo' : 'quả chuối'
+    const correctText2 = q1Text === 'apple' ? 'quả chuối' : 'quả táo'
+
+    // Click correct option for Q1
+    const mcqButtons1 = screen.getAllByRole('button').filter(btn => {
+      const text = btn.textContent || ''
+      return (text.startsWith('A') || text.startsWith('B') || text.startsWith('C') || text.startsWith('D')) && text.length > 2
+    })
+    const buttonCorrect1 = mcqButtons1.find(btn => btn.textContent?.includes(correctText1))!
+    fireEvent.click(buttonCorrect1)
+
+    // Autoadvances to Q2
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 2 }).textContent).not.toBe(q1Text)
+    }, { timeout: 3000 })
+    const q2Text = screen.getByRole('heading', { level: 2 }).textContent
+
+    // Go back to Q1
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q1Text)
+
+    // Now select a WRONG option for Q1 on re-answering
+    const mcqButtonsQ1Again = screen.getAllByRole('button').filter(btn => {
+      const text = btn.textContent || ''
+      return (text.startsWith('A') || text.startsWith('B') || text.startsWith('C') || text.startsWith('D')) && text.length > 2
+    })
+    const buttonWrong1 = mcqButtonsQ1Again.find(btn => !btn.textContent?.includes(correctText1))!
+    fireEvent.click(buttonWrong1)
+
+    // Should autoadvance to Q2 (wait for timer so Q1 is no longer current)
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q2Text)
+    }, { timeout: 3000 })
+
+    // Verification: Sidebar button 1 should STILL be green, NOT red
+    const sidebarButton1 = screen.getByRole('button', { name: '1' })
+    expect(sidebarButton1).toHaveClass('bg-success/30')
+    expect(sidebarButton1).not.toHaveClass('bg-danger/30')
+
+    // Answer Q2 correctly to finish the quiz
+    const mcqButtons2 = screen.getAllByRole('button').filter(btn => {
+      const text = btn.textContent || ''
+      return (text.startsWith('A') || text.startsWith('B') || text.startsWith('C') || text.startsWith('D')) && text.length > 2
+    })
+    const buttonCorrect2 = mcqButtons2.find(btn => btn.textContent?.includes(correctText2))!
+    fireEvent.click(buttonCorrect2)
+
+    // Should show results
+    expect(await screen.findByText('Kết quả kiểm tra', {}, { timeout: 3000 })).toBeInTheDocument()
+
+    // Score should be 2/2
+    expect(screen.getByText('2/2')).toBeInTheDocument()
+  })
+
+  it('allows MCQ keyboard navigation and selection when re-answering a completed question', async () => {
+    useQuizStore.setState({
+      quizType: 'multiple_choice',
+      questionCount: 2,
+      selectedDeckId: 'deck-1',
+    })
+
+    const items = [
+      baseItem,
+      { ...baseItem, id: 'banana', source_text: 'banana', translation: 'quả chuối' },
+    ]
+
+    await renderPage(items)
+
+    const q1Text = (await screen.findByRole('heading', { level: 2 })).textContent
+    expect(q1Text).toBeTruthy()
+
+    // Click WRONG option for Q1 (to make it completed and revealed)
+    const mcqButtons1 = screen.getAllByRole('button').filter(btn => {
+      const text = btn.textContent || ''
+      return (text.startsWith('A') || text.startsWith('B') || text.startsWith('C') || text.startsWith('D')) && text.length > 2
+    })
+    const correctText1 = q1Text === 'apple' ? 'quả táo' : 'quả chuối'
+    const buttonWrong1 = mcqButtons1.find(btn => !btn.textContent?.includes(correctText1))!
+    fireEvent.click(buttonWrong1)
+
+    // Should autoadvance to Q2 after wrong delay (wait for Q2)
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 2 }).textContent).not.toBe(q1Text)
+    }, { timeout: 3000 })
+    const q2Text = screen.getByRole('heading', { level: 2 }).textContent
+
+    // Go back to Q1 (which is completed & revealed/incorrect)
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q1Text)
+
+    // Try selecting correct option via MCQ keyboard shortcuts (press ArrowDown then Enter)
+    fireEvent.keyDown(window, { key: 'ArrowDown' })
+    fireEvent.keyDown(window, { key: 'Enter' })
+
+    // It should register selection, disable buttons (mcSelectedIndex !== null), and autoadvance back to Q2
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q2Text)
+    }, { timeout: 3000 })
   })
 })

@@ -90,6 +90,7 @@ export function QuizSessionPage() {
   const isRetryRef = useRef(false)
   const startedAt = session?.startedAt ?? startedAtRef.current
   const [isCompleted, setIsCompleted] = useState(false)
+  const [isTempRevealed, setIsTempRevealed] = useState(false)
   const [elapsedSec, setElapsedSec] = useState(0)
 
   useEffect(() => {
@@ -198,7 +199,7 @@ export function QuizSessionPage() {
   }, [session?.index])
 
   const question = session?.questions[session.index]
-  const isRevealed = question ? session?.revealedQuestionIds.includes(question.id) ?? false : false
+  const isRevealed = question ? (session?.revealedQuestionIds.includes(question.id) || isTempRevealed) ?? false : false
   const isMcQuestion = question && 'options' in question
   const baseHint = language === 'vi'
     ? isMcQuestion
@@ -253,7 +254,10 @@ export function QuizSessionPage() {
         }
       }
 
-      if (isMcQuestion && !isCompleted && mcSelectedIndex === null && !isRevealed) {
+      const isAlreadyCompleted = session?.completedQuestionIds.includes(question.id)
+      const canSelectMc = mcSelectedIndex === null && (!isRevealed || isAlreadyCompleted)
+
+      if (isMcQuestion && !isCompleted && canSelectMc) {
         const mcKeys = ['1', '2', '3', '4']
         const mcIndex = mcKeys.indexOf(event.key)
         if (mcIndex >= 0) {
@@ -336,6 +340,39 @@ export function QuizSessionPage() {
 
   function advanceToNext(isFuzzyMatch: boolean, alwaysAwardPoint = false, clearRevealed = false) {
     if (!session || !question) return
+
+    const isAlreadyCompleted = session.completedQuestionIds.includes(question.id)
+
+    if (isAlreadyCompleted) {
+      let nextIndex = -1
+      for (let i = session.index + 1; i < session.questions.length; i++) {
+        if (!session.completedQuestionIds.includes(session.questions[i].id)) {
+          nextIndex = i
+          break
+        }
+      }
+      if (nextIndex === -1) {
+        for (let i = 0; i < session.questions.length; i++) {
+          if (!session.completedQuestionIds.includes(session.questions[i].id)) {
+            nextIndex = i
+            break
+          }
+        }
+      }
+      if (nextIndex === -1) {
+        nextIndex = (session.index + 1) % session.questions.length
+      }
+
+      setSession({
+        ...session,
+        index: nextIndex,
+      })
+      setAnswerText('')
+      setAnswerFeedback({ type: 'none' })
+      setAnswerShakeIteration(0)
+      setIsTempRevealed(false)
+      return
+    }
 
     const completedQuestionIds = appendUnique(session.completedQuestionIds, question.id)
     const fuzzyCorrectQuestionIds = isFuzzyMatch
@@ -427,6 +464,34 @@ export function QuizSessionPage() {
 
       const questionId = pending.questionId
       const isCorrect = pending.isCorrect
+
+      const isAlreadyCompleted = prev.completedQuestionIds.includes(questionId)
+      if (isAlreadyCompleted) {
+        let nextIndex = -1
+        for (let i = prev.index + 1; i < prev.questions.length; i++) {
+          if (!prev.completedQuestionIds.includes(prev.questions[i].id)) {
+            nextIndex = i
+            break
+          }
+        }
+        if (nextIndex === -1) {
+          for (let i = 0; i < prev.questions.length; i++) {
+            if (!prev.completedQuestionIds.includes(prev.questions[i].id)) {
+              nextIndex = i
+              break
+            }
+          }
+        }
+        if (nextIndex === -1) {
+          nextIndex = (prev.index + 1) % prev.questions.length
+        }
+
+        return {
+          ...prev,
+          index: nextIndex,
+        }
+      }
+
       const completedQuestionIds = appendUnique(prev.completedQuestionIds, questionId)
       const revealedQuestionIds = isCorrect
         ? prev.revealedQuestionIds
@@ -489,6 +554,40 @@ export function QuizSessionPage() {
 
   function skipQuestion() {
     if (!session || !question) return
+
+    const isAlreadyCompleted = session.completedQuestionIds.includes(question.id)
+    if (isAlreadyCompleted) {
+      let nextIndex = -1
+      for (let i = session.index + 1; i < session.questions.length; i++) {
+        if (!session.completedQuestionIds.includes(session.questions[i].id)) {
+          nextIndex = i
+          break
+        }
+      }
+      if (nextIndex === -1) {
+        for (let i = 0; i < session.questions.length; i++) {
+          if (!session.completedQuestionIds.includes(session.questions[i].id)) {
+            nextIndex = i
+            break
+          }
+        }
+      }
+      if (nextIndex === -1) {
+        nextIndex = (session.index + 1) % session.questions.length
+      }
+
+      setSession({
+        ...session,
+        index: nextIndex,
+      })
+      setAnswerText('')
+      setAnswerFeedback({ type: 'none' })
+      setAnswerShakeIteration(0)
+      setMcSelectedIndex(null)
+      setMcFeedbackState('none')
+      setIsTempRevealed(false)
+      return
+    }
 
     if (shouldUseRemoteData) {
       vocabularyService.flagTerm(question.userTermId).catch(() => { /* non-critical */ })
@@ -573,6 +672,10 @@ export function QuizSessionPage() {
 
   function revealAnswer() {
     if (!session || !question) return
+    if (session.completedQuestionIds.includes(question.id)) {
+      setIsTempRevealed(true)
+      return
+    }
     setSession({
       ...session,
       revealedQuestionIds: appendUnique(session.revealedQuestionIds, question.id),
@@ -610,6 +713,7 @@ export function QuizSessionPage() {
 
   function overrideAsCorrect() {
     if (!session || !question || answerFeedback.type !== 'incorrect') return
+    if (session.completedQuestionIds.includes(question.id)) return
     clearAutoAdvance()
 
     if (shouldUseRemoteData && answerText.trim()) {
@@ -660,6 +764,7 @@ export function QuizSessionPage() {
     setAnswerText('')
     setAnswerFeedback({ type: 'none' })
     setAnswerShakeIteration(0)
+    setIsTempRevealed(false)
     setSession({ ...session, index })
   }
 
