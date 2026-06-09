@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useQuery } from '@tanstack/react-query'
-import { Volume2, Flag } from 'lucide-react'
+import { Volume2, Flag, Clock, Info } from 'lucide-react'
 import { type FormEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,7 @@ import {
 } from '@/features/quiz/sessionPersistence'
 import { addTranslationSuggestion } from '@/features/quiz/translationSuggestions'
 import { checkTranslationAnswer, generateTranslationQuestions } from '@/features/quiz/translationInputQuiz'
+import { generateMultipleChoiceQuestions } from '@/features/quiz/multipleChoiceQuiz'
 import { formatStudyHotkey, hotkeyFromKeyboardEvent } from '@/features/study/studyHotkeys'
 import { useI18n } from '@/i18n'
 import { shuffle } from '@/utils/shuffle'
@@ -40,6 +41,9 @@ const quizHotkeys = {
   clearAnswer: 'Escape',
   playAudio: 'Ctrl+Space',
   overrideCorrect: 'Alt+O',
+  focusAnswer: '/',
+  flagQuestion: 'Alt+F',
+  skipQuestion: 'Alt+S',
 } as const
 
 type AnswerFeedback =
@@ -53,8 +57,7 @@ export function QuizSessionPage() {
   const { sessionId } = useParams()
   const { language, t } = useI18n()
   const user = useAuthStore((state) => state.user)
-  const { questionCount, autoPlayAudio, setAutoPlayAudio, selectedDeckId, audioRate, setAudioRate, audioRepeat, setAudioRepeat } = useQuizStore()
-  const quizType = 'translation_input' as const
+  const { questionCount, quizType, autoPlayAudio, setAutoPlayAudio, selectedDeckId, audioRate, setAudioRate, audioRepeat, setAudioRepeat } = useQuizStore()
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
   const fallbackSessionKey = buildQuizSessionStorageKey({
     userId: user?.id,
@@ -75,14 +78,28 @@ export function QuizSessionPage() {
   const [answerShakeIteration, setAnswerShakeIteration] = useState(0)
   const [isEndQuizModalOpen, setIsEndQuizModalOpen] = useState(false)
   const [flaggedTermIds, setFlaggedTermIds] = useState<Set<string>>(new Set())
+  const [mcSelectedIndex, setMcSelectedIndex] = useState<number | null>(null)
+  const [mcFeedbackState, setMcFeedbackState] = useState<'none' | 'correct' | 'wrong'>('none')
+  const [highlightedMcIndex, setHighlightedMcIndex] = useState<number | null>(null)
+  const mcPendingRef = useRef<{ questionId: string; isCorrect: boolean } | null>(null)
   const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
   const answerInputRef = useRef<HTMLInputElement>(null)
   const playedAudioForQuestionRef = useRef<string | null>(null)
   const startedAtRef = useRef(Date.now())
+  const isRetryRef = useRef(false)
+  const startedAt = session?.startedAt ?? startedAtRef.current
   const [isCompleted, setIsCompleted] = useState(false)
+  const [elapsedSec, setElapsedSec] = useState(0)
 
-  function speakQuestion(text: string, audioUrl?: string | null) {
-    speak(text, { rate: audioRate, repeat: audioRepeat, audioUrl })
+  useEffect(() => {
+    const id = setInterval(() => {
+      setElapsedSec(Math.floor((Date.now() - startedAt) / 1000))
+    }, 1000)
+    return () => clearInterval(id)
+  }, [startedAt])
+
+  function speakQuestion(text: string, audioUrl?: string | null, variant?: string | null) {
+    speak(text, { rate: audioRate, repeat: audioRepeat, audioUrl, variant })
   }
   const vocabularyQuery = useQuery({
     queryKey: ['vocabulary', user?.id],
@@ -103,8 +120,10 @@ export function QuizSessionPage() {
     return filterActiveVocabulary(source)
   }, [deckTermsQuery.data, selectedDeckId, shouldUseRemoteData, vocabularyQuery.data])
   const generatedQuestions = useMemo(
-    () => generateTranslationQuestions(sourceVocabulary, questionCount),
-    [questionCount, sourceVocabulary],
+    () => quizType === 'multiple_choice'
+      ? generateMultipleChoiceQuestions(sourceVocabulary, questionCount)
+      : generateTranslationQuestions(sourceVocabulary, questionCount),
+    [questionCount, sourceVocabulary, quizType],
   )
   const sourceQuery = selectedDeckId ? deckTermsQuery : vocabularyQuery
   const isSourceReady = shouldUseRemoteData ? sourceQuery.isSuccess : true
@@ -112,15 +131,18 @@ export function QuizSessionPage() {
   useEffect(() => {
     if (session || !isSourceReady || generatedQuestions.length === 0) return
     const initialSession: StoredQuizSession = {
+      quizType,
       questions: generatedQuestions,
       index: 0,
       score: 0,
       revealedQuestionIds: [],
       completedQuestionIds: [],
       fuzzyCorrectQuestionIds: [],
+      skippedQuestionIds: [],
       deckId: selectedDeckId,
       wrongQuestionIds: [],
       totalQuestionIds: [],
+      startedAt: Date.now(),
     }
     writeStoredQuizSession(sessionKey, initialSession)
     setSession(initialSession)
@@ -147,25 +169,43 @@ export function QuizSessionPage() {
   }, [])
 
   useEffect(() => {
+    const flagged = sourceVocabulary.filter((item) => item.flagged).map((item) => item.id)
+    if (flagged.length === 0) return
+    setFlaggedTermIds((prev) => new Set([...prev, ...flagged]))
+  }, [sourceVocabulary])
+
+  useEffect(() => {
     if (!autoPlayAudio || !session) return
     const currentQuestion = session.questions[session.index]
     if (currentQuestion) {
       playedAudioForQuestionRef.current = currentQuestion.id
-      speakQuestion(currentQuestion.sourceText, currentQuestion.audioUrl)
+      speakQuestion(currentQuestion.sourceText, currentQuestion.audioUrl, currentQuestion.pronunciationText)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.index, autoPlayAudio])
 
   useEffect(() => {
     if (!session || !answerInputRef.current) return
+    if (isMcQuestion) return
     answerInputRef.current.focus()
+  }, [session?.index])
+
+  useEffect(() => {
+    setMcSelectedIndex(null)
+    setMcFeedbackState('none')
+    setHighlightedMcIndex(null)
   }, [session?.index])
 
   const question = session?.questions[session.index]
   const isRevealed = question ? session?.revealedQuestionIds.includes(question.id) ?? false : false
+  const isMcQuestion = question && 'options' in question
   const baseHint = language === 'vi'
-    ? `Phím tắt: ${formatStudyHotkey(quizHotkeys.checkAnswer)} kiểm tra, ${formatStudyHotkey(quizHotkeys.revealAnswer)} xem đáp án, ${formatStudyHotkey(quizHotkeys.clearAnswer)} xóa nhanh, ${formatStudyHotkey(quizHotkeys.playAudio)} phát âm`
-    : `Shortcuts: ${formatStudyHotkey(quizHotkeys.checkAnswer)} check, ${formatStudyHotkey(quizHotkeys.revealAnswer)} reveal, ${formatStudyHotkey(quizHotkeys.clearAnswer)} clear, ${formatStudyHotkey(quizHotkeys.playAudio)} play audio`
+    ? isMcQuestion
+      ? `Phím tắt: 1-4 hoặc ↑/↓ + Enter chọn đáp án, ${formatStudyHotkey(quizHotkeys.playAudio)} phát âm, ${formatStudyHotkey(quizHotkeys.flagQuestion)} đánh dấu, ${formatStudyHotkey(quizHotkeys.skipQuestion)} bỏ qua`
+      : `Phím tắt: ${formatStudyHotkey(quizHotkeys.checkAnswer)} kiểm tra, ${formatStudyHotkey(quizHotkeys.revealAnswer)} xem đáp án, ${formatStudyHotkey(quizHotkeys.clearAnswer)} xóa nhanh, Tab focus ô nhập, ${formatStudyHotkey(quizHotkeys.playAudio)} phát âm, ${formatStudyHotkey(quizHotkeys.flagQuestion)} đánh dấu, ${formatStudyHotkey(quizHotkeys.skipQuestion)} bỏ qua`
+    : isMcQuestion
+      ? `Shortcuts: 1-4 or ↑/↓ + Enter select answer, ${formatStudyHotkey(quizHotkeys.playAudio)} play audio, ${formatStudyHotkey(quizHotkeys.flagQuestion)} flag, ${formatStudyHotkey(quizHotkeys.skipQuestion)} skip`
+      : `Shortcuts: ${formatStudyHotkey(quizHotkeys.checkAnswer)} check, ${formatStudyHotkey(quizHotkeys.revealAnswer)} reveal, ${formatStudyHotkey(quizHotkeys.clearAnswer)} clear, Tab focus input, ${formatStudyHotkey(quizHotkeys.playAudio)} play audio, ${formatStudyHotkey(quizHotkeys.flagQuestion)} flag, ${formatStudyHotkey(quizHotkeys.skipQuestion)} skip`
   const overrideHint = language === 'vi'
     ? `, ${formatStudyHotkey(quizHotkeys.overrideCorrect)} tôi đã trả lời đúng`
     : `, ${formatStudyHotkey(quizHotkeys.overrideCorrect)} I answered correctly`
@@ -179,15 +219,89 @@ export function QuizSessionPage() {
 
   useEffect(() => {
     function handleGlobalKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Tab' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        const active = document.activeElement
+        if (active !== answerInputRef.current && !isCompleted) {
+          event.preventDefault()
+          answerInputRef.current?.focus()
+          answerInputRef.current?.select()
+          return
+        }
+      }
+
       const hotkey = hotkeyFromKeyboardEvent(event as unknown as import('react').KeyboardEvent<HTMLElement>)
       if (hotkey === quizHotkeys.playAudio && question) {
         event.preventDefault()
-        speakQuestion(question.sourceText, question.audioUrl)
+        speakQuestion(question.sourceText, question.audioUrl, question.pronunciationText)
+      }
+
+      if (isMcQuestion && !isCompleted && mcSelectedIndex === null && !isRevealed) {
+        const mcKeys = ['1', '2', '3', '4']
+        const mcIndex = mcKeys.indexOf(event.key)
+        if (mcIndex >= 0) {
+          event.preventDefault()
+          selectMcOption(mcIndex)
+        } else if (event.key === 'ArrowDown') {
+          event.preventDefault()
+          setHighlightedMcIndex((prev) => {
+            if (prev === null) return 0
+            return (prev + 1) % question.options.length
+          })
+        } else if (event.key === 'ArrowUp') {
+          event.preventDefault()
+          setHighlightedMcIndex((prev) => {
+            if (prev === null) return question.options.length - 1
+            return (prev - 1 + question.options.length) % question.options.length
+          })
+        } else if (event.key === 'Enter') {
+          if (highlightedMcIndex !== null) {
+            event.preventDefault()
+            selectMcOption(highlightedMcIndex)
+          }
+        }
+      }
+
+      if (hotkey === quizHotkeys.flagQuestion && question && !isCompleted) {
+        event.preventDefault()
+        const isAlreadyFlagged = flaggedTermIds.has(question.userTermId)
+        if (shouldUseRemoteData) {
+          if (isAlreadyFlagged) {
+            vocabularyService.unflagTerm(question.userTermId).catch(() => { /* non-critical */ })
+          } else {
+            vocabularyService.flagTerm(question.userTermId).catch(() => { /* non-critical */ })
+          }
+        }
+        setFlaggedTermIds((prev) => {
+          const next = new Set(prev)
+          if (isAlreadyFlagged) {
+            next.delete(question.userTermId)
+          } else {
+            next.add(question.userTermId)
+          }
+          return next
+        })
+      }
+
+      if (hotkey === quizHotkeys.skipQuestion && question && !isCompleted) {
+        event.preventDefault()
+        skipQuestion()
       }
     }
     window.addEventListener('keydown', handleGlobalKeyDown as unknown as EventListener)
     return () => window.removeEventListener('keydown', handleGlobalKeyDown as unknown as EventListener)
-  }, [question])
+  }, [
+    question,
+    isCompleted,
+    isMcQuestion,
+    mcSelectedIndex,
+    isRevealed,
+    highlightedMcIndex,
+    selectMcOption,
+    flaggedTermIds,
+    shouldUseRemoteData,
+    speakQuestion,
+    skipQuestion,
+  ])
 
   function triggerAnswerShake() {
     setAnswerShakeIteration((value) => value + 1)
@@ -214,7 +328,9 @@ export function QuizSessionPage() {
       ? session.score + 1
       : session.score + (isRevealed ? 0 : 1)
 
-    if (session.index >= session.questions.length - 1) {
+    const allCompleted = session.questions.every((q) => completedQuestionIds.includes(q.id))
+
+    if (allCompleted) {
       const totalIds = session.totalQuestionIds.length > 0
         ? session.totalQuestionIds
         : session.questions.map((q) => q.userTermId)
@@ -239,9 +355,25 @@ export function QuizSessionPage() {
       return
     }
 
+    let nextIndex = -1
+    for (let i = session.index + 1; i < session.questions.length; i++) {
+      if (!completedQuestionIds.includes(session.questions[i].id)) {
+        nextIndex = i
+        break
+      }
+    }
+    if (nextIndex === -1) {
+      for (let i = 0; i < session.questions.length; i++) {
+        if (!completedQuestionIds.includes(session.questions[i].id)) {
+          nextIndex = i
+          break
+        }
+      }
+    }
+
     setSession({
       ...session,
-      index: session.index + 1,
+      index: nextIndex,
       score: nextScore,
       completedQuestionIds,
       fuzzyCorrectQuestionIds,
@@ -252,12 +384,153 @@ export function QuizSessionPage() {
     setAnswerShakeIteration(0)
   }
 
+  function selectMcOption(index: number) {
+    if (!session || !question || !('options' in question) || mcSelectedIndex !== null) return
+
+    const isCorrect = index === question.correctIndex
+    setMcSelectedIndex(index)
+    setMcFeedbackState(isCorrect ? 'correct' : 'wrong')
+    mcPendingRef.current = { questionId: question.id, isCorrect }
+
+    const delay = isCorrect ? 1200 : 1500
+    clearAutoAdvance()
+    autoAdvanceTimerRef.current = setTimeout(() => advanceMc(), delay)
+  }
+
+  function advanceMc() {
+    const pending = mcPendingRef.current
+    if (!pending) return
+    mcPendingRef.current = null
+
+    setSession((prev) => {
+      if (!prev) return prev
+
+      const questionId = pending.questionId
+      const isCorrect = pending.isCorrect
+      const completedQuestionIds = appendUnique(prev.completedQuestionIds, questionId)
+      const revealedQuestionIds = isCorrect
+        ? prev.revealedQuestionIds
+        : appendUnique(prev.revealedQuestionIds, questionId)
+      const nextScore = prev.score + (isCorrect ? 1 : 0)
+
+      const allCompleted = prev.questions.every((q) => completedQuestionIds.includes(q.id))
+
+      if (allCompleted) {
+        const totalIds = prev.totalQuestionIds.length > 0
+          ? prev.totalQuestionIds
+          : prev.questions.map((q) => q.userTermId)
+        const wrongIds = prev.questions
+          .filter((q) => revealedQuestionIds.includes(q.id))
+          .map((q) => q.userTermId)
+
+        const finalSession = {
+          ...prev,
+          index: prev.index,
+          score: nextScore,
+          completedQuestionIds,
+          revealedQuestionIds,
+          wrongQuestionIds: wrongIds,
+          totalQuestionIds: totalIds,
+        }
+        writeStoredQuizSession(sessionKey, finalSession)
+        setIsCompleted(true)
+        void saveQuizResult()
+        return finalSession
+      }
+
+      let nextIndex = -1
+      for (let i = prev.index + 1; i < prev.questions.length; i++) {
+        if (!completedQuestionIds.includes(prev.questions[i].id)) {
+          nextIndex = i
+          break
+        }
+      }
+      if (nextIndex === -1) {
+        for (let i = 0; i < prev.questions.length; i++) {
+          if (!completedQuestionIds.includes(prev.questions[i].id)) {
+            nextIndex = i
+            break
+          }
+        }
+      }
+
+      return {
+        ...prev,
+        index: nextIndex,
+        score: nextScore,
+        completedQuestionIds,
+        revealedQuestionIds,
+      }
+    })
+
+    setMcSelectedIndex(null)
+    setMcFeedbackState('none')
+  }
+
+  function skipQuestion() {
+    if (!session || !question) return
+
+    if (shouldUseRemoteData) {
+      vocabularyService.flagTerm(question.userTermId).catch(() => { /* non-critical */ })
+    }
+    setFlaggedTermIds((prev) => new Set(prev).add(question.userTermId))
+
+    const skippedQuestionIds = appendUnique(session.skippedQuestionIds, question.id)
+    const completedQuestionIds = appendUnique(session.completedQuestionIds, question.id)
+
+    const allDone = session.questions.every(
+      (q) => completedQuestionIds.includes(q.id) || skippedQuestionIds.includes(q.id)
+    )
+
+    if (allDone) {
+      const newSession = {
+        ...session,
+        skippedQuestionIds,
+        completedQuestionIds,
+      }
+      writeStoredQuizSession(sessionKey, newSession)
+      setSession(newSession)
+      setIsCompleted(true)
+      void saveQuizResult()
+      return
+    }
+
+    let nextIndex = -1
+    for (let i = session.index + 1; i < session.questions.length; i++) {
+      if (!completedQuestionIds.includes(session.questions[i].id)) {
+        nextIndex = i
+        break
+      }
+    }
+    if (nextIndex === -1) {
+      for (let i = 0; i < session.questions.length; i++) {
+        if (!completedQuestionIds.includes(session.questions[i].id)) {
+          nextIndex = i
+          break
+        }
+      }
+    }
+
+    setSession({
+      ...session,
+      index: nextIndex,
+      skippedQuestionIds,
+      completedQuestionIds,
+    })
+    setAnswerText('')
+    setAnswerFeedback({ type: 'none' })
+    setAnswerShakeIteration(0)
+    setMcSelectedIndex(null)
+    setMcFeedbackState('none')
+  }
+
   function retryWrong() {
     if (!session) return
     const wrongQuestions = session.questions.filter(
-      (q) => session.wrongQuestionIds.includes(q.userTermId)
+      (q) => session.wrongQuestionIds.includes(q.userTermId) && !session.skippedQuestionIds.includes(q.id)
     )
     const newSession: StoredQuizSession = {
+      quizType: session.quizType,
       questions: shuffle(wrongQuestions),
       index: 0,
       score: 0,
@@ -267,10 +540,13 @@ export function QuizSessionPage() {
       deckId: session.deckId,
       wrongQuestionIds: [],
       totalQuestionIds: session.totalQuestionIds,
+      skippedQuestionIds: [],
+      startedAt: session.startedAt,
     }
     writeStoredQuizSession(sessionKey, newSession)
     setSession(newSession)
     setIsCompleted(false)
+    isRetryRef.current = true
     setAnswerText('')
     setAnswerFeedback({ type: 'none' })
   }
@@ -297,7 +573,7 @@ export function QuizSessionPage() {
     if (result.result === 'exact') {
       setAnswerFeedback({ type: 'exact' })
       clearAutoAdvance()
-      autoAdvanceTimerRef.current = setTimeout(() => advanceToNext(false), 500)
+      autoAdvanceTimerRef.current = setTimeout(() => advanceToNext(false), 1000)
       return
     }
 
@@ -339,13 +615,13 @@ export function QuizSessionPage() {
   }
 
   async function saveQuizResult() {
-    if (!session || !shouldUseRemoteData || !user) return
-    const durationMs = Date.now() - startedAtRef.current
+    if (!session || !shouldUseRemoteData || !user || isRetryRef.current) return
+    const durationMs = Date.now() - startedAt
     try {
       await quizService.saveResult({
         userId: user.id,
         deckId: session.deckId,
-        quizType,
+        quizType: session.quizType,
         totalQuestions: session.questions.length,
         correctAnswers: session.score,
         wrongAnswers: session.questions.length - session.score,
@@ -406,6 +682,17 @@ export function QuizSessionPage() {
         : undefined
   const shouldShake = isAnswerShaking && answerFeedback.type === 'incorrect'
 
+  const minutes = Math.floor(elapsedSec / 60)
+  const seconds = elapsedSec % 60
+  const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+
+  const timerBar = (
+    <div className="mb-4 inline-flex items-center gap-1.5 rounded-xl border-2 border-border bg-background/95 px-3 py-1.5 shadow-[2px_2px_0_var(--border)]" aria-label={t('quiz.timeLabel')}>
+      <Clock size={14} />
+      <span className="font-mono text-sm font-black tabular-nums">{formattedTime}</span>
+    </div>
+  )
+
   if (shouldUseRemoteData && sourceQuery.isLoading && !session) {
     return <Card className="font-black">{t('vocabulary.loading')}</Card>
   }
@@ -429,14 +716,17 @@ export function QuizSessionPage() {
   }
 
   if (isCompleted && session) {
-    const totalQuestions = session.totalQuestionIds.length || session.questions.length
+    const totalQuestions = session.questions.length
     const correctCount = session.score
     const wrongCount = session.wrongQuestionIds.length
+    const skippedCount = session.skippedQuestionIds.length
     const accuracy = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0
     const isPerfect = wrongCount === 0
 
     return (
-      <div className="flex w-full justify-center pt-8">
+      <>
+        {timerBar}
+        <div className="flex w-full justify-center pt-8">
         <Card className="max-w-md w-full p-8 text-center">
           <p className="text-lg font-black uppercase text-muted-foreground">{t('quiz.resultTitle')}</p>
           <p className="mt-2 text-5xl font-black">{correctCount}/{totalQuestions}</p>
@@ -444,10 +734,15 @@ export function QuizSessionPage() {
             {t('quiz.accuracy')}: {accuracy}%
           </p>
           {!isPerfect ? (
-            <p className="mt-3 text-sm font-bold text-muted-foreground">
-              {t('quiz.wrongAnswers')}: {wrongCount}/{totalQuestions}
-            </p>
-          ) : null}
+              <p className="mt-3 text-sm font-bold text-muted-foreground">
+                {t('quiz.wrongAnswers')}: {wrongCount}/{totalQuestions}
+              </p>
+            ) : null}
+            {skippedCount > 0 ? (
+              <p className="mt-1 text-sm font-bold text-muted-foreground">
+                {t('quiz.skippedCount', { count: skippedCount })}
+              </p>
+            ) : null}
           {isPerfect ? (
             <p className="mt-3 text-lg font-black text-success">{t('quiz.resultPerfect')}</p>
           ) : null}
@@ -459,6 +754,7 @@ export function QuizSessionPage() {
           </div>
         </Card>
       </div>
+      </>
     )
   }
 
@@ -466,13 +762,22 @@ export function QuizSessionPage() {
     <>
       <div className="flex w-full gap-8 px-8 items-start">
         <div className="flex-1">
+          {timerBar}
+          <div className="group relative ml-2 inline-flex">
+            <span className="flex h-6 w-6 cursor-help items-center justify-center rounded-md border border-border bg-muted/50 text-muted-foreground">
+              <Info size={12} />
+            </span>
+            <div className="pointer-events-none absolute left-0 top-full z-20 mt-2 w-72 rounded-xl border-2 border-border bg-background p-3 text-xs font-black shadow-[2px_2px_0_var(--border)] opacity-0 transition-opacity group-hover:opacity-100">
+              {hotkeyHint}
+            </div>
+          </div>
           <div className="mt-6">
             <div className="mx-auto max-w-2xl">
               <Card className="relative p-8">
                 <button
                   type="button"
                   className="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-md border-2 border-border bg-secondary text-secondary-foreground shadow-[2px_2px_0_var(--border)] hover:bg-[#321fb0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)]"
-                  onClick={() => { playedAudioForQuestionRef.current = question.id; speakQuestion(question.sourceText, question.audioUrl) }}
+                  onClick={() => { playedAudioForQuestionRef.current = question.id; speakQuestion(question.sourceText, question.audioUrl, question.pronunciationText) }}
                   aria-label={language === 'vi' ? 'Phát âm thanh' : 'Play audio'}
                 >
                   <Volume2 size={18} />
@@ -481,10 +786,23 @@ export function QuizSessionPage() {
                   type="button"
                   className={`absolute top-3 right-16 inline-flex h-10 w-10 items-center justify-center rounded-md border-2 shadow-[2px_2px_0_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)] ${flaggedTermIds.has(question.userTermId) ? 'border-warning bg-warning/20 text-warning' : 'border-border bg-background text-muted-foreground hover:bg-warning/10 hover:border-warning hover:text-warning'}`}
                   onClick={() => {
+                    const isAlreadyFlagged = flaggedTermIds.has(question.userTermId)
                     if (shouldUseRemoteData) {
-                      vocabularyService.flagTerm(question.userTermId).catch(() => { /* non-critical */ })
+                      if (isAlreadyFlagged) {
+                        vocabularyService.unflagTerm(question.userTermId).catch(() => { /* non-critical */ })
+                      } else {
+                        vocabularyService.flagTerm(question.userTermId).catch(() => { /* non-critical */ })
+                      }
                     }
-                    setFlaggedTermIds((prev) => new Set(prev).add(question.userTermId))
+                    setFlaggedTermIds((prev) => {
+                      const next = new Set(prev)
+                      if (isAlreadyFlagged) {
+                        next.delete(question.userTermId)
+                      } else {
+                        next.add(question.userTermId)
+                      }
+                      return next
+                    })
                   }}
                   aria-label={language === 'vi' ? 'Đánh dấu cần kiểm tra' : 'Flag for review'}
                 >
@@ -498,6 +816,59 @@ export function QuizSessionPage() {
                   {question.ipa ? <span className="rounded-md border-2 border-border bg-background px-3 py-1">{question.ipa}</span> : null}
                   {question.partOfSpeech ? <span className="rounded-md border-2 border-border bg-background px-3 py-1">{question.partOfSpeech}</span> : null}
                 </div>
+                {isMcQuestion ? (
+                  <>
+                  <div className="mt-8 grid gap-3">
+                    {question.options.map((option, index) => {
+                      const label = String.fromCharCode(65 + index)
+                      const isSelected = mcSelectedIndex === index
+                      const isCorrectOption = index === question.correctIndex
+                      const isHighlighted = highlightedMcIndex === index
+                      let btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-card text-foreground hover:bg-muted active:neo-button-active'
+                      if (mcFeedbackState === 'correct' && isSelected) {
+                        btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-success/20 border-success text-success'
+                      } else if (mcFeedbackState === 'wrong') {
+                        if (isSelected) {
+                          btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-danger/20 border-danger text-danger'
+                        } else if (isCorrectOption) {
+                          btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-success/20 border-success text-success'
+                        }
+                      } else if (isHighlighted && mcSelectedIndex === null) {
+                        btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-muted border-secondary shadow-[3px_3px_0_var(--secondary)] text-foreground'
+                      }
+                      return (
+                        <button
+                          key={index}
+                          type="button"
+                          disabled={mcSelectedIndex !== null}
+                          className={btnClass}
+                          onClick={() => selectMcOption(index)}
+                          onMouseEnter={() => {
+                            if (mcSelectedIndex === null) {
+                              setHighlightedMcIndex(index)
+                            }
+                          }}
+                          onMouseLeave={() => {
+                            if (mcSelectedIndex === null) {
+                              setHighlightedMcIndex(null)
+                            }
+                          }}
+                        >
+                          <span className={`flex h-7 w-7 items-center justify-center rounded-md border-2 border-border text-xs font-black tabular-nums transition-colors ${
+                            isHighlighted && mcSelectedIndex === null
+                              ? 'bg-primary text-primary-foreground border-border'
+                              : 'bg-background text-foreground border-border'
+                          }`}>{label}</span>
+                          <span>{option}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div className="mt-3">
+                    <Button type="button" variant="ghost" className="text-muted-foreground" onClick={skipQuestion}>{t('quiz.skipQuestion')}</Button>
+                  </div>
+                  </>
+                ) : (
                 <form className="mt-8 grid gap-4" onSubmit={submitAnswer}>
                   <div>
                     <Label htmlFor="translation-answer">{t('quiz.answerLabel')}</Label>
@@ -520,6 +891,12 @@ export function QuizSessionPage() {
                     />
                   </div>
                   {answerFeedback.type === 'exact' ? <p aria-live="polite" className={`font-black ${isRevealed ? 'text-muted-foreground' : 'text-success'}`}>{isRevealed ? t('quiz.correctRevealed') : t('quiz.correct')}</p> : null}
+                  {answerFeedback.type === 'exact' && !isRevealed ? (
+                    <div className="rounded-md border-2 border-border bg-primary p-3 shadow-[2px_2px_0_var(--border)]">
+                      <p className="text-xs font-black uppercase">{t('quiz.expectedTranslation')}</p>
+                      <p className="mt-1 text-lg font-black">{question.expectedTranslation.split(/[\/,;\n]+/).map(s => s.trim()).filter(Boolean).join(' / ')}</p>
+                    </div>
+                  ) : null}
                   {answerFeedback.type === 'fuzzy' ? (
                     <p aria-live="polite" className="font-black text-warning">
                       {t('quiz.fuzzyWarning', { answer: answerFeedback.matchedAnswer })}
@@ -545,9 +922,11 @@ export function QuizSessionPage() {
                         {t('quiz.overrideButton')}
                       </Button>
                     ) : null}
+                    <Button type="button" variant="ghost" className="text-muted-foreground" onClick={skipQuestion}>{t('quiz.skipQuestion')}</Button>
                   </div>
                   <p className="text-xs font-black text-muted-foreground">{hotkeyHint}</p>
                 </form>
+                )}
               </Card>
             </div>
           </div>
@@ -605,8 +984,10 @@ export function QuizSessionPage() {
                 const isCompleted = session.completedQuestionIds.includes(q.id)
                 const isFuzzy = session.fuzzyCorrectQuestionIds.includes(q.id)
                 const isRevealedQ = session.revealedQuestionIds.includes(q.id)
+                const isSkipped = session.skippedQuestionIds.includes(q.id)
                 let bg = 'bg-muted text-muted-foreground hover:bg-muted/70'
                 if (isCurrent) bg = 'bg-primary text-primary-foreground'
+                else if (isSkipped) bg = 'bg-muted/50 text-muted-foreground/60'
                 else if (isRevealedQ) bg = 'bg-danger/30 text-danger'
                 else if (isCompleted && isFuzzy) bg = 'bg-warning/30 text-warning'
                 else if (isCompleted) bg = 'bg-success/30 text-success'

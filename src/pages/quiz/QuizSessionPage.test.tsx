@@ -250,4 +250,36 @@ describe('QuizSessionPage', () => {
 
     expect(await screen.findByText('Chưa có từ vựng để kiểm tra.')).toBeInTheDocument()
   })
+
+  it('allows navigation and selection of multiple choice options via keyboard', async () => {
+    useQuizStore.setState({
+      quizType: 'multiple_choice',
+      questionCount: 1,
+      selectedDeckId: 'deck-1',
+    })
+
+    const items = [
+      baseItem,
+      { ...baseItem, id: 'banana', source_text: 'banana', translation: 'quả chuối' },
+      { ...baseItem, id: 'orange', source_text: 'orange', translation: 'quả cam' },
+      { ...baseItem, id: 'grape', source_text: 'grape', translation: 'quả nho' },
+    ]
+
+    await renderPage(items)
+
+    expect(await screen.findByText('banana')).toBeInTheDocument()
+
+    // Press ArrowDown to highlight the first option
+    fireEvent.keyDown(window, { key: 'ArrowDown' })
+
+    // Press Enter to select the highlighted option
+    fireEvent.keyDown(window, { key: 'Enter' })
+
+    // Once selected, the option buttons should become disabled
+    await waitFor(() => {
+      const optionA = screen.getByText('A')
+      const btn = optionA.closest('button')
+      expect(btn).toBeDisabled()
+    })
+  })
 })
