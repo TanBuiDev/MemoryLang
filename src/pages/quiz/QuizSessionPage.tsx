@@ -843,13 +843,13 @@ export function QuizSessionPage() {
                           disabled={mcSelectedIndex !== null}
                           className={btnClass}
                           onClick={() => selectMcOption(index)}
-                          onMouseEnter={() => {
+                          onMouseMove={() => {
                             if (mcSelectedIndex === null) {
                               setHighlightedMcIndex(index)
                             }
                           }}
                           onMouseLeave={() => {
-                            if (mcSelectedIndex === null) {
+                            if (mcSelectedIndex === null && highlightedMcIndex === index) {
                               setHighlightedMcIndex(null)
                             }
                           }}
