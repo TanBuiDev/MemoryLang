@@ -86,6 +86,7 @@ export function QuizSessionPage() {
   const answerInputRef = useRef<HTMLInputElement>(null)
   const playedAudioForQuestionRef = useRef<string | null>(null)
   const startedAtRef = useRef(Date.now())
+  const lastMousePosRef = useRef({ x: 0, y: 0 })
   const isRetryRef = useRef(false)
   const startedAt = session?.startedAt ?? startedAtRef.current
   const [isCompleted, setIsCompleted] = useState(false)
@@ -843,9 +844,14 @@ export function QuizSessionPage() {
                           disabled={mcSelectedIndex !== null}
                           className={btnClass}
                           onClick={() => selectMcOption(index)}
-                          onMouseMove={() => {
+                          onMouseMove={(event) => {
                             if (mcSelectedIndex === null) {
-                              setHighlightedMcIndex(index)
+                              const currentPos = { x: event.clientX, y: event.clientY }
+                              const lastPos = lastMousePosRef.current
+                              if (currentPos.x !== lastPos.x || currentPos.y !== lastPos.y) {
+                                lastMousePosRef.current = currentPos
+                                setHighlightedMcIndex(index)
+                              }
                             }
                           }}
                           onMouseLeave={() => {

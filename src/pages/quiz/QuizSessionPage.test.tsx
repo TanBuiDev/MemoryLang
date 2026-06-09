@@ -282,4 +282,41 @@ describe('QuizSessionPage', () => {
       expect(btn).toBeDisabled()
     })
   })
+
+  it('wraps around multiple choice options using arrow keys', async () => {
+    useQuizStore.setState({
+      quizType: 'multiple_choice',
+      questionCount: 1,
+      selectedDeckId: 'deck-1',
+    })
+
+    const items = [
+      baseItem,
+      { ...baseItem, id: 'banana', source_text: 'banana', translation: 'quả chuối' },
+      { ...baseItem, id: 'orange', source_text: 'orange', translation: 'quả cam' },
+      { ...baseItem, id: 'grape', source_text: 'grape', translation: 'quả nho' },
+    ]
+
+    await renderPage(items)
+
+    expect(await screen.findByText('banana')).toBeInTheDocument()
+
+    // 1. Test ArrowUp wrap around: From null, pressing ArrowUp highlights the last option (D)
+    fireEvent.keyDown(window, { key: 'ArrowUp' })
+    const optionD = screen.getByText('D')
+    const buttonD = optionD.closest('button')
+    expect(buttonD).toHaveClass('border-secondary')
+
+    // 2. Test ArrowDown wrap around from last option (D): Pressing ArrowDown wraps to A
+    fireEvent.keyDown(window, { key: 'ArrowDown' })
+    const optionA = screen.getByText('A')
+    const buttonA = optionA.closest('button')
+    expect(buttonA).toHaveClass('border-secondary')
+    expect(buttonD).not.toHaveClass('border-secondary')
+
+    // 3. Test ArrowUp wrap around from first option (A): Pressing ArrowUp wraps to D
+    fireEvent.keyDown(window, { key: 'ArrowUp' })
+    expect(buttonD).toHaveClass('border-secondary')
+    expect(buttonA).not.toHaveClass('border-secondary')
+  })
 })
