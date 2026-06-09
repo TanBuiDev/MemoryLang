@@ -897,10 +897,10 @@ export function QuizSessionPage() {
             </div>
           </div>
           <div className="mt-6">
-            <div className="mx-auto max-w-2xl flex items-center gap-4">
+            <div className="relative mx-auto max-w-2xl w-full">
               <button
                 type="button"
-                className="inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border-2 border-border bg-card text-foreground shadow-[2px_2px_0_var(--border)] hover:bg-muted active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)] transition-all"
+                className="hidden xl:inline-flex absolute -left-16 top-1/2 -translate-y-1/2 h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border-2 border-border bg-card text-foreground shadow-[2px_2px_0_var(--border)] hover:bg-muted active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)] transition-all"
                 onClick={() => {
                   const prevIndex = (session.index - 1 + session.questions.length) % session.questions.length
                   goToQuestion(prevIndex)
@@ -910,7 +910,7 @@ export function QuizSessionPage() {
                 <ArrowLeft size={20} />
               </button>
 
-              <Card className="relative p-8 flex-1">
+              <Card className="relative p-8 w-full">
                 <button
                   type="button"
                   className="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-md border-2 border-border bg-secondary text-secondary-foreground shadow-[2px_2px_0_var(--border)] hover:bg-[#321fb0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)]"
@@ -1073,7 +1073,7 @@ export function QuizSessionPage() {
 
               <button
                 type="button"
-                className="inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border-2 border-border bg-card text-foreground shadow-[2px_2px_0_var(--border)] hover:bg-muted active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)] transition-all"
+                className="hidden xl:inline-flex absolute -right-16 top-1/2 -translate-y-1/2 h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border-2 border-border bg-card text-foreground shadow-[2px_2px_0_var(--border)] hover:bg-muted active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)] transition-all"
                 onClick={() => {
                   const nextIndex = (session.index + 1) % session.questions.length
                   goToQuestion(nextIndex)
