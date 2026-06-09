@@ -399,7 +399,7 @@ export function QuizSessionPage() {
     setMcFeedbackState(isCorrect ? 'correct' : 'wrong')
     mcPendingRef.current = { questionId: question.id, isCorrect }
 
-    const delay = isCorrect ? 1200 : 1500
+    const delay = isCorrect ? 800 : 1500
     clearAutoAdvance()
     autoAdvanceTimerRef.current = setTimeout(() => advanceMc(), delay)
   }
