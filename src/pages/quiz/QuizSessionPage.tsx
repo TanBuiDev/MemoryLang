@@ -236,6 +236,12 @@ export function QuizSessionPage() {
         speakQuestion(question.sourceText, question.audioUrl, question.pronunciationText)
       }
 
+      if (isMcQuestion && !isCompleted) {
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+          event.preventDefault()
+        }
+      }
+
       if (isMcQuestion && !isCompleted && mcSelectedIndex === null && !isRevealed) {
         const mcKeys = ['1', '2', '3', '4']
         const mcIndex = mcKeys.indexOf(event.key)
@@ -825,17 +831,17 @@ export function QuizSessionPage() {
                       const isSelected = mcSelectedIndex === index
                       const isCorrectOption = index === question.correctIndex
                       const isHighlighted = highlightedMcIndex === index
-                      let btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-card text-foreground hover:bg-muted active:neo-button-active'
+                      let btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-card text-foreground hover:bg-muted active:neo-button-active select-none'
                       if (mcFeedbackState === 'correct' && isSelected) {
-                        btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-success/20 border-success text-success'
+                        btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-success/20 border-success text-success select-none'
                       } else if (mcFeedbackState === 'wrong') {
                         if (isSelected) {
-                          btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-danger/20 border-danger text-danger'
+                          btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-danger/20 border-danger text-danger select-none'
                         } else if (isCorrectOption) {
-                          btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-success/20 border-success text-success'
+                          btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-success/20 border-success text-success select-none'
                         }
                       } else if (isHighlighted && mcSelectedIndex === null) {
-                        btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-muted border-secondary shadow-[3px_3px_0_var(--secondary)] text-foreground'
+                        btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-muted border-secondary shadow-[3px_3px_0_var(--secondary)] text-foreground select-none'
                       }
                       return (
                         <button
