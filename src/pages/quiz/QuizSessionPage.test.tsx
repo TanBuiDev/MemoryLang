@@ -594,4 +594,35 @@ describe('QuizSessionPage', () => {
       expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q2Text)
     }, { timeout: 3000 })
   })
+
+  it('allows navigation between questions using the click arrow buttons on the UI', async () => {
+    useQuizStore.setState({
+      quizType: 'multiple_choice',
+      questionCount: 2,
+      selectedDeckId: 'deck-1',
+    })
+
+    const items = [
+      baseItem,
+      { ...baseItem, id: 'banana', source_text: 'banana', translation: 'quả chuối' },
+    ]
+
+    await renderPage(items)
+
+    const q1Text = (await screen.findByRole('heading', { level: 2 })).textContent
+    expect(q1Text).toBeTruthy()
+
+    // Find the next question button (Right arrow button) and prev question button (Left arrow button)
+    const rightArrowBtn = screen.getByRole('button', { name: /Next question|Câu tiếp theo/ })
+    const leftArrowBtn = screen.getByRole('button', { name: /Previous question|Câu trước/ })
+
+    // Click right arrow to go to Q2
+    fireEvent.click(rightArrowBtn)
+    const q2Text = (await screen.findByRole('heading', { level: 2 })).textContent
+    expect(q2Text).not.toBe(q1Text)
+
+    // Click left arrow to go back to Q1
+    fireEvent.click(leftArrowBtn)
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q1Text)
+  })
 })

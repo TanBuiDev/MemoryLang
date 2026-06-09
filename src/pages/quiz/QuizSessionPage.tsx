@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useQuery } from '@tanstack/react-query'
-import { Volume2, Flag, Clock, Info } from 'lucide-react'
+import { Volume2, Flag, Clock, Info, ArrowLeft, ArrowRight } from 'lucide-react'
 import { type FormEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -897,8 +897,20 @@ export function QuizSessionPage() {
             </div>
           </div>
           <div className="mt-6">
-            <div className="mx-auto max-w-2xl">
-              <Card className="relative p-8">
+            <div className="mx-auto max-w-2xl flex items-center gap-4">
+              <button
+                type="button"
+                className="inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border-2 border-border bg-card text-foreground shadow-[2px_2px_0_var(--border)] hover:bg-muted active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)] transition-all"
+                onClick={() => {
+                  const prevIndex = (session.index - 1 + session.questions.length) % session.questions.length
+                  goToQuestion(prevIndex)
+                }}
+                aria-label={language === 'vi' ? 'Câu trước' : 'Previous question'}
+              >
+                <ArrowLeft size={20} />
+              </button>
+
+              <Card className="relative p-8 flex-1">
                 <button
                   type="button"
                   className="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-md border-2 border-border bg-secondary text-secondary-foreground shadow-[2px_2px_0_var(--border)] hover:bg-[#321fb0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)]"
@@ -1058,6 +1070,18 @@ export function QuizSessionPage() {
                 </form>
                 )}
               </Card>
+
+              <button
+                type="button"
+                className="inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border-2 border-border bg-card text-foreground shadow-[2px_2px_0_var(--border)] hover:bg-muted active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)] transition-all"
+                onClick={() => {
+                  const nextIndex = (session.index + 1) % session.questions.length
+                  goToQuestion(nextIndex)
+                }}
+                aria-label={language === 'vi' ? 'Câu tiếp theo' : 'Next question'}
+              >
+                <ArrowRight size={20} />
+              </button>
             </div>
           </div>
         </div>
