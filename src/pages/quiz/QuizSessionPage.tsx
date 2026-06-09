@@ -202,11 +202,11 @@ export function QuizSessionPage() {
   const isMcQuestion = question && 'options' in question
   const baseHint = language === 'vi'
     ? isMcQuestion
-      ? `Phím tắt: 1-4 hoặc ↑/↓ + Enter chọn đáp án, ${formatStudyHotkey(quizHotkeys.playAudio)} phát âm, ${formatStudyHotkey(quizHotkeys.flagQuestion)} đánh dấu, ${formatStudyHotkey(quizHotkeys.skipQuestion)} bỏ qua`
-      : `Phím tắt: ${formatStudyHotkey(quizHotkeys.checkAnswer)} kiểm tra, ${formatStudyHotkey(quizHotkeys.revealAnswer)} xem đáp án, ${formatStudyHotkey(quizHotkeys.clearAnswer)} xóa nhanh, Tab focus ô nhập, ${formatStudyHotkey(quizHotkeys.playAudio)} phát âm, ${formatStudyHotkey(quizHotkeys.flagQuestion)} đánh dấu, ${formatStudyHotkey(quizHotkeys.skipQuestion)} bỏ qua`
+      ? `Phím tắt: 1-4 hoặc ↑/↓ + Enter chọn đáp án, ←/→ chuyển câu, ${formatStudyHotkey(quizHotkeys.playAudio)} phát âm, ${formatStudyHotkey(quizHotkeys.flagQuestion)} đánh dấu, ${formatStudyHotkey(quizHotkeys.skipQuestion)} bỏ qua`
+      : `Phím tắt: ${formatStudyHotkey(quizHotkeys.checkAnswer)} kiểm tra, ${formatStudyHotkey(quizHotkeys.revealAnswer)} xem đáp án, ${formatStudyHotkey(quizHotkeys.clearAnswer)} xóa nhanh, Tab focus ô nhập, ←/→ chuyển câu, ${formatStudyHotkey(quizHotkeys.playAudio)} phát âm, ${formatStudyHotkey(quizHotkeys.flagQuestion)} đánh dấu, ${formatStudyHotkey(quizHotkeys.skipQuestion)} bỏ qua`
     : isMcQuestion
-      ? `Shortcuts: 1-4 or ↑/↓ + Enter select answer, ${formatStudyHotkey(quizHotkeys.playAudio)} play audio, ${formatStudyHotkey(quizHotkeys.flagQuestion)} flag, ${formatStudyHotkey(quizHotkeys.skipQuestion)} skip`
-      : `Shortcuts: ${formatStudyHotkey(quizHotkeys.checkAnswer)} check, ${formatStudyHotkey(quizHotkeys.revealAnswer)} reveal, ${formatStudyHotkey(quizHotkeys.clearAnswer)} clear, Tab focus input, ${formatStudyHotkey(quizHotkeys.playAudio)} play audio, ${formatStudyHotkey(quizHotkeys.flagQuestion)} flag, ${formatStudyHotkey(quizHotkeys.skipQuestion)} skip`
+      ? `Shortcuts: 1-4 or ↑/↓ + Enter select answer, ←/→ prev/next, ${formatStudyHotkey(quizHotkeys.playAudio)} play audio, ${formatStudyHotkey(quizHotkeys.flagQuestion)} flag, ${formatStudyHotkey(quizHotkeys.skipQuestion)} skip`
+      : `Shortcuts: ${formatStudyHotkey(quizHotkeys.checkAnswer)} check, ${formatStudyHotkey(quizHotkeys.revealAnswer)} reveal, ${formatStudyHotkey(quizHotkeys.clearAnswer)} clear, Tab focus input, ←/→ prev/next, ${formatStudyHotkey(quizHotkeys.playAudio)} play audio, ${formatStudyHotkey(quizHotkeys.flagQuestion)} flag, ${formatStudyHotkey(quizHotkeys.skipQuestion)} skip`
   const overrideHint = language === 'vi'
     ? `, ${formatStudyHotkey(quizHotkeys.overrideCorrect)} tôi đã trả lời đúng`
     : `, ${formatStudyHotkey(quizHotkeys.overrideCorrect)} I answered correctly`
@@ -236,9 +236,20 @@ export function QuizSessionPage() {
         speakQuestion(question.sourceText, question.audioUrl, question.pronunciationText)
       }
 
-      if (isMcQuestion && !isCompleted) {
+      if (!isCompleted && session && session.questions.length > 0) {
         if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-          event.preventDefault()
+          const isInputFocused = document.activeElement === answerInputRef.current
+          if (isMcQuestion || !isInputFocused) {
+            event.preventDefault()
+            const totalQs = session.questions.length
+            if (event.key === 'ArrowLeft') {
+              const prevIndex = (session.index - 1 + totalQs) % totalQs
+              goToQuestion(prevIndex)
+            } else {
+              const nextIndex = (session.index + 1) % totalQs
+              goToQuestion(nextIndex)
+            }
+          }
         }
       }
 
@@ -308,6 +319,8 @@ export function QuizSessionPage() {
     shouldUseRemoteData,
     speakQuestion,
     skipQuestion,
+    session,
+    goToQuestion,
   ])
 
   function triggerAnswerShake() {

@@ -319,4 +319,101 @@ describe('QuizSessionPage', () => {
     expect(buttonD).toHaveClass('border-secondary')
     expect(buttonA).not.toHaveClass('border-secondary')
   })
+
+  it('allows navigation between questions using ArrowLeft and ArrowRight keys in MCQ mode', async () => {
+    useQuizStore.setState({
+      quizType: 'multiple_choice',
+      questionCount: 4,
+      selectedDeckId: 'deck-1',
+    })
+
+    const items = [
+      baseItem,
+      { ...baseItem, id: 'banana', source_text: 'banana', translation: 'quả chuối' },
+      { ...baseItem, id: 'orange', source_text: 'orange', translation: 'quả cam' },
+      { ...baseItem, id: 'grape', source_text: 'grape', translation: 'quả nho' },
+    ]
+
+    await renderPage(items)
+
+    const q1Text = (await screen.findByRole('heading', { level: 2 })).textContent
+    expect(q1Text).toBeTruthy()
+
+    // Press ArrowRight to go to next question (banana/orange/etc)
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    const q2Text = (await screen.findByRole('heading', { level: 2 })).textContent
+    expect(q2Text).not.toBe(q1Text)
+
+    // Press ArrowRight again to go to third
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    const q3Text = (await screen.findByRole('heading', { level: 2 })).textContent
+    expect(q3Text).not.toBe(q1Text)
+    expect(q3Text).not.toBe(q2Text)
+
+    // Press ArrowLeft to go back to second
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q2Text)
+
+    // Press ArrowLeft to go back to first
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q1Text)
+
+    // Wrap around: Press ArrowLeft from first to go to last (fourth)
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    const q4Text = screen.getByRole('heading', { level: 2 }).textContent
+    expect(q4Text).not.toBe(q1Text)
+    expect(q4Text).not.toBe(q2Text)
+    expect(q4Text).not.toBe(q3Text)
+
+    // Wrap around: Press ArrowRight from last (fourth) to go to first
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q1Text)
+  })
+
+  it('allows navigation using ArrowLeft and ArrowRight keys in Translation Input mode only when input is not focused', async () => {
+    useQuizStore.setState({
+      quizType: 'translation_input',
+      questionCount: 4,
+      selectedDeckId: 'deck-1',
+    })
+
+    const items = [
+      baseItem,
+      { ...baseItem, id: 'banana', source_text: 'banana', translation: 'quả chuối' },
+      { ...baseItem, id: 'orange', source_text: 'orange', translation: 'quả cam' },
+      { ...baseItem, id: 'grape', source_text: 'grape', translation: 'quả nho' },
+    ]
+
+    await renderPage(items)
+
+    const q1Text = (await screen.findByRole('heading', { level: 2 })).textContent
+    expect(q1Text).toBeTruthy()
+
+    const answerInput = screen.getByRole('textbox', { name: 'Bản dịch' })
+    
+    // By default, it autofocuses the input
+    expect(answerInput).toHaveFocus()
+
+    // Press ArrowRight while focused - should NOT change question
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q1Text)
+
+    // Blur the input
+    answerInput.blur()
+    expect(answerInput).not.toHaveFocus()
+
+    // Press ArrowRight while blurred - should change to second question
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    const q2Text = (await screen.findByRole('heading', { level: 2 })).textContent
+    expect(q2Text).not.toBe(q1Text)
+
+    // It autofocuses index change, so blur it again to test ArrowLeft
+    expect(answerInput).toHaveFocus()
+    answerInput.blur()
+    expect(answerInput).not.toHaveFocus()
+
+    // Press ArrowLeft while blurred - should change back to first question
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q1Text)
+  })
 })
