@@ -1,31 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { Input, Label, Textarea } from '@/components/ui/input'
+import { Input } from '@/components/ui/input'
 import { demoDecks } from '@/features/demo/demoData'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { deckService } from '@/services/supabase/deck.service'
 import { quizService } from '@/services/supabase/quiz.service'
-import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useStudyStore } from '@/stores/useStudyStore'
+import { useQuizStore } from '@/stores/useQuizStore'
 
 export function DeckListPage() {
   const { t } = useI18n()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
   const setSelectedDeckId = useStudyStore((state) => state.setSelectedDeckId)
-  const [showCreate, setShowCreate] = useState(false)
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [fillWithUnused, setFillWithUnused] = useState(false)
+  const setQuizDeckId = useQuizStore((state) => state.setSelectedDeckId)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
@@ -46,25 +44,15 @@ export function DeckListPage() {
     mutationFn: async () => {
       const deck = await deckService.create({
         user_id: user!.id,
-        name: name.trim(),
-        description: description.trim() || undefined,
+        name: t('decks.createTitle'),
         source_language: profile?.current_target_language ?? 'en',
         native_language: profile?.native_language ?? 'vi',
       })
-      if (fillWithUnused) {
-        const deckedIds = await deckService.getDeckedTermIds(user!.id)
-        const allVocab = await vocabularyService.list(user!.id)
-        const unusedIds = allVocab.filter((v) => !deckedIds.has(v.id)).map((v) => v.id)
-        await Promise.all(unusedIds.map((termId) => deckService.addTerm(deck.id, termId)))
-      }
       return deck
     },
-    onSuccess: async () => {
-      setName('')
-      setDescription('')
-      setFillWithUnused(false)
-      setShowCreate(false)
+    onSuccess: async (deck) => {
       await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
+      navigate(`/app/decks/${deck.id}`)
     },
   })
   const deleteMutation = useMutation({
@@ -81,41 +69,11 @@ export function DeckListPage() {
       await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
     },
   })
-  const canCreate = shouldUseRemoteData && name.trim().length > 0
+  const canCreate = shouldUseRemoteData && !createMutation.isPending
 
   return (
     <>
-      <PageHeader title={t('decks.title')} description={t('decks.description')} actions={<Button onClick={() => setShowCreate((value) => !value)}>{t('decks.create')}</Button>} />
-      {showCreate ? (
-        <Card className="mb-4 max-w-2xl">
-          <CardTitle>{t('decks.createTitle')}</CardTitle>
-          <div className="mt-4 grid gap-3">
-            <div>
-              <Label>{t('decks.name')}</Label>
-              <Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t('decks.namePlaceholder')} />
-            </div>
-            <div>
-              <Label>{t('decks.descriptionLabel')}</Label>
-              <Textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder={t('decks.descriptionPlaceholder')} />
-            </div>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={fillWithUnused}
-                onChange={(event) => setFillWithUnused(event.target.checked)}
-                className="h-4 w-4 accent-primary"
-              />
-              <span className="text-sm font-black">{t('decks.fillWithUnused')}</span>
-            </label>
-            {createMutation.error instanceof Error ? <p className="text-sm font-black text-danger">{createMutation.error.message}</p> : null}
-            {!shouldUseRemoteData ? <p className="text-sm font-black text-muted-foreground">{t('decks.demoCreateDisabled')}</p> : null}
-            <div className="flex gap-2">
-              <Button disabled={!canCreate || createMutation.isPending} onClick={() => createMutation.mutate()}>{createMutation.isPending ? t('actions.saving') : t('decks.create')}</Button>
-              <Button variant="ghost" onClick={() => setShowCreate(false)}>{t('actions.cancel')}</Button>
-            </div>
-          </div>
-        </Card>
-      ) : null}
+      <PageHeader title={t('decks.title')} description={t('decks.description')} actions={<Button disabled={!canCreate} onClick={() => createMutation.mutate()}>{createMutation.isPending ? t('actions.saving') : t('decks.create')}</Button>} />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {decksQuery.isLoading ? <Card className="font-black">{t('decks.loading')}</Card> : null}
         {decksQuery.error ? <Card className="font-black text-danger">{decksQuery.error.message}</Card> : null}
@@ -166,9 +124,10 @@ export function DeckListPage() {
             {shouldUseRemoteData ? (
               <p className="mt-1 text-sm font-bold text-muted-foreground">{t('decks.quizAttempts', { count: attemptCounts[deck.id] ?? 0 })}</p>
             ) : null}
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex flex-wrap gap-2">
               <Button asChild><Link to={`/app/decks/${deck.id}`}>{t('decks.open')}</Link></Button>
               <Button asChild variant="secondary"><Link to="/app/study" onClick={() => setSelectedDeckId(deck.id)}>{t('decks.study')}</Link></Button>
+              <Button asChild variant="secondary"><Link to="/app/quiz" onClick={() => setQuizDeckId(deck.id)}>{t('decks.quiz')}</Link></Button>
               {shouldUseRemoteData ? <Button variant="ghost" onClick={() => setPendingDeleteId(deck.id)}>{t('vocabulary.delete')}</Button> : null}
             </div>
           </Card>

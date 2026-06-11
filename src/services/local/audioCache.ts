@@ -1,4 +1,4 @@
-const dbPromise = import('./studyLocalDb').then((m) => m.studyLocalDb)
+const dbPromise = import('./studyLocalDb').then((m) => m.db)
 
 function normalizeWord(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ')

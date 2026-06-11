@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   BookOpen,
   Brain,
@@ -6,7 +7,9 @@ import {
   Home,
   LayoutDashboard,
   LibraryBig,
+  Menu,
   Settings,
+  X,
 } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { BrandLogo, BrandMark } from '@/components/common/BrandLogo'
@@ -35,6 +38,7 @@ export function AppLayout() {
   const profile = useAuthStore((state) => state.profile)
   const { t } = useI18n()
   const location = useLocation()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const studyTo = location.pathname.startsWith('/app/study/result')
     ? '/app/study'
     : hasActiveStudySession() ?? '/app/study'
@@ -90,10 +94,95 @@ export function AppLayout() {
           ))}
         </nav>
       </aside>
+
+      {/* Mobile navigation drawer */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop overlay */}
+          <div
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          {/* Drawer content */}
+          <aside className="fixed inset-y-0 left-0 w-64 border-r-2 border-border bg-card p-4 shadow-[4px_0_0_var(--border)] flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between gap-3 mb-8">
+                <NavLink to="/app/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="block rounded-md border-2 border-transparent p-1 transition hover:border-border hover:bg-muted">
+                  <BrandLogo variant="compact" size="lg" className="h-11" />
+                </NavLink>
+                <button
+                  type="button"
+                  className="p-1 rounded-md border-2 border-border bg-card shadow-[1.5px_1.5px_0_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  aria-label="Close menu"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <nav className="grid gap-2">
+                {navItemsBeforeStudy.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-3 rounded-md border-2 border-transparent px-3 py-2 text-sm font-black transition',
+                        isActive ? 'border-border bg-primary shadow-[3px_3px_0_var(--border)]' : 'hover:border-border hover:bg-muted',
+                      )
+                    }
+                  >
+                    <item.icon size={18} />
+                    {t(item.labelKey)}
+                  </NavLink>
+                ))}
+                <NavLink
+                  to={studyTo}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 rounded-md border-2 border-transparent px-3 py-2 text-sm font-black transition',
+                      isActive ? 'border-border bg-primary shadow-[3px_3px_0_var(--border)]' : 'hover:border-border hover:bg-muted',
+                    )
+                  }
+                >
+                  <Brain size={18} />
+                  {t('nav.study')}
+                </NavLink>
+                {navItemsAfterStudy.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-3 rounded-md border-2 border-transparent px-3 py-2 text-sm font-black transition',
+                        isActive ? 'border-border bg-primary shadow-[3px_3px_0_var(--border)]' : 'hover:border-border hover:bg-muted',
+                      )
+                    }
+                  >
+                    <item.icon size={18} />
+                    {t(item.labelKey)}
+                  </NavLink>
+                ))}
+              </nav>
+            </div>
+          </aside>
+        </div>
+      )}
+
       <div className="lg:pl-64">
         <header className="sticky top-0 z-20 border-b-2 border-border bg-background/95 px-4 py-3 backdrop-blur">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="lg:hidden p-1.5 rounded-md border-2 border-border bg-card shadow-[2px_2px_0_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)]"
+                onClick={() => setIsMobileMenuOpen(true)}
+                aria-label="Menu"
+              >
+                <Menu size={20} />
+              </button>
               <NavLink to="/app/dashboard" className="lg:hidden">
                 <BrandMark size="sm" />
               </NavLink>

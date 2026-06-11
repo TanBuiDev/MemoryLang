@@ -54,6 +54,7 @@ const baseItem: VocabularyItem = {
   srs_ease_factor: 2.5,
   last_reviewed_at: null,
   next_review_at: null,
+  flagged: false,
   deleted_at: null,
   created_at: new Date(0).toISOString(),
   updated_at: new Date(0).toISOString(),
@@ -252,6 +253,7 @@ describe('QuizSessionPage', () => {
   })
 
   it('allows navigation and selection of multiple choice options via keyboard', async () => {
+    const user = userEvent.setup()
     useQuizStore.setState({
       quizType: 'multiple_choice',
       questionCount: 1,
@@ -270,10 +272,10 @@ describe('QuizSessionPage', () => {
     expect(await screen.findByText('banana')).toBeInTheDocument()
 
     // Press ArrowDown to highlight the first option
-    fireEvent.keyDown(window, { key: 'ArrowDown' })
+    await user.keyboard('[ArrowDown]')
 
     // Press Enter to select the highlighted option
-    fireEvent.keyDown(window, { key: 'Enter' })
+    await user.keyboard('[Enter]')
 
     // Once selected, the option buttons should become disabled
     await waitFor(() => {
@@ -284,6 +286,7 @@ describe('QuizSessionPage', () => {
   })
 
   it('wraps around multiple choice options using arrow keys', async () => {
+    const user = userEvent.setup()
     useQuizStore.setState({
       quizType: 'multiple_choice',
       questionCount: 1,
@@ -302,22 +305,22 @@ describe('QuizSessionPage', () => {
     expect(await screen.findByText('banana')).toBeInTheDocument()
 
     // 1. Test ArrowUp wrap around: From null, pressing ArrowUp highlights the last option (D)
-    fireEvent.keyDown(window, { key: 'ArrowUp' })
+    await user.keyboard('[ArrowUp]')
     const optionD = screen.getByText('D')
     const buttonD = optionD.closest('button')
-    expect(buttonD).toHaveClass('border-secondary')
+    await waitFor(() => expect(buttonD).toHaveClass('border-secondary'))
 
     // 2. Test ArrowDown wrap around from last option (D): Pressing ArrowDown wraps to A
-    fireEvent.keyDown(window, { key: 'ArrowDown' })
+    await user.keyboard('[ArrowDown]')
     const optionA = screen.getByText('A')
     const buttonA = optionA.closest('button')
-    expect(buttonA).toHaveClass('border-secondary')
-    expect(buttonD).not.toHaveClass('border-secondary')
+    await waitFor(() => expect(buttonA).toHaveClass('border-secondary'))
+    await waitFor(() => expect(buttonD).not.toHaveClass('border-secondary'))
 
     // 3. Test ArrowUp wrap around from first option (A): Pressing ArrowUp wraps to D
-    fireEvent.keyDown(window, { key: 'ArrowUp' })
-    expect(buttonD).toHaveClass('border-secondary')
-    expect(buttonA).not.toHaveClass('border-secondary')
+    await user.keyboard('[ArrowUp]')
+    await waitFor(() => expect(buttonD).toHaveClass('border-secondary'))
+    await waitFor(() => expect(buttonA).not.toHaveClass('border-secondary'))
   })
 
   it('allows navigation between questions using ArrowLeft and ArrowRight keys in MCQ mode', async () => {
@@ -404,17 +407,22 @@ describe('QuizSessionPage', () => {
 
     // Press ArrowRight while blurred - should change to second question
     fireEvent.keyDown(window, { key: 'ArrowRight' })
-    const q2Text = (await screen.findByRole('heading', { level: 2 })).textContent
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 2 })).not.toHaveTextContent(q1Text ?? '')
+    })
+    const q2Text = screen.getByRole('heading', { level: 2 }).textContent
     expect(q2Text).not.toBe(q1Text)
 
     // It autofocuses index change, so blur it again to test ArrowLeft
-    expect(answerInput).toHaveFocus()
+    await waitFor(() => expect(answerInput).toHaveFocus())
     answerInput.blur()
     expect(answerInput).not.toHaveFocus()
 
     // Press ArrowLeft while blurred - should change back to first question
     fireEvent.keyDown(window, { key: 'ArrowLeft' })
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q1Text)
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(q1Text ?? '')
+    })
   })
 
   it('does not alter score or question correctness when re-answering an already completed question in Translation mode', async () => {

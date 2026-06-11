@@ -35,12 +35,12 @@ describe('isTranslationAnswerCorrect', () => {
     expect(isTranslationAnswerCorrect('qua\u0309 ta\u0301o', 'quả táo')).toBe(true)
   })
 
-  it('allows one edit when the normalized expected answer is exactly eight characters', () => {
-    expect(isTranslationAnswerCorrect('abcdefgx', ' Abcdefgh! ')).toBe(true)
+  it('allows one edit when the normalized expected answer is >= 5 characters', () => {
+    expect(isTranslationAnswerCorrect('abcdx', 'Abcde!')).toBe(true)
   })
 
-  it('rejects one edit below the normalized expected answer length threshold', () => {
-    expect(isTranslationAnswerCorrect('abcdefx', ' Abcdefg! ')).toBe(false)
+  it('rejects one edit for very short expected answers', () => {
+    expect(isTranslationAnswerCorrect('abx', 'Abc!')).toBe(false)
   })
 
   it('accepts individual comma-separated translations and ignores part-of-speech labels', () => {
@@ -66,8 +66,9 @@ describe('isTranslationAnswerCorrect', () => {
     ['  qua   chuoi! ', 'qua chuoi', true],
     ['phá vở sự ngại ngùng', 'phá vỡ sự ngại ngùng', true],
     ['táo', 'táo', true],
-    ['tao', 'táo', false],
-    ['mèo', 'mẹo', false],
+    ['tao', 'táo', true],
+    ['mèo', 'mẹo', true],
+    ['mát', 'mất', false],
     ['', 'quả táo', false],
   ])('checks "%s" against "%s"', (answer, expected, isCorrect) => {
     expect(isTranslationAnswerCorrect(answer, expected)).toBe(isCorrect)
@@ -111,14 +112,31 @@ describe('checkTranslationAnswer', () => {
     expect(result.matchedCandidate).toBe('điều tra')
   })
 
-  it('returns fuzzy when one edit away and expected text is >= 8 characters', () => {
-    const result = checkTranslationAnswer('phá vở sự ngại ngùng', 'phá vỡ sự ngại ngùng')
+  it('returns fuzzy when one edit away and expected text is >= 5 characters', () => {
+    const result = checkTranslationAnswer('abcdx', 'abcde')
     expect(result.result).toBe('fuzzy')
-    expect(result.matchedCandidate).toBe('phá vỡ sự ngại ngùng')
+    expect(result.matchedCandidate).toBe('abcde')
   })
 
-  it('returns incorrect when one edit away but expected text is < 8 characters', () => {
-    const result = checkTranslationAnswer('mèo', 'mẹo')
+  it('returns fuzzy for tone-only differences via diacritic-agnostic match', () => {
+    const result = checkTranslationAnswer('xin lõi', 'xin lỗi')
+    expect(result.result).toBe('fuzzy')
+    expect(result.matchedCandidate).toBe('xin lỗi')
+  })
+
+  it('returns fuzzy for missing tone via diacritic-agnostic match', () => {
+    const result = checkTranslationAnswer('xin loi', 'xin lỗi')
+    expect(result.result).toBe('fuzzy')
+    expect(result.matchedCandidate).toBe('xin lỗi')
+  })
+
+  it('returns fuzzy for long strings with up to two edits', () => {
+    const result = checkTranslationAnswer('phá vở sự ngại ngùg', 'phá vỡ sự ngại ngùng')
+    expect(result.result).toBe('fuzzy')
+  })
+
+  it('returns incorrect when one edit away but expected text is very short', () => {
+    const result = checkTranslationAnswer('abx', 'abc')
     expect(result.result).toBe('incorrect')
     expect(result.matchedCandidate).toBeNull()
   })

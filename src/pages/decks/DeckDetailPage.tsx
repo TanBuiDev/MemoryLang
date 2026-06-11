@@ -4,9 +4,9 @@ import { Link, useParams } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Card, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { Label, Select } from '@/components/ui/input'
+import { Input, Label, Select, Textarea } from '@/components/ui/input'
 import { demoDecks, demoVocabulary } from '@/features/demo/demoData'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
@@ -14,6 +14,7 @@ import { deckService } from '@/services/supabase/deck.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useStudyStore } from '@/stores/useStudyStore'
+import { useQuizStore } from '@/stores/useQuizStore'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
 
 export function DeckDetailPage() {
@@ -22,8 +23,15 @@ export function DeckDetailPage() {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const setSelectedDeckId = useStudyStore((state) => state.setSelectedDeckId)
+  const setQuizDeckId = useQuizStore((state) => state.setSelectedDeckId)
   const [selectedTermId, setSelectedTermId] = useState('')
   const [pendingRemoveTermId, setPendingRemoveTermId] = useState<string | null>(null)
+  const [editingDeck, setEditingDeck] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [filterNoDeck, setFilterNoDeck] = useState(false)
+  const [bulkSelectMode, setBulkSelectMode] = useState(false)
+  const [selectedAvailableIds, setSelectedAvailableIds] = useState<Set<string>>(new Set())
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
   const deckQuery = useQuery({
     queryKey: ['deck', id],
@@ -40,6 +48,11 @@ export function DeckDetailPage() {
     queryFn: () => vocabularyService.list(user!.id),
     enabled: shouldUseRemoteData && Boolean(user),
   })
+  const deckedTermIdsQuery = useQuery({
+    queryKey: ['decked-term-ids', user?.id],
+    queryFn: () => deckService.getDeckedTermIds(user!.id),
+    enabled: shouldUseRemoteData && Boolean(user) && filterNoDeck,
+  })
   const deck = shouldUseRemoteData ? deckQuery.data : demoDecks.find((item) => item.id === id) ?? demoDecks[0]
   const vocabulary = useMemo(
     () => shouldUseRemoteData ? termsQuery.data ?? [] : demoVocabulary,
@@ -47,13 +60,37 @@ export function DeckDetailPage() {
   )
   const availableVocabulary = useMemo(() => {
     const deckTermIds = new Set(vocabulary.map((item) => item.id))
-    return filterActiveVocabulary(allVocabularyQuery.data ?? []).filter((item) => !deckTermIds.has(item.id))
-  }, [allVocabularyQuery.data, vocabulary])
+    let result = filterActiveVocabulary(allVocabularyQuery.data ?? []).filter((item) => !deckTermIds.has(item.id))
+    if (filterNoDeck && deckedTermIdsQuery.data) {
+      result = result.filter((item) => !deckedTermIdsQuery.data.has(item.id))
+    }
+    return result
+  }, [allVocabularyQuery.data, vocabulary, filterNoDeck, deckedTermIdsQuery.data])
   const addTermMutation = useMutation({
     mutationFn: () => deckService.addTerm(id!, selectedTermId),
     onSuccess: async () => {
       setSelectedTermId('')
       await queryClient.invalidateQueries({ queryKey: ['deck-terms', id] })
+      await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
+    },
+  })
+  const batchAddMutation = useMutation({
+    mutationFn: async () => {
+      const ids = Array.from(selectedAvailableIds)
+      await Promise.all(ids.map((termId) => deckService.addTerm(id!, termId)))
+    },
+    onSuccess: async () => {
+      setSelectedAvailableIds(new Set())
+      setBulkSelectMode(false)
+      await queryClient.invalidateQueries({ queryKey: ['deck-terms', id] })
+      await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
+    },
+  })
+  const updateDeckMutation = useMutation({
+    mutationFn: () => deckService.update(id!, { name: editName.trim(), description: editDescription.trim() || undefined, user_id: user!.id }),
+    onSuccess: async () => {
+      setEditingDeck(false)
+      await queryClient.invalidateQueries({ queryKey: ['deck', id] })
       await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
     },
   })
@@ -75,6 +112,7 @@ export function DeckDetailPage() {
     termsQuery.error instanceof Error ? termsQuery.error.message :
     allVocabularyQuery.error instanceof Error ? allVocabularyQuery.error.message :
     addTermMutation.error instanceof Error ? addTermMutation.error.message :
+    batchAddMutation.error instanceof Error ? batchAddMutation.error.message :
     removeTermMutation.error instanceof Error ? removeTermMutation.error.message :
     null
 
@@ -93,20 +131,111 @@ export function DeckDetailPage() {
 
   return (
     <>
-      <PageHeader title={deck.name} description={deck.description ?? t('decks.fallbackDescription')} actions={<Button asChild><Link to="/app/study" onClick={() => setSelectedDeckId(deck.id)}>{t('decks.startFlashcard')}</Link></Button>} />
+      <PageHeader title={deck.name} description={deck.description ?? t('decks.fallbackDescription')} actions={<div className="flex flex-wrap gap-2">{shouldUseRemoteData ? <Button variant="ghost" onClick={() => { setEditingDeck(true); setEditName(deck.name); setEditDescription(deck.description ?? '') }}>{t('vocabulary.edit')}</Button> : null}<Button asChild><Link to="/app/study" onClick={() => setSelectedDeckId(deck.id)}>{t('decks.startFlashcard')}</Link></Button><Button asChild variant="secondary"><Link to="/app/quiz" onClick={() => setQuizDeckId(deck.id)}>{t('decks.quiz')}</Link></Button></div>} />
+      {editingDeck ? (
+        <Card className="mb-4 max-w-2xl">
+          <CardTitle>{t('decks.editTitle')}</CardTitle>
+          <div className="mt-4 grid gap-3">
+            <div>
+              <Label>{t('decks.name')}</Label>
+              <Input value={editName} onChange={(event) => setEditName(event.target.value)} />
+            </div>
+            <div>
+              <Label>{t('decks.descriptionLabel')}</Label>
+              <Textarea value={editDescription} onChange={(event) => setEditDescription(event.target.value)} />
+            </div>
+            {updateDeckMutation.error instanceof Error ? <p className="text-sm font-black text-danger">{updateDeckMutation.error.message}</p> : null}
+            <div className="flex gap-2">
+              <Button disabled={!editName.trim() || updateDeckMutation.isPending} onClick={() => updateDeckMutation.mutate()}>{t('actions.saveChanges')}</Button>
+              <Button variant="ghost" onClick={() => setEditingDeck(false)}>{t('actions.cancel')}</Button>
+            </div>
+          </div>
+        </Card>
+      ) : null}
       <div className="mb-4 flex gap-2"><Badge>{t('decks.languagePair', { source: deck.source_language, native: deck.native_language })}</Badge><Badge>{t('decks.terms', { count: deck.term_count ?? 0 })}</Badge></div>
       {shouldUseRemoteData ? (
         <Card className="mb-4">
-          <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-            <div>
-              <Label>{t('decks.addTerm')}</Label>
-              <Select value={selectedTermId} onChange={(event) => setSelectedTermId(event.target.value)}>
-                <option value="">{availableVocabulary.length === 0 ? t('decks.noAvailableTerms') : t('decks.chooseTerm')}</option>
-                {availableVocabulary.map((item) => <option key={item.id} value={item.id}>{item.source_text}</option>)}
-              </Select>
+          {!bulkSelectMode ? (
+            <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
+              <div>
+                <Label>{t('decks.addTerm')}</Label>
+                <Select value={selectedTermId} onChange={(event) => setSelectedTermId(event.target.value)}>
+                  <option value="">{availableVocabulary.length === 0 ? t('decks.noAvailableTerms') : t('decks.chooseTerm')}</option>
+                  {availableVocabulary.map((item) => <option key={item.id} value={item.id}>{item.source_text}</option>)}
+                </Select>
+                <label className="mt-2 flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={filterNoDeck}
+                    onChange={(event) => setFilterNoDeck(event.target.checked)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <span className="text-xs font-bold">{t('decks.filterNoDeck')}</span>
+                </label>
+              </div>
+              <Button disabled={!selectedTermId || addTermMutation.isPending} onClick={() => addTermMutation.mutate()}>{addTermMutation.isPending ? t('actions.saving') : t('decks.addTerm')}</Button>
+              <Button variant="ghost" disabled={availableVocabulary.length === 0} onClick={() => { setSelectedAvailableIds(new Set()); setBulkSelectMode(true) }}>{t('decks.bulkAdd')}</Button>
             </div>
-            <Button disabled={!selectedTermId || addTermMutation.isPending} onClick={() => addTermMutation.mutate()}>{t('decks.addTerm')}</Button>
-          </div>
+          ) : (
+            <div>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <Button variant="ghost" onClick={() => setBulkSelectMode(false)}>{t('actions.cancel')}</Button>
+                <span className="text-xs font-bold">{t('vocabulary.selected', { count: selectedAvailableIds.size })}</span>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    if (selectedAvailableIds.size === availableVocabulary.length) {
+                      setSelectedAvailableIds(new Set())
+                    } else {
+                      setSelectedAvailableIds(new Set(availableVocabulary.map((v) => v.id)))
+                    }
+                  }}
+                >
+                  {selectedAvailableIds.size === availableVocabulary.length ? t('vocabulary.deselectAll') : t('vocabulary.selectAll')}
+                </Button>
+                <div className="flex-1" />
+                <Button
+                  disabled={selectedAvailableIds.size === 0 || batchAddMutation.isPending}
+                  onClick={() => batchAddMutation.mutate()}
+                >
+                  {batchAddMutation.isPending ? t('actions.saving') : t('decks.addSelected')}
+                </Button>
+              </div>
+              <label className="mb-2 flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={filterNoDeck}
+                  onChange={(event) => setFilterNoDeck(event.target.checked)}
+                  className="h-4 w-4 accent-primary"
+                />
+                <span className="text-xs font-bold">{t('decks.filterNoDeck')}</span>
+              </label>
+              <div className="max-h-96 overflow-auto grid gap-2">
+                {availableVocabulary.length === 0 ? <p className="text-sm font-bold text-muted-foreground">{t('decks.noAvailableTerms')}</p> : null}
+                {availableVocabulary.map((item) => (
+                  <label key={item.id} className="flex items-center gap-2 rounded-md border-2 border-border bg-card p-3 cursor-pointer select-none hover:bg-muted/50">
+                    <input
+                      type="checkbox"
+                      checked={selectedAvailableIds.has(item.id)}
+                      onChange={() => {
+                        setSelectedAvailableIds((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(item.id)) next.delete(item.id)
+                          else next.add(item.id)
+                          return next
+                        })
+                      }}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <div>
+                      <p className="font-black">{item.source_text}</p>
+                      <p className="text-xs font-semibold text-muted-foreground">{item.meanings[0]?.text}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </Card>
       ) : null}
       <div className="grid gap-3">
@@ -117,7 +246,7 @@ export function DeckDetailPage() {
               <p className="text-xl font-black">{item.source_text}</p>
               <p className="font-semibold text-muted-foreground">{item.meanings[0]?.text}</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button asChild variant="ghost"><Link to={`/app/vocabulary/${item.id}`}>{t('decks.view')}</Link></Button>
               {shouldUseRemoteData ? <Button variant="secondary" onClick={() => setPendingRemoveTermId(item.id)}>{t('decks.removeFromDeck')}</Button> : null}
             </div>

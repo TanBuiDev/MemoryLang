@@ -1,9 +1,9 @@
-import type { QuizType, TranslationInputQuestion } from '@/types/quiz.types'
+import type { MultipleChoiceQuestion, QuizType, TranslationInputQuestion } from '@/types/quiz.types'
 import type { SessionLimit } from '@/types/study.types'
 
 const STORAGE_PREFIX = 'memorylang.quiz.session.'
 const ACTIVE_STORAGE_PREFIX = 'memorylang.quiz.activeSession.'
-const STORAGE_VERSION = 2
+const STORAGE_VERSION = 4
 
 interface QuizSessionStorageKeyOptions {
   userId?: string | null
@@ -21,15 +21,18 @@ interface QuizActiveSessionStorageKeyOptions {
 }
 
 export interface StoredQuizSession {
-  questions: TranslationInputQuestion[]
+  quizType: QuizType
+  questions: TranslationInputQuestion[] | MultipleChoiceQuestion[]
   index: number
   score: number
   revealedQuestionIds: string[]
   completedQuestionIds: string[]
   fuzzyCorrectQuestionIds: string[]
+  skippedQuestionIds: string[]
   deckId: string | null
   wrongQuestionIds: string[]
   totalQuestionIds: string[]
+  startedAt: number
 }
 
 interface StoredQuizSessionPayload extends StoredQuizSession {
@@ -46,6 +49,25 @@ function isTranslationQuestion(question: unknown): question is TranslationInputQ
     && (typeof value.ipa === 'string' || value.ipa === null)
     && (typeof value.partOfSpeech === 'string' || value.partOfSpeech === null)
     && typeof value.expectedTranslation === 'string'
+}
+
+function isMultipleChoiceQuestion(question: unknown): question is MultipleChoiceQuestion {
+  if (!question || typeof question !== 'object') return false
+
+  const value = question as Partial<MultipleChoiceQuestion>
+  return typeof value.id === 'string'
+    && typeof value.userTermId === 'string'
+    && typeof value.sourceText === 'string'
+    && (typeof value.ipa === 'string' || value.ipa === null)
+    && (typeof value.partOfSpeech === 'string' || value.partOfSpeech === null)
+    && Array.isArray(value.options)
+    && value.options.length === 4
+    && value.options.every((o): o is string => typeof o === 'string')
+    && typeof value.correctIndex === 'number'
+    && Number.isFinite(value.correctIndex)
+    && value.correctIndex >= 0
+    && value.correctIndex < 4
+    && (value.correctAlternatives === undefined || (Array.isArray(value.correctAlternatives) && value.correctAlternatives.every((c): c is string => typeof c === 'string')))
 }
 
 function getStorage() {
@@ -103,11 +125,21 @@ export function readStoredQuizSession(key: string): StoredQuizSession | null {
     const payload = JSON.parse(raw) as Partial<StoredQuizSessionPayload>
     if (payload.version !== STORAGE_VERSION) return null
     if (!Array.isArray(payload.questions) || payload.questions.length === 0) return null
-    if (!payload.questions.every(isTranslationQuestion)) return null
     if (typeof payload.index !== 'number' || !Number.isFinite(payload.index)) return null
     if (typeof payload.score !== 'number' || !Number.isFinite(payload.score)) return null
 
+    const quizType = payload.quizType === 'translation_input' || payload.quizType === 'multiple_choice'
+      ? payload.quizType
+      : null
+    if (!quizType) return null
+
+    const questionsValid = quizType === 'multiple_choice'
+      ? payload.questions.every(isMultipleChoiceQuestion)
+      : payload.questions.every(isTranslationQuestion)
+    if (!questionsValid) return null
+
     return {
+      quizType,
       questions: payload.questions,
       index: Math.max(0, Math.min(Math.trunc(payload.index), payload.questions.length - 1)),
       score: Math.max(0, Math.trunc(payload.score)),
@@ -127,6 +159,10 @@ export function readStoredQuizSession(key: string): StoredQuizSession | null {
       totalQuestionIds: Array.isArray(payload.totalQuestionIds)
         ? payload.totalQuestionIds.filter((id): id is string => typeof id === 'string')
         : [],
+      startedAt: typeof payload.startedAt === 'number' && Number.isFinite(payload.startedAt) ? payload.startedAt : Date.now(),
+      skippedQuestionIds: Array.isArray(payload.skippedQuestionIds)
+        ? payload.skippedQuestionIds.filter((id): id is string => typeof id === 'string')
+        : [],
     }
   } catch {
     return null
@@ -139,6 +175,7 @@ export function writeStoredQuizSession(key: string, session: StoredQuizSession) 
 
   const payload: StoredQuizSessionPayload = {
     version: STORAGE_VERSION,
+    quizType: session.quizType,
     questions: session.questions,
     index: Math.max(0, Math.min(Math.trunc(session.index), session.questions.length - 1)),
     score: Math.max(0, Math.trunc(session.score)),
@@ -148,6 +185,8 @@ export function writeStoredQuizSession(key: string, session: StoredQuizSession) 
     deckId: session.deckId,
     wrongQuestionIds: session.wrongQuestionIds ?? [],
     totalQuestionIds: session.totalQuestionIds ?? [],
+    startedAt: session.startedAt ?? Date.now(),
+    skippedQuestionIds: session.skippedQuestionIds ?? [],
   }
 
   try {

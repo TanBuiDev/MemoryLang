@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie'
 import type { StoredStudySession } from '@/features/study/sessionPersistence'
 import type { StudySession } from '@/types/study.types'
-import type { VocabularyItem, VocabularyStatus } from '@/types/vocabulary.types'
+import type { VocabularyItem } from '@/types/vocabulary.types'
 import type { ReviewAction, ReviewResult } from '@/utils/spacedRepetition'
 
 export interface SerializedReviewResult {
@@ -88,7 +88,7 @@ class StudyLocalDatabase extends Dexie {
   }
 }
 
-const db = new StudyLocalDatabase()
+export const db = new StudyLocalDatabase()
 
 function vocabularyCacheKey(userId: string, deckId: string | null) {
   return `${userId}:${deckId ?? 'all'}`

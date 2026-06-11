@@ -10,13 +10,15 @@ const question = {
   partOfSpeech: null,
   expectedTranslation: 'qua tao',
   audioUrl: null,
+  pronunciationText: null,
 }
 
 describe('translation quiz session persistence', () => {
   beforeEach(() => window.sessionStorage.clear())
 
-  it('round trips version 2 progress without storing draft input', () => {
+  it('round trips a translation input session with startedAt', () => {
     writeStoredQuizSession(storageKey, {
+      quizType: 'translation_input',
       questions: [
         question,
         { ...question, id: 'banana-0', ipa: '/banana/', partOfSpeech: 'noun' },
@@ -29,9 +31,12 @@ describe('translation quiz session persistence', () => {
       deckId: null,
       wrongQuestionIds: [],
       totalQuestionIds: [],
+      skippedQuestionIds: [],
+      startedAt: Date.now(),
     })
 
     expect(readStoredQuizSession(storageKey)).toEqual({
+      quizType: 'translation_input',
       questions: [
         question,
         { ...question, id: 'banana-0', ipa: '/banana/', partOfSpeech: 'noun' },
@@ -44,10 +49,12 @@ describe('translation quiz session persistence', () => {
       deckId: null,
       wrongQuestionIds: [],
       totalQuestionIds: [],
+      startedAt: expect.any(Number),
+      skippedQuestionIds: [],
     })
 
     const payload = JSON.parse(window.sessionStorage.getItem(storageKey) ?? '{}') as Record<string, unknown>
-    expect(payload.version).toBe(2)
+    expect(payload.version).toBe(4)
     expect(payload).not.toHaveProperty('draftAnswer')
     expect(payload).not.toHaveProperty('draftInput')
   })
@@ -70,7 +77,8 @@ describe('translation quiz session persistence', () => {
     [{ ...question, userTermId: 1 }],
   ])('rejects invalid translation question structures', (invalidQuestion) => {
     window.sessionStorage.setItem(storageKey, JSON.stringify({
-      version: 2,
+      version: 4,
+      quizType: 'translation_input',
       questions: [invalidQuestion],
       index: 0,
       score: 0,
@@ -79,15 +87,17 @@ describe('translation quiz session persistence', () => {
     expect(readStoredQuizSession(storageKey)).toBeNull()
   })
 
-  it('defaults missing progress id arrays for a valid version 2 snapshot', () => {
+  it('defaults missing progress id arrays and startedAt for a valid snapshot', () => {
     window.sessionStorage.setItem(storageKey, JSON.stringify({
-      version: 2,
+      version: 4,
+      quizType: 'translation_input',
       questions: [question],
       index: 0,
       score: 0,
     }))
 
     expect(readStoredQuizSession(storageKey)).toEqual({
+      quizType: 'translation_input',
       questions: [question],
       index: 0,
       score: 0,
@@ -97,12 +107,15 @@ describe('translation quiz session persistence', () => {
       deckId: null,
       wrongQuestionIds: [],
       totalQuestionIds: [],
+      startedAt: expect.any(Number),
+      skippedQuestionIds: [],
     })
   })
 
-  it('filters malformed progress ids from a valid version 2 snapshot', () => {
+  it('filters malformed progress ids from a valid snapshot', () => {
     window.sessionStorage.setItem(storageKey, JSON.stringify({
-      version: 2,
+      version: 4,
+      quizType: 'translation_input',
       questions: [question],
       index: 0,
       score: 0,
@@ -111,6 +124,7 @@ describe('translation quiz session persistence', () => {
     }))
 
     expect(readStoredQuizSession(storageKey)).toEqual({
+      quizType: 'translation_input',
       questions: [question],
       index: 0,
       score: 0,
@@ -120,6 +134,8 @@ describe('translation quiz session persistence', () => {
       deckId: null,
       wrongQuestionIds: [],
       totalQuestionIds: [],
+      startedAt: expect.any(Number),
+      skippedQuestionIds: [],
     })
   })
 

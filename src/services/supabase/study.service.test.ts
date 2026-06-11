@@ -53,6 +53,8 @@ const baseItem: VocabularyItem = {
   srs_ease_factor: 2.5,
   last_reviewed_at: null,
   next_review_at: null,
+  flagged: false,
+  deleted_at: null,
   created_at: new Date(0).toISOString(),
   updated_at: new Date(0).toISOString(),
 }

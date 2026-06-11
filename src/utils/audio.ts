@@ -5,11 +5,14 @@ export interface SpeakOptions {
   repeat?: number
   onEnd?: () => void
   audioUrl?: string | null
+  variant?: string | null
 }
 
 let lastSpeakId = 0
 
 export async function speak(text: string, options: SpeakOptions = {}) {
+  const ttsText = options.variant || text
+
   if (options.audioUrl) {
     const { playCachedOrFetch } = await import('@/services/local/audioCache')
     const played = await playCachedOrFetch(text, options.audioUrl)
@@ -22,7 +25,7 @@ export async function speak(text: string, options: SpeakOptions = {}) {
   lastSpeakId++
   const speakId = lastSpeakId
 
-  const utterance = new SpeechSynthesisUtterance(text)
+  const utterance = new SpeechSynthesisUtterance(ttsText)
   utterance.lang = options.lang ?? 'en-US'
   utterance.rate = options.rate ?? 1
   utterance.pitch = options.pitch ?? 1
@@ -34,7 +37,7 @@ export async function speak(text: string, options: SpeakOptions = {}) {
     if (speakId !== lastSpeakId) return
     completed++
     if (completed <= repeat) {
-      utterance.onend = completed < repeat ? speakOnce : (options.onEnd ?? undefined)
+      utterance.onend = completed < repeat ? speakOnce : (options.onEnd ?? null)
       window.speechSynthesis.speak(utterance)
     }
   }

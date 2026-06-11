@@ -16,6 +16,7 @@ import {
   type StoredQuizSession,
   writeStoredQuizSession,
 } from '@/features/quiz/sessionPersistence'
+import type { MultipleChoiceQuestion, TranslationInputQuestion } from '@/types/quiz.types'
 import { addTranslationSuggestion } from '@/features/quiz/translationSuggestions'
 import { checkTranslationAnswer, generateTranslationQuestions } from '@/features/quiz/translationInputQuiz'
 import { generateMultipleChoiceQuestions } from '@/features/quiz/multipleChoiceQuiz'
@@ -254,7 +255,7 @@ export function QuizSessionPage() {
         }
       }
 
-      const isAlreadyCompleted = session?.completedQuestionIds.includes(question.id)
+      const isAlreadyCompleted = session && question ? session.completedQuestionIds.includes(question.id) : false
       const canSelectMc = mcSelectedIndex === null && (!isRevealed || isAlreadyCompleted)
 
       if (isMcQuestion && !isCompleted && canSelectMc) {
@@ -650,7 +651,7 @@ export function QuizSessionPage() {
     )
     const newSession: StoredQuizSession = {
       quizType: session.quizType,
-      questions: shuffle(wrongQuestions),
+      questions: shuffle(wrongQuestions) as TranslationInputQuestion[] | MultipleChoiceQuestion[],
       index: 0,
       score: 0,
       revealedQuestionIds: [],
@@ -691,7 +692,8 @@ export function QuizSessionPage() {
       return
     }
 
-    const result = checkTranslationAnswer(answerText, question.expectedTranslation)
+    const translationQuestion = question as TranslationInputQuestion
+    const result = checkTranslationAnswer(answerText, translationQuestion.expectedTranslation)
 
     if (result.result === 'exact') {
       setAnswerFeedback({ type: 'exact' })
@@ -701,7 +703,7 @@ export function QuizSessionPage() {
     }
 
     if (result.result === 'fuzzy') {
-      setAnswerFeedback({ type: 'fuzzy', matchedAnswer: result.matchedCandidate ?? question.expectedTranslation })
+      setAnswerFeedback({ type: 'fuzzy', matchedAnswer: result.matchedCandidate ?? (question as TranslationInputQuestion).expectedTranslation })
       return
     }
 
@@ -722,7 +724,7 @@ export function QuizSessionPage() {
           userTermId: question.userTermId,
           sourceText: question.sourceText,
           suggestedTranslation: answerText.trim(),
-          existingTranslation: question.expectedTranslation,
+          existingTranslation: (question as TranslationInputQuestion).expectedTranslation,
           createdAt: Date.now(),
         },
         user?.id,
@@ -885,7 +887,7 @@ export function QuizSessionPage() {
 
   return (
     <>
-      <div className="flex w-full gap-8 px-8 items-start">
+      <div className="flex flex-col lg:flex-row w-full gap-6 px-4 lg:px-8 items-start">
         <div className="flex-1">
           {timerBar}
           <div className="group relative ml-2 inline-flex">
@@ -1085,7 +1087,7 @@ export function QuizSessionPage() {
             </div>
           </div>
         </div>
-        <aside className="w-72 flex-shrink-0 sticky top-8 space-y-3 rounded-xl border-2 border-border bg-background/95 p-4 shadow-[3px_3px_0_var(--border)]">
+        <aside className="w-full lg:w-72 shrink-0 lg:sticky lg:top-8 space-y-3 rounded-xl border-2 border-border bg-background/95 p-4 shadow-[3px_3px_0_var(--border)]">
           <p className="text-xs font-black uppercase text-muted-foreground">{t('quiz.audioSettings')}</p>
           <div className="space-y-3">
             <div className="flex items-center gap-2">

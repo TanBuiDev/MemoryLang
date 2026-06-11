@@ -34,6 +34,8 @@ const storedVocabularyItem: VocabularyItem = {
   srs_ease_factor: 2.5,
   last_reviewed_at: null,
   next_review_at: null,
+  flagged: false,
+  deleted_at: null,
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',
 }

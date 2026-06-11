@@ -426,7 +426,7 @@ export function FlashcardStudyPage() {
   const confirmationButtonRef = useRef<HTMLButtonElement>(null)
   const resolveConfirmationRef = useRef<(action: 'know' | 'dont_know') => void>(() => undefined)
   const speechPendingRef = useRef(false)
-  const speechRetryRef = useRef<number>()
+  const speechRetryRef = useRef<number | undefined>(undefined)
   const [sessionSnapshot, setSessionSnapshot] = useState<(StoredStudySession & { key: string }) | null>(
     initialStoredSession
       ? {
@@ -854,7 +854,7 @@ export function FlashcardStudyPage() {
       else if (hotkey === hotkeys.flip && sessionMode === 'two_side') setFlipped((current) => !current)
       else if (hotkey === hotkeys.previous && index > 0) browseTo(index - 1)
       else if (hotkey === hotkeys.next) requestNextCard()
-      else if (hotkey === hotkeys.playAudio) speak(item.source_text, { audioUrl: item.audio_url })
+      else if (hotkey === hotkeys.playAudio) speak(item.source_text, { variant: item.pronunciation_text, audioUrl: item.audio_url })
       else if (hotkey === hotkeys.toggleAuto) {
         setAutoRemainingSeconds(autoCardSeconds)
         setAutoEnabled((enabled) => !enabled)
@@ -879,11 +879,13 @@ export function FlashcardStudyPage() {
 
     const timer = window.setTimeout(() => {
       const spoke = speak(item.source_text, {
+        variant: item.pronunciation_text,
         audioUrl: item.audio_url,
         onEnd: () => {
-          if (speakViEnabled && item.translation) {
+          const translation = item.translation
+          if (speakViEnabled && translation) {
             viTimer = window.setTimeout(() => {
-              speakVI(item.translation, () => { speechPendingRef.current = false })
+              speakVI(translation, () => { speechPendingRef.current = false })
             }, 2000)
           } else {
             speechPendingRef.current = false
@@ -991,77 +993,102 @@ export function FlashcardStudyPage() {
           </div>
         ) : null}
       </ConfirmModal>
-      <div className="mx-auto mt-6 flex max-w-5xl items-start gap-2 md:gap-4">
+      <div className="mx-auto mt-6 flex max-w-5xl items-start gap-2 md:gap-4 px-2 sm:px-4 md:px-0">
         {syncError ? <p className="sr-only">{syncError}</p> : null}
-        <div className="grid grid-cols-[3rem_minmax(0,1fr)_3rem] md:grid-cols-[4rem_minmax(0,1fr)_4rem] items-start gap-2 md:gap-4 flex-1 min-w-0">
+        <div className="grid grid-cols-1 sm:grid-cols-[3rem_minmax(0,1fr)_3rem] md:grid-cols-[4rem_minmax(0,1fr)_4rem] items-start gap-2 md:gap-4 flex-1 min-w-0">
         <Button
           type="button"
           variant="ghost"
           aria-label={t('study.previousCard')}
           disabled={confirmationOpen || index === 0}
-          className="sticky top-[50vh] -translate-y-1/2 h-12 min-h-12 w-12 px-0 md:h-14 md:min-h-14 md:w-14 justify-self-center"
+          className="hidden sm:inline-flex sticky top-[50vh] -translate-y-1/2 h-12 min-h-12 w-12 px-0 md:h-14 md:min-h-14 md:w-14 justify-self-center"
           onClick={() => browseTo(index - 1)}
         >
           <ChevronLeft aria-hidden="true" size={28} />
         </Button>
-        <AnimatedStudyCardFrame motionKey={`${cardItem.id}:${sessionMode}:${flipped ? 'back' : 'front'}:${relationshipSignature}`}>
-          {sessionMode === 'two_side' ? (
-            <div
-              data-testid="flashcard-shell"
-              data-flipped={flipped ? 'true' : 'false'}
-              className="flashcard-shell relative"
-            >
-              <EndSessionButton label={t(hasReachedLastCard ? 'study.completeSession' : 'study.endSession')} onClick={openCardSessionAction} />
-              {autoEnabled && !confirmationOpen ? <AutoCountdownBadge remainingSeconds={autoRemainingSeconds} /> : null}
-              <div className="flashcard-inner">
-                <Card
-                  data-testid="flashcard-front"
-                  aria-hidden={flipped}
-                  className="flashcard-face flashcard-front p-8 text-center"
-                >
-                  <FlashcardFaceContent item={cardItem} current={index + 1} total={vocabulary.length} />
-                </Card>
-                <Card
-                  data-testid="flashcard-back"
-                  aria-hidden={!flipped}
-                  className="flashcard-face flashcard-back p-8 text-center"
-                >
-                  <FlashcardFaceContent item={cardItem} current={index + 1} total={vocabulary.length} />
-                  <FlashcardDetails item={cardItem} relationships={relationships} />
-                </Card>
+        <div className="w-full">
+          <AnimatedStudyCardFrame motionKey={`${cardItem.id}:${sessionMode}:${flipped ? 'back' : 'front'}:${relationshipSignature}`}>
+            {sessionMode === 'two_side' ? (
+              <div
+                data-testid="flashcard-shell"
+                data-flipped={flipped ? 'true' : 'false'}
+                className="flashcard-shell relative"
+              >
+                <EndSessionButton label={t(hasReachedLastCard ? 'study.completeSession' : 'study.endSession')} onClick={openCardSessionAction} />
+                {autoEnabled && !confirmationOpen ? <AutoCountdownBadge remainingSeconds={autoRemainingSeconds} /> : null}
+                <div className="flashcard-inner">
+                  <Card
+                    data-testid="flashcard-front"
+                    aria-hidden={flipped}
+                    className="flashcard-face flashcard-front p-8 text-center"
+                  >
+                    <FlashcardFaceContent item={cardItem} current={index + 1} total={vocabulary.length} />
+                  </Card>
+                  <Card
+                    data-testid="flashcard-back"
+                    aria-hidden={!flipped}
+                    className="flashcard-face flashcard-back p-8 text-center"
+                  >
+                    <FlashcardFaceContent item={cardItem} current={index + 1} total={vocabulary.length} />
+                    <FlashcardDetails item={cardItem} relationships={relationships} />
+                  </Card>
+                </div>
+                {confirmationOpen ? (
+                  <RememberConfirmationOverlay
+                    remainingSeconds={confirmationRemainingSeconds}
+                    shortcut={hotkeys.confirmRemember}
+                    buttonRef={confirmationButtonRef}
+                    onRemember={() => record('know')}
+                  />
+                ) : null}
               </div>
-              {confirmationOpen ? (
-                <RememberConfirmationOverlay
-                  remainingSeconds={confirmationRemainingSeconds}
-                  shortcut={hotkeys.confirmRemember}
-                  buttonRef={confirmationButtonRef}
-                  onRemember={() => record('know')}
-                />
-              ) : null}
-            </div>
-          ) : (
-            <Card className="relative min-h-96 p-8 text-center">
-              <EndSessionButton label={t(hasReachedLastCard ? 'study.completeSession' : 'study.endSession')} onClick={openCardSessionAction} />
-              {autoEnabled && !confirmationOpen ? <AutoCountdownBadge remainingSeconds={autoRemainingSeconds} /> : null}
-              <FlashcardFaceContent item={cardItem} current={index + 1} total={vocabulary.length} />
-              <FlashcardDetails item={cardItem} relationships={relationships} />
-              {confirmationOpen ? (
-                <RememberConfirmationOverlay
-                  remainingSeconds={confirmationRemainingSeconds}
-                  shortcut={hotkeys.confirmRemember}
-                  buttonRef={confirmationButtonRef}
-                  onRemember={() => record('know')}
-                />
-              ) : null}
-            </Card>
-          )}
-        </AnimatedStudyCardFrame>
+            ) : (
+              <Card className="relative min-h-96 p-8 text-center">
+                <EndSessionButton label={t(hasReachedLastCard ? 'study.completeSession' : 'study.endSession')} onClick={openCardSessionAction} />
+                {autoEnabled && !confirmationOpen ? <AutoCountdownBadge remainingSeconds={autoRemainingSeconds} /> : null}
+                <FlashcardFaceContent item={cardItem} current={index + 1} total={vocabulary.length} />
+                <FlashcardDetails item={cardItem} relationships={relationships} />
+                {confirmationOpen ? (
+                  <RememberConfirmationOverlay
+                    remainingSeconds={confirmationRemainingSeconds}
+                    shortcut={hotkeys.confirmRemember}
+                    buttonRef={confirmationButtonRef}
+                    onRemember={() => record('know')}
+                  />
+                ) : null}
+              </Card>
+            )}
+          </AnimatedStudyCardFrame>
+          {/* Mobile-only pagination buttons */}
+          <div className="flex sm:hidden justify-between items-center mt-3 gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              aria-label={t('study.previousCard') + ' (Mobile)'}
+              disabled={confirmationOpen || index === 0}
+              onClick={() => browseTo(index - 1)}
+              className="flex-1 min-h-11 text-xs font-bold border-2 border-border bg-card shadow-[2px_2px_0_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+            >
+              <ChevronLeft size={16} className="mr-1" /> {t('study.previousCard')}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              aria-label={t(index >= vocabulary.length - 1 ? 'study.completeSession' : 'study.nextCard') + ' (Mobile)'}
+              disabled={confirmationOpen}
+              onClick={requestNextCard}
+              className="flex-1 min-h-11 text-xs font-bold border-2 border-border bg-card shadow-[2px_2px_0_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+            >
+              {index >= vocabulary.length - 1 ? t('study.completeSession') : t('study.nextCard')} <ChevronRight size={16} className="ml-1" />
+            </Button>
+          </div>
+        </div>
         <Button
           type="button"
           variant="ghost"
           aria-label={t(index >= vocabulary.length - 1 ? 'study.completeSession' : 'study.nextCard')}
           disabled={confirmationOpen}
-          className="sticky top-[50vh] -translate-y-1/2 h-12 min-h-12 w-12 px-0 md:h-14 md:min-h-14 md:w-14 justify-self-center"
+          className="hidden sm:inline-flex sticky top-[50vh] -translate-y-1/2 h-12 min-h-12 w-12 px-0 md:h-14 md:min-h-14 md:w-14 justify-self-center"
           onClick={requestNextCard}
         >
           {index >= vocabulary.length - 1 ? <Check aria-hidden="true" size={28} /> : <ChevronRight aria-hidden="true" size={28} />}
@@ -1075,7 +1102,7 @@ export function FlashcardStudyPage() {
           data-testid="study-toolbar-buttons"
           className="pointer-events-auto mx-auto flex w-full max-w-[48rem] flex-wrap items-center justify-center gap-2 rounded-md border-2 border-border bg-card/95 p-2 shadow-[5px_5px_0_var(--border)] backdrop-blur md:w-auto md:max-w-none md:flex-col md:gap-2 md:p-3"
         >
-          <StudyToolbarButton label={t('actions.playAudio')} icon={pronunciationIcon} onClick={() => speak(item.source_text, { audioUrl: item.audio_url })} />
+          <StudyToolbarButton label={t('actions.playAudio')} icon={pronunciationIcon} onClick={() => speak(item.source_text, { variant: item.pronunciation_text, audioUrl: item.audio_url })} />
           {sessionMode === 'two_side' ? (
             <button
               type="button"

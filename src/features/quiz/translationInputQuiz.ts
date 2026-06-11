@@ -26,6 +26,7 @@ export function generateTranslationQuestions(
     partOfSpeech: item.part_of_speech,
     expectedTranslation: item.translation.trim(),
     audioUrl: item.audio_url,
+    pronunciationText: item.pronunciation_text,
   }))
 }
 
@@ -63,17 +64,38 @@ function levenshteinDistance(left: string, right: string): number {
   return previous[rightCharacters.length]!
 }
 
+function stripTones(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300\u0301\u0303\u0309\u0323]/g, '')
+    .normalize('NFC')
+}
+
+function maxFuzzyEdits(length: number): number {
+  if (length < 5) return 0
+  if (length < 11) return 1
+  return 2
+}
+
 function matchesExact(normalizedAnswer: string, normalizedExpected: string): boolean {
   if (!normalizedExpected) return false
   return normalizedAnswer === normalizedExpected
 }
 
+function matchesDiacriticAgnostic(normalizedAnswer: string, normalizedExpected: string): boolean {
+  if (!normalizedExpected) return false
+  return stripTones(normalizedAnswer) === stripTones(normalizedExpected)
+}
+
 function matchesFuzzy(normalizedAnswer: string, normalizedExpected: string): boolean {
   if (!normalizedExpected) return false
   if (normalizedAnswer === normalizedExpected) return false
-  if (Array.from(normalizedExpected).length < 8) return false
 
-  return levenshteinDistance(normalizedAnswer, normalizedExpected) <= 1
+  const expectedLength = Array.from(normalizedExpected).length
+  const maxEdits = maxFuzzyEdits(expectedLength)
+  if (maxEdits === 0) return false
+
+  return levenshteinDistance(normalizedAnswer, normalizedExpected) <= maxEdits
 }
 
 function getExpectedAnswerCandidates(expectedAnswer: string): string[] {
@@ -102,6 +124,12 @@ export function checkTranslationAnswer(answer: string, expectedAnswer: string): 
   for (const candidate of candidates) {
     if (matchesExact(normalizedAnswer, candidate)) {
       return { result: 'exact', matchedCandidate: candidate }
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (matchesDiacriticAgnostic(normalizedAnswer, candidate)) {
+      return { result: 'fuzzy', matchedCandidate: candidate }
     }
   }
 
