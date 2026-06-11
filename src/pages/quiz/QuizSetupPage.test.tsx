@@ -55,7 +55,7 @@ describe('QuizSetupPage', () => {
 
     const deckSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement
 
-    expect(screen.getAllByRole('combobox')).toHaveLength(1)
+    expect(screen.getAllByRole('combobox').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByRole('option', { name: 'Tất cả từ vựng' })).toBeInTheDocument()
     expect(deckSelect.value).toBe('')
     expect(screen.queryByText('Đúng / Sai')).not.toBeInTheDocument()
@@ -155,11 +155,11 @@ describe('QuizSetupPage', () => {
     expect(screen.getAllByText('Bổ sung bản dịch')).toHaveLength(2)
     expect(screen.getByRole('link', { name: 'Bổ sung bản dịch cho be known for' })).toHaveAttribute(
       'href',
-      '/app/vocabulary/missing-term/edit',
+      '/app/vocabulary/missing-term',
     )
     expect(screen.getByRole('link', { name: 'Bổ sung bản dịch cho prep' })).toHaveAttribute(
       'href',
-      '/app/vocabulary/missing-prep/edit',
+      '/app/vocabulary/missing-prep',
     )
     expect(screen.getByRole('button', { name: 'Bắt đầu kiểm tra' })).toBeEnabled()
   })

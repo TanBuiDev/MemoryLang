@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check, Pencil, X } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -6,7 +7,7 @@ import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Label, Select } from '@/components/ui/input'
 import { demoDecks, getDemoVocabularyForDeck } from '@/features/demo/demoData'
-import { buildQuizSessionStorageKey, clearStoredQuizSession, writeActiveQuizSessionStorageKey } from '@/features/quiz/sessionPersistence'
+import { abandonActiveQuizSession, buildQuizSessionStorageKey, clearStoredQuizSession, findActiveQuizSession, writeActiveQuizSessionStorageKey } from '@/features/quiz/sessionPersistence'
 import { hasTranslation } from '@/features/quiz/translationInputQuiz'
 import { getPendingSuggestions, removeTranslationSuggestion, type TranslationSuggestion } from '@/features/quiz/translationSuggestions'
 import { useI18n } from '@/i18n'
@@ -22,8 +23,7 @@ export function QuizSetupPage() {
   const navigate = useNavigate()
   const { t } = useI18n()
   const user = useAuthStore((state) => state.user)
-  const { questionCount, setQuizType, setQuestionCount, selectedDeckId, setSelectedDeckId } = useQuizStore()
-  const quizType = 'translation_input' as const
+  const { questionCount, quizType, setQuizType, setQuestionCount, selectedDeckId, setSelectedDeckId } = useQuizStore()
   const [clearHistoryOpen, setClearHistoryOpen] = useState(false)
   const [suggestionsModalOpen, setSuggestionsModalOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -92,14 +92,19 @@ export function QuizSetupPage() {
   )
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set())
   const [acceptedIds, setAcceptedIds] = useState<Set<string>>(new Set())
+  const [isAcceptingAll, setIsAcceptingAll] = useState(false)
+  const [editingSuggestionId, setEditingSuggestionId] = useState<string | null>(null)
+  const [editText, setEditText] = useState('')
 
-  const acceptSuggestion = useCallback(async (suggestion: TranslationSuggestion) => {
+  const acceptSuggestion = useCallback(async (suggestion: TranslationSuggestion, overrideText?: string) => {
+    const finalText = overrideText?.trim() || suggestion.suggestedTranslation
     setSavingIds((prev) => new Set(prev).add(suggestion.userTermId))
     try {
-      await vocabularyService.appendTranslation(suggestion.userTermId, suggestion.suggestedTranslation)
+      await vocabularyService.appendTranslation(suggestion.userTermId, finalText)
       removeTranslationSuggestion(suggestion.userTermId, user?.id)
       setSuggestions((prev) => prev.filter((s) => s.userTermId !== suggestion.userTermId))
       setAcceptedIds((prev) => new Set(prev).add(suggestion.userTermId))
+      setEditingSuggestionId(null)
       queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] })
       queryClient.invalidateQueries({ queryKey: ['deck-terms'] })
     } catch {
@@ -115,6 +120,49 @@ export function QuizSetupPage() {
     removeTranslationSuggestion(suggestion.userTermId, user?.id)
     setSuggestions((prev) => prev.filter((s) => s.userTermId !== suggestion.userTermId))
   }, [user?.id])
+
+  const acceptAllSuggestions = useCallback(async () => {
+    const remaining = suggestions.filter((s) => !acceptedIds.has(s.userTermId) && !savingIds.has(s.userTermId))
+    if (remaining.length === 0) return
+    setSavingIds((prev) => {
+      const next = new Set(prev)
+      for (const s of remaining) next.add(s.userTermId)
+      return next
+    })
+    const results = await Promise.all(
+      remaining.map(async (suggestion) => {
+        try {
+          await vocabularyService.appendTranslation(suggestion.userTermId, suggestion.suggestedTranslation)
+          return { status: 'ok' as const, suggestion }
+        } catch {
+          return { status: 'error' as const, suggestion }
+        }
+      }),
+    )
+    for (const result of results) {
+      const { suggestion, status } = result
+      setSavingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(suggestion.userTermId)
+        return next
+      })
+      if (status === 'ok') {
+        removeTranslationSuggestion(suggestion.userTermId, user?.id)
+        setSuggestions((prev) => prev.filter((s) => s.userTermId !== suggestion.userTermId))
+        setAcceptedIds((prev) => new Set(prev).add(suggestion.userTermId))
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] })
+    queryClient.invalidateQueries({ queryKey: ['deck-terms'] })
+  }, [acceptedIds, queryClient, savingIds, suggestions, user?.id])
+
+  const userIdentifier = shouldUseRemoteData ? (user?.id ?? 'remote') : 'demo'
+  const [activeQuizSession, setActiveQuizSession] = useState(() => findActiveQuizSession(userIdentifier))
+
+  function abandonQuiz() {
+    abandonActiveQuizSession(userIdentifier)
+    setActiveQuizSession(null)
+  }
 
   function startQuiz() {
     if (cannotStart) return
@@ -138,6 +186,30 @@ export function QuizSetupPage() {
 
   return (
     <>
+      {activeQuizSession ? (
+        <Card className="mb-6 border-2 border-warning bg-warning/5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-lg font-black text-warning">{t('quiz.resumeTitle')}</p>
+              <p className="text-sm font-bold text-muted-foreground">{t('quiz.resumeDescription')}</p>
+              <p className="mt-1 text-sm font-black">
+                {t('quiz.resumeProgress', {
+                  completed: activeQuizSession.session.completedQuestionIds.length,
+                  total: activeQuizSession.session.questions.length,
+                })}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={() => navigate(`/app/quiz/session/${activeQuizSession.sessionId}`)}>
+                {t('quiz.resumeContinue')}
+              </Button>
+              <Button variant="ghost" onClick={abandonQuiz}>
+                {t('quiz.resumeStartNew')}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      ) : null}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-6">
           <Card className="relative">
@@ -160,6 +232,13 @@ export function QuizSetupPage() {
                 <Select value={selectedDeckId ?? ''} onChange={(event) => setSelectedDeckId(event.target.value || null)}>
                   <option value="">{t('quiz.allVocabulary')}</option>
                   {decks.map((deck) => <option key={deck.id} value={deck.id}>{deck.name}</option>)}
+                </Select>
+              </div>
+              <div>
+                <Label>{t('quiz.type')}</Label>
+                <Select value={quizType} onChange={(event) => setQuizType(event.target.value as 'translation_input' | 'multiple_choice')}>
+                  <option value="translation_input">{t('quiz.translationInput')}</option>
+                  <option value="multiple_choice">{t('quiz.multipleChoice')}</option>
                 </Select>
               </div>
               <div>
@@ -237,7 +316,7 @@ export function QuizSetupPage() {
                           <span className="text-sm font-black">{item.source_text}</span>
                           <Button asChild variant="ghost" className="text-xs">
                             <Link
-                              to={`/app/vocabulary/${item.id}/edit`}
+                              to={`/app/vocabulary/${item.id}`}
                               aria-label={t('quiz.addTranslationFor', { term: item.source_text })}
                             >
                               {t('quiz.addTranslation')}
@@ -358,24 +437,34 @@ export function QuizSetupPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className={`${suggestionsModalOpen ? '' : 'hidden'} fixed inset-0 z-50 flex items-start justify-center overflow-y-auto pt-[15vh]`}
+          className={`${suggestionsModalOpen ? '' : 'hidden'} fixed inset-0 z-50 flex items-start justify-center overflow-y-auto pt-[8vh]`}
         >
           <div className="fixed inset-0 bg-foreground/40" onClick={() => setSuggestionsModalOpen(false)} />
-          <div className="relative z-10 w-full max-w-lg rounded-xl border-2 border-warning bg-card p-6 shadow-[5px_5px_0_var(--border)]">
+          <div className="relative z-10 w-full max-w-4xl rounded-xl border-2 border-warning bg-card p-6 shadow-[5px_5px_0_var(--border)]">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-black text-warning">{t('quiz.suggestionsTitle')}</h2>
                 <p className="mt-1 text-sm font-bold text-muted-foreground">{t('quiz.suggestionsDescription')}</p>
               </div>
-              <button
-                type="button"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border-2 border-border bg-secondary text-sm font-black text-secondary-foreground shadow-[1px_1px_0_var(--border)] hover:bg-secondary/80"
-                onClick={() => setSuggestionsModalOpen(false)}
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  className="text-xs"
+                  disabled={isAcceptingAll || suggestions.every((s) => acceptedIds.has(s.userTermId) || savingIds.has(s.userTermId))}
+                  onClick={async () => { setIsAcceptingAll(true); await acceptAllSuggestions(); setIsAcceptingAll(false) }}
+                >
+                  {t('quiz.suggestionsAcceptAll')}
+                </Button>
+                <button
+                  type="button"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border-2 border-border bg-secondary text-sm font-black text-secondary-foreground shadow-[1px_1px_0_var(--border)] hover:bg-secondary/80"
+                  onClick={() => setSuggestionsModalOpen(false)}
+                >
+                  <X size={14} />
+                </button>
+              </div>
             </div>
-            <div className="mt-5 grid gap-3">
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
               {suggestions.map((suggestion) => {
                 const isSaving = savingIds.has(suggestion.userTermId)
                 const isAccepted = acceptedIds.has(suggestion.userTermId)
@@ -394,34 +483,79 @@ export function QuizSetupPage() {
                       </div>
                       <div>
                         <span className="font-black uppercase text-warning">{t('quiz.suggestedTranslation')}: </span>
-                        <span className="font-black">{suggestion.suggestedTranslation}</span>
+                        {editingSuggestionId === suggestion.userTermId ? (
+                          <input
+                            value={editText}
+                            onChange={(event) => setEditText(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') acceptSuggestion(suggestion, editText)
+                              if (event.key === 'Escape') setEditingSuggestionId(null)
+                            }}
+                            className="mt-1 min-h-8 w-full rounded-md border-2 border-border bg-card px-2 py-1 text-xs font-semibold shadow-[2px_2px_0_var(--border)] outline-none focus:border-primary"
+                            autoFocus
+                          />
+                        ) : (
+                          <span className="font-black">{suggestion.suggestedTranslation}</span>
+                        )}
                       </div>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-3 flex gap-2">
                       {isAccepted ? (
                         <span className="inline-flex min-h-10 items-center px-3 text-sm font-black text-success">
                           {t('quiz.suggestionsAccepted')}
                         </span>
+                      ) : editingSuggestionId === suggestion.userTermId ? (
+                        <>
+                          <button
+                            type="button"
+                            className="neo-button inline-flex min-h-10 w-10 items-center justify-center rounded-md border-2 border-border bg-primary text-primary-foreground shadow-[2px_2px_0_var(--border)] disabled:pointer-events-none disabled:opacity-50 active:neo-button-active hover:bg-[#ffe05c]"
+                            disabled={isSaving || !editText.trim()}
+                            aria-label={t('actions.saveChanges')}
+                            onClick={() => acceptSuggestion(suggestion, editText)}
+                          >
+                            <Check size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className="neo-button inline-flex min-h-10 w-10 items-center justify-center rounded-md border-2 border-border bg-card text-muted-foreground shadow-[2px_2px_0_var(--border)] disabled:pointer-events-none disabled:opacity-50 active:neo-button-active hover:bg-muted"
+                            disabled={isSaving}
+                            aria-label={t('actions.cancel')}
+                            onClick={() => setEditingSuggestionId(null)}
+                          >
+                            <X size={16} />
+                          </button>
+                        </>
                       ) : (
-                        <Button
-                          variant="primary"
-                          className="text-xs"
-                          disabled={isSaving}
-                          onClick={() => acceptSuggestion(suggestion)}
-                        >
-                          {isSaving ? '...' : t('quiz.suggestionsAccept')}
-                        </Button>
+                        <>
+                          <button
+                            type="button"
+                            className="neo-button inline-flex min-h-10 w-10 items-center justify-center rounded-md border-2 border-border bg-primary text-primary-foreground shadow-[2px_2px_0_var(--border)] disabled:pointer-events-none disabled:opacity-50 active:neo-button-active hover:bg-[#ffe05c]"
+                            disabled={isSaving}
+                            aria-label={t('quiz.suggestionsAccept')}
+                            onClick={() => acceptSuggestion(suggestion)}
+                          >
+                            <Check size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className="neo-button inline-flex min-h-10 w-10 items-center justify-center rounded-md border-2 border-border bg-card text-muted-foreground shadow-[2px_2px_0_var(--border)] disabled:pointer-events-none disabled:opacity-50 active:neo-button-active hover:bg-muted"
+                            disabled={isSaving}
+                            aria-label={t('vocabulary.edit')}
+                            onClick={() => { setEditingSuggestionId(suggestion.userTermId); setEditText(suggestion.suggestedTranslation) }}
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="neo-button inline-flex min-h-10 w-10 items-center justify-center rounded-md border-2 border-border bg-card text-muted-foreground shadow-[2px_2px_0_var(--border)] disabled:pointer-events-none disabled:opacity-50 active:neo-button-active hover:bg-muted"
+                            disabled={isSaving}
+                            aria-label={t('quiz.suggestionsDismiss')}
+                            onClick={() => dismissSuggestion(suggestion)}
+                          >
+                            <X size={16} />
+                          </button>
+                        </>
                       )}
-                      {!isAccepted ? (
-                        <Button
-                          variant="ghost"
-                          className="text-xs"
-                          disabled={isSaving}
-                          onClick={() => dismissSuggestion(suggestion)}
-                        >
-                          {t('quiz.suggestionsDismiss')}
-                        </Button>
-                      ) : null}
                     </div>
                   </div>
                 )
