@@ -23,9 +23,9 @@ describe('vocabularyFormSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('requires at least one meaning', () => {
+  it('requires source_text', () => {
     const result = vocabularyFormSchema.safeParse({
-      source_text: 'apple',
+      source_text: '',
       source_language: 'en',
       native_language: 'vi',
       item_type: 'word',

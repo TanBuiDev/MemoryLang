@@ -20,7 +20,6 @@ import { StudySetupPage } from '@/pages/study/StudySetupPage'
 import { TemplateBuilderPage } from '@/pages/templates/TemplateBuilderPage'
 import { TemplateListPage } from '@/pages/templates/TemplateListPage'
 import { AddVocabularyPage } from '@/pages/vocabulary/AddVocabularyPage'
-import { EditVocabularyPage } from '@/pages/vocabulary/EditVocabularyPage'
 import { VocabularyDetailPage } from '@/pages/vocabulary/VocabularyDetailPage'
 import { VocabularyListPage } from '@/pages/vocabulary/VocabularyListPage'
 
@@ -43,7 +42,6 @@ export const router = createBrowserRouter([
           { path: 'vocabulary', element: <VocabularyListPage /> },
           { path: 'vocabulary/new', element: <AddVocabularyPage /> },
           { path: 'vocabulary/:id', element: <VocabularyDetailPage /> },
-          { path: 'vocabulary/:id/edit', element: <EditVocabularyPage /> },
           { path: 'decks', element: <DeckListPage /> },
           { path: 'decks/:id', element: <DeckDetailPage /> },
           { path: 'study', element: <StudySetupPage /> },

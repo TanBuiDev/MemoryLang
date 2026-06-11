@@ -236,3 +236,10 @@
     animation: none;
   }
 }
+
+.scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

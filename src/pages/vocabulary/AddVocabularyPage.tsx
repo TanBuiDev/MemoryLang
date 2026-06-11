@@ -83,6 +83,7 @@ export function AddVocabularyPage() {
             srs_ease_factor: 2.5,
             last_reviewed_at: null,
             next_review_at: null,
+            flagged: false,
             deleted_at: null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -206,7 +207,7 @@ export function AddVocabularyPage() {
                 <div className="mt-2">
                   <p className="text-sm font-bold text-danger">{message}</p>
                   <Button asChild variant="secondary" className="mt-1">
-                    <Link to={`/app/vocabulary/${duplicateId}/edit`}>{t('vocabulary.editExisting')}</Link>
+                    <Link to={`/app/vocabulary/${duplicateId}`}>{t('vocabulary.editExisting')}</Link>
                   </Button>
                 </div>
               ) : null}
@@ -222,6 +223,7 @@ export function AddVocabularyPage() {
           <CardDescription className="mt-2">{t('vocabulary.source')}: {source ?? t('vocabulary.manual')}</CardDescription>
           <div className="mt-4 grid gap-4">
             <div><Label>{t('vocabulary.ipa')}</Label><Input value={ipa} onChange={(event) => setIpa(event.target.value)} /></div>
+            <div><Label>{t('vocabulary.pronunciationText')}</Label><Input value={pronunciationText} onChange={(event) => setPronunciationText(event.target.value)} placeholder={t('vocabulary.pronunciationTextHint')} /></div>
             <div><Label>{t('vocabulary.meaning')}</Label><Textarea value={meaning} onChange={(event) => setMeaning(event.target.value)} /></div>
             <div><Label>{t('vocabulary.example')}</Label><Textarea value={example} onChange={(event) => setExample(event.target.value)} /></div>
             <div><Label>{t('vocabulary.translation')}</Label><TranslationChips value={translation} onChange={setTranslation} /></div>

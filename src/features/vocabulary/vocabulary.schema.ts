@@ -22,7 +22,7 @@ export const vocabularyFormSchema = z.object({
   image_url: z.string().url().optional().or(z.literal('')),
   note: z.string().optional(),
   translation: z.string().optional(),
-  meanings: z.array(meaningSchema).min(1, 'Add at least one meaning'),
+  meanings: z.array(meaningSchema).optional().default([]),
   examples: z.array(exampleSchema),
   tags: z.array(z.string()),
   deck_ids: z.array(z.string()),

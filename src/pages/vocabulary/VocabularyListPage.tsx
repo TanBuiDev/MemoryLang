@@ -42,7 +42,7 @@ const statusBorderClasses: Record<VocabularyStatus, string> = {
   need_review: 'border-l-amber-500',
 }
 
-const statusFilterOptions: Array<VocabularyStatus | 'all' | 'flagged'> = ['all', 'flagged', 'new', 'learning', 'familiar', 'memorized', 'difficult', 'need_review']
+const statusFilterOptions: Array<VocabularyStatus | 'all' | 'flagged' | 'noDeck'> = ['all', 'flagged', 'new', 'learning', 'familiar', 'memorized', 'difficult', 'need_review', 'noDeck']
 
 export function VocabularyListPage() {
   const { t } = useI18n()
@@ -63,13 +63,18 @@ export function VocabularyListPage() {
   })
   const [searchParams, setSearchParams] = useSearchParams()
   const [cachedVocabulary, setCachedVocabulary] = useState<VocabularyItem[]>([])
-  const filterStatus = (searchParams.get('status') as VocabularyStatus | 'all' | 'flagged') || 'all'
-  const setFilterStatus = (value: VocabularyStatus | 'all' | 'flagged') => {
+  const filterStatus = (searchParams.get('status') as VocabularyStatus | 'all' | 'flagged' | 'noDeck') || 'all'
+  const setFilterStatus = (value: VocabularyStatus | 'all' | 'flagged' | 'noDeck') => {
     setSearchParams((prev) => {
       if (value === 'all') { prev.delete('status') } else { prev.set('status', value) }
       return prev
     })
   }
+  const deckedTermIdsQuery = useQuery({
+    queryKey: ['decked-term-ids', user?.id],
+    queryFn: () => deckService.getDeckedTermIds(user!.id),
+    enabled: shouldUseRemoteData && filterStatus === 'noDeck',
+  })
   const [searchText, setSearchText] = useState(searchParams.get('q') ?? '')
   const debouncedSearch = useDebounce(searchText, 300)
   useEffect(() => {
@@ -94,7 +99,9 @@ export function VocabularyListPage() {
       ? rawVocabulary
       : filterStatus === 'flagged'
         ? rawVocabulary.filter((item) => item.flagged)
-        : rawVocabulary.filter((item) => item.status === filterStatus)
+        : filterStatus === 'noDeck'
+          ? rawVocabulary.filter((item) => !deckedTermIdsQuery.data?.has(item.id))
+          : rawVocabulary.filter((item) => item.status === filterStatus)
     if (normalizedSearch) {
       filtered = filtered.filter((item) =>
         item.source_text.toLowerCase().includes(normalizedSearch),
@@ -109,7 +116,7 @@ export function VocabularyListPage() {
       sorted.sort((a, b) => (b.wrong_count ?? 0) - (a.wrong_count ?? 0))
     }
     return sorted
-  }, [debouncedSearch, filterStatus, rawVocabulary, sortOrder])
+  }, [debouncedSearch, filterStatus, rawVocabulary, sortOrder, deckedTermIdsQuery.data])
 
   const online = useOnlineStatus()
 
@@ -172,7 +179,16 @@ export function VocabularyListPage() {
   }, [shouldUseRemoteData, user, vocabularyQuery.data])
 
   const containerRef = useRef<HTMLDivElement>(null)
-  const columns = 2
+  const [columns, setColumns] = useState(window.innerWidth < 768 ? 1 : 2)
+
+  useEffect(() => {
+    const handleResize = () => {
+      setColumns(window.innerWidth < 768 ? 1 : 2)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   const rows = Math.ceil(vocabulary.length / columns)
 
   const virtualizer = useVirtualizer({
@@ -298,7 +314,7 @@ export function VocabularyListPage() {
   }
 
   const headerActions = selectMode ? (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Button variant="ghost" onClick={exitSelectMode}>{t('actions.cancel')}</Button>
       <span className="self-center text-sm font-bold">{t('vocabulary.selected', { count: selectedIds.size })}</span>
       <Button
@@ -315,7 +331,7 @@ export function VocabularyListPage() {
       <Button variant="danger" disabled={selectedIds.size === 0} onClick={requestDeleteSelected}>{t('vocabulary.deleteSelected')}</Button>
     </div>
   ) : (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Button variant="ghost" disabled={!shouldUseRemoteData} onClick={enterSelectMode}>{t('vocabulary.select')}</Button>
       <Button asChild><Link to="/app/vocabulary/new">{t('vocabulary.add')}</Link></Button>
     </div>
@@ -348,31 +364,37 @@ export function VocabularyListPage() {
           </Button>
         </div>
       ) : null}
-      <div className="mb-4 grid gap-3 md:grid-cols-[2fr_auto_1fr]">
-        <Input placeholder={t('vocabulary.search')} value={searchText} onChange={(event) => setSearchText(event.target.value)} />
-        <div className="flex flex-wrap gap-1">
+      <div className="mb-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="flex-1">
+            <Input placeholder={t('vocabulary.search')} value={searchText} onChange={(event) => setSearchText(event.target.value)} />
+          </div>
+          <div className="w-full sm:w-48">
+            <Select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
+              <option value="created">{t('vocabulary.sortCreated')}</option>
+              <option value="alpha">{t('vocabulary.sortAlpha')}</option>
+              <option value="next_review">{t('vocabulary.sortReview')}</option>
+              <option value="wrong">{t('vocabulary.sortWrong')}</option>
+            </Select>
+          </div>
+        </div>
+        <div className="flex overflow-x-auto pb-1.5 -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap md:overflow-x-visible gap-1.5 scrollbar-none shrink-0 max-w-full">
           {statusFilterOptions.map((status) => (
             <button
               key={status}
               type="button"
               onClick={() => setFilterStatus(status)}
               className={[
-                'neo-button min-h-10 rounded-md border-2 border-border px-3 py-2 text-sm font-black',
+                'neo-button min-h-10 rounded-md border-2 border-border px-3 py-2 text-sm font-black whitespace-nowrap shrink-0',
                 filterStatus === status
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-card text-foreground hover:bg-muted',
               ].join(' ')}
             >
-              {status === 'all' ? t('vocabulary.filterAll') : status === 'flagged' ? t('vocabulary.flag') : t(statusLabelKeys[status])}
+              {status === 'all' ? t('vocabulary.filterAll') : status === 'flagged' ? t('vocabulary.flag') : status === 'noDeck' ? t('vocabulary.filterNoDeck') : t(statusLabelKeys[status])}
             </button>
           ))}
         </div>
-        <Select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
-          <option value="created">{t('vocabulary.sortCreated')}</option>
-          <option value="alpha">{t('vocabulary.sortAlpha')}</option>
-          <option value="next_review">{t('vocabulary.sortReview')}</option>
-          <option value="wrong">{t('vocabulary.sortWrong')}</option>
-        </Select>
       </div>
       {vocabularyQuery.isLoading ? <Card className="font-black">{t('vocabulary.loading')}</Card> : null}
       {vocabularyQuery.isError && cachedVocabulary.length === 0 ? (
@@ -423,7 +445,7 @@ export function VocabularyListPage() {
                         {item.flagged ? <Flag className="h-4 w-4 text-warning" fill="currentColor" /> : null}
                         <Badge>{t(statusLabelKeys[item.status])}</Badge>
                         {item.part_of_speech ? <Badge className="bg-muted">{item.part_of_speech}</Badge> : null}
-                        <Button variant="ghost" className="h-6 min-h-0 w-6 p-0" onClick={() => speak(item.source_text)}><Volume2 className="h-4 w-4" /></Button>
+                        <Button variant="ghost" className="h-6 min-h-0 w-6 p-0" onClick={() => speak(item.source_text, { variant: item.pronunciation_text, audioUrl: item.audio_url })}><Volume2 className="h-4 w-4" /></Button>
                       </div>
                       <p className="mt-1 font-mono text-sm">{item.ipa}</p>
                       <p className="font-semibold text-muted-foreground">{item.meanings[0]?.text}</p>
@@ -433,7 +455,7 @@ export function VocabularyListPage() {
                     <div className="flex gap-2 ml-auto">
                       {selectMode ? null : (
                         <>
-                          <Button asChild variant="secondary"><Link to={`/app/vocabulary/${item.id}/edit`}>{t('vocabulary.edit')}</Link></Button>
+                          <Button asChild variant="secondary"><Link to={`/app/vocabulary/${item.id}`}>{t('vocabulary.view')}</Link></Button>
                           <Button variant="ghost" onClick={() => requestDeleteSingle(item.id, item.source_text)} className="text-danger">{t('vocabulary.delete')}</Button>
                         </>
                       )}
