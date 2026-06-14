@@ -22,6 +22,11 @@ import { TemplateListPage } from '@/pages/templates/TemplateListPage'
 import { AddVocabularyPage } from '@/pages/vocabulary/AddVocabularyPage'
 import { VocabularyDetailPage } from '@/pages/vocabulary/VocabularyDetailPage'
 import { VocabularyListPage } from '@/pages/vocabulary/VocabularyListPage'
+import { TopicSelectionPage } from '@/pages/listening/TopicSelectionPage'
+import { TestSelectionPage } from '@/pages/listening/TestSelectionPage'
+import { PartSelectionPage } from '@/pages/listening/PartSelectionPage'
+import { ListeningSessionPage } from '@/pages/listening/ListeningSessionPage'
+import { ListeningResultPage } from '@/pages/listening/ListeningResultPage'
 
 export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
@@ -54,6 +59,11 @@ export const router = createBrowserRouter([
           { path: 'templates', element: <TemplateListPage /> },
           { path: 'templates/new', element: <TemplateBuilderPage /> },
           { path: 'templates/:id/edit', element: <TemplateBuilderPage /> },
+          { path: 'listening', element: <TopicSelectionPage /> },
+          { path: 'listening/:topicId', element: <TestSelectionPage /> },
+          { path: 'listening/:topicId/:testId', element: <PartSelectionPage /> },
+          { path: 'listening/session/:partId/:mode', element: <ListeningSessionPage /> },
+          { path: 'listening/result/:partId', element: <ListeningResultPage /> },
           { path: 'statistics', element: <Navigate to="/app/dashboard" replace /> },
           { path: 'settings', element: <SettingsPage /> },
         ],
