@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect, cloneElement } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { Flag, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Flag, Search, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatTile } from '@/components/common/StatTile'
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +18,7 @@ import { vocabularyUpdateFormSchema } from '@/features/vocabulary/vocabulary.sch
 import { useI18n } from '@/i18n'
 import { enrichVocabulary } from '@/services/api/enrichVocabulary.api'
 import { studyLocalDb } from '@/services/local/studyLocalDb'
-import { isSupabaseConfigured } from '@/services/supabase/client'
+import { isSupabaseConfigured, supabase } from '@/services/supabase/client'
 import { createEmptyRelationshipGroups, relationshipService } from '@/services/supabase/relationship.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -126,6 +126,8 @@ export function VocabularyDetailPage() {
   const relationWrapperRef = useRef<HTMLDivElement>(null)
   const pillRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
   const [isDeleting, setIsDeleting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   const vocabularyCardQuery = useQuery({
     queryKey: ['vocabulary-card', id],
@@ -414,6 +416,53 @@ export function VocabularyDetailPage() {
       await updateMutation.mutateAsync(fields)
     } catch {
       setAutoSaveStatus('idle')
+    }
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user || !item) return
+
+    if (!file.type.startsWith('image/')) {
+      setFormError('Vui lòng chọn tệp hình ảnh hợp lệ.')
+      return
+    }
+
+    try {
+      setUploadingImage(true)
+      setFormError(null)
+
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${user.id}/${item.id}_${Date.now()}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('vocabulary-images')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        })
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('vocabulary-images')
+        .getPublicUrl(fileName)
+
+      await handleSaveField({ image_url: publicUrl })
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Không thể tải ảnh lên.')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  const handleImageDelete = async () => {
+    if (!item) return
+    try {
+      setFormError(null)
+      await handleSaveField({ image_url: null })
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Không thể xóa ảnh.')
     }
   }
 
@@ -827,19 +876,67 @@ export function VocabularyDetailPage() {
         </Card>
 
         <div className="grid gap-4 self-start">
-          <div className="grid grid-cols-2 gap-4">
-            <StatTile label={t('vocabulary.views')} value={item.view_count} />
-            <StatTile label={t('vocabulary.correct')} value={item.correct_count} />
-            <StatTile label={t('vocabulary.wrong')} value={item.wrong_count} />
-            <StatTile
-              label={t('vocabulary.nextReview')}
-              value={
-                item.next_review_at
-                  ? new Date(item.next_review_at).toLocaleDateString()
-                  : t('vocabulary.unscheduled')
-              }
+          <Card className="p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm uppercase text-muted-foreground">{t('vocabulary.illustration')}</CardTitle>
+              {item.image_url && (
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-7 w-7 p-0"
+                    onClick={() => fileInputRef.current?.click()}
+                    title={t('vocabulary.changeImage')}
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    className="h-7 w-7 p-0 border-2 border-border shadow-[1px_1px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+                    onClick={handleImageDelete}
+                    title={t('vocabulary.deleteImage')}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleImageUpload}
+              aria-label="Tải ảnh minh họa"
             />
-          </div>
+
+            {uploadingImage ? (
+              <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md bg-muted/30">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="text-xs font-bold text-muted-foreground mt-2">{t('vocabulary.uploading')}</span>
+              </div>
+            ) : item.image_url ? (
+              <div className="relative group overflow-hidden rounded-md border-2 border-border shadow-[3px_3px_0_var(--border)] bg-muted/10 h-48">
+                <img
+                  src={item.image_url}
+                  alt={item.source_text}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md bg-muted/10 hover:bg-slate-50/50 cursor-pointer transition-all gap-2"
+              >
+                <div className="p-3 rounded-full bg-muted border-2 border-border shadow-[2px_2px_0_var(--border)]">
+                  <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <span className="text-xs font-black text-muted-foreground">{t('vocabulary.uploadImage')}</span>
+              </div>
+            )}
+          </Card>
 
           <Card>
             <CardTitle className="text-base font-black">{t('vocabulary.addRelationship')}</CardTitle>
