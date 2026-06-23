@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect, cloneElement } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { Flag, Search, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2 } from 'lucide-react'
+import { Flag, Search, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2 } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatTile } from '@/components/common/StatTile'
 import { Badge } from '@/components/ui/badge'
@@ -128,6 +128,11 @@ export function VocabularyDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [isZoomed, setIsZoomed] = useState(false)
+  const [imageFit, setImageFit] = useState<'fit' | 'cover'>(() => {
+    return (localStorage.getItem('vocab_image_fit') as 'fit' | 'cover') || 'fit'
+  })
+  const [naturalRatio, setNaturalRatio] = useState<number | null>(null)
 
   const vocabularyCardQuery = useQuery({
     queryKey: ['vocabulary-card', id],
@@ -149,6 +154,17 @@ export function VocabularyDetailPage() {
   const relationships = shouldUseRemoteData
     ? vocabularyCardQuery.data?.relationships ?? createEmptyRelationshipGroups()
     : createEmptyRelationshipGroups()
+
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget
+    if (naturalWidth && naturalHeight) {
+      setNaturalRatio(naturalWidth / naturalHeight)
+    }
+  }
+
+  useEffect(() => {
+    setNaturalRatio(null)
+  }, [item?.image_url])
 
   const vocabularyIds = useMemo(() => {
     if (location.state && Array.isArray((location.state as any).vocabularyIds)) {
@@ -347,6 +363,11 @@ export function VocabularyDetailPage() {
       }
       // Escape: Quay lại danh sách từ vựng khi không có modal nào mở và không focus input
       else if (e.key === 'Escape') {
+        if (isZoomed) {
+          e.preventDefault()
+          setIsZoomed(false)
+          return
+        }
         if (isDeleting) {
           return
         }
@@ -359,7 +380,7 @@ export function VocabularyDetailPage() {
 
     window.addEventListener('keydown', handleGlobalKeyDown)
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [id, prevId, nextId, vocabularyIds, item, isDeleting, navigate, invalidateVocabularyQueries])
+  }, [id, prevId, nextId, vocabularyIds, item, isDeleting, isZoomed, navigate, invalidateVocabularyQueries])
 
   const updateMutation = useMutation({
     mutationFn: (updatedFields: Partial<VocabularyItem>) => {
@@ -885,6 +906,19 @@ export function VocabularyDetailPage() {
                     type="button"
                     variant="ghost"
                     className="h-7 w-7 p-0"
+                    onClick={() => {
+                      const newFit = imageFit === 'fit' ? 'cover' : 'fit'
+                      setImageFit(newFit)
+                      localStorage.setItem('vocab_image_fit', newFit)
+                    }}
+                    title={imageFit === 'fit' ? t('vocabulary.imageFitCover') : t('vocabulary.imageFitContain')}
+                  >
+                    {imageFit === 'fit' ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-7 w-7 p-0"
                     onClick={() => fileInputRef.current?.click()}
                     title={t('vocabulary.changeImage')}
                   >
@@ -918,11 +952,32 @@ export function VocabularyDetailPage() {
                 <span className="text-xs font-bold text-muted-foreground mt-2">{t('vocabulary.uploading')}</span>
               </div>
             ) : item.image_url ? (
-              <div className="relative group overflow-hidden rounded-md border-2 border-border shadow-[3px_3px_0_var(--border)] bg-muted/10 h-48">
+              <div
+                onClick={() => setIsZoomed(true)}
+                style={imageFit === 'fit' && naturalRatio ? { aspectRatio: `${naturalRatio}` } : undefined}
+                className={cn(
+                  "relative group overflow-hidden rounded-md border-2 border-border shadow-[3px_3px_0_var(--border)] bg-muted/5 flex items-center justify-center cursor-zoom-in transition-all duration-200",
+                  imageFit === 'fit'
+                    ? cn("w-full min-h-[8rem] max-h-[24rem]", !naturalRatio && "h-48")
+                    : "w-full h-56"
+                )}
+              >
+                {imageFit === 'fit' && (
+                  <div
+                    className="absolute inset-0 bg-cover bg-center filter blur-lg opacity-40"
+                    style={{ backgroundImage: `url(${item.image_url})` }}
+                  />
+                )}
                 <img
                   src={item.image_url}
                   alt={item.source_text}
-                  className="w-full h-full object-cover"
+                  onLoad={handleImageLoad}
+                  className={cn(
+                    "relative z-10 transition-all duration-200",
+                    imageFit === 'fit'
+                      ? "max-h-[23.5rem] w-full object-contain p-1"
+                      : "w-full h-full object-cover"
+                  )}
                 />
               </div>
             ) : (
@@ -1008,6 +1063,24 @@ export function VocabularyDetailPage() {
 
         </div>
       </div>
+
+      {isZoomed && item.image_url && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm cursor-zoom-out animate-in fade-in duration-200"
+          onClick={() => setIsZoomed(false)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] bg-card p-2 border-4 border-border shadow-[8px_8px_0_rgba(0,0,0,1)] rounded-lg">
+            <img
+              src={item.image_url}
+              alt={item.source_text}
+              className="max-w-full max-h-[80vh] object-contain rounded-md"
+            />
+            <div className="absolute bottom-4 right-4 bg-card border-2 border-border px-2.5 py-1 text-xs font-black shadow-[2px_2px_0_rgba(0,0,0,1)] rounded">
+              Click anywhere to close
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         open={isDeleting}
