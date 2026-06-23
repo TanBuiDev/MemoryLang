@@ -130,7 +130,8 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     expect(await screen.findByText('one')).toBeInTheDocument()
 
     // Xác nhận chỉ số vị trí hiển thị đúng
-    expect(screen.getByText('1 / 3')).toBeInTheDocument()
+    expect(screen.getByLabelText('Vị trí trang')).toHaveValue(1)
+    expect(screen.getByText('/ 3')).toBeInTheDocument()
 
     // Nút Lùi lại (quay lại) phải bị vô hiệu hóa
     const prevButton = screen.getByTitle('Thẻ trước')
@@ -162,7 +163,8 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     expect(await screen.findByText('two')).toBeInTheDocument()
 
     // Chỉ số vị trí hiển thị đúng (dựa trên danh sách fallback lấy từ mockTerms: entry-1, entry-2, entry-3)
-    expect(screen.getByText('2 / 3')).toBeInTheDocument()
+    expect(screen.getByLabelText('Vị trí trang')).toHaveValue(2)
+    expect(screen.getByText('/ 3')).toBeInTheDocument()
 
     // Cả hai nút điều hướng Lùi lại và Tiếp theo đều không bị vô hiệu hóa ở vị trí số 2
     expect(screen.getByTitle('Thẻ trước')).not.toBeDisabled()
@@ -281,5 +283,29 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     expect(screen.queryByText('Alt + →')).not.toBeInTheDocument()
 
     vi.useRealTimers()
+  })
+
+  it('cho phép nhập số thứ tự và nhấn Enter để chuyển nhanh đến từ đó', async () => {
+    const user = userEvent.setup()
+    const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3'] }
+    renderPage('/app/vocabulary/entry-1', state)
+
+    expect(await screen.findByText('one')).toBeInTheDocument()
+
+    // Tìm ô nhập vị trí trang
+    const pageInput = screen.getByLabelText('Vị trí trang')
+    expect(pageInput).toBeInTheDocument()
+    expect(pageInput).toHaveValue(1)
+
+    // Xóa số 1 cũ và nhập số 3
+    await user.clear(pageInput)
+    await user.type(pageInput, '3')
+    expect(pageInput).toHaveValue(3)
+
+    // Nhấn Enter
+    await user.keyboard('{Enter}')
+
+    // Xác nhận đã gọi API lấy từ vựng thứ 3 (entry-3)
+    expect(relationshipService.getCard).toHaveBeenCalledWith('entry-3')
   })
 })

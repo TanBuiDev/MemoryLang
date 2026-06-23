@@ -167,6 +167,44 @@ export function VocabularyDetailPage() {
   const prevId = currentIndex > 0 ? vocabularyIds[currentIndex - 1] : null
   const nextId = currentIndex >= 0 && currentIndex < vocabularyIds.length - 1 ? vocabularyIds[currentIndex + 1] : null
 
+  const [pageInputValue, setPageInputValue] = useState('')
+
+  useEffect(() => {
+    if (currentIndex !== -1) {
+      setPageInputValue(String(currentIndex + 1))
+    }
+  }, [currentIndex])
+
+  const handlePageInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const pageNum = parseInt(pageInputValue, 10)
+      if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= vocabularyIds.length) {
+        const targetId = vocabularyIds[pageNum - 1]
+        if (targetId && targetId !== id) {
+          navigate(`/app/vocabulary/${targetId}`, { state: { vocabularyIds } })
+        }
+      } else {
+        setPageInputValue(String(currentIndex + 1))
+      }
+      e.currentTarget.blur()
+    } else if (e.key === 'Escape') {
+      setPageInputValue(String(currentIndex + 1))
+      e.currentTarget.blur()
+    }
+  }
+
+  const handlePageInputBlur = () => {
+    const pageNum = parseInt(pageInputValue, 10)
+    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= vocabularyIds.length) {
+      const targetId = vocabularyIds[pageNum - 1]
+      if (targetId && targetId !== id) {
+        navigate(`/app/vocabulary/${targetId}`, { state: { vocabularyIds } })
+      }
+    } else {
+      setPageInputValue(String(currentIndex + 1))
+    }
+  }
+
   const targetOptions = useMemo(
     () => filterActiveVocabulary(vocabularyListQuery.data ?? []).filter((entry) => entry.id !== id),
     [id, vocabularyListQuery.data]
@@ -489,9 +527,20 @@ export function VocabularyDetailPage() {
               </Button>
             </HotkeyTooltip>
             {currentIndex !== -1 && (
-              <span className="text-xs font-black px-2.5 py-1 rounded bg-muted border-2 border-border min-w-12 text-center">
-                {currentIndex + 1} / {vocabularyIds.length}
-              </span>
+              <div className="flex items-center text-xs font-black px-2 py-1 rounded bg-muted border-2 border-border text-center select-none">
+                <input
+                  type="number"
+                  min={1}
+                  max={vocabularyIds.length}
+                  value={pageInputValue}
+                  onChange={(e) => setPageInputValue(e.target.value)}
+                  onKeyDown={handlePageInputKeyDown}
+                  onBlur={handlePageInputBlur}
+                  className="w-12 bg-transparent text-center focus:outline-none focus:bg-card rounded border border-transparent focus:border-border p-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  aria-label="Vị trí trang"
+                />
+                <span className="pr-1.5 text-muted-foreground">/ {vocabularyIds.length}</span>
+              </div>
             )}
             <HotkeyTooltip hotkey="Alt + →">
               <Button
