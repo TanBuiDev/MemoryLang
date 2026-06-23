@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect, cloneElement } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { Flag, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatTile } from '@/components/common/StatTile'
 import { Badge } from '@/components/ui/badge'
+import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -130,6 +131,7 @@ export function VocabularyDetailPage() {
     queryKey: ['vocabulary-card', id],
     queryFn: () => relationshipService.getCard(id!),
     enabled: shouldUseRemoteData && Boolean(id),
+    placeholderData: keepPreviousData,
   })
 
   const vocabularyListQuery = useQuery({
@@ -166,6 +168,26 @@ export function VocabularyDetailPage() {
 
   const prevId = currentIndex > 0 ? vocabularyIds[currentIndex - 1] : null
   const nextId = currentIndex >= 0 && currentIndex < vocabularyIds.length - 1 ? vocabularyIds[currentIndex + 1] : null
+
+  // Tải trước (prefetch) dữ liệu của từ vựng tiếp theo và từ vựng phía trước để tránh độ trễ khi chuyển từ
+  useEffect(() => {
+    if (!shouldUseRemoteData) return
+
+    if (nextId) {
+      queryClient.prefetchQuery({
+        queryKey: ['vocabulary-card', nextId],
+        queryFn: () => relationshipService.getCard(nextId),
+        staleTime: 5 * 60 * 1000, // 5 phút cache
+      })
+    }
+    if (prevId) {
+      queryClient.prefetchQuery({
+        queryKey: ['vocabulary-card', prevId],
+        queryFn: () => relationshipService.getCard(prevId),
+        staleTime: 5 * 60 * 1000,
+      })
+    }
+  }, [nextId, prevId, queryClient, shouldUseRemoteData])
 
   const [pageInputValue, setPageInputValue] = useState('')
 
@@ -636,7 +658,10 @@ export function VocabularyDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_0.8fr]">
+      <div className={cn(
+        "grid gap-4 lg:grid-cols-[1fr_0.8fr] transition-opacity duration-200",
+        shouldUseRemoteData && vocabularyCardQuery.isFetching && vocabularyCardQuery.data?.entry?.id !== id && "opacity-50 pointer-events-none"
+      )}>
         <Card className="flex flex-col gap-6">
           <div>
             <Label className="text-xs uppercase text-muted-foreground mb-1 block">{t('vocabulary.ipa')}</Label>
