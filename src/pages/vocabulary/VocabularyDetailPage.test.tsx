@@ -245,7 +245,7 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     expect(await screen.findByText('Trang danh sách từ vựng')).toBeInTheDocument()
   })
 
-  it('hiển thị tooltip phím tắt sau khi hover chuột vào nút trigger 1 giây', async () => {
+  it('hiển thị tooltip phím tắt của nút Tiếp theo sau khi hover chuột 1 giây', async () => {
     renderPage('/app/vocabulary/entry-1')
 
     expect(await screen.findByText('one')).toBeInTheDocument()
@@ -253,33 +253,32 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     // Bật fake timers sau khi render hoàn tất
     vi.useFakeTimers()
 
-    // Tooltip lúc đầu không hiển thị
-    expect(screen.queryByText(/phím tắt/i)).not.toBeInTheDocument()
+    // Tooltip hotkey "Alt + →" lúc đầu không hiển thị
+    expect(screen.queryByText('Alt + →')).not.toBeInTheDocument()
 
-    // Tìm trigger button bằng aria-label
-    const triggerBtn = screen.getByLabelText(/phím tắt/i)
+    // Tìm trigger button là nút "Tiếp theo"
+    const triggerBtn = screen.getByTitle('Thẻ tiếp theo')
     expect(triggerBtn).toBeInTheDocument()
 
     // Rê chuột vào trigger bằng fireEvent
     fireEvent.mouseEnter(triggerBtn)
 
-    // Tooltip vẫn chưa hiển thị ngay (do có delay 1 giây)
-    expect(screen.queryByText(/phím tắt/i)).not.toBeInTheDocument()
+    // Vẫn chưa hiển thị ngay (do có delay 1 giây)
+    expect(screen.queryByText('Alt + →')).not.toBeInTheDocument()
 
     // Giả lập thời gian trôi qua 1 giây (1000ms)
     act(() => {
       vi.advanceTimersByTime(1000)
     })
 
-    // Tooltip hiển thị
-    expect(screen.getByText(/phím tắt/i)).toBeInTheDocument()
-    expect(screen.getByText('Thẻ trước')).toBeInTheDocument()
+    // Tooltip hiển thị hotkey tương ứng
+    expect(screen.getByText('Alt + →')).toBeInTheDocument()
 
     // Rê chuột ra ngoài bằng fireEvent
     fireEvent.mouseLeave(triggerBtn)
 
     // Tooltip biến mất ngay lập tức
-    expect(screen.queryByText(/phím tắt/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Alt + →')).not.toBeInTheDocument()
 
     vi.useRealTimers()
   })

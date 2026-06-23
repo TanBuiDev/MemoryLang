@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useMemo, useRef, useCallback, useEffect, cloneElement } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { Flag, Search, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -43,6 +43,68 @@ const statusLabelKeys: Record<VocabularyStatus, string> = {
   need_review: 'vocabulary.statusNeedReview',
 }
 
+interface HotkeyTooltipProps {
+  children: React.ReactElement
+  text: string
+  hotkey: string
+  delay?: number
+  position?: 'top' | 'bottom'
+}
+
+export function HotkeyTooltip({ children, text, hotkey, delay = 1000, position = 'bottom' }: HotkeyTooltipProps) {
+  const [show, setShow] = useState(false)
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    timeoutRef.current = setTimeout(() => {
+      setShow(true)
+    }, delay)
+  }
+
+  const handleMouseLeave = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    setShow(false)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
+  }, [])
+
+  const trigger = cloneElement(children, {
+    onMouseEnter: (e: React.MouseEvent) => {
+      handleMouseEnter()
+      if (children.props.onMouseEnter) children.props.onMouseEnter(e)
+    },
+    onMouseLeave: (e: React.MouseEvent) => {
+      handleMouseLeave()
+      if (children.props.onMouseLeave) children.props.onMouseLeave(e)
+    },
+    onClick: (e: React.MouseEvent) => {
+      handleMouseLeave()
+      if (children.props.onClick) children.props.onClick(e)
+    }
+  } as any)
+
+  const positionClasses = position === 'top'
+    ? 'bottom-full mb-2'
+    : 'top-full mt-2'
+
+  return (
+    <div className="relative inline-block">
+      {trigger}
+      {show && (
+        <div className={`absolute ${positionClasses} left-1/2 -translate-x-1/2 z-50 whitespace-nowrap p-2 border-2 border-border bg-card shadow-[3px_3px_0_var(--border)] rounded-md text-xs font-bold text-foreground`}>
+          <span>{text}</span>
+          <kbd className="ml-1.5 px-1 py-0.5 rounded border border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">{hotkey}</kbd>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function VocabularyDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -65,26 +127,6 @@ export function VocabularyDetailPage() {
   const relationWrapperRef = useRef<HTMLDivElement>(null)
   const pillRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
   const [isDeleting, setIsDeleting] = useState(false)
-  const [showTooltip, setShowTooltip] = useState(false)
-  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-  const handleMouseEnter = () => {
-    if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current)
-    tooltipTimeoutRef.current = setTimeout(() => {
-      setShowTooltip(true)
-    }, 1000)
-  }
-
-  const handleMouseLeave = () => {
-    if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current)
-    setShowTooltip(false)
-  }
-
-  useEffect(() => {
-    return () => {
-      if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current)
-    }
-  }, [])
 
   const vocabularyCardQuery = useQuery({
     queryKey: ['vocabulary-card', id],
@@ -438,96 +480,62 @@ export function VocabularyDetailPage() {
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="ghost"
-              disabled={!prevId}
-              onClick={() => navigate(`/app/vocabulary/${prevId}`, { state: { vocabularyIds } })}
-              title={t('study.previousCard')}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+            <HotkeyTooltip text={t('study.previousCard')} hotkey="Alt + ←">
+              <Button
+                variant="ghost"
+                disabled={!prevId}
+                onClick={() => navigate(`/app/vocabulary/${prevId}`, { state: { vocabularyIds } })}
+                title={t('study.previousCard')}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            </HotkeyTooltip>
             {currentIndex !== -1 && (
               <span className="text-xs font-black px-2.5 py-1 rounded bg-muted border-2 border-border min-w-12 text-center">
                 {currentIndex + 1} / {vocabularyIds.length}
               </span>
             )}
-            <Button
-              variant="ghost"
-              disabled={!nextId}
-              onClick={() => navigate(`/app/vocabulary/${nextId}`, { state: { vocabularyIds } })}
-              title={t('study.nextCard')}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <div className="relative">
+            <HotkeyTooltip text={t('study.nextCard')} hotkey="Alt + →">
               <Button
                 variant="ghost"
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                className="h-9 w-9 p-0"
-                aria-label={t('settings.studyHotkeys')}
+                disabled={!nextId}
+                onClick={() => navigate(`/app/vocabulary/${nextId}`, { state: { vocabularyIds } })}
+                title={t('study.nextCard')}
               >
-                <span className="text-lg">⌨️</span>
+                <ChevronRight className="h-4 w-4" />
               </Button>
-              {showTooltip && (
-                <div className="absolute right-0 top-full mt-2 z-50 w-72 p-4 border-2 border-border bg-card shadow-[4px_4px_0_var(--border)] rounded-md">
-                  <h4 className="text-xs uppercase text-muted-foreground mb-3 font-black flex items-center gap-1.5">
-                    <span>⌨️ {t('settings.studyHotkeys')}</span>
-                  </h4>
-                  <div className="grid grid-cols-2 gap-3 text-xs font-semibold text-foreground">
-                    <div className="flex items-center gap-2">
-                      <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + ←</kbd>
-                      <span className="text-muted-foreground">{t('study.previousCard')}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + →</kbd>
-                      <span className="text-muted-foreground">{t('study.nextCard')}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + P</kbd>
-                      <span className="text-muted-foreground">{t('vocabulary.audio')}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + F</kbd>
-                      <span className="text-muted-foreground">Flag / Gắn cờ</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + D</kbd>
-                      <span className="text-muted-foreground">{t('vocabulary.delete')}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Esc</kbd>
-                      <span className="text-muted-foreground">{language === 'vi' ? 'Quay lại' : 'Back'}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            </HotkeyTooltip>
             <div className="h-6 w-[2px] bg-border mx-1" />
             {item.flagged ? (
-              <Button
-                variant="ghost"
-                onClick={async () => {
-                  await vocabularyService.unflagTerm(item.id)
-                  await invalidateVocabularyQueries()
-                }}
-              >
-                <Flag className="h-4 w-4 text-warning" fill="currentColor" />
-              </Button>
+              <HotkeyTooltip text="Bỏ gắn cờ" hotkey="Alt + F">
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    await vocabularyService.unflagTerm(item.id)
+                    await invalidateVocabularyQueries()
+                  }}
+                >
+                  <Flag className="h-4 w-4 text-warning" fill="currentColor" />
+                </Button>
+              </HotkeyTooltip>
             ) : (
-              <Button
-                variant="ghost"
-                onClick={async () => {
-                  await vocabularyService.flagTerm(item.id)
-                  await invalidateVocabularyQueries()
-                }}
-              >
-                <Flag className="h-4 w-4 text-muted-foreground" />
-              </Button>
+              <HotkeyTooltip text="Gắn cờ" hotkey="Alt + F">
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    await vocabularyService.flagTerm(item.id)
+                    await invalidateVocabularyQueries()
+                  }}
+                >
+                  <Flag className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </HotkeyTooltip>
             )}
-            <Button variant="danger" onClick={() => setIsDeleting(true)}>
-              {t('vocabulary.delete')}
-            </Button>
+            <HotkeyTooltip text={t('vocabulary.delete')} hotkey="Alt + D">
+              <Button variant="danger" onClick={() => setIsDeleting(true)}>
+                {t('vocabulary.delete')}
+              </Button>
+            </HotkeyTooltip>
           </div>
         }
       />
@@ -627,13 +635,15 @@ export function VocabularyDetailPage() {
           </div>
 
           <div>
-            <Button
-              onClick={() =>
-                speak(item.source_text, { audioUrl: item.audio_url })
-              }
-            >
-              {t('actions.playAudio')}
-            </Button>
+            <HotkeyTooltip text={t('vocabulary.audio')} hotkey="Alt + P" position="top">
+              <Button
+                onClick={() =>
+                  speak(item.source_text, { audioUrl: item.audio_url })
+                }
+              >
+                {t('actions.playAudio')}
+              </Button>
+            </HotkeyTooltip>
           </div>
 
           <hr className="border-border border-dashed" />
