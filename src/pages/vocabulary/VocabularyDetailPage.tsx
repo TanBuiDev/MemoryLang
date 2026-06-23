@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect, cloneElement } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { Flag, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink } from 'lucide-react'
+import { Flag, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatTile } from '@/components/common/StatTile'
 import { Badge } from '@/components/ui/badge'
@@ -1082,11 +1082,28 @@ export function VocabularyDetailPage() {
           {shouldUseRemoteData && (
             <Card className="p-4 flex flex-col gap-3">
               <CardTitle className="text-sm uppercase text-muted-foreground">{t('vocabulary.searchImages')}</CardTitle>
-              <SearchInput
-                placeholder={t('vocabulary.searchImagesPlaceholder')}
-                value={imageSearchQuery}
-                onChange={(e) => onSearchInputChange(e.target.value)}
-              />
+              <div className="flex gap-2">
+                <SearchInput
+                  placeholder={t('vocabulary.searchImagesPlaceholder')}
+                  value={imageSearchQuery}
+                  onChange={(e) => onSearchInputChange(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="px-3 shrink-0"
+                  onClick={() => {
+                    if (searchTimeoutRef.current) {
+                      clearTimeout(searchTimeoutRef.current)
+                    }
+                    setImageSearchQuery(item.source_text)
+                    void handleImageSearch(item.source_text)
+                  }}
+                  title={t('vocabulary.searchBySourceTooltip')}
+                >
+                  <Sparkles className="h-4 w-4" />
+                </Button>
+              </div>
 
               {imageSearchLoading && (
                 <div className="flex items-center justify-center py-6">
