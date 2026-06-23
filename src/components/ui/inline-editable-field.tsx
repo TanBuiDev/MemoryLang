@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react'
-import { Pencil, Check, X } from 'lucide-react'
 import { Input, Textarea, Select } from '@/components/ui/input'
 import { cn } from '@/utils/cn'
 
@@ -72,82 +71,45 @@ export function InlineEditableField({
 
   if (isEditing) {
     return (
-      <div className={cn('flex items-start gap-2 w-full', editClassName)} onKeyDown={handleKeyDown}>
-        <div className="flex-1 w-full">
-          {type === 'input' && (
-            <Input
-              ref={inputRef as React.RefObject<HTMLInputElement>}
-              value={newValue}
-              onChange={(e) => setNewValue(e.target.value)}
-              onBlur={(e) => {
-                // Wait a tiny bit in case they clicked the save/cancel buttons
-                const relatedTarget = e.relatedTarget as HTMLElement
-                if (relatedTarget?.closest('.inline-edit-btn')) return
-                void handleSave()
-              }}
-              placeholder={placeholder}
-            />
-          )}
-          {type === 'textarea' && (
-            <Textarea
-              ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-              value={newValue}
-              onChange={(e) => setNewValue(e.target.value)}
-              onBlur={(e) => {
-                const relatedTarget = e.relatedTarget as HTMLElement
-                if (relatedTarget?.closest('.inline-edit-btn')) return
-                void handleSave()
-              }}
-              placeholder={placeholder}
-            />
-          )}
-          {type === 'select' && (
-            <Select
-              ref={inputRef as React.RefObject<HTMLSelectElement>}
-              value={newValue}
-              onChange={(e) => setNewValue(e.target.value)}
-              onBlur={(e) => {
-                const relatedTarget = e.relatedTarget as HTMLElement
-                if (relatedTarget?.closest('.inline-edit-btn')) return
-                void handleSave()
-              }}
-            >
-              {options.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
-          )}
-          {type === 'custom' && renderCustomInput && (
-            renderCustomInput(newValue, setNewValue, handleSave, handleCancel)
-          )}
-        </div>
-        {type !== 'custom' && (
-          <div className="flex gap-1 shrink-0 mt-1.5">
-            <button
-              type="button"
-              tabIndex={-1}
-              className="inline-edit-btn p-1.5 rounded-md border-2 border-border bg-emerald-400 text-foreground hover:bg-emerald-500 shadow-[1px_1px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none transition-all cursor-pointer"
-              onMouseDown={(e) => {
-                e.preventDefault()
-                void handleSave()
-              }}
-            >
-              <Check size={12} className="stroke-[3]" />
-            </button>
-            <button
-              type="button"
-              tabIndex={-1}
-              className="inline-edit-btn p-1.5 rounded-md border-2 border-border bg-rose-400 text-foreground hover:bg-rose-500 shadow-[1px_1px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none transition-all cursor-pointer"
-              onMouseDown={(e) => {
-                e.preventDefault()
-                handleCancel()
-              }}
-            >
-              <X size={12} className="stroke-[3]" />
-            </button>
-          </div>
+      <div className={cn(type === 'input' ? 'w-fit' : 'w-full', editClassName)} onKeyDown={handleKeyDown}>
+        {type === 'input' && (
+          <Input
+            ref={inputRef as React.RefObject<HTMLInputElement>}
+            value={newValue}
+            onChange={(e) => setNewValue(e.target.value)}
+            onBlur={() => void handleSave()}
+            placeholder={placeholder}
+            size={newValue ? newValue.length + 1 : 4}
+            className={cn("w-auto max-w-full", className)}
+          />
+        )}
+        {type === 'textarea' && (
+          <Textarea
+            ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+            value={newValue}
+            onChange={(e) => setNewValue(e.target.value)}
+            onBlur={() => void handleSave()}
+            placeholder={placeholder}
+            className={cn("w-full", className)}
+          />
+        )}
+        {type === 'select' && (
+          <Select
+            ref={inputRef as React.RefObject<HTMLSelectElement>}
+            value={newValue}
+            onChange={(e) => setNewValue(e.target.value)}
+            onBlur={() => void handleSave()}
+            className={cn("w-full", className)}
+          >
+            {options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
+        )}
+        {type === 'custom' && renderCustomInput && (
+          renderCustomInput(newValue, setNewValue, handleSave, handleCancel)
         )}
       </div>
     )
@@ -164,10 +126,7 @@ export function InlineEditableField({
         className
       )}
     >
-      <div className="flex-1 pr-6">{renderVal}</div>
-      <span className="absolute right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-muted-foreground hover:text-foreground">
-        <Pencil size={12} />
-      </span>
+      <div className="flex-1">{renderVal}</div>
     </div>
   )
 }
