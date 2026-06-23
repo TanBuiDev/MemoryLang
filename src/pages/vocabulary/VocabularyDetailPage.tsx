@@ -1105,42 +1105,43 @@ export function VocabularyDetailPage() {
               )}
 
               {imageSearchResults.length > 0 && (
-                <div className="grid grid-cols-3 gap-2 max-h-[320px] overflow-y-auto">
+                <div className="grid grid-cols-2 gap-4 max-h-[320px] overflow-y-auto p-1">
                   {imageSearchResults.map((result) => (
-                    <button
-                      key={result.id}
-                      type="button"
-                      disabled={downloadingImageId !== null}
-                      onClick={() => handleSelectImage(result)}
-                      className="group relative w-full aspect-square block rounded-md border-2 border-border overflow-hidden bg-muted/20 hover:shadow-[2px_2px_0_var(--border)] transition-all disabled:opacity-50"
-                    >
-                      <img
-                        src={result.thumbUrl}
-                        alt={result.alt}
-                        loading="lazy"
-                        className="w-full h-full object-cover"
-                      />
-                      {downloadingImageId === result.id && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                          <Loader2 className="h-5 w-5 animate-spin text-white" />
-                        </div>
-                      )}
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="text-[9px] font-semibold text-white truncate block">
-                          {t('vocabulary.imageBy', { photographer: result.photographer })}
-                        </span>
-                      </div>
-                      <a
-                        href={result.attributionUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded p-0.5"
-                        title={t('vocabulary.imageSource', { source: result.source })}
+                    <div key={result.id} className="w-full aspect-square p-1.5">
+                      <button
+                        type="button"
+                        disabled={downloadingImageId !== null}
+                        onClick={() => handleSelectImage(result)}
+                        className="group relative w-full h-full rounded-md border-2 border-border overflow-hidden bg-muted/20 hover:shadow-[2px_2px_0_var(--border)] transition-all disabled:opacity-50"
                       >
-                        <ExternalLink className="h-3 w-3 text-white" />
-                      </a>
-                    </button>
+                        <img
+                          src={result.thumbUrl}
+                          alt={result.alt}
+                          loading="lazy"
+                          className="w-full h-full object-cover"
+                        />
+                        {downloadingImageId === result.id && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                            <Loader2 className="h-5 w-5 animate-spin text-white" />
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="text-[9px] font-semibold text-white truncate block">
+                            {t('vocabulary.imageBy', { photographer: result.photographer })}
+                          </span>
+                        </div>
+                        <a
+                          href={result.attributionUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded p-0.5"
+                          title={t('vocabulary.imageSource', { source: result.source })}
+                        >
+                          <ExternalLink className="h-3 w-3 text-white" />
+                        </a>
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
