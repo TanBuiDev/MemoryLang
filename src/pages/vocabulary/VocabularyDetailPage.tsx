@@ -65,6 +65,26 @@ export function VocabularyDetailPage() {
   const relationWrapperRef = useRef<HTMLDivElement>(null)
   const pillRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showTooltip, setShowTooltip] = useState(false)
+  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const handleMouseEnter = () => {
+    if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current)
+    tooltipTimeoutRef.current = setTimeout(() => {
+      setShowTooltip(true)
+    }, 1000)
+  }
+
+  const handleMouseLeave = () => {
+    if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current)
+    setShowTooltip(false)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current)
+    }
+  }, [])
 
   const vocabularyCardQuery = useQuery({
     queryKey: ['vocabulary-card', id],
@@ -439,6 +459,50 @@ export function VocabularyDetailPage() {
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
+            <div className="relative">
+              <Button
+                variant="ghost"
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                className="h-9 w-9 p-0"
+                aria-label={t('settings.studyHotkeys')}
+              >
+                <span className="text-lg">⌨️</span>
+              </Button>
+              {showTooltip && (
+                <div className="absolute right-0 top-full mt-2 z-50 w-72 p-4 border-2 border-border bg-card shadow-[4px_4px_0_var(--border)] rounded-md">
+                  <h4 className="text-xs uppercase text-muted-foreground mb-3 font-black flex items-center gap-1.5">
+                    <span>⌨️ {t('settings.studyHotkeys')}</span>
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 text-xs font-semibold text-foreground">
+                    <div className="flex items-center gap-2">
+                      <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + ←</kbd>
+                      <span className="text-muted-foreground">{t('study.previousCard')}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + →</kbd>
+                      <span className="text-muted-foreground">{t('study.nextCard')}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + P</kbd>
+                      <span className="text-muted-foreground">{t('vocabulary.audio')}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + F</kbd>
+                      <span className="text-muted-foreground">Flag / Gắn cờ</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + D</kbd>
+                      <span className="text-muted-foreground">{t('vocabulary.delete')}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Esc</kbd>
+                      <span className="text-muted-foreground">{language === 'vi' ? 'Quay lại' : 'Back'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="h-6 w-[2px] bg-border mx-1" />
             {item.flagged ? (
               <Button
@@ -763,37 +827,6 @@ export function VocabularyDetailPage() {
             }
           />
 
-          <Card className="p-4 bg-muted/30">
-            <CardTitle className="text-xs uppercase text-muted-foreground mb-3 flex items-center gap-1.5">
-              <span>⌨️ {t('settings.studyHotkeys')}</span>
-            </CardTitle>
-            <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
-              <div className="flex items-center gap-2">
-                <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-card font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + ←</kbd>
-                <span className="text-muted-foreground">{t('study.previousCard')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-card font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + →</kbd>
-                <span className="text-muted-foreground">{t('study.nextCard')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-card font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + P</kbd>
-                <span className="text-muted-foreground">{t('vocabulary.audio')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-card font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + F</kbd>
-                <span className="text-muted-foreground">Flag / Gắn cờ</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-card font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + D</kbd>
-                <span className="text-muted-foreground">{t('vocabulary.delete')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-card font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Esc</kbd>
-                <span className="text-muted-foreground">{language === 'vi' ? 'Quay lại' : 'Back'}</span>
-              </div>
-            </div>
-          </Card>
         </div>
       </div>
 

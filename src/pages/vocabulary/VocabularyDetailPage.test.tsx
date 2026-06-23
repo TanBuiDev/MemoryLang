@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -62,6 +62,8 @@ vi.mock('@/i18n', () => ({
         'vocabulary.note': 'Ghi chú',
         'vocabulary.delete': 'Xóa',
         'vocabulary.deleteConfirmSingle': 'Xóa "{word}"?',
+        'settings.studyHotkeys': 'Phím tắt',
+        'vocabulary.audio': 'Âm thanh',
       }
       let template = map[key] || key
       if (params) {
@@ -241,5 +243,44 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
 
     // Xác nhận đã chuyển trang quay về danh sách
     expect(await screen.findByText('Trang danh sách từ vựng')).toBeInTheDocument()
+  })
+
+  it('hiển thị tooltip phím tắt sau khi hover chuột vào nút trigger 1 giây', async () => {
+    renderPage('/app/vocabulary/entry-1')
+
+    expect(await screen.findByText('one')).toBeInTheDocument()
+
+    // Bật fake timers sau khi render hoàn tất
+    vi.useFakeTimers()
+
+    // Tooltip lúc đầu không hiển thị
+    expect(screen.queryByText(/phím tắt/i)).not.toBeInTheDocument()
+
+    // Tìm trigger button bằng aria-label
+    const triggerBtn = screen.getByLabelText(/phím tắt/i)
+    expect(triggerBtn).toBeInTheDocument()
+
+    // Rê chuột vào trigger bằng fireEvent
+    fireEvent.mouseEnter(triggerBtn)
+
+    // Tooltip vẫn chưa hiển thị ngay (do có delay 1 giây)
+    expect(screen.queryByText(/phím tắt/i)).not.toBeInTheDocument()
+
+    // Giả lập thời gian trôi qua 1 giây (1000ms)
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+
+    // Tooltip hiển thị
+    expect(screen.getByText(/phím tắt/i)).toBeInTheDocument()
+    expect(screen.getByText('Thẻ trước')).toBeInTheDocument()
+
+    // Rê chuột ra ngoài bằng fireEvent
+    fireEvent.mouseLeave(triggerBtn)
+
+    // Tooltip biến mất ngay lập tức
+    expect(screen.queryByText(/phím tắt/i)).not.toBeInTheDocument()
+
+    vi.useRealTimers()
   })
 })
