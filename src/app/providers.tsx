@@ -70,9 +70,21 @@ function AuthBootstrap({ children }: { children: ReactNode }) {
       })
 
     const { data } = authService.onAuthStateChange((_event, session) => {
+      const currentAuth = useAuthStore.getState()
       setSession(session)
       if (!session?.user) {
         setProfile(null)
+        return
+      }
+
+      // Kiểm tra xem user có thay đổi không và đã tải hồ sơ (profile) chưa.
+      // Nếu là cùng một user và profile đã tồn tại, chỉ cần tải lại profile ở chế độ nền (background)
+      // mà không cần phải bật lại màn hình loading (tránh giật màn hình khi đổi tab).
+      const isSameUser = currentAuth.user?.id === session.user.id
+      const hasProfile = !!currentAuth.profile
+
+      if (isSameUser && hasProfile) {
+        void loadProfile(session.user.id)
         return
       }
 
