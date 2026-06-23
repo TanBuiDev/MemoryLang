@@ -43,7 +43,7 @@ export function RelatedTermsSection({ relationships, onRemove, removingKey, show
                       <div key={removeKey} className="flex items-center justify-between gap-3 border-t-2 border-border pt-2 first:border-t-0 first:pt-0">
                         <Link to={`/app/vocabulary/${term.id}`} className="min-w-0 flex-1">
                           <p className="truncate font-black text-foreground">{term.source_text}</p>
-                          <p className="truncate text-sm font-semibold text-muted-foreground">
+                          <p className="text-sm font-semibold text-muted-foreground break-words">
                             {[term.part_of_speech, term.translation].filter(Boolean).join(' · ') || t('vocabulary.detailFallback')}
                           </p>
                         </Link>
