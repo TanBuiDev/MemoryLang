@@ -667,7 +667,7 @@ export function VocabularyDetailPage() {
   }
 
   return (
-    <>
+    <div key={id}>
       <PageHeader
         title={
           <div className="flex items-center gap-2 max-w-full">
@@ -1275,6 +1275,6 @@ export function VocabularyDetailPage() {
         onConfirm={() => deleteVocabulary.mutate()}
         onCancel={() => setIsDeleting(false)}
       />
-    </>
+    </div>
   )
 }
