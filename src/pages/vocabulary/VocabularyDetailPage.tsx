@@ -47,7 +47,7 @@ export function VocabularyDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
@@ -180,6 +180,64 @@ export function VocabularyDetailPage() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [targetId])
+
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      const activeEl = document.activeElement
+      const isInputFocused =
+        activeEl?.tagName === 'INPUT' ||
+        activeEl?.tagName === 'TEXTAREA' ||
+        (activeEl as HTMLElement)?.isContentEditable
+
+      // Alt + ArrowLeft hoặc (ArrowLeft khi không focus ô nhập liệu): Lùi lại
+      if ((e.altKey && e.key === 'ArrowLeft') || (!isInputFocused && e.key === 'ArrowLeft')) {
+        if (prevId) {
+          e.preventDefault()
+          navigate(`/app/vocabulary/${prevId}`, { state: { vocabularyIds } })
+        }
+      }
+      // Alt + ArrowRight hoặc (ArrowRight khi không focus ô nhập liệu): Tiếp theo
+      else if ((e.altKey && e.key === 'ArrowRight') || (!isInputFocused && e.key === 'ArrowRight')) {
+        if (nextId) {
+          e.preventDefault()
+          navigate(`/app/vocabulary/${nextId}`, { state: { vocabularyIds } })
+        }
+      }
+      // Alt + P hoặc (Ctrl + Space): Phát âm thanh
+      else if ((e.altKey && e.key.toLowerCase() === 'p') || (e.ctrlKey && e.key === ' ')) {
+        if (item) {
+          e.preventDefault()
+          speak(item.source_text, { audioUrl: item.audio_url })
+        }
+      }
+      // Alt + F: Gắn cờ / Bỏ gắn cờ
+      else if (e.altKey && e.key.toLowerCase() === 'f') {
+        if (item) {
+          e.preventDefault()
+          const action = item.flagged ? vocabularyService.unflagTerm(item.id) : vocabularyService.flagTerm(item.id)
+          action.then(() => invalidateVocabularyQueries()).catch(() => { /* non-critical */ })
+        }
+      }
+      // Alt + D hoặc Alt + Delete: Xác nhận xóa từ vựng
+      else if (e.altKey && (e.key.toLowerCase() === 'd' || e.key === 'Delete')) {
+        e.preventDefault()
+        setIsDeleting(true)
+      }
+      // Escape: Quay lại danh sách từ vựng khi không có modal nào mở và không focus input
+      else if (e.key === 'Escape') {
+        if (isDeleting) {
+          return
+        }
+        if (!isInputFocused) {
+          e.preventDefault()
+          navigate('/app/vocabulary')
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [id, prevId, nextId, vocabularyIds, item, isDeleting, navigate, invalidateVocabularyQueries])
 
   const updateMutation = useMutation({
     mutationFn: (updatedFields: Partial<VocabularyItem>) => {
@@ -704,6 +762,38 @@ export function VocabularyDetailPage() {
               removeRelationshipMutation.mutate({ targetTermId, selectedRelationType })
             }
           />
+
+          <Card className="p-4 bg-muted/30">
+            <CardTitle className="text-xs uppercase text-muted-foreground mb-3 flex items-center gap-1.5">
+              <span>⌨️ {t('settings.studyHotkeys')}</span>
+            </CardTitle>
+            <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
+              <div className="flex items-center gap-2">
+                <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-card font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + ←</kbd>
+                <span className="text-muted-foreground">{t('study.previousCard')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-card font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + →</kbd>
+                <span className="text-muted-foreground">{t('study.nextCard')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-card font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + P</kbd>
+                <span className="text-muted-foreground">{t('vocabulary.audio')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-card font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + F</kbd>
+                <span className="text-muted-foreground">Flag / Gắn cờ</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-card font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Alt + D</kbd>
+                <span className="text-muted-foreground">{t('vocabulary.delete')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-1.5 py-0.5 rounded border-2 border-border bg-card font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">Esc</kbd>
+                <span className="text-muted-foreground">{language === 'vi' ? 'Quay lại' : 'Back'}</span>
+              </div>
+            </div>
+          </Card>
         </div>
       </div>
 

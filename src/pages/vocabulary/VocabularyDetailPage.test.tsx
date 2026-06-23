@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,6 +7,7 @@ import { VocabularyDetailPage } from '@/pages/vocabulary/VocabularyDetailPage'
 import { relationshipService } from '@/services/supabase/relationship.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { speak } from '@/utils/audio'
 
 // Mock các module bên ngoài và service để phục vụ kiểm thử
 vi.mock('@/services/supabase/client', () => ({ isSupabaseConfigured: true, supabase: {} }))
@@ -43,11 +44,10 @@ vi.mock('@/services/local/studyLocalDb', () => ({
 }))
 vi.mock('@/utils/audio', () => ({ speak: vi.fn() }))
 
-// Mock useI18n để kiểm thử độc lập ngôn ngữ giao diện
 vi.mock('@/i18n', () => ({
   useI18n: () => ({
     language: 'vi',
-    t: (key: string) => {
+    t: (key: string, params?: Record<string, string | number>) => {
       const map: Record<string, string> = {
         'study.previousCard': 'Thẻ trước',
         'study.nextCard': 'Thẻ tiếp theo',
@@ -61,8 +61,15 @@ vi.mock('@/i18n', () => ({
         'vocabulary.examples': 'Ví dụ',
         'vocabulary.note': 'Ghi chú',
         'vocabulary.delete': 'Xóa',
+        'vocabulary.deleteConfirmSingle': 'Xóa "{word}"?',
       }
-      return map[key] || key
+      let template = map[key] || key
+      if (params) {
+        Object.entries(params).forEach(([k, v]) => {
+          template = template.replace(`{${k}}`, String(v))
+        })
+      }
+      return template
     },
   }),
 }))
@@ -75,13 +82,14 @@ function renderPage(initialEntry = '/app/vocabulary/entry-1', state: any = null)
       <MemoryRouter initialEntries={[{ pathname: initialEntry, state }]}>
         <Routes>
           <Route path="/app/vocabulary/:id" element={<VocabularyDetailPage />} />
+          <Route path="/app/vocabulary" element={<div>Trang danh sách từ vựng</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>
   )
 }
 
-describe('VocabularyDetailPage Navigation Buttons', () => {
+describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
   const mockTerms = [
     { id: 'entry-1', source_text: 'one', item_type: 'word', meanings: [], examples: [], tags: [] },
     { id: 'entry-2', source_text: 'two', item_type: 'word', meanings: [], examples: [], tags: [] },
@@ -157,5 +165,81 @@ describe('VocabularyDetailPage Navigation Buttons', () => {
     // Cả hai nút điều hướng Lùi lại và Tiếp theo đều không bị vô hiệu hóa ở vị trí số 2
     expect(screen.getByTitle('Thẻ trước')).not.toBeDisabled()
     expect(screen.getByTitle('Thẻ tiếp theo')).not.toBeDisabled()
+  })
+
+  it('chuyển sang từ tiếp theo khi nhấn tổ hợp phím Alt + ArrowRight', async () => {
+    const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3'] }
+    renderPage('/app/vocabulary/entry-1', state)
+
+    expect(await screen.findByText('one')).toBeInTheDocument()
+
+    // Nhấn Alt + ArrowRight
+    fireEvent.keyDown(window, { key: 'ArrowRight', altKey: true })
+
+    // Xác nhận đã điều hướng sang từ tiếp theo
+    expect(relationshipService.getCard).toHaveBeenCalledWith('entry-2')
+  })
+
+  it('chuyển sang từ tiếp theo khi nhấn phím ArrowRight đơn lẻ ngoài ô nhập liệu', async () => {
+    const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3'] }
+    renderPage('/app/vocabulary/entry-1', state)
+
+    expect(await screen.findByText('one')).toBeInTheDocument()
+
+    // Nhấn ArrowRight đơn lẻ
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+
+    expect(relationshipService.getCard).toHaveBeenCalledWith('entry-2')
+  })
+
+  it('phát âm thanh của từ hiện tại khi nhấn tổ hợp phím Alt + P', async () => {
+    const speakMock = vi.mocked(speak)
+    renderPage('/app/vocabulary/entry-1')
+
+    expect(await screen.findByText('one')).toBeInTheDocument()
+
+    // Nhấn Alt + P
+    fireEvent.keyDown(window, { key: 'p', altKey: true })
+
+    expect(speakMock).toHaveBeenCalledWith('one', expect.any(Object))
+  })
+
+  it('gắn cờ từ vựng khi nhấn Alt + F', async () => {
+    const flagMock = vi.mocked(vocabularyService.flagTerm).mockResolvedValue(undefined)
+    renderPage('/app/vocabulary/entry-1')
+
+    expect(await screen.findByText('one')).toBeInTheDocument()
+
+    // Nhấn Alt + F
+    fireEvent.keyDown(window, { key: 'f', altKey: true })
+
+    expect(flagMock).toHaveBeenCalledWith('entry-1')
+  })
+
+  it('mở modal xác nhận xóa từ vựng khi nhấn Alt + D', async () => {
+    renderPage('/app/vocabulary/entry-1')
+
+    expect(await screen.findByText('one')).toBeInTheDocument()
+
+    // Modal xóa chưa hiển thị
+    expect(screen.queryByText('Xóa "one"?')).not.toBeInTheDocument()
+
+    // Nhấn Alt + D
+    fireEvent.keyDown(window, { key: 'd', altKey: true })
+
+    // Modal đã hiển thị
+    expect(screen.getByText('Xóa "one"?')).toBeInTheDocument()
+  })
+
+  it('quay lại trang danh sách từ vựng khi nhấn phím Escape', async () => {
+    renderPage('/app/vocabulary/entry-1')
+
+    expect(await screen.findByText('one')).toBeInTheDocument()
+
+    // Nhấn phím Escape
+    fireEvent.keyDown(window, { key: 'Escape' })
+
+    // Xác nhận đã chuyển trang quay về danh sách
+    expect(await screen.findByText('Trang danh sách từ vựng')).toBeInTheDocument()
   })
 })
