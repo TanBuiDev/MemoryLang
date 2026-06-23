@@ -145,6 +145,31 @@ export function VocabularyDetailPage() {
   const [downloadingImageId, setDownloadingImageId] = useState<string | null>(null)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Reset toàn bộ state ở cấp độ trang khi ID từ vựng thay đổi (khi chuyển đổi giữa các từ)
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    setImageSearchQuery('')
+    setImageSearchResults([])
+    setImageSearchLoading(false)
+    setImageSearchError(null)
+    setDownloadingImageId(null)
+    setFormError(null)
+    setRemovingKey(null)
+    setEnrichingIpa(false)
+    setAutoSaveStatus('idle')
+    setRelationType('synonym')
+    setTargetId('')
+    setRelationSearch('')
+    setIsSearching(false)
+    setRelationHighlightIndex(-1)
+    setIsDeleting(false)
+    setUploadingImage(false)
+    setIsZoomed(false)
+    setCopied(false)
+  }, [id])
+
   const vocabularyCardQuery = useQuery({
     queryKey: ['vocabulary-card', id],
     queryFn: () => relationshipService.getCard(id!),
