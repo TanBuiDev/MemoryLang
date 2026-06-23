@@ -659,7 +659,7 @@ export function VocabularyDetailPage() {
       </div>
 
       <div className={cn(
-        "grid gap-4 lg:grid-cols-[1fr_0.8fr] transition-opacity duration-200",
+        "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] transition-opacity duration-200",
         shouldUseRemoteData && vocabularyCardQuery.isFetching && vocabularyCardQuery.data?.entry?.id !== id && "opacity-50 pointer-events-none"
       )}>
         <Card className="flex flex-col gap-6">
