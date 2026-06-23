@@ -553,8 +553,8 @@ export function VocabularyDetailPage() {
               </Button>
             </HotkeyTooltip>
             <div className="h-6 w-[2px] bg-border mx-1" />
-            <HotkeyTooltip hotkey="Alt + F">
-              {item.flagged ? (
+            {item.flagged ? (
+              <HotkeyTooltip hotkey="Alt + F">
                 <Button
                   variant="ghost"
                   onClick={async () => {
@@ -564,7 +564,9 @@ export function VocabularyDetailPage() {
                 >
                   <Flag className="h-4 w-4 text-warning" fill="currentColor" />
                 </Button>
-              ) : (
+              </HotkeyTooltip>
+            ) : (
+              <HotkeyTooltip hotkey="Alt + F">
                 <Button
                   variant="ghost"
                   onClick={async () => {
@@ -574,8 +576,8 @@ export function VocabularyDetailPage() {
                 >
                   <Flag className="h-4 w-4 text-muted-foreground" />
                 </Button>
-              )}
-            </HotkeyTooltip>
+              </HotkeyTooltip>
+            )}
             <HotkeyTooltip hotkey="Alt + D">
               <Button variant="danger" onClick={() => setIsDeleting(true)}>
                 {t('vocabulary.delete')}
@@ -587,7 +589,7 @@ export function VocabularyDetailPage() {
 
       <div className="mb-6 flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-1">
-          <span className="text-xs font-bold text-muted-foreground mr-1">Loại:</span>
+          <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Loại:</span>
           <InlineEditableField
             value={item.item_type}
             type="select"
@@ -601,7 +603,7 @@ export function VocabularyDetailPage() {
         </div>
 
         <div className="flex items-center gap-1">
-          <span className="text-xs font-bold text-muted-foreground mr-1">Trạng thái:</span>
+          <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Trạng thái:</span>
           <InlineEditableField
             value={item.status}
             type="select"
@@ -615,7 +617,7 @@ export function VocabularyDetailPage() {
         </div>
 
         <div className="flex items-center gap-1">
-          <span className="text-xs font-bold text-muted-foreground mr-1">Từ loại:</span>
+          <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Từ loại:</span>
           <InlineEditableField
             value={item.part_of_speech ?? ''}
             type="input"
@@ -639,7 +641,7 @@ export function VocabularyDetailPage() {
           <div>
             <Label className="text-xs uppercase text-muted-foreground mb-1 block">{t('vocabulary.ipa')}</Label>
             <div className="flex items-center gap-3">
-              <div className="flex-1 max-w-[200px]">
+              <div className="flex-1 max-w-sm">
                 <InlineEditableField
                   value={item.ipa ?? ''}
                   onSave={(val) => handleSaveField({ ipa: val || null })}
