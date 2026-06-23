@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect, cloneElement } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { Flag, Search, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check } from 'lucide-react'
+import { Flag, Search, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatTile } from '@/components/common/StatTile'
 import { Badge } from '@/components/ui/badge'
@@ -10,13 +10,14 @@ import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label } from '@/components/ui/input'
-import { TagEditor } from '@/components/ui/tag-editor'
 import { TranslationChips } from '@/components/ui/translation-chips'
 import { InlineEditableField } from '@/components/ui/inline-editable-field'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { vocabularyUpdateFormSchema } from '@/features/vocabulary/vocabulary.schema'
 import { useI18n } from '@/i18n'
 import { enrichVocabulary } from '@/services/api/enrichVocabulary.api'
+import { imageSearchService } from '@/services/api/imageSearch.api'
+import type { ImageSearchResult } from '@/services/api/imageSearch.api'
 import { studyLocalDb } from '@/services/local/studyLocalDb'
 import { isSupabaseConfigured, supabase } from '@/services/supabase/client'
 import { createEmptyRelationshipGroups, relationshipService } from '@/services/supabase/relationship.service'
@@ -134,6 +135,12 @@ export function VocabularyDetailPage() {
     return (localStorage.getItem('vocab_image_fit') as 'fit' | 'cover') || 'fit'
   })
   const [naturalRatio, setNaturalRatio] = useState<number | null>(null)
+  const [imageSearchQuery, setImageSearchQuery] = useState('')
+  const [imageSearchResults, setImageSearchResults] = useState<ImageSearchResult[]>([])
+  const [imageSearchLoading, setImageSearchLoading] = useState(false)
+  const [imageSearchError, setImageSearchError] = useState<string | null>(null)
+  const [downloadingImageId, setDownloadingImageId] = useState<string | null>(null)
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const vocabularyCardQuery = useQuery({
     queryKey: ['vocabulary-card', id],
@@ -499,6 +506,61 @@ export function VocabularyDetailPage() {
     }
   }
 
+  const handleImageSearch = useCallback(async (q: string) => {
+    if (!q.trim() || !shouldUseRemoteData) {
+      setImageSearchResults([])
+      return
+    }
+    setImageSearchLoading(true)
+    setImageSearchError(null)
+    try {
+      const response = await imageSearchService.search(q)
+      setImageSearchResults(response.results)
+    } catch (error) {
+      setImageSearchError(error instanceof Error ? error.message : 'Search failed')
+      setImageSearchResults([])
+    } finally {
+      setImageSearchLoading(false)
+    }
+  }, [shouldUseRemoteData])
+
+  const onSearchInputChange = useCallback((value: string) => {
+    setImageSearchQuery(value)
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    if (!value.trim()) {
+      setImageSearchResults([])
+      setImageSearchError(null)
+      return
+    }
+    searchTimeoutRef.current = setTimeout(() => handleImageSearch(value), 500)
+  }, [handleImageSearch])
+
+  const handleSelectImage = async (result: ImageSearchResult) => {
+    if (!user || !item) return
+    setDownloadingImageId(result.id)
+    try {
+      const publicUrl = await imageSearchService.downloadAndSave(
+        result.downloadUrl,
+        user.id,
+        item.id,
+        result.source,
+        result.photoId,
+      )
+      await handleSaveField({ image_url: publicUrl })
+      setImageSearchResults([])
+      setImageSearchQuery('')
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Không thể tải ảnh.')
+    } finally {
+      setDownloadingImageId(null)
+    }
+  }
+
+  useEffect(() => {
+    const timeout = searchTimeoutRef.current
+    return () => { if (timeout) clearTimeout(timeout) }
+  }, [])
+
   const deleteVocabulary = useMutation({
     mutationFn: () => vocabularyService.remove(id!),
     onSuccess: async () => {
@@ -863,14 +925,6 @@ export function VocabularyDetailPage() {
             />
           </div>
 
-          <div>
-            <CardTitle className="text-sm uppercase text-muted-foreground mb-2">{t('vocabulary.tags')}</CardTitle>
-            <TagEditor
-              tags={item.tags}
-              onChange={(newTags) => handleSaveField({ tags: newTags })}
-            />
-          </div>
-
           <hr className="border-border border-dashed" />
 
           <div>
@@ -1021,6 +1075,77 @@ export function VocabularyDetailPage() {
               </div>
             )}
           </Card>
+
+          {shouldUseRemoteData && (
+            <Card className="p-4 flex flex-col gap-3">
+              <CardTitle className="text-sm uppercase text-muted-foreground">{t('vocabulary.searchImages')}</CardTitle>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder={t('vocabulary.searchImagesPlaceholder')}
+                  value={imageSearchQuery}
+                  onChange={(e) => onSearchInputChange(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              {imageSearchLoading && (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <span className="text-xs font-semibold text-muted-foreground ml-2">{t('vocabulary.searchingImages')}</span>
+                </div>
+              )}
+
+              {imageSearchError && (
+                <p className="text-xs font-semibold text-red-600">{imageSearchError}</p>
+              )}
+
+              {!imageSearchLoading && imageSearchQuery && imageSearchResults.length === 0 && !imageSearchError && (
+                <p className="text-xs text-muted-foreground text-center py-4">{t('vocabulary.noImagesFound')}</p>
+              )}
+
+              {imageSearchResults.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 max-h-[320px] overflow-y-auto">
+                  {imageSearchResults.map((result) => (
+                    <button
+                      key={result.id}
+                      type="button"
+                      disabled={downloadingImageId !== null}
+                      onClick={() => handleSelectImage(result)}
+                      className="group relative w-full aspect-square block rounded-md border-2 border-border overflow-hidden bg-muted/20 hover:shadow-[2px_2px_0_var(--border)] transition-all disabled:opacity-50"
+                    >
+                      <img
+                        src={result.thumbUrl}
+                        alt={result.alt}
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                      />
+                      {downloadingImageId === result.id && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                          <Loader2 className="h-5 w-5 animate-spin text-white" />
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[9px] font-semibold text-white truncate block">
+                          {t('vocabulary.imageBy', { photographer: result.photographer })}
+                        </span>
+                      </div>
+                      <a
+                        href={result.attributionUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded p-0.5"
+                        title={t('vocabulary.imageSource', { source: result.source })}
+                      >
+                        <ExternalLink className="h-3 w-3 text-white" />
+                      </a>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
 
           <Card>
             <CardTitle className="text-base font-black">{t('vocabulary.addRelationship')}</CardTitle>
