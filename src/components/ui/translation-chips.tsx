@@ -1,16 +1,35 @@
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
+import { type KeyboardEvent, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/utils/cn'
 
 const MAX_VISIBLE = 5
 
-function parseChips(value: string): string[] {
-  if (!value.trim()) return []
-  return value.split(/[\/,;\n]+/).map((s) => s.trim()).filter(Boolean)
+export function parseTranslationValue(value: string): { chips: string[]; draft: string } {
+  if (!value.trim()) return { chips: [], draft: '' }
+  
+  const parts = value.split(' | ')
+  const chipsPart = parts[0] || ''
+  const draftPart = parts[1] || ''
+  
+  const chips = chipsPart
+    .split(/[\/,;|\n]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    
+  return { chips, draft: draftPart }
 }
 
-function joinChips(chips: string[]): string {
-  return chips.join(' / ')
+export function cleanTranslationValue(value: string): string {
+  if (!value.trim()) return ''
+  return value
+    .split(/[|]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join(' / ')
+    .split(/[\/,;|\n]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join(' / ')
 }
 
 interface TranslationChipsProps {
@@ -20,40 +39,29 @@ interface TranslationChipsProps {
 }
 
 export function TranslationChips({ value, onChange, className }: TranslationChipsProps) {
-  const [chips, setChips] = useState<string[]>(() => parseChips(value))
-  const [draft, setDraft] = useState('')
+  const { chips, draft } = parseTranslationValue(value)
   const [expanded, setExpanded] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  useEffect(() => {
-    const parsed = parseChips(value)
-    const current = joinChips(chips)
-    if (joinChips(parsed) !== current) {
-      setChips(parsed)
-      setExpanded(false)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value])
-
-  function emit(updated: string[]) {
-    setChips(updated)
-    onChange(joinChips(updated))
+  function emit(updatedChips: string[], updatedDraft: string) {
+    const chipsStr = updatedChips.join(' / ')
+    const combined = chipsStr + (updatedDraft !== undefined ? ' | ' + updatedDraft : '')
+    onChange(combined)
   }
 
   function addChip() {
     const text = draft.trim()
     if (!text) return
     if (chips.includes(text)) {
-      setDraft('')
+      emit(chips, '')
       return
     }
-    emit([...chips, text])
-    setDraft('')
+    emit([...chips, text], '')
     textareaRef.current?.focus()
   }
 
   function removeChip(index: number) {
-    emit(chips.filter((_, i) => i !== index))
+    emit(chips.filter((_, i) => i !== index), draft)
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -68,10 +76,11 @@ export function TranslationChips({ value, onChange, className }: TranslationChip
       <textarea
         ref={textareaRef}
         value={draft}
-        onChange={(event) => setDraft(event.target.value)}
+        onChange={(event) => emit(chips, event.target.value)}
         onKeyDown={handleKeyDown}
         className="min-h-10 w-full rounded-[var(--radius)] border-2 border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-[2px_2px_0_var(--border)] placeholder:text-muted-foreground transition focus:translate-x-[1px] focus:translate-y-[1px] focus:shadow-[1px_1px_0_var(--border)]"
         rows={1}
+        placeholder="Nhập bản dịch và nhấn Enter hoặc nhấn Lưu trực tiếp..."
       />
       {chips.length > 0 ? (
         <div className="flex flex-wrap items-center gap-1.5">

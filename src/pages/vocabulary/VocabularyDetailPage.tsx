@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label, SearchInput } from '@/components/ui/input'
-import { TranslationChips } from '@/components/ui/translation-chips'
+import { TranslationChips, cleanTranslationValue } from '@/components/ui/translation-chips'
 import { InlineEditableField } from '@/components/ui/inline-editable-field'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { vocabularyUpdateFormSchema } from '@/features/vocabulary/vocabulary.schema'
@@ -961,7 +961,7 @@ export function VocabularyDetailPage() {
             <InlineEditableField
               value={item.translation ?? ''}
               type="custom"
-              onSave={(val) => handleSaveField({ translation: val })}
+              onSave={(val) => handleSaveField({ translation: cleanTranslationValue(val) })}
               placeholder={t('vocabulary.translation')}
               displayValue={<span className="text-2xl text-primary font-black underline decoration-2">{item.translation || t('vocabulary.translation')}</span>}
               renderCustomInput={(val, onChange, save, cancel) => (
