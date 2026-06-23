@@ -685,15 +685,17 @@ export function VocabularyDetailPage() {
           </div>
         }
         description={
-          <div className="flex flex-wrap items-center gap-2 mt-2 h-5">
-            {autoSaveStatus === 'saving' && (
-              <span className="text-xs font-bold text-muted-foreground animate-pulse">{t('vocabulary.autoSaving')}</span>
-            )}
-            {autoSaveStatus === 'saved' && (
-              <span className="text-xs font-bold text-success">{t('vocabulary.saved')}</span>
-            )}
-            {formError && <span className="text-xs font-bold text-danger">{formError}</span>}
-          </div>
+          (autoSaveStatus !== 'idle' || formError) ? (
+            <div className="flex flex-wrap items-center gap-2 h-5">
+              {autoSaveStatus === 'saving' && (
+                <span className="text-xs font-bold text-muted-foreground animate-pulse">{t('vocabulary.autoSaving')}</span>
+              )}
+              {autoSaveStatus === 'saved' && (
+                <span className="text-xs font-bold text-success">{t('vocabulary.saved')}</span>
+              )}
+              {formError && <span className="text-xs font-bold text-danger">{formError}</span>}
+            </div>
+          ) : null
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
