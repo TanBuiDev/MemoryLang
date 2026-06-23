@@ -11,6 +11,7 @@ interface InlineEditableFieldProps {
   displayValue?: React.ReactNode
   className?: string
   editClassName?: string
+  fullWidth?: boolean
   renderCustomInput?: (
     value: string,
     onChange: (val: string) => void,
@@ -28,6 +29,7 @@ export function InlineEditableField({
   displayValue,
   className,
   editClassName,
+  fullWidth = true,
   renderCustomInput,
 }: InlineEditableFieldProps) {
   const [isEditing, setIsEditing] = useState(false)
@@ -71,7 +73,7 @@ export function InlineEditableField({
 
   if (isEditing) {
     return (
-      <div className={cn(type === 'input' ? 'w-fit' : 'w-full', editClassName)} onKeyDown={handleKeyDown}>
+      <div className={cn(fullWidth ? 'w-full' : 'w-fit', editClassName)} onKeyDown={handleKeyDown}>
         {type === 'input' && (
           <Input
             ref={inputRef as React.RefObject<HTMLInputElement>}
@@ -80,7 +82,7 @@ export function InlineEditableField({
             onBlur={() => void handleSave()}
             placeholder={placeholder}
             size={newValue ? newValue.length + 1 : 4}
-            className={cn("w-auto max-w-full", className)}
+            className={cn(fullWidth ? "w-full" : "w-auto max-w-full", className)}
           />
         )}
         {type === 'textarea' && (
@@ -121,7 +123,8 @@ export function InlineEditableField({
     <div
       onClick={() => setIsEditing(true)}
       className={cn(
-        'group relative flex items-center justify-between rounded-md cursor-pointer border-2 border-transparent hover:border-dashed hover:border-slate-400 hover:bg-slate-50/50 p-1 -m-1 transition-all w-full min-h-[1.75rem]',
+        'group relative flex items-center justify-between rounded-md cursor-pointer border-2 border-transparent hover:border-dashed hover:border-slate-400 hover:bg-slate-50/50 p-1 -m-1 transition-all min-h-[1.75rem]',
+        fullWidth ? 'w-full' : 'w-fit',
         !value && 'text-muted-foreground italic',
         className
       )}

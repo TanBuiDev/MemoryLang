@@ -606,6 +606,7 @@ export function VocabularyDetailPage() {
               onSave={(val) => handleSaveField({ source_text: val })}
               className="text-4xl font-black md:text-5xl border-dashed w-fit"
               editClassName="w-[300px] md:w-[500px]"
+              fullWidth={false}
               placeholder={t('vocabulary.sourceText')}
             />
             <Button
