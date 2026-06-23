@@ -7,7 +7,7 @@ export const meaningSchema = z.object({
 
 export const exampleSchema = z.object({
   sentence: z.string().min(1, 'Example is required'),
-  translation: z.string().optional(),
+  translation: z.string().nullable().optional(),
 })
 
 export const vocabularyFormSchema = z.object({
@@ -15,13 +15,12 @@ export const vocabularyFormSchema = z.object({
   source_language: z.enum(['vi', 'en', 'ko', 'ja', 'zh', 'fr', 'de', 'other']),
   native_language: z.enum(['vi', 'en', 'ko', 'ja', 'zh', 'fr', 'de', 'other']),
   item_type: z.enum(['word', 'phrase', 'idiom', 'sentence']),
-  part_of_speech: z.string().optional(),
-  ipa: z.string().optional(),
-  pronunciation_text: z.string().optional(),
-  audio_url: z.string().url().optional().or(z.literal('')),
-  image_url: z.string().url().optional().or(z.literal('')),
-  note: z.string().optional(),
-  translation: z.string().optional(),
+  part_of_speech: z.string().nullable().optional(),
+  ipa: z.string().nullable().optional(),
+  audio_url: z.string().url().nullable().optional().or(z.literal('')),
+  image_url: z.string().url().nullable().optional().or(z.literal('')),
+  note: z.string().nullable().optional(),
+  translation: z.string().nullable().optional(),
   meanings: z.array(meaningSchema).optional().default([]),
   examples: z.array(exampleSchema),
   tags: z.array(z.string()),
