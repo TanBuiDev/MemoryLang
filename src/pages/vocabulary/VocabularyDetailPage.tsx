@@ -29,6 +29,8 @@ import type { RelationType, VocabularyItem, VocabularyItemType, VocabularyStatus
 import { speak } from '@/utils/audio'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
 
+const imageRatioCache = new Map<string, number>()
+
 const itemTypeLabelKeys: Record<VocabularyItemType, string> = {
   word: 'vocabulary.word',
   phrase: 'vocabulary.phrase',
@@ -134,6 +136,7 @@ export function VocabularyDetailPage() {
   const [imageFit, setImageFit] = useState<'fit' | 'cover'>(() => {
     return (localStorage.getItem('vocab_image_fit') as 'fit' | 'cover') || 'fit'
   })
+  const [prevImageUrl, setPrevImageUrl] = useState<string | null>(null)
   const [naturalRatio, setNaturalRatio] = useState<number | null>(null)
   const [imageSearchQuery, setImageSearchQuery] = useState('')
   const [imageSearchResults, setImageSearchResults] = useState<ImageSearchResult[]>([])
@@ -163,16 +166,23 @@ export function VocabularyDetailPage() {
     ? vocabularyCardQuery.data?.relationships ?? createEmptyRelationshipGroups()
     : createEmptyRelationshipGroups()
 
+  const currentImageUrl = item?.image_url ?? null
+  if (currentImageUrl !== prevImageUrl) {
+    setPrevImageUrl(currentImageUrl)
+    const cachedRatio = currentImageUrl ? imageRatioCache.get(currentImageUrl) : null
+    setNaturalRatio(cachedRatio ?? null)
+  }
+
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight } = e.currentTarget
     if (naturalWidth && naturalHeight) {
-      setNaturalRatio(naturalWidth / naturalHeight)
+      const ratio = naturalWidth / naturalHeight
+      if (item?.image_url) {
+        imageRatioCache.set(item.image_url, ratio)
+      }
+      setNaturalRatio(ratio)
     }
   }
-
-  useEffect(() => {
-    setNaturalRatio(null)
-  }, [item?.image_url])
 
   const handleCopyEntry = async () => {
     if (!item?.source_text) return
@@ -1051,7 +1061,11 @@ export function VocabularyDetailPage() {
                 {imageFit === 'fit' && (
                   <div
                     className="absolute inset-0 bg-cover bg-center filter blur-lg opacity-40"
-                    style={{ backgroundImage: `url(${item.image_url})` }}
+                    style={{ 
+                      backgroundImage: `url(${item.image_url})`,
+                      willChange: 'transform, opacity, filter',
+                      transform: 'translate3d(0,0,0)'
+                    }}
                   />
                 )}
                 <img
