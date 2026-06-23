@@ -13,7 +13,7 @@ export function PageHeader({ eyebrow, title, description, actions }: PageHeaderP
       <div>
         {eyebrow ? <p className="text-xs font-black uppercase text-secondary">{eyebrow}</p> : null}
         <h1 className="text-3xl font-black md:text-4xl">{title}</h1>
-        <p className="mt-2 max-w-3xl text-sm font-semibold text-muted-foreground">{description}</p>
+        <div className="mt-2 max-w-3xl text-sm font-semibold text-muted-foreground">{description}</div>
       </div>
       {actions}
     </div>

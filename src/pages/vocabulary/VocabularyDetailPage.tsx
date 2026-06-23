@@ -1,14 +1,15 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Flag } from 'lucide-react'
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
+import { Flag, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatTile } from '@/components/common/StatTile'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { Label, Select } from '@/components/ui/input'
+import { Input, Label } from '@/components/ui/input'
+import { TagEditor } from '@/components/ui/tag-editor'
 import { TranslationChips } from '@/components/ui/translation-chips'
 import { InlineEditableField } from '@/components/ui/inline-editable-field'
 import { demoVocabulary } from '@/features/demo/demoData'
@@ -45,6 +46,7 @@ const statusLabelKeys: Record<VocabularyStatus, string> = {
 export function VocabularyDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { t } = useI18n()
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
@@ -54,8 +56,14 @@ export function VocabularyDetailPage() {
   const [removingKey, setRemovingKey] = useState<string | null>(null)
   const [enrichingIpa, setEnrichingIpa] = useState(false)
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
-  const [relationType, setRelationType] = useState<RelationType>('derivative')
+  const [relationType, setRelationType] = useState<RelationType>('synonym')
   const [targetId, setTargetId] = useState('')
+  const [relationSearch, setRelationSearch] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
+  const [relationHighlightIndex, setRelationHighlightIndex] = useState(-1)
+  const relationListRef = useRef<HTMLDivElement>(null)
+  const relationWrapperRef = useRef<HTMLDivElement>(null)
+  const pillRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
   const [isDeleting, setIsDeleting] = useState(false)
 
   const vocabularyCardQuery = useQuery({
@@ -78,9 +86,71 @@ export function VocabularyDetailPage() {
     ? vocabularyCardQuery.data?.relationships ?? createEmptyRelationshipGroups()
     : createEmptyRelationshipGroups()
 
+  const vocabularyIds = useMemo(() => {
+    if (location.state && Array.isArray((location.state as any).vocabularyIds)) {
+      return (location.state as any).vocabularyIds as string[]
+    }
+    const baseList = shouldUseRemoteData
+      ? vocabularyListQuery.data ?? []
+      : demoVocabulary
+
+    return filterActiveVocabulary(baseList)
+      .filter((v) => v.item_type !== 'grammar' && !v.tags?.some((tag) => tag === 'grammar' || tag === 'pattern'))
+      .map((v) => v.id)
+  }, [location.state, shouldUseRemoteData, vocabularyListQuery.data])
+
+  const currentIndex = useMemo(() => {
+    if (!id || !vocabularyIds) return -1
+    return vocabularyIds.indexOf(id)
+  }, [id, vocabularyIds])
+
+  const prevId = currentIndex > 0 ? vocabularyIds[currentIndex - 1] : null
+  const nextId = currentIndex >= 0 && currentIndex < vocabularyIds.length - 1 ? vocabularyIds[currentIndex + 1] : null
+
   const targetOptions = useMemo(
     () => filterActiveVocabulary(vocabularyListQuery.data ?? []).filter((entry) => entry.id !== id),
     [id, vocabularyListQuery.data]
+  )
+
+  const filteredTargetOptions = useMemo(
+    () => {
+      const q = relationSearch.trim().toLowerCase()
+      if (!q) return targetOptions.slice(0, 10)
+      return targetOptions
+        .filter((t) => t.source_text.toLowerCase().startsWith(q) || (t.translation?.toLowerCase().startsWith(q) ?? false))
+        .slice(0, 10)
+    },
+    [relationSearch, targetOptions]
+  )
+
+  const handleRelationKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (!isSearching || filteredTargetOptions.length === 0) return
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setRelationHighlightIndex((prev) => (prev < filteredTargetOptions.length - 1 ? prev + 1 : 0))
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setRelationHighlightIndex((prev) => (prev > 0 ? prev - 1 : filteredTargetOptions.length - 1))
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        const idx = relationHighlightIndex >= 0 ? relationHighlightIndex : 0
+        const entry = filteredTargetOptions[idx]
+        if (entry) {
+          setTargetId(entry.id)
+          setRelationSearch(entry.source_text)
+          setIsSearching(false)
+          setRelationHighlightIndex(-1)
+          requestAnimationFrame(() => pillRefs.current.get(relationType)?.focus())
+        }
+      } else if (e.key === 'Escape') {
+        setRelationSearch('')
+        setIsSearching(false)
+        setRelationHighlightIndex(-1)
+      }
+    },
+    [relationSearch, filteredTargetOptions, relationHighlightIndex, relationType]
   )
 
   const invalidateVocabularyQueries = async (targetTermId?: string) => {
@@ -91,6 +161,25 @@ export function VocabularyDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['statistics', user?.id] }),
     ])
   }
+
+  useEffect(() => {
+    if (relationHighlightIndex < 0 || !relationListRef.current) return
+    const items = relationListRef.current.querySelectorAll('button')
+    const el = items[relationHighlightIndex]
+    if (el) el.scrollIntoView({ block: 'nearest' })
+  }, [relationHighlightIndex])
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (relationWrapperRef.current && !relationWrapperRef.current.contains(e.target as Node)) {
+        setIsSearching(false)
+        if (!targetId) setRelationSearch('')
+        setRelationHighlightIndex(-1)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [targetId])
 
   const updateMutation = useMutation({
     mutationFn: (updatedFields: Partial<VocabularyItem>) => {
@@ -104,7 +193,6 @@ export function VocabularyDetailPage() {
         status: item.status,
         part_of_speech: item.part_of_speech,
         ipa: item.ipa,
-        pronunciation_text: item.pronunciation_text,
         audio_url: item.audio_url ?? '',
         image_url: item.image_url ?? '',
         note: item.note,
@@ -182,11 +270,33 @@ export function VocabularyDetailPage() {
     onSuccess: async () => {
       const addedTargetId = targetId
       setTargetId('')
+      setRelationSearch('')
+      setIsSearching(false)
       setFormError(null)
       await invalidateVocabularyQueries(addedTargetId)
     },
     onError: (error) => setFormError(error instanceof Error ? error.message : String(error)),
   })
+
+  const handlePillKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const currentIdx = relationshipDisplayOrder.indexOf(relationType)
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        e.preventDefault()
+        const next = e.key === 'ArrowRight'
+          ? (currentIdx + 1) % relationshipDisplayOrder.length
+          : (currentIdx - 1 + relationshipDisplayOrder.length) % relationshipDisplayOrder.length
+        setRelationType(relationshipDisplayOrder[next])
+        requestAnimationFrame(() => pillRefs.current.get(relationshipDisplayOrder[next])?.focus())
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        if (targetId && !addRelationshipMutation.isPending) {
+          addRelationshipMutation.mutate()
+        }
+      }
+    },
+    [relationType, targetId, addRelationshipMutation]
+  )
 
   const removeRelationshipMutation = useMutation({
     mutationFn: async ({ targetTermId, selectedRelationType }: { targetTermId: string; selectedRelationType: RelationType }) => {
@@ -249,7 +359,29 @@ export function VocabularyDetailPage() {
           </div>
         }
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              disabled={!prevId}
+              onClick={() => navigate(`/app/vocabulary/${prevId}`, { state: { vocabularyIds } })}
+              title={t('study.previousCard')}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {currentIndex !== -1 && (
+              <span className="text-xs font-black px-2.5 py-1 rounded bg-muted border-2 border-border min-w-12 text-center">
+                {currentIndex + 1} / {vocabularyIds.length}
+              </span>
+            )}
+            <Button
+              variant="ghost"
+              disabled={!nextId}
+              onClick={() => navigate(`/app/vocabulary/${nextId}`, { state: { vocabularyIds } })}
+              title={t('study.nextCard')}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <div className="h-6 w-[2px] bg-border mx-1" />
             {item.flagged ? (
               <Button
                 variant="ghost"
@@ -351,7 +483,6 @@ export function VocabularyDetailPage() {
                     const enriched = await enrichVocabulary(item.source_text, item.source_language, item.native_language)
                     await handleSaveField({
                       ipa: enriched.ipa ?? item.ipa,
-                      pronunciation_text: enriched.pronunciationText ?? item.pronunciation_text,
                       part_of_speech: enriched.partOfSpeech ?? item.part_of_speech,
                     })
                   } catch {
@@ -374,21 +505,9 @@ export function VocabularyDetailPage() {
           </div>
 
           <div>
-            <Label className="text-xs uppercase text-muted-foreground mb-1 block">
-              {t('vocabulary.pronunciationText')}
-            </Label>
-            <InlineEditableField
-              value={item.pronunciation_text ?? ''}
-              onSave={(val) => handleSaveField({ pronunciation_text: val || null })}
-              placeholder={t('vocabulary.pronunciationTextHint')}
-              className="text-sm font-semibold"
-            />
-          </div>
-
-          <div>
             <Button
               onClick={() =>
-                speak(item.source_text, { variant: item.pronunciation_text, audioUrl: item.audio_url })
+                speak(item.source_text, { audioUrl: item.audio_url })
               }
             >
               {t('actions.playAudio')}
@@ -438,6 +557,14 @@ export function VocabularyDetailPage() {
                   </div>
                 </div>
               )}
+            />
+          </div>
+
+          <div>
+            <CardTitle className="text-sm uppercase text-muted-foreground mb-2">{t('vocabulary.tags')}</CardTitle>
+            <TagEditor
+              tags={item.tags}
+              onChange={(newTags) => handleSaveField({ tags: newTags })}
             />
           </div>
 
@@ -513,45 +640,59 @@ export function VocabularyDetailPage() {
           <Card>
             <CardTitle className="text-base font-black">{t('vocabulary.addRelationship')}</CardTitle>
             <div className="mt-4 grid gap-3">
-              <div>
-                <Label className="text-xs font-bold">{t('vocabulary.relationshipType')}</Label>
-                <Select
-                  value={relationType}
-                  onChange={(event) => setRelationType(event.target.value as RelationType)}
+              <div className="relative" ref={relationWrapperRef}>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                <Input
+                  placeholder={t('vocabulary.search')}
+                  value={relationSearch}
+                  onChange={(e) => { setRelationSearch(e.target.value); setIsSearching(true); setRelationHighlightIndex(-1) }}
+                  onKeyDown={handleRelationKeyDown}
                   disabled={!shouldUseRemoteData}
-                  className="mt-1"
-                >
-                  {relationshipDisplayOrder.map((type) => (
-                    <option key={type} value={type}>
-                      {t(relationshipLabelKeys[type])}
-                    </option>
-                  ))}
-                </Select>
+                  className="pl-9"
+                />
+                {isSearching && targetOptions.length > 0 && (
+                  <div ref={relationListRef} className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-auto rounded-md border-2 border-border bg-card divide-y-2 divide-border shadow-[4px_4px_0_var(--border)] z-20">
+                    {filteredTargetOptions.length > 0 ? (
+                      filteredTargetOptions.map((entry, idx) => (
+                        <button
+                          key={entry.id}
+                          type="button"
+                          onClick={() => { setTargetId(entry.id); setRelationSearch(entry.source_text); setIsSearching(false); setRelationHighlightIndex(-1); requestAnimationFrame(() => pillRefs.current.get(relationType)?.focus()) }}
+                          className={`w-full px-3 py-2 text-left text-sm font-semibold transition hover:bg-muted ${entry.id === targetId || idx === relationHighlightIndex ? 'bg-primary text-primary-foreground' : ''}`}
+                        >
+                          <span className="font-black">{entry.source_text}</span>
+                          {entry.translation ? <span className="text-muted-foreground ml-2">— {entry.translation}</span> : null}
+                        </button>
+                      ))
+                    ) : (
+                      <p className="px-3 py-2 text-xs text-muted-foreground">{t('decks.noAvailableTerms')}</p>
+                    )}
+                  </div>
+                )}
               </div>
-              <div>
-                <Label className="text-xs font-bold">{t('vocabulary.relationshipTarget')}</Label>
-                <Select
-                  value={targetId}
-                  onChange={(event) => setTargetId(event.target.value)}
-                  disabled={!shouldUseRemoteData || vocabularyListQuery.isLoading}
-                  className="mt-1"
-                >
-                  <option value="">{t('vocabulary.relationshipTarget')}</option>
-                  {targetOptions.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.source_text}
-                      {entry.translation ? ` - ${entry.translation}` : ''}
-                    </option>
-                  ))}
-                </Select>
+              <div className="group flex flex-wrap gap-3" onKeyDown={handlePillKeyDown}>
+                {relationshipDisplayOrder.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    ref={(el) => { if (el) pillRefs.current.set(type, el); else pillRefs.current.delete(type); }}
+                    onClick={(e) => { e.stopPropagation(); setRelationType(type); }}
+                    className={`px-2.5 py-1 rounded-md border-2 text-xs font-bold transition-transform transition-shadow duration-150 focus-visible:outline-none hover:scale-105 hover:-translate-y-0.5 hover:relative hover:z-10 hover:shadow-[3px_3px_0_var(--border)] focus-visible:scale-110 focus-visible:-translate-y-0.5 focus-visible:relative focus-visible:z-10 focus-visible:shadow-[3px_3px_0_var(--border)] ${
+                      relationType === type
+                        ? 'border-border bg-primary text-primary-foreground group-hover:bg-card group-hover:text-foreground hover:bg-primary hover:text-primary-foreground shadow-[2px_2px_0_var(--border)]'
+                        : 'border-border bg-card text-foreground hover:bg-primary hover:text-primary-foreground shadow-[2px_2px_0_var(--border)]'
+                    }`}
+                  >
+                    {t(relationshipLabelKeys[type])}
+                  </button>
+                ))}
               </div>
               <Button
                 type="button"
-                className="mt-2"
                 disabled={!shouldUseRemoteData || !targetId || addRelationshipMutation.isPending}
                 onClick={() => addRelationshipMutation.mutate()}
               >
-                {t('vocabulary.addRelationship')}
+                {addRelationshipMutation.isPending ? '...' : t('vocabulary.addRelationship')}
               </Button>
             </div>
           </Card>

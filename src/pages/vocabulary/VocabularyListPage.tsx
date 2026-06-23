@@ -4,6 +4,7 @@ import { Volume2, Flag } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
+import { AddVocabularyModal } from '@/components/vocabulary/AddVocabularyModal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -92,7 +93,7 @@ export function VocabularyListPage() {
   }
   const rawVocabulary = filterActiveVocabulary(shouldUseRemoteData
     ? vocabularyQuery.data ?? cachedVocabulary
-    : demoVocabulary)
+    : demoVocabulary).filter((v) => v.item_type !== 'grammar' && !v.tags?.some((t) => t === 'grammar' || t === 'pattern'))
   const vocabulary = useMemo(() => {
     const normalizedSearch = debouncedSearch.trim().toLowerCase()
     let filtered = filterStatus === 'all'
@@ -118,6 +119,8 @@ export function VocabularyListPage() {
     return sorted
   }, [debouncedSearch, filterStatus, rawVocabulary, sortOrder, deckedTermIdsQuery.data])
 
+  const vocabularyIds = useMemo(() => vocabulary.map((v) => v.id), [vocabulary])
+
   const online = useOnlineStatus()
 
   useEffect(() => {
@@ -131,7 +134,6 @@ export function VocabularyListPage() {
         item_type: payload.item_type,
         part_of_speech: payload.part_of_speech ?? undefined,
         ipa: payload.ipa ?? undefined,
-        pronunciation_text: payload.pronunciation_text ?? undefined,
         audio_url: payload.audio_url ?? undefined,
         image_url: payload.image_url ?? undefined,
         note: payload.note ?? undefined,
@@ -149,7 +151,6 @@ export function VocabularyListPage() {
         status: payload.status,
         part_of_speech: payload.part_of_speech ?? undefined,
         ipa: payload.ipa ?? undefined,
-        pronunciation_text: payload.pronunciation_text ?? undefined,
         audio_url: payload.audio_url ?? undefined,
         image_url: payload.image_url ?? undefined,
         note: payload.note ?? undefined,
@@ -198,6 +199,7 @@ export function VocabularyListPage() {
     overscan: 3,
   })
 
+  const [addModalOpen, setAddModalOpen] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [pendingDelete, setPendingDelete] = useState<{ ids: string[]; word?: string } | null>(null)
@@ -333,7 +335,7 @@ export function VocabularyListPage() {
   ) : (
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="ghost" disabled={!shouldUseRemoteData} onClick={enterSelectMode}>{t('vocabulary.select')}</Button>
-      <Button asChild><Link to="/app/vocabulary/new">{t('vocabulary.add')}</Link></Button>
+      <Button onClick={() => setAddModalOpen(true)}>{t('vocabulary.add')}</Button>
     </div>
   )
 
@@ -407,10 +409,10 @@ export function VocabularyListPage() {
         <Card className="text-center">
           <p className="text-xl font-black">{t('vocabulary.emptyTitle')}</p>
           <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.emptyDescription')}</p>
-          <Button asChild className="mt-4"><Link to="/app/vocabulary/new">{t('vocabulary.add')}</Link></Button>
+          <Button className="mt-4" onClick={() => setAddModalOpen(true)}>{t('vocabulary.add')}</Button>
         </Card>
       ) : null}
-      <div ref={containerRef} className="h-[calc(100vh-280px)] overflow-auto">
+      <div ref={containerRef} className="h-[calc(100vh-280px)] overflow-auto [scrollbar-gutter:stable] pr-2">
         <div style={{ height: virtualizer.getTotalSize(), position: 'relative', width: '100%' }}>
           {virtualizer.getVirtualItems().map((virtualRow) => {
             const start = virtualRow.index * columns
@@ -439,23 +441,28 @@ export function VocabularyListPage() {
                         className="h-5 w-5 accent-primary"
                       />
                     ) : null}
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Link to={`/app/vocabulary/${item.id}`} className="text-xl font-black underline">{item.source_text}</Link>
+                        <Link to={`/app/vocabulary/${item.id}`} state={{ vocabularyIds }} className="text-xl font-black underline">{item.source_text}</Link>
                         {item.flagged ? <Flag className="h-4 w-4 text-warning" fill="currentColor" /> : null}
                         <Badge>{t(statusLabelKeys[item.status])}</Badge>
                         {item.part_of_speech ? <Badge className="bg-muted">{item.part_of_speech}</Badge> : null}
-                        <Button variant="ghost" className="h-6 min-h-0 w-6 p-0" onClick={() => speak(item.source_text, { variant: item.pronunciation_text, audioUrl: item.audio_url })}><Volume2 className="h-4 w-4" /></Button>
+                        <Button variant="ghost" className="h-6 min-h-0 w-6 p-0" onClick={() => speak(item.source_text, { audioUrl: item.audio_url })}><Volume2 className="h-4 w-4" /></Button>
                       </div>
                       <p className="mt-1 font-mono text-sm">{item.ipa}</p>
-                      <p className="font-semibold text-muted-foreground">{item.meanings[0]?.text}</p>
+                      <div className="group relative">
+                        <p className="font-semibold text-muted-foreground truncate">{item.meanings[0]?.text}</p>
+                        {(item.meanings[0]?.text?.length ?? 0) > 50 ? (
+                          <span className="absolute bottom-full left-0 mb-1 hidden group-hover:block border-2 border-border rounded-radius bg-card px-2 py-1 text-sm font-semibold whitespace-normal max-w-xs z-10 pointer-events-none">{item.meanings[0]?.text}</span>
+                        ) : null}
+                      </div>
                       {item.translation ? <p className="text-sm text-primary font-bold">{item.translation}</p> : null}
                       <div className="mt-2 flex flex-wrap gap-1">{item.tags.map((tag) => <Badge key={tag} className="bg-card">#{tag}</Badge>)}</div>
                     </div>
                     <div className="flex gap-2 ml-auto">
                       {selectMode ? null : (
                         <>
-                          <Button asChild variant="secondary"><Link to={`/app/vocabulary/${item.id}`}>{t('vocabulary.view')}</Link></Button>
+                          <Button asChild variant="secondary"><Link to={`/app/vocabulary/${item.id}`} state={{ vocabularyIds }}>{t('vocabulary.view')}</Link></Button>
                           <Button variant="ghost" onClick={() => requestDeleteSingle(item.id, item.source_text)} className="text-danger">{t('vocabulary.delete')}</Button>
                         </>
                       )}
@@ -502,6 +509,7 @@ export function VocabularyListPage() {
         onConfirm={confirmDelete}
         onCancel={cancelDelete}
       />
+      <AddVocabularyModal open={addModalOpen} onClose={() => setAddModalOpen(false)} />
     </>
   )
 }
