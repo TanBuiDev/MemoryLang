@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent, act, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -307,5 +307,49 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
 
     // Xác nhận đã gọi API lấy từ vựng thứ 3 (entry-3)
     expect(relationshipService.getCard).toHaveBeenCalledWith('entry-3')
+  })
+
+  it('điều hướng đến từ tiếp theo khi xóa từ hiện tại', async () => {
+    const user = userEvent.setup()
+    const deleteMock = vi.mocked(vocabularyService.remove).mockResolvedValue(undefined)
+    const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3'] }
+    renderPage('/app/vocabulary/entry-2', state)
+
+    expect(await screen.findByText('two')).toBeInTheDocument()
+
+    // Click nút xóa
+    const deleteBtn = screen.getByText('Xóa')
+    await user.click(deleteBtn)
+
+    // Xác nhận modal hiển thị và click nút xác nhận xóa
+    const dialog = screen.getByRole('dialog')
+    const confirmBtn = within(dialog).getByRole('button', { name: 'Xóa' })
+    await user.click(confirmBtn)
+
+    expect(deleteMock).toHaveBeenCalledWith('entry-2')
+    // Sẽ chuyển hướng sang entry-3 (nextId)
+    expect(relationshipService.getCard).toHaveBeenCalledWith('entry-3')
+  })
+
+  it('điều hướng về trang danh sách khi xóa từ cuối cùng duy nhất', async () => {
+    const user = userEvent.setup()
+    const deleteMock = vi.mocked(vocabularyService.remove).mockResolvedValue(undefined)
+    const state = { vocabularyIds: ['entry-1'] }
+    renderPage('/app/vocabulary/entry-1', state)
+
+    expect(await screen.findByText('one')).toBeInTheDocument()
+
+    // Click nút xóa
+    const deleteBtn = screen.getByText('Xóa')
+    await user.click(deleteBtn)
+
+    // Xác nhận modal hiển thị và click nút xác nhận xóa
+    const dialog = screen.getByRole('dialog')
+    const confirmBtn = within(dialog).getByRole('button', { name: 'Xóa' })
+    await user.click(confirmBtn)
+
+    expect(deleteMock).toHaveBeenCalledWith('entry-1')
+    // Sẽ quay về trang danh sách
+    expect(await screen.findByText('Trang danh sách từ vựng')).toBeInTheDocument()
   })
 })

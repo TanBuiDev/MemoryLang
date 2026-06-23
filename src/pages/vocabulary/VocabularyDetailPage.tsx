@@ -601,7 +601,18 @@ export function VocabularyDetailPage() {
         queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] }),
         queryClient.invalidateQueries({ queryKey: ['statistics', user?.id] }),
       ])
-      navigate('/app/vocabulary')
+      
+      const updatedVocabularyIds = vocabularyIds.filter((vocabId) => vocabId !== id)
+      const targetRedirectId = nextId || prevId
+
+      if (targetRedirectId) {
+        navigate(`/app/vocabulary/${targetRedirectId}`, { 
+          state: { vocabularyIds: updatedVocabularyIds },
+          replace: true 
+        })
+      } else {
+        navigate('/app/vocabulary')
+      }
     },
     onError: async () => {
       if (user && item) {
@@ -612,7 +623,18 @@ export function VocabularyDetailPage() {
           payload: item,
           createdAt: new Date().toISOString(),
         })
-        navigate('/app/vocabulary')
+        
+        const updatedVocabularyIds = vocabularyIds.filter((vocabId) => vocabId !== id)
+        const targetRedirectId = nextId || prevId
+
+        if (targetRedirectId) {
+          navigate(`/app/vocabulary/${targetRedirectId}`, { 
+            state: { vocabularyIds: updatedVocabularyIds },
+            replace: true 
+          })
+        } else {
+          navigate('/app/vocabulary')
+        }
       }
     },
   })
