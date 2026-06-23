@@ -600,11 +600,12 @@ export function VocabularyDetailPage() {
     <>
       <PageHeader
         title={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 max-w-full">
             <InlineEditableField
               value={item.source_text}
               onSave={(val) => handleSaveField({ source_text: val })}
-              className="text-4xl font-black md:text-5xl border-dashed"
+              className="text-4xl font-black md:text-5xl border-dashed w-fit"
+              editClassName="w-[300px] md:w-[500px]"
               placeholder={t('vocabulary.sourceText')}
             />
             <Button
