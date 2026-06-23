@@ -45,13 +45,12 @@ const statusLabelKeys: Record<VocabularyStatus, string> = {
 
 interface HotkeyTooltipProps {
   children: React.ReactElement
-  text: string
   hotkey: string
   delay?: number
   position?: 'top' | 'bottom'
 }
 
-export function HotkeyTooltip({ children, text, hotkey, delay = 1000, position = 'bottom' }: HotkeyTooltipProps) {
+export function HotkeyTooltip({ children, hotkey, delay = 1000, position = 'bottom' }: HotkeyTooltipProps) {
   const [show, setShow] = useState(false)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -96,9 +95,8 @@ export function HotkeyTooltip({ children, text, hotkey, delay = 1000, position =
     <div className="relative inline-block">
       {trigger}
       {show && (
-        <div className={`absolute ${positionClasses} left-1/2 -translate-x-1/2 z-50 whitespace-nowrap p-2 border-2 border-border bg-card shadow-[3px_3px_0_var(--border)] rounded-md text-xs font-bold text-foreground`}>
-          <span>{text}</span>
-          <kbd className="ml-1.5 px-1 py-0.5 rounded border border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">{hotkey}</kbd>
+        <div className={`absolute ${positionClasses} left-1/2 -translate-x-1/2 z-50 whitespace-nowrap p-1.5 border-2 border-border bg-card shadow-[3px_3px_0_var(--border)] rounded-md text-xs font-bold text-foreground`}>
+          <kbd className="px-1.5 py-0.5 rounded border border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">{hotkey}</kbd>
         </div>
       )}
     </div>
@@ -480,7 +478,7 @@ export function VocabularyDetailPage() {
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <HotkeyTooltip text={t('study.previousCard')} hotkey="Alt + ←">
+            <HotkeyTooltip hotkey="Alt + ←">
               <Button
                 variant="ghost"
                 disabled={!prevId}
@@ -495,7 +493,7 @@ export function VocabularyDetailPage() {
                 {currentIndex + 1} / {vocabularyIds.length}
               </span>
             )}
-            <HotkeyTooltip text={t('study.nextCard')} hotkey="Alt + →">
+            <HotkeyTooltip hotkey="Alt + →">
               <Button
                 variant="ghost"
                 disabled={!nextId}
@@ -506,8 +504,8 @@ export function VocabularyDetailPage() {
               </Button>
             </HotkeyTooltip>
             <div className="h-6 w-[2px] bg-border mx-1" />
-            {item.flagged ? (
-              <HotkeyTooltip text="Bỏ gắn cờ" hotkey="Alt + F">
+            <HotkeyTooltip hotkey="Alt + F">
+              {item.flagged ? (
                 <Button
                   variant="ghost"
                   onClick={async () => {
@@ -517,9 +515,7 @@ export function VocabularyDetailPage() {
                 >
                   <Flag className="h-4 w-4 text-warning" fill="currentColor" />
                 </Button>
-              </HotkeyTooltip>
-            ) : (
-              <HotkeyTooltip text="Gắn cờ" hotkey="Alt + F">
+              ) : (
                 <Button
                   variant="ghost"
                   onClick={async () => {
@@ -529,9 +525,9 @@ export function VocabularyDetailPage() {
                 >
                   <Flag className="h-4 w-4 text-muted-foreground" />
                 </Button>
-              </HotkeyTooltip>
-            )}
-            <HotkeyTooltip text={t('vocabulary.delete')} hotkey="Alt + D">
+              )}
+            </HotkeyTooltip>
+            <HotkeyTooltip hotkey="Alt + D">
               <Button variant="danger" onClick={() => setIsDeleting(true)}>
                 {t('vocabulary.delete')}
               </Button>
@@ -635,7 +631,7 @@ export function VocabularyDetailPage() {
           </div>
 
           <div>
-            <HotkeyTooltip text={t('vocabulary.audio')} hotkey="Alt + P" position="top">
+            <HotkeyTooltip hotkey="Alt + P" position="top">
               <Button
                 onClick={() =>
                   speak(item.source_text, { audioUrl: item.audio_url })
