@@ -697,125 +697,128 @@ export function VocabularyDetailPage() {
             </div>
           ) : null
         }
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <HotkeyTooltip hotkey="Alt + ←">
-              <Button
-                variant="ghost"
-                disabled={!prevId}
-                onClick={() => navigate(`/app/vocabulary/${prevId}`, { state: { vocabularyIds } })}
-                title={t('study.previousCard')}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            </HotkeyTooltip>
-            {currentIndex !== -1 && (
-              <div className="flex items-center text-xs font-black px-2 py-1 rounded bg-muted border-2 border-border text-center select-none">
-                <input
-                  type="number"
-                  min={1}
-                  max={vocabularyIds.length}
-                  value={pageInputValue}
-                  onChange={(e) => setPageInputValue(e.target.value)}
-                  onKeyDown={handlePageInputKeyDown}
-                  onBlur={handlePageInputBlur}
-                  className="w-12 bg-transparent text-center focus:outline-none focus:bg-card rounded border border-transparent focus:border-border p-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  aria-label="Vị trí trang"
-                />
-                <span className="pr-1.5 text-muted-foreground">/ {vocabularyIds.length}</span>
-              </div>
-            )}
-            <HotkeyTooltip hotkey="Alt + →">
-              <Button
-                variant="ghost"
-                disabled={!nextId}
-                onClick={() => navigate(`/app/vocabulary/${nextId}`, { state: { vocabularyIds } })}
-                title={t('study.nextCard')}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </HotkeyTooltip>
-            <div className="h-6 w-[2px] bg-border mx-1" />
-            {item.flagged ? (
-              <HotkeyTooltip hotkey="Alt + F">
-                <Button
-                  variant="ghost"
-                  onClick={async () => {
-                    await vocabularyService.unflagTerm(item.id)
-                    await invalidateVocabularyQueries()
-                  }}
-                >
-                  <Flag className="h-4 w-4 text-warning" fill="currentColor" />
-                </Button>
-              </HotkeyTooltip>
-            ) : (
-              <HotkeyTooltip hotkey="Alt + F">
-                <Button
-                  variant="ghost"
-                  onClick={async () => {
-                    await vocabularyService.flagTerm(item.id)
-                    await invalidateVocabularyQueries()
-                  }}
-                >
-                  <Flag className="h-4 w-4 text-muted-foreground" />
-                </Button>
-              </HotkeyTooltip>
-            )}
-            <HotkeyTooltip hotkey="Alt + D">
-              <Button variant="danger" onClick={() => setIsDeleting(true)}>
-                {t('vocabulary.delete')}
-              </Button>
-            </HotkeyTooltip>
-          </div>
-        }
       />
 
-      <div className="mb-6 flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-1">
-          <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Loại:</span>
-          <InlineEditableField
-            value={item.item_type}
-            type="select"
-            options={Object.entries(itemTypeLabelKeys).map(([val, labelKey]) => ({
-              value: val,
-              label: t(labelKey),
-            }))}
-            onSave={(val) => handleSaveField({ item_type: val as VocabularyItemType })}
-            displayValue={<Badge className="cursor-pointer font-black">{t(itemTypeLabelKeys[item.item_type])}</Badge>}
-          />
+      {/* Thanh metadata (Loại, Trạng thái, Từ loại) và thanh công cụ điều hướng/thao tác (actions) nằm chung một hàng */}
+      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Loại:</span>
+            <InlineEditableField
+              value={item.item_type}
+              type="select"
+              options={Object.entries(itemTypeLabelKeys).map(([val, labelKey]) => ({
+                value: val,
+                label: t(labelKey),
+              }))}
+              onSave={(val) => handleSaveField({ item_type: val as VocabularyItemType })}
+              displayValue={<Badge className="cursor-pointer font-black">{t(itemTypeLabelKeys[item.item_type])}</Badge>}
+            />
+          </div>
+
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Trạng thái:</span>
+            <InlineEditableField
+              value={item.status}
+              type="select"
+              options={Object.entries(statusLabelKeys).map(([val, labelKey]) => ({
+                value: val,
+                label: t(labelKey),
+              }))}
+              onSave={(val) => handleSaveField({ status: val as VocabularyStatus })}
+              displayValue={<Badge className="cursor-pointer font-black">{t(statusLabelKeys[item.status])}</Badge>}
+            />
+          </div>
+
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Từ loại:</span>
+            <InlineEditableField
+              value={item.part_of_speech ?? ''}
+              type="input"
+              onSave={(val) => handleSaveField({ part_of_speech: val || null })}
+              placeholder={t('vocabulary.partOfSpeech')}
+              displayValue={
+                item.part_of_speech ? (
+                  <Badge className="cursor-pointer bg-muted text-foreground font-black">{item.part_of_speech}</Badge>
+                ) : (
+                  <Badge className="cursor-pointer bg-muted text-muted-foreground italic border-dashed font-bold">
+                    {t('vocabulary.partOfSpeech')}
+                  </Badge>
+                )
+              }
+            />
+          </div>
         </div>
 
-        <div className="flex items-center gap-1">
-          <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Trạng thái:</span>
-          <InlineEditableField
-            value={item.status}
-            type="select"
-            options={Object.entries(statusLabelKeys).map(([val, labelKey]) => ({
-              value: val,
-              label: t(labelKey),
-            }))}
-            onSave={(val) => handleSaveField({ status: val as VocabularyStatus })}
-            displayValue={<Badge className="cursor-pointer font-black">{t(statusLabelKeys[item.status])}</Badge>}
-          />
-        </div>
-
-        <div className="flex items-center gap-1">
-          <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Từ loại:</span>
-          <InlineEditableField
-            value={item.part_of_speech ?? ''}
-            type="input"
-            onSave={(val) => handleSaveField({ part_of_speech: val || null })}
-            placeholder={t('vocabulary.partOfSpeech')}
-            displayValue={
-              item.part_of_speech ? (
-                <Badge className="cursor-pointer bg-muted text-foreground font-black">{item.part_of_speech}</Badge>
-              ) : (
-                <Badge className="cursor-pointer bg-muted text-muted-foreground italic border-dashed font-bold">
-                  {t('vocabulary.partOfSpeech')}
-                </Badge>
-              )
-            }
-          />
+        {/* Thanh công cụ điều hướng/thao tác (actions) */}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <HotkeyTooltip hotkey="Alt + ←">
+            <Button
+              variant="ghost"
+              disabled={!prevId}
+              onClick={() => navigate(`/app/vocabulary/${prevId}`, { state: { vocabularyIds } })}
+              title={t('study.previousCard')}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </HotkeyTooltip>
+          {currentIndex !== -1 && (
+            <div className="flex items-center text-xs font-black px-2 py-1 rounded bg-muted border-2 border-border text-center select-none">
+              <input
+                type="number"
+                min={1}
+                max={vocabularyIds.length}
+                value={pageInputValue}
+                onChange={(e) => setPageInputValue(e.target.value)}
+                onKeyDown={handlePageInputKeyDown}
+                onBlur={handlePageInputBlur}
+                className="w-12 bg-transparent text-center focus:outline-none focus:bg-card rounded border border-transparent focus:border-border p-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                aria-label="Vị trí trang"
+              />
+              <span className="pr-1.5 text-muted-foreground">/ {vocabularyIds.length}</span>
+            </div>
+          )}
+          <HotkeyTooltip hotkey="Alt + →">
+            <Button
+              variant="ghost"
+              disabled={!nextId}
+              onClick={() => navigate(`/app/vocabulary/${nextId}`, { state: { vocabularyIds } })}
+              title={t('study.nextCard')}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </HotkeyTooltip>
+          <div className="h-6 w-[2px] bg-border mx-1" />
+          {item.flagged ? (
+            <HotkeyTooltip hotkey="Alt + F">
+              <Button
+                variant="ghost"
+                onClick={async () => {
+                  await vocabularyService.unflagTerm(item.id)
+                  await invalidateVocabularyQueries()
+                }}
+              >
+                <Flag className="h-4 w-4 text-warning" fill="currentColor" />
+              </Button>
+            </HotkeyTooltip>
+          ) : (
+            <HotkeyTooltip hotkey="Alt + F">
+              <Button
+                variant="ghost"
+                onClick={async () => {
+                  await vocabularyService.flagTerm(item.id)
+                  await invalidateVocabularyQueries()
+                }}
+              >
+                <Flag className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </HotkeyTooltip>
+          )}
+          <HotkeyTooltip hotkey="Alt + D">
+            <Button variant="danger" onClick={() => setIsDeleting(true)}>
+              {t('vocabulary.delete')}
+            </Button>
+          </HotkeyTooltip>
         </div>
       </div>
 
