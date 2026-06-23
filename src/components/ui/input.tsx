@@ -1,6 +1,6 @@
 import { forwardRef, useState } from 'react'
 import type { InputHTMLAttributes, LabelHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Search } from 'lucide-react'
 import { cn } from '@/utils/cn'
 
 const fieldClass =
@@ -8,6 +8,15 @@ const fieldClass =
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...props }, ref) {
   return <input ref={ref} className={cn(fieldClass, className)} {...props} />
+})
+
+export const SearchInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function SearchInput({ className, ...props }, ref) {
+  return (
+    <div className="relative w-full">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+      <Input ref={ref} className={cn('pl-9', className)} {...props} />
+    </div>
+  )
 })
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea({ className, ...props }, ref) {

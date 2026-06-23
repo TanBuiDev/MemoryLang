@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect, cloneElement } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { Flag, Search, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink } from 'lucide-react'
+import { Flag, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatTile } from '@/components/common/StatTile'
 import { Badge } from '@/components/ui/badge'
@@ -9,7 +9,7 @@ import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { Input, Label } from '@/components/ui/input'
+import { Input, Label, SearchInput } from '@/components/ui/input'
 import { TranslationChips } from '@/components/ui/translation-chips'
 import { InlineEditableField } from '@/components/ui/inline-editable-field'
 import { demoVocabulary } from '@/features/demo/demoData'
@@ -543,8 +543,6 @@ export function VocabularyDetailPage() {
         result.downloadUrl,
         user.id,
         item.id,
-        result.source,
-        result.photoId,
       )
       await handleSaveField({ image_url: publicUrl })
       setImageSearchResults([])
@@ -1079,15 +1077,11 @@ export function VocabularyDetailPage() {
           {shouldUseRemoteData && (
             <Card className="p-4 flex flex-col gap-3">
               <CardTitle className="text-sm uppercase text-muted-foreground">{t('vocabulary.searchImages')}</CardTitle>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-                <Input
-                  placeholder={t('vocabulary.searchImagesPlaceholder')}
-                  value={imageSearchQuery}
-                  onChange={(e) => onSearchInputChange(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+              <SearchInput
+                placeholder={t('vocabulary.searchImagesPlaceholder')}
+                value={imageSearchQuery}
+                onChange={(e) => onSearchInputChange(e.target.value)}
+              />
 
               {imageSearchLoading && (
                 <div className="flex items-center justify-center py-6">
@@ -1152,14 +1146,12 @@ export function VocabularyDetailPage() {
             <CardTitle className="text-base font-black">{t('vocabulary.addRelationship')}</CardTitle>
             <div className="mt-4 grid gap-3">
               <div className="relative" ref={relationWrapperRef}>
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-                <Input
+                <SearchInput
                   placeholder={t('vocabulary.search')}
                   value={relationSearch}
                   onChange={(e) => { setRelationSearch(e.target.value); setIsSearching(true); setRelationHighlightIndex(-1) }}
                   onKeyDown={handleRelationKeyDown}
                   disabled={!shouldUseRemoteData}
-                  className="pl-9"
                 />
                 {isSearching && targetOptions.length > 0 && (
                   <div ref={relationListRef} className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-auto rounded-md border-2 border-border bg-card divide-y-2 divide-border shadow-[4px_4px_0_var(--border)] z-20">
