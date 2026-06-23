@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect, cloneElement } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { Flag, Search, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2 } from 'lucide-react'
+import { Flag, Search, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatTile } from '@/components/common/StatTile'
 import { Badge } from '@/components/ui/badge'
@@ -129,6 +129,7 @@ export function VocabularyDetailPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [isZoomed, setIsZoomed] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [imageFit, setImageFit] = useState<'fit' | 'cover'>(() => {
     return (localStorage.getItem('vocab_image_fit') as 'fit' | 'cover') || 'fit'
   })
@@ -165,6 +166,17 @@ export function VocabularyDetailPage() {
   useEffect(() => {
     setNaturalRatio(null)
   }, [item?.image_url])
+
+  const handleCopyEntry = async () => {
+    if (!item?.source_text) return
+    try {
+      await navigator.clipboard.writeText(item.source_text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy: ', err)
+    }
+  }
 
   const vocabularyIds = useMemo(() => {
     if (location.state && Array.isArray((location.state as any).vocabularyIds)) {
@@ -588,12 +600,27 @@ export function VocabularyDetailPage() {
     <>
       <PageHeader
         title={
-          <InlineEditableField
-            value={item.source_text}
-            onSave={(val) => handleSaveField({ source_text: val })}
-            className="text-4xl font-black md:text-5xl border-dashed"
-            placeholder={t('vocabulary.sourceText')}
-          />
+          <div className="flex items-center gap-2">
+            <InlineEditableField
+              value={item.source_text}
+              onSave={(val) => handleSaveField({ source_text: val })}
+              className="text-4xl font-black md:text-5xl border-dashed"
+              placeholder={t('vocabulary.sourceText')}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-foreground inline-flex items-center justify-center transition-colors rounded-md"
+              onClick={handleCopyEntry}
+              title={t('vocabulary.copyTooltip')}
+            >
+              {copied ? (
+                <Check className="h-4 w-4 text-success" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         }
         description={
           <div className="flex flex-wrap items-center gap-2 mt-2 h-5">
