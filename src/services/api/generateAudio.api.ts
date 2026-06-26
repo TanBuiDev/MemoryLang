@@ -9,9 +9,10 @@ export async function generateAudio(
   text: string,
   language: string,
   voice?: string,
+  globalTermId?: string,
 ): Promise<GenerateAudioResponse> {
   const { data, error } = await supabase.functions.invoke<GenerateAudioResponse>('generate-audio', {
-    body: { text, language, voice },
+    body: { text, language, voice, globalTermId },
   })
 
   if (!error && data?.audioUrl) {

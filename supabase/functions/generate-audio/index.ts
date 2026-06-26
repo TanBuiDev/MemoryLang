@@ -10,6 +10,14 @@ interface GenerateRequest {
   text: string
   language: string
   voice?: string
+  globalTermId?: string
+}
+
+function getSupabaseAdmin() {
+  return createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+  )
 }
 
 function hashKey(text: string, lang: string): string {
@@ -25,23 +33,23 @@ function hashKey(text: string, lang: string): string {
 
 function getDefaultVoice(language: string): string {
   const voices: Record<string, string> = {
-    en: 'en-US-Wavenet-D',
-    'en-US': 'en-US-Wavenet-D',
-    'en-GB': 'en-GB-Wavenet-B',
+    en: 'en-US-Neural2-D',
+    'en-US': 'en-US-Neural2-D',
+    'en-GB': 'en-GB-Neural2-A',
     vi: 'vi-VN-Wavenet-A',
     'vi-VN': 'vi-VN-Wavenet-A',
-    ja: 'ja-JP-Wavenet-B',
-    'ja-JP': 'ja-JP-Wavenet-B',
-    ko: 'ko-KR-Wavenet-B',
-    'ko-KR': 'ko-KR-Wavenet-B',
+    ja: 'ja-JP-Neural2-B',
+    'ja-JP': 'ja-JP-Neural2-B',
+    ko: 'ko-KR-Neural2-A',
+    'ko-KR': 'ko-KR-Neural2-A',
     zh: 'cmn-CN-Wavenet-B',
     'zh-CN': 'cmn-CN-Wavenet-B',
-    fr: 'fr-FR-Wavenet-B',
-    'fr-FR': 'fr-FR-Wavenet-B',
-    de: 'de-DE-Wavenet-B',
-    'de-DE': 'de-DE-Wavenet-B',
+    fr: 'fr-FR-Neural2-A',
+    'fr-FR': 'fr-FR-Neural2-A',
+    de: 'de-DE-Neural2-B',
+    'de-DE': 'de-DE-Neural2-B',
   }
-  return voices[language] ?? 'en-US-Wavenet-D'
+  return voices[language] ?? 'en-US-Neural2-D'
 }
 
 interface TtsConfig {
@@ -62,10 +70,7 @@ async function getTtsConfig(language: string): Promise<TtsConfig> {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    )
+    const supabase = getSupabaseAdmin()
     const { data } = await supabase
       .from('tts_voice_config')
       .select('voice_name, speaking_rate, pitch, ssml_gender, audio_encoding')
@@ -220,7 +225,7 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const { text, language, voice }: GenerateRequest = await request.json()
+    const { text, language, voice, globalTermId }: GenerateRequest = await request.json()
 
     if (!text || !language) {
       return Response.json(
@@ -235,8 +240,24 @@ Deno.serve(async (request) => {
 
     const exists = await r2Head(key)
     if (exists) {
+      const audioUrl = getPublicUrl(key)
+
+      // Backfill global_terms.audio_url nếu chưa có
+      if (globalTermId) {
+        try {
+          const sb = getSupabaseAdmin()
+          await sb
+            .from('global_terms')
+            .update({ audio_url: audioUrl, updated_at: new Date().toISOString() })
+            .eq('id', globalTermId)
+            .is('audio_url', null)
+        } catch {
+          // non-critical
+        }
+      }
+
       return Response.json(
-        { audioUrl: getPublicUrl(key), cached: true },
+        { audioUrl, cached: true },
         { headers: corsHeaders },
       )
     }
@@ -251,7 +272,7 @@ Deno.serve(async (request) => {
       },
       body: JSON.stringify({
         input: { text },
-        voice: { languageCode: language, name: voiceName, ssmlGender: config.ssml_gender },
+        voice: { languageCode: language, name: voiceName },
         audioConfig: {
           audioEncoding: config.audio_encoding,
           speakingRate: config.speaking_rate,
@@ -280,8 +301,23 @@ Deno.serve(async (request) => {
     const audioBinary = Uint8Array.from(atob(ttsData.audioContent), (c) => c.charCodeAt(0))
     await r2Put(key, audioBinary, 'audio/mpeg')
 
+    const audioUrl = getPublicUrl(key)
+
+    // Persist audio_url vào global_terms để lần sau không cần gọi Edge Function
+    if (globalTermId) {
+      try {
+        const sb = getSupabaseAdmin()
+        await sb
+          .from('global_terms')
+          .update({ audio_url: audioUrl, updated_at: new Date().toISOString() })
+          .eq('id', globalTermId)
+      } catch {
+        // non-critical
+      }
+    }
+
     return Response.json(
-      { audioUrl: getPublicUrl(key), cached: false },
+      { audioUrl, cached: false },
       { headers: corsHeaders },
     )
   } catch (error) {

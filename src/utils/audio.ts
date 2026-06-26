@@ -8,6 +8,7 @@ export interface SpeakOptions {
   onEnd?: () => void
   audioUrl?: string | null
   variant?: string | null
+  globalTermId?: string | null
 }
 
 let lastSpeakId = 0
@@ -38,14 +39,21 @@ export async function speak(text: string, options: SpeakOptions = {}) {
   const ttsText = options.variant || text
   const langCode = options.lang ?? 'en-US'
 
-  // 1. Phát âm thanh động từ cấu hình TTS của Admin
+  // 1. Play from static audioUrl (DB-stored, fastest — no Edge Function)
+  if (options.audioUrl) {
+    const { playCachedOrFetch } = await import('@/services/local/audioCache')
+    const played = await playCachedOrFetch(text, options.audioUrl)
+    if (played) return true
+  }
+
+  // 2. Generate dynamic audio via Edge Function (only when no audioUrl available)
   const { isSupabaseConfigured } = await import('@/services/supabase/client')
   if (isSupabaseConfigured) {
     const config = await getVoiceConfig(langCode)
     if (config) {
       try {
         const { generateAudio } = await import('@/services/api/generateAudio.api')
-        const res = await generateAudio(ttsText, langCode, config.voice_name)
+        const res = await generateAudio(ttsText, langCode, config.voice_name, options.globalTermId ?? undefined)
         if (res.audioUrl) {
           const { playCachedOrFetch } = await import('@/services/local/audioCache')
           const played = await playCachedOrFetch(text, res.audioUrl)
@@ -57,13 +65,7 @@ export async function speak(text: string, options: SpeakOptions = {}) {
     }
   }
 
-  // 2. Fallback về đường dẫn tĩnh lưu trong từ vựng nếu không có cấu hình động
-  if (options.audioUrl) {
-    const { playCachedOrFetch } = await import('@/services/local/audioCache')
-    const played = await playCachedOrFetch(text, options.audioUrl)
-    if (played) return true
-  }
-
+  // 3. Browser SpeechSynthesis fallback
   if (!('speechSynthesis' in window)) return false
 
   window.speechSynthesis.cancel()
