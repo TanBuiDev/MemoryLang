@@ -5,8 +5,19 @@ import { shuffle } from '@/utils/shuffle'
 
 type VocabularyWithTranslation = VocabularyItem & { translation: string }
 
+function getTranslation(item: VocabularyItem): string | null {
+  if (typeof item.translation === 'string' && item.translation.trim().length > 0) {
+    return item.translation.trim()
+  }
+  const meaningText = item.meanings?.[0]?.text
+  if (meaningText && item.meanings[0]?.language === item.native_language) {
+    return meaningText.trim()
+  }
+  return null
+}
+
 export function hasTranslation(item: VocabularyItem): item is VocabularyWithTranslation {
-  return typeof item.translation === 'string' && item.translation.trim().length > 0
+  return getTranslation(item) !== null
 }
 
 export function generateTranslationQuestions(
@@ -24,7 +35,7 @@ export function generateTranslationQuestions(
     sourceText: item.source_text,
     ipa: item.ipa,
     partOfSpeech: item.part_of_speech,
-    expectedTranslation: item.translation.trim(),
+    expectedTranslation: getTranslation(item)!,
     audioUrl: item.audio_url,
   }))
 }

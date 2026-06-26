@@ -3,6 +3,17 @@ import type { SessionLimit } from '@/types/study.types'
 import type { VocabularyItem } from '@/types/vocabulary.types'
 import { shuffle } from '@/utils/shuffle'
 
+function getTranslation(item: VocabularyItem): string | null {
+  if (typeof item.translation === 'string' && item.translation.trim().length > 0) {
+    return item.translation.trim()
+  }
+  const meaningText = item.meanings?.[0]?.text
+  if (meaningText && item.meanings[0]?.language === item.native_language) {
+    return meaningText.trim()
+  }
+  return null
+}
+
 export function splitAlternatives(translation: string): string[] {
   return translation
     .split(/\s*[\/,;]\s*|\n+/)
@@ -78,19 +89,20 @@ export function generateMultipleChoiceQuestions(
   randomFn = Math.random,
 ): MultipleChoiceQuestion[] {
   const usable = items.filter(
-    (item) => typeof item.translation === 'string' && item.translation.trim().length > 0,
+    (item) => getTranslation(item) !== null,
   )
   const shuffled = shuffle(usable, randomFn)
   const selected = questionCount === 'all' ? shuffled : shuffled.slice(0, questionCount)
   const usedDistractors = new Set<string>()
 
   return selected.map((item, index) => {
-    const correctAlternatives = splitAlternatives(item.translation!.trim())
-    const correctDisplay = normalizeTranslation(item.translation!.trim())
+    const translation = getTranslation(item)!
+    const correctAlternatives = splitAlternatives(translation)
+    const correctDisplay = normalizeTranslation(translation)
 
     const distractors = selectDistractors(
-      { id: item.id, translation: item.translation!.trim() },
-      usable.map((t) => ({ id: t.id, translation: t.translation })),
+      { id: item.id, translation },
+      usable.map((t) => ({ id: t.id, translation: getTranslation(t) ?? '' })),
       usedDistractors,
     )
 
