@@ -854,7 +854,7 @@ export function FlashcardStudyPage() {
       else if (hotkey === hotkeys.flip && sessionMode === 'two_side') setFlipped((current) => !current)
       else if (hotkey === hotkeys.previous && index > 0) browseTo(index - 1)
       else if (hotkey === hotkeys.next) requestNextCard()
-      else if (hotkey === hotkeys.playAudio) speak(item.source_text, { audioUrl: item.audio_url })
+      else if (hotkey === hotkeys.playAudio) speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })
       else if (hotkey === hotkeys.toggleAuto) {
         setAutoRemainingSeconds(autoCardSeconds)
         setAutoEnabled((enabled) => !enabled)
@@ -880,6 +880,7 @@ export function FlashcardStudyPage() {
     const timer = window.setTimeout(() => {
       const spoke = speak(item.source_text, {
         audioUrl: item.audio_url,
+        globalTermId: item.global_term_id,
         onEnd: () => {
           const translation = item.translation
           if (speakViEnabled && translation) {
@@ -1101,7 +1102,7 @@ export function FlashcardStudyPage() {
           data-testid="study-toolbar-buttons"
           className="pointer-events-auto mx-auto flex w-full max-w-[48rem] flex-wrap items-center justify-center gap-2 rounded-md border-2 border-border bg-card/95 p-2 shadow-[5px_5px_0_var(--border)] backdrop-blur md:w-auto md:max-w-none md:flex-col md:gap-2 md:p-3"
         >
-          <StudyToolbarButton label={t('actions.playAudio')} icon={pronunciationIcon} onClick={() => speak(item.source_text, { audioUrl: item.audio_url })} />
+          <StudyToolbarButton label={t('actions.playAudio')} icon={pronunciationIcon} onClick={() => speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })} />
           {sessionMode === 'two_side' ? (
             <button
               type="button"
