@@ -5,7 +5,7 @@ import { normalizeTranslationAnswer } from '@/features/quiz/translationInputQuiz
 import { normalizeText } from '@/utils/normalizeText'
 
 // Hàm trợ giúp làm phẳng đối tượng sau khi JOIN bảng
-function flattenVocabularyItem(row: any): VocabularyItem {
+export function flattenVocabularyItem(row: any): VocabularyItem {
   if (!row) return row
   const { global_terms, ...userTerm } = row
   return {
@@ -29,9 +29,9 @@ export const vocabularyService = {
     const normalized = normalizeText(sourceText)
     const { data, error } = await supabase
       .from('user_terms')
-      .select('id, global_term_id, global_terms!inner(source_text, normalized_text)')
+      .select('id, global_term_id, global_terms!fk_user_terms_global_term!inner(source_text, normalized_text)')
       .eq('user_id', userId)
-      .eq('global_terms.normalized_text', normalized)
+      .eq('global_terms!fk_user_terms_global_term.normalized_text', normalized)
       .limit(1)
       
     if (error) throw error
@@ -51,7 +51,7 @@ export const vocabularyService = {
       .from('user_terms')
       .select(`
         *,
-        global_terms (
+        global_terms!fk_user_terms_global_term (
           source_text,
           normalized_text,
           source_language,
@@ -77,7 +77,7 @@ export const vocabularyService = {
       .from('user_terms')
       .select(`
         *,
-        global_terms (
+        global_terms!fk_user_terms_global_term (
           source_text,
           normalized_text,
           source_language,

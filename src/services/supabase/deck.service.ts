@@ -3,6 +3,7 @@ import type { LessonDraft } from '@/features/decks/bulkLessons'
 import type { Deck } from '@/types/deck.types'
 import type { LanguageCode } from '@/types/language.types'
 import type { VocabularyItem } from '@/types/vocabulary.types'
+import { flattenVocabularyItem } from './vocabulary.service'
 
 export interface DeckInput {
   user_id: string
@@ -42,14 +43,33 @@ export const deckService = {
   async listTerms(deckId: string): Promise<VocabularyItem[]> {
     const { data, error } = await supabase
       .from('deck_terms')
-      .select('user_terms(*)')
+      .select(`
+        user_terms (
+          *,
+          global_terms!fk_user_terms_global_term (
+            source_text,
+            normalized_text,
+            source_language,
+            native_language,
+            item_type,
+            part_of_speech,
+            ipa,
+            audio_url,
+            image_url,
+            meanings,
+            examples
+          )
+        )
+      `)
       .eq('deck_id', deckId)
       .order('created_at', { ascending: true })
     if (error) throw error
     return (data ?? []).flatMap((entry) => {
-      const terms = entry.user_terms as VocabularyItem | VocabularyItem[] | null
-      if (!terms) return []
-      return Array.isArray(terms) ? terms : [terms]
+      const term = entry.user_terms
+      if (!term) return []
+      return Array.isArray(term)
+        ? term.map((t) => flattenVocabularyItem(t))
+        : [flattenVocabularyItem(term)]
     })
   },
   async create(input: DeckInput): Promise<Deck> {
