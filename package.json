@@ -13,7 +13,9 @@
     "preview": "vite preview",
     "sync:secrets": "node scripts/sync-secrets.mjs",
     "migrate:audio": "npx tsx scripts/migrate-audio.ts",
-    "migrate:audio:dry": "npx tsx scripts/migrate-audio.ts --dry-run"
+    "migrate:audio:dry": "npx tsx scripts/migrate-audio.ts --dry-run",
+    "deploy": "wrangler pages deploy dist --project-name memorylang --branch main",
+    "deploy:preview": "wrangler pages deploy dist --project-name memorylang --branch preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -63,6 +65,7 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
     "vite": "^8.0.10",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.5",
+    "wrangler": "^4.105.0"
   }
 }

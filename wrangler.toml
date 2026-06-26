@@ -1,0 +1,9 @@
+name = "memorylang"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-06-26"
+
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+[env.preview]
+vars = { ENVIRONMENT = "preview" }
