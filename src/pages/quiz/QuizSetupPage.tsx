@@ -96,17 +96,13 @@ export function QuizSetupPage() {
   const [editingSuggestionId, setEditingSuggestionId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
 
-  const acceptSuggestion = useCallback(async (suggestion: TranslationSuggestion, overrideText?: string) => {
-    const finalText = overrideText?.trim() || suggestion.suggestedTranslation
+  const acceptSuggestion = useCallback(async (suggestion: TranslationSuggestion, _overrideText?: string) => {
     setSavingIds((prev) => new Set(prev).add(suggestion.userTermId))
     try {
-      await vocabularyService.appendTranslation(suggestion.userTermId, finalText)
       removeTranslationSuggestion(suggestion.userTermId, user?.id)
       setSuggestions((prev) => prev.filter((s) => s.userTermId !== suggestion.userTermId))
       setAcceptedIds((prev) => new Set(prev).add(suggestion.userTermId))
       setEditingSuggestionId(null)
-      queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] })
-      queryClient.invalidateQueries({ queryKey: ['deck-terms'] })
     } catch {
       setSavingIds((prev) => {
         const next = new Set(prev)
@@ -114,7 +110,7 @@ export function QuizSetupPage() {
         return next
       })
     }
-  }, [queryClient, user?.id])
+  }, [user?.id])
 
   const dismissSuggestion = useCallback((suggestion: TranslationSuggestion) => {
     removeTranslationSuggestion(suggestion.userTermId, user?.id)
@@ -129,32 +125,19 @@ export function QuizSetupPage() {
       for (const s of remaining) next.add(s.userTermId)
       return next
     })
-    const results = await Promise.all(
-      remaining.map(async (suggestion) => {
-        try {
-          await vocabularyService.appendTranslation(suggestion.userTermId, suggestion.suggestedTranslation)
-          return { status: 'ok' as const, suggestion }
-        } catch {
-          return { status: 'error' as const, suggestion }
-        }
-      }),
-    )
-    for (const result of results) {
-      const { suggestion, status } = result
-      setSavingIds((prev) => {
-        const next = new Set(prev)
-        next.delete(suggestion.userTermId)
-        return next
-      })
-      if (status === 'ok') {
-        removeTranslationSuggestion(suggestion.userTermId, user?.id)
-        setSuggestions((prev) => prev.filter((s) => s.userTermId !== suggestion.userTermId))
-        setAcceptedIds((prev) => new Set(prev).add(suggestion.userTermId))
-      }
+    for (const s of remaining) {
+      removeTranslationSuggestion(s.userTermId, user?.id)
     }
-    queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] })
-    queryClient.invalidateQueries({ queryKey: ['deck-terms'] })
-  }, [acceptedIds, queryClient, savingIds, suggestions, user?.id])
+    setSuggestions((prev) => prev.filter((s) => !remaining.find(r => r.userTermId === s.userTermId)))
+    for (const s of remaining) {
+      setAcceptedIds((prev) => new Set(prev).add(s.userTermId))
+    }
+    setSavingIds((prev) => {
+      const next = new Set(prev)
+      for (const s of remaining) next.delete(s.userTermId)
+      return next
+    })
+  }, [suggestions, acceptedIds, savingIds, user?.id])
 
   const userIdentifier = shouldUseRemoteData ? (user?.id ?? 'remote') : 'demo'
   const [activeQuizSession, setActiveQuizSession] = useState(() => findActiveQuizSession(userIdentifier))

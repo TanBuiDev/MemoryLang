@@ -1,7 +1,6 @@
 import { supabase } from '@/services/supabase/client'
 import type { VocabularyFormValues, VocabularyUpdateFormValues } from '@/features/vocabulary/vocabulary.schema'
 import type { VocabularyItem } from '@/types/vocabulary.types'
-import { normalizeTranslationAnswer } from '@/features/quiz/translationInputQuiz'
 import { normalizeText } from '@/utils/normalizeText'
 
 // Hàm trợ giúp làm phẳng đối tượng sau khi JOIN bảng
@@ -21,6 +20,9 @@ export function flattenVocabularyItem(row: any): VocabularyItem {
     image_url: global_terms?.image_url ?? null,
     meanings: global_terms?.meanings ?? [],
     examples: global_terms?.examples ?? [],
+    note: global_terms?.note ?? null,
+    tags: global_terms?.tags ?? [],
+    translation: global_terms?.translation ?? null,
   } as VocabularyItem
 }
 
@@ -47,6 +49,9 @@ export const vocabularyService = {
   },
 
   async list(userId: string): Promise<VocabularyItem[]> {
+    // Đảm bảo user có đầy đủ từ vựng từ global_terms (idempotent, chỉ thêm từ mới)
+    await supabase.rpc('seed_user_vocabulary', { p_user_id: userId })
+    
     const { data, error } = await supabase
       .from('user_terms')
       .select(`
@@ -62,7 +67,10 @@ export const vocabularyService = {
           audio_url,
           image_url,
           meanings,
-          examples
+          examples,
+          translation,
+          note,
+          tags
         )
       `)
       .eq('user_id', userId)
@@ -88,7 +96,10 @@ export const vocabularyService = {
           audio_url,
           image_url,
           meanings,
-          examples
+          examples,
+          translation,
+          note,
+          tags
         )
       `)
       .eq('id', id)
@@ -132,6 +143,9 @@ export const vocabularyService = {
             image_url: values.image_url || null,
             meanings: values.meanings,
             examples: values.examples || [],
+            translation: values.translation || null,
+            note: values.note || null,
+            tags: values.tags || [],
           })
           .select('id')
           .single()
@@ -147,8 +161,6 @@ export const vocabularyService = {
       .insert({
         user_id: userId,
         global_term_id: globalTermId,
-        note: values.note || null,
-        translation: values.translation || null,
         status: 'new',
       })
       .select('*')
@@ -192,17 +204,18 @@ export const vocabularyService = {
         image_url: values.image_url || null,
         meanings: values.meanings,
         examples: values.examples || [],
+        translation: values.translation || null,
+        note: values.note || null,
+        tags: values.tags || [],
       })
       .eq('id', globalTermId)
       
     if (globalError) throw globalError
 
-    // 3. Cập nhật các trường cá nhân trong user_terms
+    // 3. Cập nhật các trường cá nhân trong user_terms (chỉ còn status)
     const { error } = await supabase
       .from('user_terms')
       .update({
-        note: values.note || null,
-        translation: values.translation || null,
         status: values.status,
       })
       .eq('id', id)
@@ -232,38 +245,6 @@ export const vocabularyService = {
   async removeMany(ids: string[]) {
     const { error } = await supabase.from('user_terms').update({ deleted_at: new Date().toISOString() }).in('id', ids)
     if (error) throw error
-  },
-
-  async appendTranslation(id: string, newTranslation: string): Promise<VocabularyItem> {
-    const { data: term, error: fetchError } = await supabase
-      .from('user_terms')
-      .select('translation')
-      .eq('id', id)
-      .maybeSingle()
-
-    if (fetchError) throw fetchError
-    if (!term) throw new Error('Term not found')
-
-    const normalized = normalizeTranslationAnswer(newTranslation)
-    if (!normalized) throw new Error('Translation cannot be empty')
-
-    const parts = (term.translation ?? '')
-      .split(/[,;\n]+/)
-      .map((candidate: string) => candidate.replace(/^\s*\([^)]*\)\s*/, ''))
-      .map(normalizeTranslationAnswer)
-      .filter((c: string) => c)
-
-    if (parts.includes(normalized)) return await this.get(id) as VocabularyItem
-
-    const updated = term.translation ? `${term.translation.trim()}, ${newTranslation.trim()}` : newTranslation.trim()
-
-    const { error } = await supabase
-      .from('user_terms')
-      .update({ translation: updated })
-      .eq('id', id)
-
-    if (error) throw error
-    return await this.get(id) as VocabularyItem
   },
 
   async flagTerm(id: string): Promise<void> {
