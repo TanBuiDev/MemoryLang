@@ -13,6 +13,53 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const TTS_LANG_MAP: Record<string, string> = {
+  vi: 'vi-VN',
+  en: 'en-US',
+  ko: 'ko-KR',
+  ja: 'ja-JP',
+  zh: 'zh-CN',
+  fr: 'fr-FR',
+  de: 'de-DE',
+}
+
+function getTtsLanguage(sourceLanguage: LanguageCode): string | null {
+  return TTS_LANG_MAP[sourceLanguage] ?? null
+}
+
+async function generateTtsAudio(supabase: any, text: string, sourceLanguage: LanguageCode): Promise<string | null> {
+  const lang = getTtsLanguage(sourceLanguage)
+  if (!lang) return null
+
+  try {
+    // Truy vấn cấu hình giọng đọc TTS đang kích hoạt từ database
+    const { data: voiceConfig } = await supabase
+      .from('tts_voice_config')
+      .select('voice_name')
+      .eq('language_code', lang)
+      .eq('enabled', true)
+      .maybeSingle()
+
+    const voiceName = voiceConfig?.voice_name ?? undefined
+
+    const functionUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-audio`
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+    const res = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${anonKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text: text.trim(), language: lang, voice: voiceName }),
+    })
+    if (!res.ok) return null
+    const data = await res.json() as { audioUrl?: string; cached?: boolean }
+    return data.audioUrl ?? null
+  } catch {
+    return null
+  }
+}
+
 function normalizeText(value: string) {
   return value.trim().replace(/\s+/g, ' ').toLowerCase()
 }
@@ -97,7 +144,6 @@ async function addCachedTranslations(term: Record<string, unknown>, sourceLangua
     itemType: term.item_type,
     ipa: term.ipa,
     partOfSpeech: term.part_of_speech,
-    pronunciationText: term.pronunciation_text,
     meanings,
     examples: await Promise.all(
       examples.map(async (example) => ({
@@ -134,17 +180,17 @@ Deno.serve(async (request) => {
     if (cached) {
       if (body.sourceLanguage !== body.nativeLanguage) {
         const translated = await addCachedTranslations(cached, body.sourceLanguage, body.nativeLanguage)
-        return Response.json(translated, { headers: corsHeaders })
+        return Response.json({ ...translated, globalTermId: cached.id }, { headers: corsHeaders })
       }
 
       return Response.json(
         {
+          globalTermId: cached.id,
           sourceText: cached.source_text,
           normalizedText: cached.normalized_text,
           itemType: cached.item_type,
           ipa: cached.ipa,
           partOfSpeech: cached.part_of_speech,
-          pronunciationText: cached.pronunciation_text,
           meanings: cached.meanings,
           examples: cached.examples,
           translationText: '',
@@ -158,6 +204,10 @@ Deno.serve(async (request) => {
 
     const dictionary = itemType === 'word' && body.sourceLanguage === 'en' ? await dictionaryLookup(body.text, body.nativeLanguage) : null
     const translatedDictionary = await addDictionaryTranslations(body.text, body.sourceLanguage, body.nativeLanguage, dictionary)
+
+    const ttsAudioUrl = await generateTtsAudio(supabase, body.text, body.sourceLanguage)
+    const audioUrl = ttsAudioUrl ?? dictionary?.audioUrl ?? null
+
     const payload = {
       source_text: body.text,
       normalized_text: normalizedText,
@@ -166,26 +216,28 @@ Deno.serve(async (request) => {
       item_type: itemType,
       part_of_speech: dictionary?.partOfSpeech ?? null,
       ipa: dictionary?.ipa ?? null,
-      pronunciation_text: null,
-      audio_url: dictionary?.audioUrl ?? null,
+      audio_url: audioUrl,
       image_url: null,
       meanings: translatedDictionary?.meanings?.[0]?.text ? translatedDictionary.meanings : [{ text: '', language: body.nativeLanguage }],
       examples: translatedDictionary?.examples ?? [],
       source: dictionary ? 'dictionary' : 'system',
     }
 
-    await supabase.from('global_terms').upsert(payload, {
-      onConflict: 'normalized_text,source_language,native_language',
-    })
+    // Thực hiện upsert và lấy id của từ khóa global_terms vừa lưu
+    const { data: upserted } = await supabase
+      .from('global_terms')
+      .upsert(payload, { onConflict: 'normalized_text,source_language,native_language' })
+      .select('id')
+      .single()
 
     return Response.json(
       {
+        globalTermId: upserted?.id ?? null,
         sourceText: payload.source_text,
         normalizedText: payload.normalized_text,
         itemType: payload.item_type,
         ipa: payload.ipa,
         partOfSpeech: payload.part_of_speech,
-        pronunciationText: payload.pronunciation_text,
         meanings: payload.meanings,
         examples: payload.examples,
         translationText: translatedDictionary?.translationText ?? '',

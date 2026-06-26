@@ -1,3 +1,5 @@
+import { supabase } from '@/services/supabase/client'
+
 export interface SpeakOptions {
   lang?: string
   rate?: number
@@ -9,10 +11,53 @@ export interface SpeakOptions {
 }
 
 let lastSpeakId = 0
+const ttsConfigsCache: Record<string, any> = {}
+
+async function getVoiceConfig(languageCode: string) {
+  if (ttsConfigsCache[languageCode]) return ttsConfigsCache[languageCode]
+
+  try {
+    const { data } = await supabase
+      .from('tts_voice_config')
+      .select('*')
+      .eq('language_code', languageCode)
+      .eq('enabled', true)
+      .maybeSingle()
+
+    if (data) {
+      ttsConfigsCache[languageCode] = data
+      return data
+    }
+  } catch (err) {
+    console.error('Failed to fetch TTS config:', err)
+  }
+  return null
+}
 
 export async function speak(text: string, options: SpeakOptions = {}) {
   const ttsText = options.variant || text
+  const langCode = options.lang ?? 'en-US'
 
+  // 1. Phát âm thanh động từ cấu hình TTS của Admin
+  const { isSupabaseConfigured } = await import('@/services/supabase/client')
+  if (isSupabaseConfigured) {
+    const config = await getVoiceConfig(langCode)
+    if (config) {
+      try {
+        const { generateAudio } = await import('@/services/api/generateAudio.api')
+        const res = await generateAudio(ttsText, langCode, config.voice_name)
+        if (res.audioUrl) {
+          const { playCachedOrFetch } = await import('@/services/local/audioCache')
+          const played = await playCachedOrFetch(text, res.audioUrl)
+          if (played) return true
+        }
+      } catch (err) {
+        console.error('Failed to generate dynamic audio:', err)
+      }
+    }
+  }
+
+  // 2. Fallback về đường dẫn tĩnh lưu trong từ vựng nếu không có cấu hình động
   if (options.audioUrl) {
     const { playCachedOrFetch } = await import('@/services/local/audioCache')
     const played = await playCachedOrFetch(text, options.audioUrl)
