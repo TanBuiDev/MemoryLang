@@ -140,7 +140,8 @@ export const relationshipService = {
           *,
           global_terms!fk_user_terms_global_term (
             source_text, normalized_text, source_language, native_language,
-            item_type, part_of_speech, ipa, audio_url, image_url, meanings, examples
+            item_type, part_of_speech, ipa, audio_url, image_url, meanings, examples,
+            translation, note, tags
           )
         `)
         .eq('id', entryId)
@@ -160,7 +161,8 @@ export const relationshipService = {
           *,
           global_terms!fk_user_terms_global_term (
             source_text, normalized_text, source_language, native_language,
-            item_type, part_of_speech, ipa, audio_url, image_url, meanings, examples
+            item_type, part_of_speech, ipa, audio_url, image_url, meanings, examples,
+            translation, note, tags
           )
         `)
         .eq('id', entryId)
@@ -176,7 +178,7 @@ export const relationshipService = {
       .select(`
         *,
         user_terms!fk_user_terms_global_term (
-          id, user_id, note, tags, status, translation,
+          id, user_id, status,
           view_count, correct_count, wrong_count, audio_play_count,
           srs_repetition, srs_interval_days, srs_ease_factor,
           last_reviewed_at, next_review_at, flagged, deleted_at,
@@ -208,7 +210,8 @@ export const relationshipService = {
         *,
         global_terms!fk_user_terms_global_term (
           source_text, normalized_text, source_language, native_language,
-          item_type, part_of_speech, ipa, audio_url, image_url, meanings, examples
+          item_type, part_of_speech, ipa, audio_url, image_url, meanings, examples,
+          translation, note, tags
         )
       `)
       .eq('id', entryId)

@@ -330,7 +330,7 @@ export function VocabularyListPage() {
       >
         {t('vocabulary.createLessons')}
       </Button>
-      <Button variant="danger" disabled={selectedIds.size === 0} onClick={requestDeleteSelected}>{t('vocabulary.deleteSelected')}</Button>
+      {profile?.is_admin && <Button variant="danger" disabled={selectedIds.size === 0} onClick={requestDeleteSelected}>{t('vocabulary.deleteSelected')}</Button>}
     </div>
   ) : (
     <div className="flex flex-wrap items-center gap-2">
@@ -411,7 +411,7 @@ export function VocabularyListPage() {
         <Card className="text-center">
           <p className="text-xl font-black">{t('vocabulary.emptyTitle')}</p>
           <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.emptyDescription')}</p>
-          <Button className="mt-4" onClick={() => setAddModalOpen(true)}>{t('vocabulary.add')}</Button>
+          {profile?.is_admin && <Button className="mt-4" onClick={() => setAddModalOpen(true)}>{t('vocabulary.add')}</Button>}
         </Card>
       ) : null}
       <div ref={containerRef} className="h-[calc(100vh-280px)] overflow-auto [scrollbar-gutter:stable] pr-2">
@@ -449,7 +449,7 @@ export function VocabularyListPage() {
                         {item.flagged ? <Flag className="h-4 w-4 text-warning" fill="currentColor" /> : null}
                         <Badge>{t(statusLabelKeys[item.status])}</Badge>
                         {item.part_of_speech ? <Badge className="bg-muted">{item.part_of_speech}</Badge> : null}
-                        <Button variant="ghost" className="h-6 min-h-0 w-6 p-0" onClick={() => speak(item.source_text, { audioUrl: item.audio_url })}><Volume2 className="h-4 w-4" /></Button>
+                        <Button variant="ghost" className="h-6 min-h-0 w-6 p-0" onClick={() => speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })}><Volume2 className="h-4 w-4" /></Button>
                       </div>
                       <p className="mt-1 font-mono text-sm">{item.ipa}</p>
                       <div className="group relative">
@@ -465,7 +465,7 @@ export function VocabularyListPage() {
                       {selectMode ? null : (
                         <>
                           <Button asChild variant="secondary"><Link to={`/app/vocabulary/${item.id}`} state={{ vocabularyIds }}>{t('vocabulary.view')}</Link></Button>
-                          <Button variant="ghost" onClick={() => requestDeleteSingle(item.id, item.source_text)} className="text-danger">{t('vocabulary.delete')}</Button>
+                          {profile?.is_admin && <Button variant="ghost" onClick={() => requestDeleteSingle(item.id, item.source_text)} className="text-danger">{t('vocabulary.delete')}</Button>}
                         </>
                       )}
                     </div>

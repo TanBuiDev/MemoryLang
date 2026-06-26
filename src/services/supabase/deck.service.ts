@@ -57,7 +57,10 @@ export const deckService = {
             audio_url,
             image_url,
             meanings,
-            examples
+            examples,
+            translation,
+            note,
+            tags
           )
         )
       `)

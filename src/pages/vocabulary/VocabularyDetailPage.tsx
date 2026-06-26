@@ -402,7 +402,7 @@ export function VocabularyDetailPage() {
       else if ((e.altKey && e.key.toLowerCase() === 'p') || (e.ctrlKey && e.key === ' ')) {
         if (item) {
           e.preventDefault()
-          speak(item.source_text, { audioUrl: item.audio_url })
+          speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })
         }
       }
       // Alt + F: Gắn cờ / Bỏ gắn cờ
@@ -415,8 +415,10 @@ export function VocabularyDetailPage() {
       }
       // Alt + D hoặc Alt + Delete: Xác nhận xóa từ vựng
       else if (e.altKey && (e.key.toLowerCase() === 'd' || e.key === 'Delete')) {
-        e.preventDefault()
-        setIsDeleting(true)
+        if (isAdmin) {
+          e.preventDefault()
+          setIsDeleting(true)
+        }
       }
       // Escape: Quay lại danh sách từ vựng khi không có modal nào mở và không focus input
       else if (e.key === 'Escape') {
@@ -877,11 +879,13 @@ export function VocabularyDetailPage() {
               </Button>
             </HotkeyTooltip>
           )}
+          {isAdmin && (
           <HotkeyTooltip hotkey="Alt + D">
             <Button variant="danger" onClick={() => setIsDeleting(true)}>
               {t('vocabulary.delete')}
             </Button>
           </HotkeyTooltip>
+          )}
         </div>
       </div>
 
@@ -910,14 +914,19 @@ export function VocabularyDetailPage() {
                   disabled={enrichingIpa}
                   onClick={async () => {
                     setEnrichingIpa(true)
+                    setFormError(null)
                     try {
                       const enriched = await enrichVocabulary(item.source_text, item.source_language, item.native_language)
-                      await handleSaveField({
-                        ipa: enriched.ipa ?? item.ipa,
-                        part_of_speech: enriched.partOfSpeech ?? item.part_of_speech,
-                      })
+                      if (enriched.ipa) {
+                        await handleSaveField({
+                          ipa: enriched.ipa,
+                          part_of_speech: enriched.partOfSpeech ?? item.part_of_speech,
+                        })
+                      } else {
+                        setFormError('Không tìm thấy IPA cho từ này. Bạn có thể nhập thủ công.')
+                      }
                     } catch {
-                      /* ignored */
+                      setFormError('Không thể tìm IPA. Kiểm tra kết nối mạng.')
                     }
                     setEnrichingIpa(false)
                   }}
@@ -940,7 +949,7 @@ export function VocabularyDetailPage() {
             <HotkeyTooltip hotkey="Alt + P" position="top">
               <Button
                 onClick={() =>
-                  speak(item.source_text, { audioUrl: item.audio_url })
+                  speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })
                 }
               >
                 {t('actions.playAudio')}
@@ -974,6 +983,7 @@ export function VocabularyDetailPage() {
               onSave={(val) => handleSaveField({ translation: cleanTranslationValue(val) })}
               placeholder={t('vocabulary.translation')}
               displayValue={<span className="text-2xl text-primary font-black underline decoration-2">{item.translation || t('vocabulary.translation')}</span>}
+              disabled={!isAdmin}
               renderCustomInput={(val, onChange, save, cancel) => (
                 <div className="flex flex-col gap-2">
                   <TranslationChips value={val} onChange={onChange} />
@@ -1047,6 +1057,7 @@ export function VocabularyDetailPage() {
               onSave={(val) => handleSaveField({ note: val || null })}
               placeholder={t('vocabulary.noNotes')}
               className="font-semibold text-muted-foreground"
+              disabled={!isAdmin}
             />
           </div>
         </Card>
