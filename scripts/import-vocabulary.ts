@@ -450,7 +450,6 @@ async function insertData(result: ParseResult) {
         item_type: entry.item_type,
         part_of_speech: entry.part_of_speech,
         ipa: enrichment?.ipa ?? null,
-        pronunciation_text: null,
         audio_url: enrichment?.audio_url ?? null,
         image_url: null,
         note: entry.note,

@@ -10,7 +10,6 @@ const question = {
   partOfSpeech: null,
   expectedTranslation: 'qua tao',
   audioUrl: null,
-  pronunciationText: null,
 }
 
 describe('translation quiz session persistence', () => {

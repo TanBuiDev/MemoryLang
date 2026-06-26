@@ -24,7 +24,6 @@ export interface VocabularyItem {
   item_type: VocabularyItemType
   part_of_speech: string | null
   ipa: string | null
-  pronunciation_text: string | null
   audio_url: string | null
   image_url: string | null
   note: string | null
@@ -48,7 +47,7 @@ export interface VocabularyItem {
   updated_at: string
 }
 
-export type RelationType = 'derivative' | 'collocation' | 'synonym' | 'antonym' | 'idiom' | 'related'
+export type RelationType = 'synonym' | 'antonym' | 'noun' | 'verb' | 'adjective' | 'adverb'
 
 export interface TermRelationship {
   id: string
@@ -69,7 +68,6 @@ export interface EnrichedVocabulary {
   itemType: VocabularyItemType
   ipa: string | null
   partOfSpeech: string | null
-  pronunciationText: string | null
   meanings: Meaning[]
   examples: ExampleSentence[]
   translationText?: string

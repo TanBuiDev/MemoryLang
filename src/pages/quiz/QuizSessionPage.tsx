@@ -182,7 +182,7 @@ export function QuizSessionPage() {
     const currentQuestion = session.questions[session.index]
     if (currentQuestion) {
       playedAudioForQuestionRef.current = currentQuestion.id
-      speakQuestion(currentQuestion.sourceText, currentQuestion.audioUrl, currentQuestion.pronunciationText)
+      speakQuestion(currentQuestion.sourceText, currentQuestion.audioUrl)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.index, autoPlayAudio])
@@ -235,7 +235,7 @@ export function QuizSessionPage() {
       const hotkey = hotkeyFromKeyboardEvent(event as unknown as import('react').KeyboardEvent<HTMLElement>)
       if (hotkey === quizHotkeys.playAudio && question) {
         event.preventDefault()
-        speakQuestion(question.sourceText, question.audioUrl, question.pronunciationText)
+        speakQuestion(question.sourceText, question.audioUrl)
       }
 
       if (!isCompleted && session && session.questions.length > 0) {
@@ -916,7 +916,7 @@ export function QuizSessionPage() {
                 <button
                   type="button"
                   className="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-md border-2 border-border bg-secondary text-secondary-foreground shadow-[2px_2px_0_var(--border)] hover:bg-[#321fb0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)]"
-                  onClick={() => { playedAudioForQuestionRef.current = question.id; speakQuestion(question.sourceText, question.audioUrl, question.pronunciationText) }}
+                  onClick={() => { playedAudioForQuestionRef.current = question.id; speakQuestion(question.sourceText, question.audioUrl) }}
                   aria-label={language === 'vi' ? 'Phát âm thanh' : 'Play audio'}
                 >
                   <Volume2 size={18} />

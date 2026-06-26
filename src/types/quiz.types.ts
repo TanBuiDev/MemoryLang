@@ -16,7 +16,6 @@ export interface TranslationInputQuestion {
   partOfSpeech: string | null
   expectedTranslation: string
   audioUrl: string | null
-  pronunciationText: string | null
 }
 
 export interface MultipleChoiceQuestion {
@@ -26,7 +25,6 @@ export interface MultipleChoiceQuestion {
   ipa: string | null
   partOfSpeech: string | null
   audioUrl: string | null
-  pronunciationText: string | null
   options: string[]
   correctIndex: number
   correctAlternatives: string[]

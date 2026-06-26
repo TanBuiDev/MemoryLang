@@ -13,7 +13,6 @@ const baseItem: VocabularyItem = {
   item_type: 'word',
   part_of_speech: null,
   ipa: null,
-  pronunciation_text: null,
   audio_url: null,
   image_url: null,
   note: null,

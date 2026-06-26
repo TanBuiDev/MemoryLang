@@ -10,7 +10,6 @@ describe('vocabularyFormSchema', () => {
       item_type: 'word',
       part_of_speech: 'noun',
       ipa: '/ˈæp.əl/',
-      pronunciation_text: '',
       audio_url: '',
       image_url: '',
       note: '',
