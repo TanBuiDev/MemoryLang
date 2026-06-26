@@ -31,14 +31,14 @@ const sidebarItems: SidebarItem[] = [
   { name: 'API Keys & Secrets', to: '/app/admin/secrets', icon: KeyRound, phase: 2, isReady: true },
   { name: 'Feature Flags', to: '/app/admin/features', icon: ToggleLeft, phase: 2, isReady: true },
   // Phase 3 & 4 (Show placeholder)
-  { name: 'Thư viện từ vựng', to: '/app/admin/vocabulary', icon: BookOpen, phase: 3, isReady: false },
-  { name: 'Quản lý Ngữ pháp', to: '/app/admin/grammar', icon: ScrollText, phase: 3, isReady: false },
-  { name: 'Quản lý Luyện nghe', to: '/app/admin/listening', icon: Headphones, phase: 3, isReady: false },
-  { name: 'Quản lý Storage', to: '/app/admin/storage', icon: Database, phase: 3, isReady: false },
-  { name: 'Edge Functions', to: '/app/admin/functions', icon: Terminal, phase: 4, isReady: false },
-  { name: 'Quản lý i18n', to: '/app/admin/i18n', icon: Languages, phase: 4, isReady: false },
-  { name: 'Lịch sử thao tác', to: '/app/admin/audit', icon: History, phase: 4, isReady: false },
-  { name: 'Thống kê nâng cao', to: '/app/admin/analytics', icon: BarChart3, phase: 4, isReady: false },
+  { name: 'Thư viện từ vựng', to: '/app/admin/vocabulary', icon: BookOpen, phase: 3, isReady: true },
+  { name: 'Quản lý Ngữ pháp', to: '/app/admin/grammar', icon: ScrollText, phase: 3, isReady: true },
+  { name: 'Quản lý Luyện nghe', to: '/app/admin/listening', icon: Headphones, phase: 3, isReady: true },
+  { name: 'Quản lý Storage', to: '/app/admin/storage', icon: Database, phase: 3, isReady: true },
+  { name: 'Edge Functions', to: '/app/admin/functions', icon: Terminal, phase: 4, isReady: true },
+  { name: 'Quản lý i18n', to: '/app/admin/i18n', icon: Languages, phase: 4, isReady: true },
+  { name: 'Lịch sử thao tác', to: '/app/admin/audit', icon: History, phase: 4, isReady: true },
+  { name: 'Thống kê nâng cao', to: '/app/admin/analytics', icon: BarChart3, phase: 4, isReady: true },
 ]
 
 export function AdminSidebar() {
