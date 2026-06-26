@@ -1,4 +1,5 @@
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.20'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.105.4'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,6 +42,51 @@ function getDefaultVoice(language: string): string {
     'de-DE': 'de-DE-Wavenet-B',
   }
   return voices[language] ?? 'en-US-Wavenet-D'
+}
+
+interface TtsConfig {
+  voice_name: string
+  speaking_rate: number
+  pitch: number
+  ssml_gender: string
+  audio_encoding: string
+}
+
+async function getTtsConfig(language: string): Promise<TtsConfig> {
+  const defaults: TtsConfig = {
+    voice_name: getDefaultVoice(language),
+    speaking_rate: 1.0,
+    pitch: 0,
+    ssml_gender: 'NEUTRAL',
+    audio_encoding: 'MP3',
+  }
+
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    )
+    const { data } = await supabase
+      .from('tts_voice_config')
+      .select('voice_name, speaking_rate, pitch, ssml_gender, audio_encoding')
+      .eq('language_code', language)
+      .eq('enabled', true)
+      .maybeSingle()
+
+    if (data) {
+      return {
+        voice_name: data.voice_name ?? defaults.voice_name,
+        speaking_rate: Number(data.speaking_rate) || defaults.speaking_rate,
+        pitch: Number(data.pitch) || defaults.pitch,
+        ssml_gender: data.ssml_gender ?? defaults.ssml_gender,
+        audio_encoding: data.audio_encoding ?? defaults.audio_encoding,
+      }
+    }
+  } catch {
+    // fall through to defaults
+  }
+
+  return defaults
 }
 
 function getR2Client(): AwsClient {
@@ -183,7 +229,8 @@ Deno.serve(async (request) => {
       )
     }
 
-    const voiceName = voice || getDefaultVoice(language)
+    const config = await getTtsConfig(language)
+    const voiceName = voice || config.voice_name
     const key = `tts/${language}/${voiceName}/${hashKey(text, language)}.mp3`
 
     const exists = await r2Head(key)
@@ -204,8 +251,12 @@ Deno.serve(async (request) => {
       },
       body: JSON.stringify({
         input: { text },
-        voice: { languageCode: language, name: voiceName, ssmlGender: 'NEUTRAL' },
-        audioConfig: { audioEncoding: 'MP3' },
+        voice: { languageCode: language, name: voiceName, ssmlGender: config.ssml_gender },
+        audioConfig: {
+          audioEncoding: config.audio_encoding,
+          speakingRate: config.speaking_rate,
+          pitch: config.pitch,
+        },
       }),
     })
 

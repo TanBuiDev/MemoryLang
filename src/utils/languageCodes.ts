@@ -13,3 +13,17 @@ export const languageOptions: Array<{ code: LanguageCode; label: string }> = [
 
 export const levels = ['Beginner', 'Elementary', 'Intermediate', 'Upper Intermediate', 'Advanced']
 export const goals = ['Daily communication', 'Interview', 'Travel', 'Academic', 'IELTS/TOEIC', 'Business', 'IT vocabulary', 'Custom']
+
+const ttsCodeMap: Record<string, string> = {
+  vi: 'vi-VN',
+  en: 'en-US',
+  ko: 'ko-KR',
+  ja: 'ja-JP',
+  zh: 'zh-CN',
+  fr: 'fr-FR',
+  de: 'de-DE',
+}
+
+export function languageToTtsCode(lang: LanguageCode): string | null {
+  return ttsCodeMap[lang] ?? null
+}

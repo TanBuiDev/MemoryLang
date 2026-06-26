@@ -4,6 +4,19 @@ import { adminService } from '@/services/supabase/admin.service'
 import { generateAudio } from '@/services/api/generateAudio.api'
 import type { TtsVoiceConfig } from '@/types/admin.types'
 
+function getVoiceGender(voiceName: string): string {
+  const suffix = voiceName.split('-').pop() ?? ''
+  if (['A', 'C', 'E', 'F'].includes(suffix)) return 'Nữ'
+  if (['B', 'D'].includes(suffix)) return 'Nam'
+  return '—'
+}
+
+function getVoiceGenderStyle(gender: string): string {
+  if (gender === 'Nữ') return 'bg-pink-100 text-pink-800 border-pink-300'
+  if (gender === 'Nam') return 'bg-blue-100 text-blue-800 border-blue-300'
+  return 'bg-slate-100 text-slate-800 border-slate-300'
+}
+
 export default function AdminTtsPage() {
   const [configs, setConfigs] = useState<TtsVoiceConfig[]>([])
   const [loading, setLoading] = useState(true)
@@ -63,7 +76,6 @@ export default function AdminTtsPage() {
         voice_name: editForm.voice_name,
         speaking_rate: Number(editForm.speaking_rate || 1.0),
         pitch: Number(editForm.pitch || 0),
-        ssml_gender: editForm.ssml_gender,
         enabled: editForm.enabled,
       })
 
@@ -148,14 +160,8 @@ export default function AdminTtsPage() {
                         {config.speaking_rate}x / {config.pitch}st
                       </td>
                       <td className="px-4 py-3 font-bold text-center border-r border-border/30">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${
-                          config.ssml_gender === 'FEMALE'
-                            ? 'bg-pink-100 text-pink-800 border-pink-300'
-                            : config.ssml_gender === 'MALE'
-                            ? 'bg-blue-100 text-blue-800 border-blue-300'
-                            : 'bg-slate-100 text-slate-800 border-slate-300'
-                        }`}>
-                          {config.ssml_gender}
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${getVoiceGenderStyle(getVoiceGender(config.voice_name))}`}>
+                          {getVoiceGender(config.voice_name)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -222,19 +228,6 @@ export default function AdminTtsPage() {
                       className="px-3 py-1.5 border-2 border-border rounded bg-card text-xs font-bold focus:outline-none focus:border-primary"
                     />
                   </div>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-black text-foreground">Giới tính (Gender)</label>
-                  <select
-                    value={editForm.ssml_gender || 'NEUTRAL'}
-                    onChange={e => setEditForm(prev => ({ ...prev, ssml_gender: e.target.value as any }))}
-                    className="px-3 py-1.5 border-2 border-border rounded bg-card text-xs font-bold focus:outline-none focus:border-primary"
-                  >
-                    <option value="NEUTRAL">NEUTRAL</option>
-                    <option value="FEMALE">FEMALE</option>
-                    <option value="MALE">MALE</option>
-                  </select>
                 </div>
 
                 <button

@@ -11,7 +11,6 @@ export interface TtsVoiceConfig {
   voice_name: string
   speaking_rate: number
   pitch: number
-  ssml_gender: 'NEUTRAL' | 'FEMALE' | 'MALE'
   audio_encoding: 'MP3' | 'OGG_OPUS' | 'LINEAR16'
   enabled: boolean
 }
