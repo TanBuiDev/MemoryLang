@@ -13,7 +13,7 @@ vi.mock('@/services/supabase/client', () => ({
 }))
 
 describe('relationshipService auto-direction helpers', () => {
-  it.each(['synonym', 'antonym', 'related'] as const)('creates two rows for %s', async (relationType) => {
+  it.each(['synonym', 'antonym'] as const)('creates two rows for %s', async (relationType) => {
     mocks.upsert.mockResolvedValueOnce({ error: null })
     mocks.from.mockReturnValueOnce({ upsert: mocks.upsert })
 
@@ -29,7 +29,7 @@ describe('relationshipService auto-direction helpers', () => {
     expect(isBidirectionalRelationType(relationType)).toBe(true)
   })
 
-  it.each(['derivative', 'collocation', 'idiom'] as const)('creates one row for %s', async (relationType) => {
+  it.each(['noun', 'verb', 'adjective', 'adverb'] as const)('creates one row for %s', async (relationType) => {
     mocks.upsert.mockResolvedValueOnce({ error: null })
     mocks.from.mockReturnValueOnce({ upsert: mocks.upsert })
 
@@ -44,12 +44,12 @@ describe('relationshipService auto-direction helpers', () => {
 
   it('returns all six relationship groups when empty', () => {
     expect(Object.keys(createEmptyRelationshipGroups()).sort()).toEqual([
+      'adjective',
+      'adverb',
       'antonym',
-      'collocation',
-      'derivative',
-      'idiom',
-      'related',
+      'noun',
       'synonym',
+      'verb',
     ])
   })
 })

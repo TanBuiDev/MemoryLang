@@ -1,21 +1,21 @@
 import type { RelationType, VocabularyItem } from '@/types/vocabulary.types'
 
 export const relationshipLabelKeys: Record<RelationType, string> = {
-  derivative: 'vocabulary.relationshipDerivative',
-  collocation: 'vocabulary.relationshipCollocation',
   synonym: 'vocabulary.relationshipSynonym',
   antonym: 'vocabulary.relationshipAntonym',
-  idiom: 'vocabulary.relationshipIdiom',
-  related: 'vocabulary.relationshipRelated',
+  noun: 'vocabulary.relationshipNoun',
+  verb: 'vocabulary.relationshipVerb',
+  adjective: 'vocabulary.relationshipAdjective',
+  adverb: 'vocabulary.relationshipAdverb',
 }
 
 export const relationshipDisplayOrder: RelationType[] = [
-  'derivative',
-  'collocation',
   'synonym',
   'antonym',
-  'idiom',
-  'related',
+  'noun',
+  'verb',
+  'adjective',
+  'adverb',
 ]
 
 export function hasRelatedTerms(relationships: Record<RelationType, VocabularyItem[]>): boolean {

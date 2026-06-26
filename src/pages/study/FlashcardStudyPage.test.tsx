@@ -143,7 +143,7 @@ async function renderPage(items: VocabularyItem[] = [baseItem], lookupItems: Voc
     entry: lookupItems.find((entry) => entry.id === id) ?? baseItem,
     relationships: {
       ...createEmptyRelationshipGroups(),
-      derivative: [
+      noun: [
         relatedTerm('product', 'product', 'sản phẩm'),
         relatedTerm('production', 'production', 'việc sản xuất'),
       ],
@@ -200,7 +200,7 @@ describe('FlashcardStudyPage', () => {
     await renderPage()
 
     expect(await screen.findByText('sản xuất')).toBeInTheDocument()
-    expect(await screen.findByText('Phái sinh')).toBeInTheDocument()
+    expect(await screen.findByText('Danh từ')).toBeInTheDocument()
     expect(screen.getByText('product')).toBeInTheDocument()
     expect(screen.getByText('production')).toBeInTheDocument()
   })

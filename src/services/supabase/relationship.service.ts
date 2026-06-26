@@ -1,17 +1,17 @@
 import { supabase } from '@/services/supabase/client'
 import type { RelationType, TermRelationship, VocabularyItem, VocabularyCardResponse } from '@/types/vocabulary.types'
 
-export const relationshipTypes: RelationType[] = ['derivative', 'collocation', 'synonym', 'antonym', 'idiom', 'related']
-export const bidirectionalRelationshipTypes = new Set<RelationType>(['synonym', 'antonym', 'related'])
+export const relationshipTypes: RelationType[] = ['synonym', 'antonym', 'noun', 'verb', 'adjective', 'adverb']
+export const bidirectionalRelationshipTypes = new Set<RelationType>(['synonym', 'antonym'])
 
 export function createEmptyRelationshipGroups(): Record<RelationType, VocabularyItem[]> {
   return {
-    derivative: [],
-    collocation: [],
     synonym: [],
     antonym: [],
-    idiom: [],
-    related: [],
+    noun: [],
+    verb: [],
+    adjective: [],
+    adverb: [],
   }
 }
 
