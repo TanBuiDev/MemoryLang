@@ -22,11 +22,12 @@ Vocabulary learning & spaced-repetition flashcard web app. Primary audience: Vie
 
 ## Scripts
 ```
-pnpm dev          # Vite dev server
-pnpm build        # tsc -b && vite build
-pnpm lint         # eslint
-pnpm test         # vitest run
-pnpm test:watch   # vitest (watch mode)
+pnpm dev           # Vite dev server
+pnpm build         # tsc -b && vite build
+pnpm lint          # eslint
+pnpm test          # vitest run
+pnpm test:watch    # vitest (watch mode)
+pnpm sync:secrets  # Sync API keys from .env to Supabase Edge Function secrets
 ```
 
 ## Path Aliases
@@ -98,6 +99,7 @@ Quiz demo sessions scope vocabulary by deck through `getDemoVocabularyForDeck()`
 - `translation` = direct translation of the word to user's native language (banana → quả chuối)
 - `examples[].translation` = translation of the example sentence
 - Vocabulary enrichment gets IPA/part of speech/audio only from dictionaryapi.dev, and only for inferred single English words. Phrases, idioms, sentences, non-English source terms, API errors, and fallback mode return empty IPA unless manually entered or already cached.
+- When dictionary enrichment returns no `audio_url`, `AddVocabularyForm` auto-calls the `generate-audio` Edge Function (Google Cloud TTS → R2) to produce a WaveNet audio file. Generated audio is cached in R2 by text+language hash; subsequent requests return the cached URL immediately.
 - Vocabulary detail uses `relationshipService.getCard(id)` to load the main term plus grouped `term_relationships`. Edit vocabulary can create/delete related-term links; `synonym`, `antonym`, and `related` are stored bidirectionally, while `derivative`, `collocation`, and `idiom` are stored one-way.
 - Signed-in users can select existing vocabulary in the library and create randomized lesson decks in batches. Each batch divides selected terms into `Bai hoc NN` decks with a chosen maximum term count and continues numbering from existing generated lesson names. A lesson deck is reported as created only after its term links succeed; if linking the current deck fails, `deckService.createLessonBatch()` attempts to remove that incomplete deck while retaining and reporting earlier complete lessons. After complete or partial batch creation, `/app/vocabulary` reports the completed lesson count with actions to open `/app/decks` or dismiss the message; it does not automatically open a generated lesson. Demo/offline mode does not create persisted lesson decks.
 - Flashcard study uses `relationshipService.getCard(currentTermId)` for the active card so one-side cards and flipped two-side cards can show translation fallback, examples, notes, images, and compact related terms. `/app/study` is a study command center with session setup, optional resume card, and Supabase-backed recent study history. Remote study sessions create a `study_sessions` row at start, update viewed/remembered/forgot counts only on confirmed completion, prune history to the latest 30 sessions, and return to `/app/study` instead of a separate result screen. Users can delete individual history rows or clear all saved study history; vocabulary and review schedules are unaffected. Study sessions freeze a prepared vocabulary snapshot at session start and persist the snapshot, current card index, selected study mode, active session key, provisional ratings, and whether the final card has been reached in `sessionStorage`, so browser reloads and backward navigation preserve completion eligibility. Two-side cards use a lightweight CSS 3D flip with fixed-height front/back faces; one-side card height changes use a measured 180ms height transition. The study session UI normally exposes two review choices (`remember`/`forgot`) mapped to `know`/`dont_know`; setup can optionally require a timed centered `Đã nhớ` confirmation before forward or auto advancement, where click or its configured hotkey selects provisional `know` and timeout selects provisional `dont_know`. When confirmation mode is enabled, toolbar grading buttons are hidden and already rated cards do not prompt again. Settings exposes locally persisted flashcard hotkeys for confirm, grading, navigation, flip, auto-play, and session ending; hotkeys accept single keys or modifier combinations, do not run inside editable controls or completion/discard modals, and duplicate assignments are blocked before save. Once the final card is displayed, the right control and top card action become `Hoàn thành`; completing from either location opens one save-results modal. Before the final card is reached, `Kết thúc` opens an encouraging discard warning and abandoning the session records no SRS result. Auto-play stops and opens completion confirmation after traversing the final card.
@@ -150,16 +152,68 @@ The authenticated `nav.study` sidebar link resumes an active stored flashcard se
 ## Environment
 - `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env`
 - Without these, app runs in demo mode with hardcoded data
+- `UNSPLASH_ACCESS_KEY`, `PEXELS_API_KEY`, `PIXABAY_API_KEY` in `.env` (for image search Edge Function)
+- `GOOGLE_TTS_CREDENTIALS_B64` in `.env` (base64 of Google Cloud Service Account JSON key for TTS Edge Function)
+- `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_DOMAIN` in `.env` (Cloudflare R2 for storing generated TTS audio)
 - Supabase local dev: `supabase/config.toml` (ports 54321/54322)
+- Run `pnpm sync:secrets` after changing API keys in `.env` to push them to Supabase
 
 ## Supabase CLI & Deployment
 - CLI available via `npx supabase` (v2.98+, no global install needed)
 - Project ref: `brwvbpkgimhamivmaflu` (MemoryLang, Sydney region)
 - Org ID: `lwpjxmfjvvdiufbsrviu`
 - Remote DB has applied migration `20260522113956_add_local_first_srs_batch_sync.sql` for SM-2 SRS columns and the `apply_study_review_batch` RPC.
-- Deploy edge function: `npx supabase functions deploy enrich-vocabulary --project-ref brwvbpkgimhamivmaflu`
+- Deploy edge functions: `npx supabase functions deploy <name> --project-ref brwvbpkgimhamivmaflu`
 - Edge functions source: `supabase/functions/<name>/index.ts`
+- **Edge Functions (3):**
+  - `enrich-vocabulary` — dictionary lookup + machine translation
+  - `search-images` — proxies Unsplash (primary), Pexels, and Pixabay APIs for vocabulary illustrations. All images are downloaded and re-uploaded to `vocabulary-images` bucket. API keys stored in `.env` and synced to Edge Function secrets via `pnpm sync:secrets`.
+  - `generate-audio` — Google Cloud Text-to-Speech (WaveNet voices) with audio caching in Cloudflare R2. Accepts `text`, `language` (BCP-47), and optional `voice` name. Returns `audioUrl` + `cached` flag.
 - Dashboard: https://supabase.com/dashboard/project/brwvbpkgimhamivmaflu
 
 ## Git Conventions
 See `AGENTS.md` for commit workflow. Conventional commits: `feat:`, `fix:`, `docs:`, `chore:`, `test:`, `refactor:`. No auto-push. Check for secrets before committing.
+
+<!-- gitnexus:start -->
+# GitNexus — Code Intelligence
+
+This project is indexed by GitNexus as **MemoryLang** (3304 symbols, 5670 relationships, 262 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+
+## Always Do
+
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
+- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
+- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
+- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
+
+## Never Do
+
+- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
+- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
+- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
+- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
+
+## Resources
+
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/MemoryLang/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/MemoryLang/clusters` | All functional areas |
+| `gitnexus://repo/MemoryLang/processes` | All execution flows |
+| `gitnexus://repo/MemoryLang/process/{name}` | Step-by-step execution trace |
+
+## CLI
+
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+
+<!-- gitnexus:end -->

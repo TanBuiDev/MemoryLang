@@ -10,7 +10,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sync:secrets": "node scripts/sync-secrets.mjs",
+    "migrate:audio": "npx tsx scripts/migrate-audio.ts",
+    "migrate:audio:dry": "npx tsx scripts/migrate-audio.ts --dry-run"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

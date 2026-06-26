@@ -40,3 +40,4 @@ skills-lock.json
 /playwright/.cache/
 docs/superpowers/plans/
 .playwright-mcp/
+.opencode/skills/

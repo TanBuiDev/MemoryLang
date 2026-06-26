@@ -5,7 +5,7 @@ Vocabulary learning & spaced-repetition flashcard web app. Primary audience: Vie
 ## Features
 
 - **Vocabulary CRUD** — Add, edit, delete words/phrases/idioms/sentences
-- **AI-powered enrichment** — Auto-generate IPA, definitions, translations, and example sentences via Edge Function
+- **Image search** — Search and add illustrations from Unsplash, Pexels, and Pixabay directly from the vocabulary detail page
 - **Flashcard study** — Two-side and one-side card modes with progress tracking
 - **Translation quiz** — Choose all vocabulary or a deck, type translations, reveal answers when stuck, and receive a score
 - **Generated lessons** — Split selected vocabulary into randomized lesson decks, then quiz a completed lesson immediately
@@ -46,9 +46,21 @@ Create a `.env` file in the project root:
 ```env
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Image search API keys (used by Edge Function search-images)
+# Get keys at: unsplash.com/developers | pexels.com/api | pixabay.com/api
+UNSPLASH_ACCESS_KEY=your_unsplash_access_key
+PEXELS_API_KEY=your_pexels_api_key
+PIXABAY_API_KEY=your_pixabay_api_key
 ```
 
-Without these variables, the app runs in **demo mode** with hardcoded data.
+Without `VITE_SUPABASE_*` variables, the app runs in **demo mode** with hardcoded data.
+
+After setting or changing API keys in `.env`, sync them to Supabase Edge Function secrets:
+
+```bash
+pnpm sync:secrets
+```
 
 ### Development
 
@@ -122,8 +134,12 @@ src/
 ## Deployment
 
 ```bash
-# Deploy Edge Function
+# Sync API keys from .env to Supabase
+pnpm sync:secrets
+
+# Deploy Edge Functions
 npx supabase functions deploy enrich-vocabulary --project-ref <your-project-ref>
+npx supabase functions deploy search-images --project-ref <your-project-ref>
 
 # Push database migrations
 npx supabase db push
