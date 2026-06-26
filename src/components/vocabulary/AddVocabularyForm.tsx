@@ -71,7 +71,7 @@ export function AddVocabularyForm({ onSuccess }: AddVocabularyFormProps) {
             note: values.note ?? null,
             meanings: values.meanings,
             translation: values.translation ?? null,
-            examples: values.examples,
+            examples: values.examples?.map(ex => ({ sentence: ex.sentence, translation: ex.translation ?? undefined })) || [],
             tags: values.tags,
             status: 'new' as import('@/types/vocabulary.types').VocabularyStatus,
             view_count: 0,

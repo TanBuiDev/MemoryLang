@@ -3,13 +3,13 @@ import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tansta
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { Flag, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
-import { StatTile } from '@/components/common/StatTile'
+
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { Input, Label, SearchInput } from '@/components/ui/input'
+import { Label, SearchInput } from '@/components/ui/input'
 import { TranslationChips, cleanTranslationValue } from '@/components/ui/translation-chips'
 import { InlineEditableField } from '@/components/ui/inline-editable-field'
 import { demoVocabulary } from '@/features/demo/demoData'
@@ -56,7 +56,7 @@ interface HotkeyTooltipProps {
 
 export function HotkeyTooltip({ children, hotkey, delay = 1000, position = 'bottom' }: HotkeyTooltipProps) {
   const [show, setShow] = useState(false)
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleMouseEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
@@ -76,18 +76,19 @@ export function HotkeyTooltip({ children, hotkey, delay = 1000, position = 'bott
     }
   }, [])
 
+  const childProps = children.props as any
   const trigger = cloneElement(children, {
     onMouseEnter: (e: React.MouseEvent) => {
       handleMouseEnter()
-      if (children.props.onMouseEnter) children.props.onMouseEnter(e)
+      if (childProps.onMouseEnter) childProps.onMouseEnter(e)
     },
     onMouseLeave: (e: React.MouseEvent) => {
       handleMouseLeave()
-      if (children.props.onMouseLeave) children.props.onMouseLeave(e)
+      if (childProps.onMouseLeave) childProps.onMouseLeave(e)
     },
     onClick: (e: React.MouseEvent) => {
       handleMouseLeave()
-      if (children.props.onClick) children.props.onClick(e)
+      if (childProps.onClick) childProps.onClick(e)
     }
   } as any)
 
@@ -111,7 +112,7 @@ export function VocabularyDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { t, language } = useI18n()
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
@@ -143,7 +144,7 @@ export function VocabularyDetailPage() {
   const [imageSearchLoading, setImageSearchLoading] = useState(false)
   const [imageSearchError, setImageSearchError] = useState<string | null>(null)
   const [downloadingImageId, setDownloadingImageId] = useState<string | null>(null)
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Reset toàn bộ state ở cấp độ trang khi ID từ vựng thay đổi (khi chuyển đổi giữa các từ)
   useEffect(() => {
@@ -229,7 +230,7 @@ export function VocabularyDetailPage() {
       : demoVocabulary
 
     return filterActiveVocabulary(baseList)
-      .filter((v) => v.item_type !== 'grammar' && !v.tags?.some((tag) => tag === 'grammar' || tag === 'pattern'))
+      .filter((v) => (v.item_type as string) !== 'grammar' && !v.tags?.some((tag) => tag === 'grammar' || tag === 'pattern'))
       .map((v) => v.id)
   }, [location.state, shouldUseRemoteData, vocabularyListQuery.data])
 

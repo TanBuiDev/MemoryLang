@@ -93,7 +93,7 @@ export function VocabularyListPage() {
   }
   const rawVocabulary = filterActiveVocabulary(shouldUseRemoteData
     ? vocabularyQuery.data ?? cachedVocabulary
-    : demoVocabulary).filter((v) => v.item_type !== 'grammar' && !v.tags?.some((t) => t === 'grammar' || t === 'pattern'))
+    : demoVocabulary).filter((v) => (v.item_type as string) !== 'grammar' && !v.tags?.some((t) => t === 'grammar' || t === 'pattern'))
   const vocabulary = useMemo(() => {
     const normalizedSearch = debouncedSearch.trim().toLowerCase()
     let filtered = filterStatus === 'all'
