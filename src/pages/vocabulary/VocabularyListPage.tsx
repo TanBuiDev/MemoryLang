@@ -335,7 +335,9 @@ export function VocabularyListPage() {
   ) : (
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="ghost" disabled={!shouldUseRemoteData} onClick={enterSelectMode}>{t('vocabulary.select')}</Button>
-      <Button onClick={() => setAddModalOpen(true)}>{t('vocabulary.add')}</Button>
+      {profile?.is_admin && (
+        <Button onClick={() => setAddModalOpen(true)}>{t('vocabulary.add')}</Button>
+      )}
     </div>
   )
 
@@ -509,7 +511,7 @@ export function VocabularyListPage() {
         onConfirm={confirmDelete}
         onCancel={cancelDelete}
       />
-      <AddVocabularyModal open={addModalOpen} onClose={() => setAddModalOpen(false)} />
+      {profile?.is_admin && <AddVocabularyModal open={addModalOpen} onClose={() => setAddModalOpen(false)} />}
     </>
   )
 }

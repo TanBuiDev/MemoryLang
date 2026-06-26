@@ -94,7 +94,9 @@ export function DashboardPage() {
           <CardDescription className="mt-2">{t('dashboard.dailyGoalProgress', { reviewed: wordsReviewedToday, goal: dailyGoal })}</CardDescription>
           <div className="mt-4"><Progress value={dailyProgress} /></div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button asChild><Link to="/app/vocabulary/new">{t('actions.addNewWord')}</Link></Button>
+            {profile?.is_admin && (
+              <Button asChild><Link to="/app/vocabulary/new">{t('actions.addNewWord')}</Link></Button>
+            )}
             <Button asChild variant="secondary"><Link to="/app/review">{t('actions.reviewToday')}</Link></Button>
           </div>
         </Card>

@@ -115,6 +115,8 @@ export function VocabularyDetailPage() {
   const { t } = useI18n()
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
+  const profile = useAuthStore((state) => state.profile)
+  const isAdmin = Boolean(profile?.is_admin)
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
 
   const [formError, setFormError] = useState<string | null>(null)
@@ -726,6 +728,7 @@ export function VocabularyDetailPage() {
               editClassName="w-[300px] md:w-[500px]"
               fullWidth={false}
               placeholder={t('vocabulary.sourceText')}
+              disabled={!isAdmin}
             />
             <Button
               type="button"
@@ -771,6 +774,7 @@ export function VocabularyDetailPage() {
               }))}
               onSave={(val) => handleSaveField({ item_type: val as VocabularyItemType })}
               displayValue={<Badge className="cursor-pointer font-black">{t(itemTypeLabelKeys[item.item_type])}</Badge>}
+              disabled={!isAdmin}
             />
           </div>
 
@@ -795,6 +799,7 @@ export function VocabularyDetailPage() {
               type="input"
               onSave={(val) => handleSaveField({ part_of_speech: val || null })}
               placeholder={t('vocabulary.partOfSpeech')}
+              disabled={!isAdmin}
               displayValue={
                 item.part_of_speech ? (
                   <Badge className="cursor-pointer bg-muted text-foreground font-black">{item.part_of_speech}</Badge>
@@ -894,37 +899,40 @@ export function VocabularyDetailPage() {
                   onSave={(val) => handleSaveField({ ipa: val || null })}
                   placeholder="/.../"
                   className="font-mono text-xl font-black"
+                  disabled={!isAdmin}
                 />
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-8 px-3 text-xs"
-                disabled={enrichingIpa}
-                onClick={async () => {
-                  setEnrichingIpa(true)
-                  try {
-                    const enriched = await enrichVocabulary(item.source_text, item.source_language, item.native_language)
-                    await handleSaveField({
-                      ipa: enriched.ipa ?? item.ipa,
-                      part_of_speech: enriched.partOfSpeech ?? item.part_of_speech,
-                    })
-                  } catch {
-                    /* ignored */
-                  }
-                  setEnrichingIpa(false)
-                }}
-              >
-                {enrichingIpa ? (
-                  <span className="inline-flex items-center gap-0.5">
-                    <span className="inline-block animate-bounce [animation-delay:0ms]">.</span>
-                    <span className="inline-block animate-bounce [animation-delay:150ms]">.</span>
-                    <span className="inline-block animate-bounce [animation-delay:300ms]">.</span>
-                  </span>
-                ) : (
-                  t('vocabulary.regenerateIpa')
-                )}
-              </Button>
+              {isAdmin && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-8 px-3 text-xs"
+                  disabled={enrichingIpa}
+                  onClick={async () => {
+                    setEnrichingIpa(true)
+                    try {
+                      const enriched = await enrichVocabulary(item.source_text, item.source_language, item.native_language)
+                      await handleSaveField({
+                        ipa: enriched.ipa ?? item.ipa,
+                        part_of_speech: enriched.partOfSpeech ?? item.part_of_speech,
+                      })
+                    } catch {
+                      /* ignored */
+                    }
+                    setEnrichingIpa(false)
+                  }}
+                >
+                  {enrichingIpa ? (
+                    <span className="inline-flex items-center gap-0.5">
+                      <span className="inline-block animate-bounce [animation-delay:0ms]">.</span>
+                      <span className="inline-block animate-bounce [animation-delay:150ms]">.</span>
+                      <span className="inline-block animate-bounce [animation-delay:300ms]">.</span>
+                    </span>
+                  ) : (
+                    t('vocabulary.regenerateIpa')
+                  )}
+                </Button>
+              )}
             </div>
           </div>
 
@@ -944,8 +952,8 @@ export function VocabularyDetailPage() {
 
           <div>
             <CardTitle className="text-sm uppercase text-muted-foreground mb-1">{t('vocabulary.meaning')}</CardTitle>
-            <InlineEditableField
-              value={item.meanings[0]?.text ?? ''}
+             <InlineEditableField
+              value={item.meanings?.[0]?.text ?? ''}
               type="textarea"
               onSave={(val) =>
                 handleSaveField({
@@ -954,6 +962,7 @@ export function VocabularyDetailPage() {
               }
               placeholder={t('vocabulary.noNotes')}
               className="font-semibold text-muted-foreground"
+              disabled={!isAdmin}
             />
           </div>
 
@@ -994,25 +1003,26 @@ export function VocabularyDetailPage() {
               <div className="p-3 border-2 border-border rounded-md bg-slate-50/50">
                 <Label className="text-xs text-muted-foreground font-semibold mb-1 block">Câu ví dụ (English)</Label>
                 <InlineEditableField
-                  value={item.examples[0]?.sentence ?? ''}
+                  value={item.examples?.[0]?.sentence ?? ''}
                   type="textarea"
                   onSave={(val) => {
-                    const trans = item.examples[0]?.translation ?? ''
+                    const trans = item.examples?.[0]?.translation ?? ''
                     handleSaveField({
                       examples: val ? [{ sentence: val, translation: trans }] : [],
                     })
                   }}
                   placeholder="Ví dụ: We should apologize for an error."
                   className="font-semibold"
+                  disabled={!isAdmin}
                 />
               </div>
               <div className="p-3 border-2 border-border rounded-md bg-slate-50/50">
                 <Label className="text-xs text-muted-foreground font-semibold mb-1 block">Dịch nghĩa câu ví dụ (Vietnamese)</Label>
                 <InlineEditableField
-                  value={item.examples[0]?.translation ?? ''}
+                  value={item.examples?.[0]?.translation ?? ''}
                   type="input"
                   onSave={(val) => {
-                    const sent = item.examples[0]?.sentence ?? ''
+                    const sent = item.examples?.[0]?.sentence ?? ''
                     if (sent) {
                       handleSaveField({
                         examples: [{ sentence: sent, translation: val }],
@@ -1021,6 +1031,7 @@ export function VocabularyDetailPage() {
                   }}
                   placeholder="Dịch nghĩa: Chúng tôi xin lỗi vì sai sót."
                   className="text-muted-foreground"
+                  disabled={!isAdmin}
                 />
               </div>
             </div>
@@ -1059,24 +1070,28 @@ export function VocabularyDetailPage() {
                   >
                     {imageFit === 'fit' ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-7 w-7 p-0"
-                    onClick={() => fileInputRef.current?.click()}
-                    title={t('vocabulary.changeImage')}
-                  >
-                    <Upload className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="danger"
-                    className="h-7 w-7 p-0 border-2 border-border shadow-[1px_1px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
-                    onClick={handleImageDelete}
-                    title={t('vocabulary.deleteImage')}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  {isAdmin && (
+                    <>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-7 w-7 p-0"
+                        onClick={() => fileInputRef.current?.click()}
+                        title={t('vocabulary.changeImage')}
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        className="h-7 w-7 p-0 border-2 border-border shadow-[1px_1px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+                        onClick={handleImageDelete}
+                        title={t('vocabulary.deleteImage')}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -1130,18 +1145,23 @@ export function VocabularyDetailPage() {
               </div>
             ) : (
               <div
-                onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md bg-muted/10 hover:bg-slate-50/50 cursor-pointer transition-all gap-2"
+                onClick={() => isAdmin && fileInputRef.current?.click()}
+                className={cn(
+                  "flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-md bg-muted/10 transition-all gap-2",
+                  isAdmin ? "hover:bg-slate-50/50 cursor-pointer" : "cursor-default"
+                )}
               >
                 <div className="p-3 rounded-full bg-muted border-2 border-border shadow-[2px_2px_0_var(--border)]">
                   <ImageIcon className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <span className="text-xs font-black text-muted-foreground">{t('vocabulary.uploadImage')}</span>
+                <span className="text-xs font-black text-muted-foreground">
+                  {isAdmin ? t('vocabulary.uploadImage') : 'Chưa có ảnh minh họa'}
+                </span>
               </div>
             )}
           </Card>
 
-          {shouldUseRemoteData && (
+          {shouldUseRemoteData && isAdmin && (
             <Card className="p-4 flex flex-col gap-3">
               <CardTitle className="text-sm uppercase text-muted-foreground">{t('vocabulary.searchImages')}</CardTitle>
               <div className="flex gap-2">
@@ -1226,70 +1246,72 @@ export function VocabularyDetailPage() {
             </Card>
           )}
 
-          <Card>
-            <CardTitle className="text-base font-black">{t('vocabulary.addRelationship')}</CardTitle>
-            <div className="mt-4 grid gap-3">
-              <div className="relative" ref={relationWrapperRef}>
-                <SearchInput
-                  placeholder={t('vocabulary.search')}
-                  value={relationSearch}
-                  onChange={(e) => { setRelationSearch(e.target.value); setIsSearching(true); setRelationHighlightIndex(-1) }}
-                  onKeyDown={handleRelationKeyDown}
-                  disabled={!shouldUseRemoteData}
-                />
-                {isSearching && targetOptions.length > 0 && (
-                  <div ref={relationListRef} className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-auto rounded-md border-2 border-border bg-card divide-y-2 divide-border shadow-[4px_4px_0_var(--border)] z-20">
-                    {filteredTargetOptions.length > 0 ? (
-                      filteredTargetOptions.map((entry, idx) => (
-                        <button
-                          key={entry.id}
-                          type="button"
-                          onClick={() => { setTargetId(entry.id); setRelationSearch(entry.source_text); setIsSearching(false); setRelationHighlightIndex(-1); requestAnimationFrame(() => pillRefs.current.get(relationType)?.focus()) }}
-                          className={`w-full px-3 py-2 text-left text-sm font-semibold transition hover:bg-muted ${entry.id === targetId || idx === relationHighlightIndex ? 'bg-primary text-primary-foreground' : ''}`}
-                        >
-                          <span className="font-black">{entry.source_text}</span>
-                          {entry.translation ? <span className="text-muted-foreground ml-2">— {entry.translation}</span> : null}
-                        </button>
-                      ))
-                    ) : (
-                      <p className="px-3 py-2 text-xs text-muted-foreground">{t('decks.noAvailableTerms')}</p>
-                    )}
-                  </div>
-                )}
+          {isAdmin && (
+            <Card>
+              <CardTitle className="text-base font-black">{t('vocabulary.addRelationship')}</CardTitle>
+              <div className="mt-4 grid gap-3">
+                <div className="relative" ref={relationWrapperRef}>
+                  <SearchInput
+                    placeholder={t('vocabulary.search')}
+                    value={relationSearch}
+                    onChange={(e) => { setRelationSearch(e.target.value); setIsSearching(true); setRelationHighlightIndex(-1) }}
+                    onKeyDown={handleRelationKeyDown}
+                    disabled={!shouldUseRemoteData}
+                  />
+                  {isSearching && targetOptions.length > 0 && (
+                    <div ref={relationListRef} className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-auto rounded-md border-2 border-border bg-card divide-y-2 divide-border shadow-[4px_4px_0_var(--border)] z-20">
+                      {filteredTargetOptions.length > 0 ? (
+                        filteredTargetOptions.map((entry, idx) => (
+                          <button
+                            key={entry.id}
+                            type="button"
+                            onClick={() => { setTargetId(entry.id); setRelationSearch(entry.source_text); setIsSearching(false); setRelationHighlightIndex(-1); requestAnimationFrame(() => pillRefs.current.get(relationType)?.focus()) }}
+                            className={`w-full px-3 py-2 text-left text-sm font-semibold transition hover:bg-muted ${entry.id === targetId || idx === relationHighlightIndex ? 'bg-primary text-primary-foreground' : ''}`}
+                          >
+                            <span className="font-black">{entry.source_text}</span>
+                            {entry.translation ? <span className="text-muted-foreground ml-2">— {entry.translation}</span> : null}
+                          </button>
+                        ))
+                      ) : (
+                        <p className="px-3 py-2 text-xs text-muted-foreground">{t('decks.noAvailableTerms')}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="group flex flex-wrap gap-3" onKeyDown={handlePillKeyDown}>
+                  {relationshipDisplayOrder.map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      ref={(el) => { if (el) pillRefs.current.set(type, el); else pillRefs.current.delete(type); }}
+                      onClick={(e) => { e.stopPropagation(); setRelationType(type); }}
+                      className={`px-2.5 py-1 rounded-md border-2 text-xs font-bold transition-transform transition-shadow duration-150 focus-visible:outline-none hover:scale-105 hover:-translate-y-0.5 hover:relative hover:z-10 hover:shadow-[3px_3px_0_var(--border)] focus-visible:scale-110 focus-visible:-translate-y-0.5 focus-visible:relative focus-visible:z-10 focus-visible:shadow-[3px_3px_0_var(--border)] ${
+                        relationType === type
+                          ? 'border-border bg-primary text-primary-foreground group-hover:bg-card group-hover:text-foreground hover:bg-primary hover:text-primary-foreground shadow-[2px_2px_0_var(--border)]'
+                          : 'border-border bg-card text-foreground hover:bg-primary hover:text-primary-foreground shadow-[2px_2px_0_var(--border)]'
+                      }`}
+                    >
+                      {t(relationshipLabelKeys[type])}
+                    </button>
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  disabled={!shouldUseRemoteData || !targetId || addRelationshipMutation.isPending}
+                  onClick={() => addRelationshipMutation.mutate()}
+                >
+                  {addRelationshipMutation.isPending ? '...' : t('vocabulary.addRelationship')}
+                </Button>
               </div>
-              <div className="group flex flex-wrap gap-3" onKeyDown={handlePillKeyDown}>
-                {relationshipDisplayOrder.map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    ref={(el) => { if (el) pillRefs.current.set(type, el); else pillRefs.current.delete(type); }}
-                    onClick={(e) => { e.stopPropagation(); setRelationType(type); }}
-                    className={`px-2.5 py-1 rounded-md border-2 text-xs font-bold transition-transform transition-shadow duration-150 focus-visible:outline-none hover:scale-105 hover:-translate-y-0.5 hover:relative hover:z-10 hover:shadow-[3px_3px_0_var(--border)] focus-visible:scale-110 focus-visible:-translate-y-0.5 focus-visible:relative focus-visible:z-10 focus-visible:shadow-[3px_3px_0_var(--border)] ${
-                      relationType === type
-                        ? 'border-border bg-primary text-primary-foreground group-hover:bg-card group-hover:text-foreground hover:bg-primary hover:text-primary-foreground shadow-[2px_2px_0_var(--border)]'
-                        : 'border-border bg-card text-foreground hover:bg-primary hover:text-primary-foreground shadow-[2px_2px_0_var(--border)]'
-                    }`}
-                  >
-                    {t(relationshipLabelKeys[type])}
-                  </button>
-                ))}
-              </div>
-              <Button
-                type="button"
-                disabled={!shouldUseRemoteData || !targetId || addRelationshipMutation.isPending}
-                onClick={() => addRelationshipMutation.mutate()}
-              >
-                {addRelationshipMutation.isPending ? '...' : t('vocabulary.addRelationship')}
-              </Button>
-            </div>
-          </Card>
+            </Card>
+          )}
 
           <RelatedTermsSection
             relationships={relationships}
             removingKey={removingKey}
-            onRemove={(targetTermId, selectedRelationType) =>
+            onRemove={isAdmin ? (targetTermId, selectedRelationType) =>
               removeRelationshipMutation.mutate({ targetTermId, selectedRelationType })
-            }
+            : undefined}
           />
 
         </div>

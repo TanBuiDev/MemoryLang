@@ -12,6 +12,7 @@ interface InlineEditableFieldProps {
   className?: string
   editClassName?: string
   fullWidth?: boolean
+  disabled?: boolean
   renderCustomInput?: (
     value: string,
     onChange: (val: string) => void,
@@ -30,6 +31,7 @@ export function InlineEditableField({
   className,
   editClassName,
   fullWidth = true,
+  disabled = false,
   renderCustomInput,
 }: InlineEditableFieldProps) {
   const [isEditing, setIsEditing] = useState(false)
@@ -121,9 +123,10 @@ export function InlineEditableField({
 
   return (
     <div
-      onClick={() => setIsEditing(true)}
+      onClick={() => !disabled && setIsEditing(true)}
       className={cn(
-        'group relative flex items-center justify-between rounded-md cursor-pointer border-2 border-transparent hover:border-dashed hover:border-slate-400 hover:bg-slate-50/50 p-1 -m-1 transition-all min-h-[1.75rem]',
+        'group relative flex items-center justify-between rounded-md min-h-[1.75rem] transition-all',
+        !disabled ? 'cursor-pointer border-2 border-transparent hover:border-dashed hover:border-slate-400 hover:bg-slate-50/50 p-1 -m-1' : '',
         fullWidth ? 'w-full' : 'w-fit',
         !value && 'text-muted-foreground italic',
         className
