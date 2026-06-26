@@ -7,7 +7,11 @@ import { TestModeRenderer } from '@/components/listening/TestModeRenderer'
 import { DictationRenderer } from '@/components/listening/DictationRenderer'
 import { ProgressBar } from '@/components/listening/ProgressBar'
 import { useI18n } from '@/i18n'
+import { useQuery } from '@tanstack/react-query'
 import { getDemoPartById, getDemoQuestionsByPartId } from '@/features/listening/demoData'
+import { isSupabaseConfigured } from '@/services/supabase/client'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { listeningService } from '@/services/supabase/listening.service'
 
 export function ListeningSessionPage() {
   const { partId, mode } = useParams<{ partId: string; mode: 'test' | 'dictation' }>()
@@ -15,9 +19,38 @@ export function ListeningSessionPage() {
   const navigate = useNavigate()
   const isTest = mode === 'test'
   const isDictation = mode === 'dictation'
+  const user = useAuthStore((s) => s.user)
+  const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
 
-  const part = getDemoPartById(partId ?? '')
-  const allQuestions = getDemoQuestionsByPartId(partId ?? '')
+  const { data, isLoading } = useQuery({
+    queryKey: ['listening-part', partId, user?.id],
+    queryFn: async () => {
+      if (!partId) return null
+      const isDemoPart = partId.startsWith('ets2026') || !partId.includes('-')
+      if (!shouldUseRemoteData || isDemoPart) {
+        const demoP = getDemoPartById(partId)
+        const demoQ = getDemoQuestionsByPartId(partId)
+        return demoP ? { part: demoP, questions: demoQ } : null
+      }
+
+      try {
+        const res = await listeningService.getPartWithQuestions(partId)
+        if (res) return res
+        const demoP = getDemoPartById(partId)
+        const demoQ = getDemoQuestionsByPartId(partId)
+        return demoP ? { part: demoP, questions: demoQ } : null
+      } catch (err) {
+        console.error('Error fetching listening part details:', err)
+        const demoP = getDemoPartById(partId)
+        const demoQ = getDemoQuestionsByPartId(partId)
+        return demoP ? { part: demoP, questions: demoQ } : null
+      }
+    },
+    enabled: Boolean(partId)
+  })
+
+  const part = data?.part
+  const allQuestions = data?.questions ?? []
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
@@ -51,6 +84,14 @@ export function ListeningSessionPage() {
 
   const handleBack = () => {
     navigate(-1)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-lg font-black">{t('common.loading') || 'Loading...'}</p>
+      </div>
+    )
   }
 
   if (!part) {
