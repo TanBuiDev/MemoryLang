@@ -32,19 +32,26 @@ export async function playCachedOrFetch(word: string, audioUrl: string | null): 
   if (!audioUrl) return false
 
   try {
-    let blob = await getCachedAudio(word)
+    const blob = await getCachedAudio(word)
 
-    if (!blob) {
-      const response = await fetch(audioUrl)
-      if (!response.ok) return false
-      blob = await response.blob()
-      await cacheAudio(word, audioUrl, blob)
+    if (blob) {
+      const objectUrl = URL.createObjectURL(blob)
+      const audio = new Audio(objectUrl)
+      await audio.play()
+      audio.addEventListener('ended', () => URL.revokeObjectURL(objectUrl))
+      return true
     }
 
-    const objectUrl = URL.createObjectURL(blob)
-    const audio = new Audio(objectUrl)
+    // IndexedDB cache miss — use Audio element directly (no CORS needed for media elements)
+    const audio = new Audio(audioUrl)
     await audio.play()
-    audio.addEventListener('ended', () => URL.revokeObjectURL(objectUrl))
+
+    // Background cache: try to fetch + cache (silently fails if CORS not configured on R2)
+    void fetch(audioUrl)
+      .then((res) => res.ok ? res.blob() : null)
+      .then((fetchedBlob) => { if (fetchedBlob) void cacheAudio(word, audioUrl, fetchedBlob) })
+      .catch(() => {})
+
     return true
   } catch {
     return false
