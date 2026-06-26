@@ -129,7 +129,7 @@ export default function AdminVocabularyPage() {
         const text = Array.isArray(row.meanings) && row.meanings.length > 0
           ? (typeof row.meanings[0] === 'object' ? row.meanings[0]?.text || row.meanings[0]?.definition : row.meanings[0])
           : 'Chưa có định nghĩa'
-        return <span className="text-xs truncate max-w-xs block font-bold text-muted-foreground">{text || 'Chưa có định nghĩa'}</span>
+        return <span className="text-xs truncate max-w-full block font-bold text-muted-foreground">{text || 'Chưa có định nghĩa'}</span>
       },
     },
     {

@@ -72,7 +72,7 @@ export default function AdminAuditPage() {
       className: 'w-[25%]',
       accessor: (row: AdminAuditLog) => {
         const details = typeof row.details === 'object' ? JSON.stringify(row.details) : String(row.details)
-        return <span className="text-xs font-mono text-muted-foreground truncate max-w-xs block font-semibold">{details}</span>
+        return <span className="text-xs font-mono text-muted-foreground truncate max-w-full block font-semibold">{details}</span>
       },
     },
   ]

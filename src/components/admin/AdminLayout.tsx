@@ -17,7 +17,7 @@ export function AdminLayout() {
     <div className="brand-grid-bg min-h-screen bg-background text-foreground flex flex-col">
       {/* Admin Header */}
       <header className="sticky top-0 z-30 h-16 border-b-2 border-border bg-background/95 backdrop-blur">
-        <div className="flex items-center justify-between px-4 h-full max-w-7xl mx-auto w-full">
+        <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-full w-full">
           <div className="flex items-center gap-3">
             <Link to="/app/admin" className="flex items-center gap-2 rounded-md p-1 border border-transparent hover:border-border hover:bg-muted transition">
               <BrandLogo variant="compact" size="md" className="h-10" />
@@ -60,7 +60,7 @@ export function AdminLayout() {
       </header>
 
       {/* Main Admin Workspace */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row gap-6">
+      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row gap-6">
         <AdminSidebar />
         <div className="flex-1 min-w-0">
           <Outlet />
