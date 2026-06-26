@@ -22,6 +22,11 @@ export const authService = {
     }),
   signInWithPassword: (email: string, password: string) => supabase.auth.signInWithPassword({ email, password }),
 
+  isAdminEmail: async (email: string): Promise<boolean> => {
+    const { data, error } = await supabase.rpc('is_admin_email', { check_email: email })
+    if (error) return false
+    return data as boolean
+  },
   signInWithGoogle: () =>
     supabase.auth.signInWithOAuth({
       provider: 'google',

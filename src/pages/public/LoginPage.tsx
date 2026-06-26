@@ -21,6 +21,11 @@ export function LoginPage() {
       navigate('/app/dashboard')
       return
     }
+    const isAdmin = await authService.isAdminEmail(email)
+    if (isAdmin) {
+      setMessage(t('auth.adminGoogleOnly'))
+      return
+    }
     const { error } = await authService.signInWithPassword(email, password)
     setMessage(error?.message ?? t('auth.loggedIn'))
     if (!error) navigate('/app/dashboard')
