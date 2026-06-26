@@ -54,6 +54,7 @@ export default function AdminUsersPage() {
   const columns = [
     {
       header: 'Người dùng',
+      className: 'w-[30%]',
       accessor: (row: Profile) => (
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-md bg-muted border-2 border-border flex items-center justify-center text-muted-foreground font-black">
@@ -68,6 +69,7 @@ export default function AdminUsersPage() {
     },
     {
       header: 'Ngôn ngữ học',
+      className: 'w-[20%]',
       accessor: (row: Profile) => (
         <div className="flex items-center gap-1.5 text-xs font-black">
           <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-900 border border-blue-300 uppercase">
@@ -82,6 +84,7 @@ export default function AdminUsersPage() {
     },
     {
       header: 'Vai trò',
+      className: 'w-[15%]',
       accessor: (row: Profile) => {
         return row.is_admin ? (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-rose-100 text-rose-800 border border-rose-300 text-xs font-black uppercase">
@@ -98,6 +101,7 @@ export default function AdminUsersPage() {
     },
     {
       header: 'Ngày tham gia',
+      className: 'w-[15%]',
       accessor: (row: Profile) => {
         const date = new Date(row.created_at)
         return <span className="text-xs font-bold text-muted-foreground">{date.toLocaleDateString('vi-VN')}</span>
@@ -105,7 +109,7 @@ export default function AdminUsersPage() {
     },
     {
       header: 'Thao tác',
-      className: 'text-center w-40',
+      className: 'text-center w-[20%]',
       accessor: (row: Profile) => (
         <div className="flex justify-center gap-2">
           <button

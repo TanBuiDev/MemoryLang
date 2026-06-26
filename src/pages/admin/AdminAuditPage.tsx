@@ -29,6 +29,7 @@ export default function AdminAuditPage() {
   const columns = [
     {
       header: 'Thời gian',
+      className: 'w-[20%]',
       accessor: (row: AdminAuditLog) => {
         const date = new Date(row.created_at)
         return <span className="text-xs font-mono font-bold text-muted-foreground">{date.toLocaleString('vi-VN')}</span>
@@ -36,10 +37,12 @@ export default function AdminAuditPage() {
     },
     {
       header: 'Admin Email',
+      className: 'w-[20%]',
       accessor: (row: AdminAuditLog) => <span className="font-black text-xs text-foreground">{row.admin_email}</span>,
     },
     {
       header: 'Hành động',
+      className: 'w-[15%]',
       accessor: (row: AdminAuditLog) => (
         <span className="px-2 py-0.5 rounded bg-muted border border-border text-foreground text-xs font-mono font-black uppercase">
           {row.action}
@@ -48,6 +51,7 @@ export default function AdminAuditPage() {
     },
     {
       header: 'Đối tượng tác động',
+      className: 'w-[20%]',
       accessor: (row: AdminAuditLog) => (
         <div className="flex gap-2 items-center text-xs">
           {row.target_type && (
@@ -65,6 +69,7 @@ export default function AdminAuditPage() {
     },
     {
       header: 'Chi tiết hành động',
+      className: 'w-[25%]',
       accessor: (row: AdminAuditLog) => {
         const details = typeof row.details === 'object' ? JSON.stringify(row.details) : String(row.details)
         return <span className="text-xs font-mono text-muted-foreground truncate max-w-xs block font-semibold">{details}</span>

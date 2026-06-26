@@ -98,6 +98,7 @@ export default function AdminVocabularyPage() {
   const columns = [
     {
       header: 'Từ vựng (English)',
+      className: 'w-[25%]',
       accessor: (row: any) => (
         <div>
           <span className="font-black text-sm text-foreground">{row.source_text}</span>
@@ -107,6 +108,7 @@ export default function AdminVocabularyPage() {
     },
     {
       header: 'Loại / Từ loại',
+      className: 'w-[15%]',
       accessor: (row: any) => (
         <div className="flex gap-1.5 items-center text-[10px] font-black uppercase">
           <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
@@ -122,6 +124,7 @@ export default function AdminVocabularyPage() {
     },
     {
       header: 'Nghĩa (Meanings)',
+      className: 'w-[35%]',
       accessor: (row: any) => {
         const text = Array.isArray(row.meanings) && row.meanings.length > 0
           ? (typeof row.meanings[0] === 'object' ? row.meanings[0]?.text || row.meanings[0]?.definition : row.meanings[0])
@@ -131,6 +134,7 @@ export default function AdminVocabularyPage() {
     },
     {
       header: 'Đa phương tiện',
+      className: 'w-[15%]',
       accessor: (row: any) => (
         <div className="flex gap-2 text-[10px] font-black">
           {row.audio_url ? (
@@ -148,7 +152,7 @@ export default function AdminVocabularyPage() {
     },
     {
       header: 'Hành động',
-      className: 'text-center w-24',
+      className: 'text-center w-[10%]',
       accessor: (row: any) => (
         <button
           onClick={() => handleDelete(row.id)}

@@ -88,8 +88,8 @@ export function DataTable<T>({
           </thead>
           <tbody>
             {isLoading ? (
-              <tr>
-                <td colSpan={columns.length} className="px-4 py-10 text-center font-bold text-muted-foreground">
+              <tr style={{ height: `${itemsPerPage * 72}px` }}>
+                <td colSpan={columns.length} className="px-4 py-10 text-center font-bold text-muted-foreground align-middle">
                   <div className="flex flex-col items-center gap-2 justify-center">
                     <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                     <span>Đang tải dữ liệu...</span>
@@ -97,62 +97,95 @@ export function DataTable<T>({
                 </td>
               </tr>
             ) : paginatedData.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="px-4 py-10 text-center font-bold text-muted-foreground">
+              <tr style={{ height: `${itemsPerPage * 72}px` }}>
+                <td colSpan={columns.length} className="px-4 py-10 text-center font-bold text-muted-foreground align-middle">
                   Không tìm thấy dữ liệu phù hợp.
                 </td>
               </tr>
             ) : (
-              paginatedData.map((row, rowIndex) => (
-                <tr
-                  key={rowIndex}
-                  className="border-b border-border/30 last:border-b-0 hover:bg-muted/40 odd:bg-card even:bg-muted/10 transition-colors"
-                >
-                  {columns.map((col, colIndex) => (
-                    <td
-                      key={colIndex}
-                      className={cn(
-                        'px-4 py-3.5 font-medium border-r border-border/30 last:border-r-0 align-middle',
-                        col.className
-                      )}
+              <>
+                {paginatedData.map((row, rowIndex) => (
+                  <tr
+                    key={rowIndex}
+                    className="border-b border-border/30 last:border-b-0 hover:bg-muted/40 odd:bg-card even:bg-muted/10 transition-colors h-[72px]"
+                  >
+                    {columns.map((col, colIndex) => (
+                      <td
+                        key={colIndex}
+                        className={cn(
+                          'px-4 py-3.5 font-medium border-r border-border/30 last:border-r-0 align-middle',
+                          col.className
+                        )}
+                      >
+                        {col.accessor(row)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+                {/* Đệm các dòng trống để giữ chiều cao bảng ổn định không bị giật */}
+                {paginatedData.length < itemsPerPage && (
+                  Array.from({ length: itemsPerPage - paginatedData.length }).map((_, index) => (
+                    <tr
+                      key={`empty-${index}`}
+                      className="border-b border-border/30 last:border-b-0 opacity-0 pointer-events-none select-none h-[72px]"
                     >
-                      {col.accessor(row)}
-                    </td>
-                  ))}
-                </tr>
-              ))
+                      {columns.map((col, colIndex) => (
+                        <td
+                          key={`empty-cell-${colIndex}`}
+                          className={cn(
+                            'px-4 py-3.5 border-r border-border/30 last:border-r-0 align-middle',
+                            col.className
+                          )}
+                        >
+                          &nbsp;
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                )}
+              </>
             )}
           </tbody>
         </table>
       </div>
 
       {/* Pagination Controls */}
-      {!isLoading && totalPages > 1 && (
-        <div className="flex items-center justify-between mt-2 px-1">
-          <span className="text-xs font-bold text-muted-foreground">
-            Hiển thị {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredData.length)} trong tổng số {filteredData.length} mục
-          </span>
+      <div className={cn(
+        "flex items-center justify-between mt-2 px-1 min-h-[40px] select-none",
+        isLoading && "opacity-60 pointer-events-none"
+      )}>
+        <span className="text-xs font-bold text-muted-foreground">
+          {isLoading ? (
+            "Đang tải dữ liệu..."
+          ) : filteredData.length > 0 ? (
+            `Hiển thị ${(currentPage - 1) * itemsPerPage + 1} - ${Math.min(currentPage * itemsPerPage, filteredData.length)} trong tổng số ${filteredData.length} mục`
+          ) : (
+            "Không có mục nào"
+          )}
+        </span>
+        
+        {totalPages > 0 && (
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
+              disabled={isLoading || currentPage === 1}
               className="neo-button min-h-0 p-1.5 rounded bg-card border border-border disabled:opacity-50 disabled:shadow-none hover:bg-muted active:neo-button-active transition-all"
             >
               <ChevronLeft size={16} />
             </button>
             <span className="text-sm font-black px-2">
-              {currentPage} / {totalPages}
+              {isLoading ? "-" : `${currentPage} / ${Math.max(1, totalPages)}`}
             </span>
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
+              disabled={isLoading || currentPage === totalPages || totalPages <= 1}
               className="neo-button min-h-0 p-1.5 rounded bg-card border border-border disabled:opacity-50 disabled:shadow-none hover:bg-muted active:neo-button-active transition-all"
             >
               <ChevronRight size={16} />
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
