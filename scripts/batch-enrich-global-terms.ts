@@ -70,7 +70,6 @@ async function dictionaryLookup(text: string) {
       partOfSpeech: meaning?.partOfSpeech ?? null,
       definition: definition?.definition ?? '',
       example: definition?.example ?? '',
-      audioUrl: entry?.phonetics?.find((p: { audio?: string }) => p.audio)?.audio ?? null,
     }
   } catch {
     return null
@@ -144,7 +143,7 @@ async function enrichTerm(term: {
   const sourceLang = term.source_language
   const nativeLang = term.native_language
 
-  // 1. Dictionary lookup for English words
+  // 1. IPA and partOfSpeech from Dictionary API
   let dictResult: any = null
   if (sourceLang === 'en' && term.item_type === 'word') {
     dictResult = await dictionaryLookup(sourceText)

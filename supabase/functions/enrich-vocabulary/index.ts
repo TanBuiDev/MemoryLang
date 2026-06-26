@@ -32,7 +32,6 @@ async function generateTtsAudio(supabase: any, text: string, sourceLanguage: Lan
   if (!lang) return null
 
   try {
-    // Truy vấn cấu hình giọng đọc TTS đang kích hoạt từ database
     const { data: voiceConfig } = await supabase
       .from('tts_voice_config')
       .select('voice_name')
@@ -84,7 +83,6 @@ async function dictionaryLookup(text: string, nativeLanguage: LanguageCode) {
     partOfSpeech: meaning?.partOfSpeech ?? null,
     meanings: [{ text: definition?.definition ?? '', language: nativeLanguage }],
     examples: definition?.example ? [{ sentence: definition.example, translation: '' }] : [],
-    audioUrl: entry?.phonetics?.find((phonetic: { audio?: string }) => phonetic.audio)?.audio || null,
   }
 }
 
@@ -202,11 +200,12 @@ Deno.serve(async (request) => {
       )
     }
 
+    // Dictionary API dùng cho IPA, partOfSpeech, meanings, examples (không dùng cho audio)
     const dictionary = itemType === 'word' && body.sourceLanguage === 'en' ? await dictionaryLookup(body.text, body.nativeLanguage) : null
     const translatedDictionary = await addDictionaryTranslations(body.text, body.sourceLanguage, body.nativeLanguage, dictionary)
 
-    const ttsAudioUrl = await generateTtsAudio(supabase, body.text, body.sourceLanguage)
-    const audioUrl = ttsAudioUrl ?? dictionary?.audioUrl ?? null
+    // Audio chỉ lấy từ Google Cloud TTS
+    const audioUrl = await generateTtsAudio(supabase, body.text, body.sourceLanguage)
 
     const payload = {
       source_text: body.text,
@@ -223,7 +222,6 @@ Deno.serve(async (request) => {
       source: dictionary ? 'dictionary' : 'system',
     }
 
-    // Thực hiện upsert và lấy id của từ khóa global_terms vừa lưu
     const { data: upserted } = await supabase
       .from('global_terms')
       .upsert(payload, { onConflict: 'normalized_text,source_language,native_language' })

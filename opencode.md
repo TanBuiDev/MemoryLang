@@ -34,7 +34,7 @@ Use `<ConfirmModal>` from `@/components/ui/confirm-modal`. Pattern: store pendin
 - `meanings` = English definitions
 - `translation` = direct translation to native language
 - `examples[].translation` = translation of example sentence
-- IPA/audio only from dictionaryapi.dev, only for single English words
+- IPA từ dictionaryapi.dev (chỉ cho từ đơn tiếng Anh). Audio từ Google Cloud TTS.
 - Relationships: `synonym`/`antonym`/`related` = bidirectional; `derivative`/`collocation`/`idiom` = one-way
 
 ### 7. Design system (Neobrutalist)
