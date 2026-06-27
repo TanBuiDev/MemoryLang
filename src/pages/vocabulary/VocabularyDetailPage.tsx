@@ -835,7 +835,7 @@ export function VocabularyDetailPage() {
             </Button>
           </HotkeyTooltip>
           {currentIndex !== -1 && (
-            <div className="flex items-center text-xs font-black px-2 py-1 rounded bg-muted border-2 border-border text-center select-none">
+            <div className="flex items-center flex-nowrap whitespace-nowrap text-sm font-black px-2.5 h-10 rounded bg-card border-2 border-border text-center select-none shadow-[3px_3px_0px_var(--border)]">
               <input
                 type="number"
                 min={1}
@@ -844,10 +844,10 @@ export function VocabularyDetailPage() {
                 onChange={(e) => setPageInputValue(e.target.value)}
                 onKeyDown={handlePageInputKeyDown}
                 onBlur={handlePageInputBlur}
-                className="w-12 bg-transparent text-center focus:outline-none focus:bg-card rounded border border-transparent focus:border-border p-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-10 bg-transparent text-center focus:outline-none focus:bg-muted rounded border border-transparent focus:border-border p-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none font-black"
                 aria-label="Vị trí trang"
               />
-              <span className="pr-1.5 text-muted-foreground">/ {vocabularyIds.length}</span>
+              <span className="text-muted-foreground pl-0.5 font-bold">/ {vocabularyIds.length}</span>
             </div>
           )}
           <HotkeyTooltip hotkey="Alt + →">
