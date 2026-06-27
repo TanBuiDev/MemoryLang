@@ -186,6 +186,7 @@ export const relationshipService = {
         )
       `)
       .in('id', targetGlobalIds)
+      .is('deleted_at', null)
     if (targetsError) throw targetsError
 
     const targetMap = new Map((targets ?? []).map((t: any) => {

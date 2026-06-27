@@ -98,6 +98,7 @@ export default function AdminTtsPage() {
       const { data, error: statsErr } = await supabase
         .from('global_terms')
         .select('audio_url, normalized_text')
+        .is('deleted_at', null)
       if (statsErr) throw statsErr
       const terms = data ?? []
       const cached = terms.filter(t => t.audio_url).length

@@ -123,6 +123,7 @@ export const vocabularyService = {
         .eq('normalized_text', normalized)
         .eq('source_language', values.source_language)
         .eq('native_language', values.native_language)
+        .is('deleted_at', null)
         .maybeSingle()
         
       if (existingGlobal) {

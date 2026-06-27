@@ -55,6 +55,7 @@ export const adminService = {
     const { count: globalVocab, error: err7 } = await supabase
       .from('global_terms')
       .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null)
     if (err7) throw err7
 
     // Đếm tổng decks
@@ -273,6 +274,7 @@ export const adminService = {
     const { data, error } = await supabase
       .from('global_terms')
       .select('*')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
     if (error) throw error
     return data
@@ -304,7 +306,7 @@ export const adminService = {
   async deleteGlobalTerm(id: string): Promise<void> {
     const { error } = await supabase
       .from('global_terms')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', id)
     if (error) throw error
     await this.logAction('delete_global_term', 'global_term', id)
@@ -530,11 +532,13 @@ export const adminService = {
       .from('global_terms')
       .select('audio_url', { count: 'exact', head: true })
       .not('audio_url', 'is', null)
+      .is('deleted_at', null)
 
     const { count: imageCount } = await supabase
       .from('global_terms')
       .select('image_url', { count: 'exact', head: true })
       .not('image_url', 'is', null)
+      .is('deleted_at', null)
 
     const { count: listeningAudioCount } = await supabase
       .from('listening_parts')
