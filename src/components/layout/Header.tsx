@@ -16,6 +16,7 @@ import {
   LogOut,
   Mail,
   Map,
+  Menu,
   MessageSquare,
   Mic,
   Moon,
@@ -27,6 +28,7 @@ import {
   Sun,
   User,
   Video,
+  X,
 } from 'lucide-react'
 import { BrandLogo } from '@/components/common/BrandLogo'
 import { useI18n } from '@/i18n'
@@ -70,6 +72,7 @@ export function Header() {
   const [moreOpen, setMoreOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const moreRef = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
@@ -103,7 +106,15 @@ export function Header() {
   return (
     <header className="sticky top-0 z-30 h-16 border-b-2 border-border bg-background/95 backdrop-blur">
       <div className="flex items-center justify-between px-4 py-2.5">
-        <div className="flex items-center gap-1 flex-1">
+        <div className="flex items-center gap-1.5 flex-1">
+          <button
+            type="button"
+            onClick={() => { setMobileMenuOpen(!mobileMenuOpen); setProfileOpen(false); setNotifOpen(false); setMoreOpen(false) }}
+            className="lg:hidden p-2 rounded-md border-2 border-transparent hover:border-border hover:bg-muted transition flex items-center justify-center"
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
           <NavLink to="/" className="shrink-0 rounded-md border-2 border-transparent p-1 hover:border-border hover:bg-muted transition">
             <BrandLogo variant="compact" size="md" className="h-10" />
           </NavLink>
@@ -266,6 +277,85 @@ export function Header() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Navigation Drawer */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed inset-x-0 top-16 z-20 bg-background/95 backdrop-blur border-b-2 border-border max-h-[calc(100vh-4rem)] overflow-y-auto animate-in slide-in-from-top duration-200">
+          <div className="p-4 flex flex-col gap-4">
+            {/* Học tập Section */}
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-black uppercase text-muted-foreground px-3 mb-1">Học tập</span>
+              {mainNavItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-bold transition border-2 border-transparent',
+                      isActive
+                        ? 'bg-primary text-primary-foreground border-border shadow-[2px_2px_0_var(--border)]'
+                        : 'hover:bg-muted hover:border-border',
+                    )
+                  }
+                >
+                  <item.icon size={18} />
+                  {t(item.labelKey)}
+                </NavLink>
+              ))}
+            </div>
+
+            <hr className="border-border border-dashed" />
+
+            {/* Mở rộng Section */}
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-black uppercase text-muted-foreground px-3 mb-1">Mở rộng</span>
+              {moreDropdownItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-bold transition border-2 border-transparent',
+                      isActive
+                        ? 'bg-primary text-primary-foreground border-border shadow-[2px_2px_0_var(--border)]'
+                        : 'hover:bg-muted hover:border-border',
+                    )
+                  }
+                >
+                  <item.icon size={18} />
+                  {t(item.labelKey)}
+                </NavLink>
+              ))}
+            </div>
+
+            {profile?.is_admin && (
+              <>
+                <hr className="border-border border-dashed" />
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-black uppercase text-muted-foreground px-3 mb-1">Quản trị</span>
+                  <NavLink
+                    to="/app/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-bold transition border-2 border-transparent text-rose-600 hover:bg-rose-50',
+                        isActive
+                          ? 'bg-rose-600 text-white border-border shadow-[2px_2px_0_var(--border)]'
+                          : 'hover:bg-rose-50 hover:border-rose-200',
+                      )
+                    }
+                  >
+                    <ShieldAlert size={18} />
+                    Quản trị hệ thống
+                  </NavLink>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   )
 }
