@@ -80,7 +80,7 @@ export function TranslationChips({ value, onChange, className }: TranslationChip
         onKeyDown={handleKeyDown}
         className="min-h-10 w-full rounded-[var(--radius)] border-2 border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-[2px_2px_0_var(--border)] placeholder:text-muted-foreground transition focus:translate-x-[1px] focus:translate-y-[1px] focus:shadow-[1px_1px_0_var(--border)]"
         rows={1}
-        placeholder="Nhập bản dịch và nhấn Enter hoặc nhấn Lưu trực tiếp..."
+        placeholder="Bản dịch..."
       />
       {chips.length > 0 ? (
         <div className="flex flex-wrap items-center gap-1.5">
