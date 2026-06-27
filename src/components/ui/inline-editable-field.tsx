@@ -51,9 +51,16 @@ export function InlineEditableField({
   const handleSave = async () => {
     const trimmed = typeof newValue === 'string' ? newValue.trim() : newValue
     if (trimmed !== value) {
-      await onSave(trimmed)
+      setIsEditing(false)
+      try {
+        await onSave(trimmed)
+      } catch {
+        setNewValue(trimmed)
+        setIsEditing(true)
+      }
+    } else {
+      setIsEditing(false)
     }
-    setIsEditing(false)
   }
 
   const handleCancel = () => {
