@@ -12,6 +12,7 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label, Select } from '@/components/ui/input'
 import { buildLessonBatch } from '@/features/decks/bulkLessons'
 import { demoVocabulary } from '@/features/demo/demoData'
+import { useAudioPreload } from '@/hooks/useAudioPreload'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useI18n } from '@/i18n'
@@ -198,6 +199,18 @@ export function VocabularyListPage() {
     estimateSize: () => 180,
     overscan: 3,
   })
+
+  const visibleAudioItems: Array<{ audioUrl?: string | null }> = []
+  for (const virtualRow of virtualizer.getVirtualItems()) {
+    const start = virtualRow.index * columns
+    const rowItems = vocabulary.slice(start, start + columns)
+    for (const item of rowItems) {
+      if (visibleAudioItems.length >= 6) break
+      if (item.audio_url) visibleAudioItems.push({ audioUrl: item.audio_url })
+    }
+    if (visibleAudioItems.length >= 6) break
+  }
+  useAudioPreload(visibleAudioItems, 6)
 
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [selectMode, setSelectMode] = useState(false)

@@ -26,6 +26,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { RelatedTermsSection } from '@/components/vocabulary/RelatedTermsSection'
 import { relationshipDisplayOrder, relationshipLabelKeys } from '@/components/vocabulary/relationshipDisplay'
 import type { RelationType, VocabularyItem, VocabularyItemType, VocabularyStatus } from '@/types/vocabulary.types'
+import { useAudioPreload } from '@/hooks/useAudioPreload'
 import { speak } from '@/utils/audio'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
 
@@ -263,6 +264,8 @@ export function VocabularyDetailPage() {
       })
     }
   }, [nextId, prevId, queryClient, shouldUseRemoteData])
+
+  useAudioPreload([{ audioUrl: item?.audio_url }], 1)
 
   const [pageInputValue, setPageInputValue] = useState('')
 
