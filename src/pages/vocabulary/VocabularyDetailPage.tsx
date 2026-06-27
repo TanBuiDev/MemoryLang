@@ -25,7 +25,7 @@ import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { RelatedTermsSection } from '@/components/vocabulary/RelatedTermsSection'
 import { relationshipDisplayOrder, relationshipLabelKeys } from '@/components/vocabulary/relationshipDisplay'
-import type { RelationType, VocabularyItem, VocabularyItemType, VocabularyStatus } from '@/types/vocabulary.types'
+import type { ExampleSentence, RelationType, VocabularyItem, VocabularyItemType, VocabularyStatus } from '@/types/vocabulary.types'
 import { useAudioPreload } from '@/hooks/useAudioPreload'
 import { speak } from '@/utils/audio'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
@@ -1021,7 +1021,6 @@ export function VocabularyDetailPage() {
                 <Button
                   type="button"
                   variant="secondary"
-                  size="sm"
                   onClick={() => {
                     setTempExamples(item.examples || [])
                     setIsEditingExamples(true)
@@ -1040,7 +1039,6 @@ export function VocabularyDetailPage() {
                   <Button
                     type="button"
                     variant="secondary"
-                    size="sm"
                     onClick={() => setTempExamples(prev => [...prev, { sentence: '', translation: '' }])}
                     className="h-7 px-2 py-0.5 text-[11px]"
                   >
@@ -1096,7 +1094,6 @@ export function VocabularyDetailPage() {
                   <Button
                     type="button"
                     variant="primary"
-                    size="sm"
                     className="h-8 py-1 px-3 text-xs"
                     onClick={async () => {
                       const cleaned = tempExamples
@@ -1111,7 +1108,6 @@ export function VocabularyDetailPage() {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
                     className="h-8 py-1 px-3 text-xs"
                     onClick={() => setIsEditingExamples(false)}
                   >

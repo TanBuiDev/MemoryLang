@@ -232,7 +232,6 @@ export function AddVocabularyForm({ onSuccess }: AddVocabularyFormProps) {
               <Button
                 type="button"
                 variant="secondary"
-                size="sm"
                 onClick={() => setExamples(prev => [...prev, { sentence: '', translation: '' }])}
                 className="h-8 px-2 py-1 text-xs"
               >

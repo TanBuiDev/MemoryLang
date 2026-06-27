@@ -21,7 +21,7 @@ describe('relationshipService auto-direction helpers', () => {
           select: () => {
             let lastId = ''
             return {
-              eq: (col: string, val: string) => {
+              eq: (_col: string, val: string) => {
                 lastId = val
                 return {
                   maybeSingle: async () => ({ data: { global_term_id: lastId } })
