@@ -39,33 +39,46 @@ export async function speak(text: string, options: SpeakOptions = {}) {
   const ttsText = options.variant || text
   const langCode = options.lang ?? 'en-US'
 
+  console.log('[speak] Starting for:', text, '| audioUrl:', options.audioUrl ? 'YES' : 'NO', '| globalTermId:', options.globalTermId)
+
   // 1. Play from static audioUrl (DB-stored, fastest — no Edge Function)
   if (options.audioUrl) {
+    console.log('[speak] Step 1: Trying audioUrl:', options.audioUrl)
     const { playCachedOrFetch } = await import('@/services/local/audioCache')
-    const played = await playCachedOrFetch(text, options.audioUrl)
-    if (played) return true
+    try {
+      const played = await playCachedOrFetch(text, options.audioUrl)
+      console.log('[speak] Step 1 result:', played ? 'SUCCESS' : 'FAILED')
+      if (played) return true
+    } catch (err) {
+      console.error('[speak] Step 1 error:', err)
+    }
   }
 
   // 2. Generate dynamic audio via Edge Function (only when no audioUrl available)
   const { isSupabaseConfigured } = await import('@/services/supabase/client')
+  console.log('[speak] Step 2: supabase configured:', isSupabaseConfigured)
   if (isSupabaseConfigured) {
     const config = await getVoiceConfig(langCode)
+    console.log('[speak] Step 2: voice config:', config ? config.voice_name : 'NONE')
     if (config) {
       try {
         const { generateAudio } = await import('@/services/api/generateAudio.api')
         const res = await generateAudio(ttsText, langCode, config.voice_name, options.globalTermId ?? undefined)
+        console.log('[speak] Step 2: generated audioUrl:', res.audioUrl)
         if (res.audioUrl) {
           const { playCachedOrFetch } = await import('@/services/local/audioCache')
           const played = await playCachedOrFetch(text, res.audioUrl)
+          console.log('[speak] Step 2 play result:', played ? 'SUCCESS' : 'FAILED')
           if (played) return true
         }
       } catch (err) {
-        console.error('Failed to generate dynamic audio:', err)
+        console.error('[speak] Step 2 error:', err)
       }
     }
   }
 
   // 3. Browser SpeechSynthesis fallback
+  console.log('[speak] Step 3: FALLBACK to browser SpeechSynthesis')
   if (!('speechSynthesis' in window)) return false
 
   window.speechSynthesis.cancel()

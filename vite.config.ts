@@ -22,7 +22,8 @@ export default defineConfig({
     },
     chunkSizeWarningLimit: 1000,
   },
-  esbuild: {
-    drop: ['console', 'debugger'],
-  },
+  // TEMPORARY: disabled for mobile debugging — re-enable after debug
+  // esbuild: {
+  //   drop: ['console', 'debugger'],
+  // },
 })
