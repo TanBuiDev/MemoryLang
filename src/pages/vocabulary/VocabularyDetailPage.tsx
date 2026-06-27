@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect, cloneElement } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { Flag, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2 } from 'lucide-react'
+import { Flag, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 
 import { Badge } from '@/components/ui/badge'
@@ -926,7 +926,7 @@ export function VocabularyDetailPage() {
                 <Button
                   type="button"
                   variant="ghost"
-                  className="h-8 px-3 text-xs"
+                  className="h-8 w-8 p-0 sm:w-auto sm:px-3 text-xs flex items-center justify-center"
                   disabled={enrichingIpa}
                   onClick={async () => {
                     setEnrichingIpa(true)
@@ -946,6 +946,7 @@ export function VocabularyDetailPage() {
                     }
                     setEnrichingIpa(false)
                   }}
+                  title={t('vocabulary.regenerateIpa')}
                 >
                   {enrichingIpa ? (
                     <span className="inline-flex items-center gap-0.5">
@@ -954,14 +955,17 @@ export function VocabularyDetailPage() {
                       <span className="inline-block animate-bounce [animation-delay:300ms]">.</span>
                     </span>
                   ) : (
-                    t('vocabulary.regenerateIpa')
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 sm:mr-1 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">{t('vocabulary.regenerateIpa')}</span>
+                    </>
                   )}
                 </Button>
               )}
             </div>
           </div>
 
-          <div>
+          <div className="hidden sm:block">
             <HotkeyTooltip hotkey="Alt + P" position="top">
               <Button
                 onClick={() =>
@@ -998,7 +1002,7 @@ export function VocabularyDetailPage() {
               type="custom"
               onSave={(val) => handleSaveField({ translation: cleanTranslationValue(val) })}
               placeholder={t('vocabulary.translation')}
-              displayValue={<span className="text-2xl text-primary font-black underline decoration-2">{item.translation || t('vocabulary.translation')}</span>}
+              displayValue={<span className="text-2xl text-primary font-black">{item.translation || t('vocabulary.translation')}</span>}
               disabled={!isAdmin}
               renderCustomInput={(val, onChange, save, cancel) => (
                 <div className="flex flex-col gap-2">
@@ -1034,9 +1038,11 @@ export function VocabularyDetailPage() {
                     setTempExamples(item.examples || [])
                     setIsEditingExamples(true)
                   }}
-                  className="h-8 px-3 text-xs"
+                  className="h-8 w-8 p-0 sm:w-auto sm:px-3 text-xs flex items-center justify-center"
+                  title={t('actions.edit')}
                 >
-                  {t('actions.edit')}
+                  <Pencil className="h-3.5 w-3.5 sm:mr-1" />
+                  <span className="hidden sm:inline">{t('actions.edit')}</span>
                 </Button>
               )}
             </div>
