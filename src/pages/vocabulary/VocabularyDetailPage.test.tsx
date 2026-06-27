@@ -102,6 +102,7 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     vi.clearAllMocks()
     useAuthStore.setState({
       user: { id: 'user-1' } as never,
+      profile: { is_admin: true } as never,
     })
 
     // Mock kết quả trả về của các API service

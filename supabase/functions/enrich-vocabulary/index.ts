@@ -78,11 +78,33 @@ async function dictionaryLookup(text: string, nativeLanguage: LanguageCode) {
   const meaning = entry?.meanings?.[0]
   const definition = meaning?.definitions?.[0]
 
+  const examples: { sentence: string; translation: string }[] = []
+  if (entry?.meanings) {
+    for (const m of entry.meanings) {
+      if (m.definitions) {
+        for (const def of m.definitions) {
+          if (def.example && def.example.trim()) {
+            const sentence = def.example.trim()
+            if (!examples.some(ex => ex.sentence.toLowerCase() === sentence.toLowerCase())) {
+              examples.push({ sentence, translation: '' })
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (examples.length === 0 && definition?.example) {
+    examples.push({ sentence: definition.example.trim(), translation: '' })
+  }
+
+  const limitExamples = examples.slice(0, 3)
+
   return {
     ipa: entry?.phonetics?.find((phonetic: { text?: string }) => phonetic.text)?.text ?? null,
     partOfSpeech: meaning?.partOfSpeech ?? null,
     meanings: [{ text: definition?.definition ?? '', language: nativeLanguage }],
-    examples: definition?.example ? [{ sentence: definition.example, translation: '' }] : [],
+    examples: limitExamples,
   }
 }
 

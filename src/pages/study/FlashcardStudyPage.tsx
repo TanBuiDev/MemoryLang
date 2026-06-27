@@ -87,9 +87,10 @@ function FlashcardDetails({
   const { t } = useI18n()
   const meaning = getText(item.meanings[0]?.text)
   const translation = getText(item.translation)
-  const example = item.examples.find((entry) => getText(entry.sentence) || getText(entry.translation))
+  const validExamples = item.examples?.filter((ex) => getText(ex.sentence) || getText(ex.translation)) ?? []
+  const hasExamples = validExamples.length > 0
   const hasRelations = hasRelatedTerms(relationships)
-  const hasDetails = meaning || translation || example || getText(item.note) || item.image_url || hasRelations
+  const hasDetails = meaning || translation || hasExamples || getText(item.note) || item.image_url || hasRelations
 
   if (!hasDetails) {
     return (
@@ -120,11 +121,17 @@ function FlashcardDetails({
           <p className="mt-1 text-xl font-black text-primary">{translation}</p>
         </div>
       ) : null}
-      {example ? (
+      {hasExamples ? (
         <div>
-          <p className="text-xs font-black uppercase text-muted-foreground">{t('vocabulary.example')}</p>
-          {getText(example.sentence) ? <p className="mt-1 font-semibold">{example.sentence}</p> : null}
-          {getText(example.translation) ? <p className="font-semibold text-muted-foreground">{example.translation}</p> : null}
+          <p className="text-xs font-black uppercase text-muted-foreground mb-2">{t('vocabulary.examples')}</p>
+          <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+            {validExamples.map((ex, index) => (
+              <div key={index} className="border-l-4 border-primary pl-3 py-0.5 bg-background/30 rounded-r p-2 border-y border-r border-border/50">
+                {getText(ex.sentence) ? <p className="font-semibold text-sm">{ex.sentence}</p> : null}
+                {getText(ex.translation) ? <p className="text-xs font-semibold text-muted-foreground mt-1">{ex.translation}</p> : null}
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
       {getText(item.note) ? (

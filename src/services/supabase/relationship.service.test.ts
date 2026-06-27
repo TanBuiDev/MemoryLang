@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createEmptyRelationshipGroups, isBidirectionalRelationType, relationshipService } from '@/services/supabase/relationship.service'
 
 const mocks = vi.hoisted(() => ({
@@ -13,9 +13,32 @@ vi.mock('@/services/supabase/client', () => ({
 }))
 
 describe('relationshipService auto-direction helpers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.from.mockImplementation((table) => {
+      if (table === 'user_terms') {
+        return {
+          select: () => {
+            let lastId = ''
+            return {
+              eq: (col: string, val: string) => {
+                lastId = val
+                return {
+                  maybeSingle: async () => ({ data: { global_term_id: lastId } })
+                }
+              }
+            }
+          }
+        }
+      }
+      return {
+        upsert: mocks.upsert
+      }
+    })
+  })
+
   it.each(['synonym', 'antonym'] as const)('creates two rows for %s', async (relationType) => {
     mocks.upsert.mockResolvedValueOnce({ error: null })
-    mocks.from.mockReturnValueOnce({ upsert: mocks.upsert })
 
     await relationshipService.createAuto('source-id', 'target-id', relationType)
 
@@ -31,7 +54,6 @@ describe('relationshipService auto-direction helpers', () => {
 
   it.each(['noun', 'verb', 'adjective', 'adverb'] as const)('creates one row for %s', async (relationType) => {
     mocks.upsert.mockResolvedValueOnce({ error: null })
-    mocks.from.mockReturnValueOnce({ upsert: mocks.upsert })
 
     await relationshipService.createAuto('source-id', 'target-id', relationType)
 

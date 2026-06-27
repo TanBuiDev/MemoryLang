@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
@@ -12,7 +13,7 @@ import { enrichVocabulary } from '@/services/api/enrichVocabulary.api'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
-import type { EnrichedVocabulary, VocabularyItemType } from '@/types/vocabulary.types'
+import type { EnrichedVocabulary, VocabularyItemType, ExampleSentence } from '@/types/vocabulary.types'
 import { inferItemType } from '@/utils/normalizeText'
 
 interface AddVocabularyFormProps {
@@ -31,7 +32,7 @@ export function AddVocabularyForm({ onSuccess }: AddVocabularyFormProps) {
   const [audioUrl, setAudioUrl] = useState('')
   const [imageUrl, setImageUrl] = useState('')
   const [meaning, setMeaning] = useState('')
-  const [example, setExample] = useState('')
+  const [examples, setExamples] = useState<ExampleSentence[]>([{ sentence: '', translation: '' }])
   const [translation, setTranslation] = useState('')
   const [note, setNote] = useState('')
   const [message, setMessage] = useState('')
@@ -124,7 +125,11 @@ export function AddVocabularyForm({ onSuccess }: AddVocabularyFormProps) {
       setAudioUrl(enriched.audioUrl ?? '')
       setImageUrl(enriched.imageUrl ?? '')
       setMeaning(enriched.meanings[0]?.text ?? '')
-      setExample(enriched.examples[0]?.sentence ?? '')
+      const enrichedExamples = enriched.examples?.map(ex => ({
+        sentence: ex.sentence ?? '',
+        translation: ex.translation ?? ''
+      })) ?? []
+      setExamples(enrichedExamples.length > 0 ? enrichedExamples : [{ sentence: '', translation: '' }])
       setTranslation(enriched.translationText ?? enriched.examples[0]?.translation ?? '')
       setSource(enriched.source)
     } catch (err) {
@@ -160,7 +165,9 @@ export function AddVocabularyForm({ onSuccess }: AddVocabularyFormProps) {
       note,
       meanings: [{ text: meaning.trim(), language: nativeLanguage }],
       translation: cleanTranslationValue(translation) || undefined,
-      examples: example.trim() ? [{ sentence: example.trim(), translation: '' }] : [],
+      examples: examples
+        .map(ex => ({ sentence: ex.sentence.trim(), translation: ex.translation?.trim() || undefined }))
+        .filter(ex => ex.sentence.length > 0),
       tags: [],
       deck_ids: [],
     })
@@ -218,7 +225,63 @@ export function AddVocabularyForm({ onSuccess }: AddVocabularyFormProps) {
         <div className="mt-4 grid gap-4">
           <div><Label>{t('vocabulary.ipa')}</Label><Input value={ipa} onChange={(event) => setIpa(event.target.value)} /></div>
           <div><Label>{t('vocabulary.meaning')}</Label><Textarea value={meaning} onChange={(event) => setMeaning(event.target.value)} /></div>
-          <div><Label>{t('vocabulary.example')}</Label><Textarea value={example} onChange={(event) => setExample(event.target.value)} /></div>
+          
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>{t('vocabulary.examples')}</Label>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setExamples(prev => [...prev, { sentence: '', translation: '' }])}
+                className="h-8 px-2 py-1 text-xs"
+              >
+                + {t('vocabulary.addExample')}
+              </Button>
+            </div>
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+              {examples.map((ex, index) => (
+                <div key={index} className="relative rounded-md border border-border p-3 space-y-2 bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-muted-foreground">Ví dụ {index + 1}</span>
+                    {examples.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setExamples(prev => prev.filter((_, i) => i !== index))}
+                        className="h-6 w-6 p-0 text-danger hover:text-danger/80"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <div>
+                    <Input
+                      placeholder="Câu ví dụ (English)"
+                      value={ex.sentence}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setExamples(prev => prev.map((item, i) => i === index ? { ...item, sentence: val } : item))
+                      }}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      placeholder="Dịch nghĩa câu ví dụ (Vietnamese)"
+                      value={ex.translation || ''}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setExamples(prev => prev.map((item, i) => i === index ? { ...item, translation: val } : item))
+                      }}
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div><Label>{t('vocabulary.translation')}</Label><TranslationChips value={translation} onChange={setTranslation} /></div>
           <div><Label>{t('vocabulary.note')}</Label><Textarea value={note} onChange={(event) => setNote(event.target.value)} /></div>
           <Button type="submit" disabled={createVocabulary.isPending || isDuplicate}>{createVocabulary.isPending ? '...' : t('vocabulary.save')}</Button>

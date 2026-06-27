@@ -9,7 +9,7 @@ import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { Label, SearchInput } from '@/components/ui/input'
+import { Input, Label, SearchInput } from '@/components/ui/input'
 import { TranslationChips, cleanTranslationValue } from '@/components/ui/translation-chips'
 import { InlineEditableField } from '@/components/ui/inline-editable-field'
 import { demoVocabulary } from '@/features/demo/demoData'
@@ -135,6 +135,8 @@ export function VocabularyDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [isEditingExamples, setIsEditingExamples] = useState(false)
+  const [tempExamples, setTempExamples] = useState<ExampleSentence[]>([])
   const [isZoomed, setIsZoomed] = useState(false)
   const [copied, setCopied] = useState(false)
   const [imageFit, setImageFit] = useState<'fit' | 'cover'>(() => {
@@ -172,6 +174,8 @@ export function VocabularyDetailPage() {
     setUploadingImage(false)
     setIsZoomed(false)
     setCopied(false)
+    setIsEditingExamples(false)
+    setTempExamples([])
   }, [id])
 
   const vocabularyCardQuery = useQuery({
@@ -1011,43 +1015,126 @@ export function VocabularyDetailPage() {
           <hr className="border-border border-dashed" />
 
           <div>
-            <CardTitle className="text-sm uppercase text-muted-foreground mb-3">{t('vocabulary.examples')}</CardTitle>
-            <div className="flex flex-col gap-4">
-              <div className="p-3 border-2 border-border rounded-md bg-slate-50/50">
-                <Label className="text-xs text-muted-foreground font-semibold mb-1 block">Câu ví dụ (English)</Label>
-                <InlineEditableField
-                  value={item.examples?.[0]?.sentence ?? ''}
-                  type="textarea"
-                  onSave={(val) => {
-                    const trans = item.examples?.[0]?.translation ?? ''
-                    handleSaveField({
-                      examples: val ? [{ sentence: val, translation: trans }] : [],
-                    })
+            <div className="flex items-center justify-between mb-3">
+              <CardTitle className="text-sm uppercase text-muted-foreground m-0">{t('vocabulary.examples')}</CardTitle>
+              {isAdmin && !isEditingExamples && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setTempExamples(item.examples || [])
+                    setIsEditingExamples(true)
                   }}
-                  placeholder="Ví dụ: We should apologize for an error."
-                  className="font-semibold"
-                  disabled={!isAdmin}
-                />
-              </div>
-              <div className="p-3 border-2 border-border rounded-md bg-slate-50/50">
-                <Label className="text-xs text-muted-foreground font-semibold mb-1 block">Dịch nghĩa câu ví dụ (Vietnamese)</Label>
-                <InlineEditableField
-                  value={item.examples?.[0]?.translation ?? ''}
-                  type="input"
-                  onSave={(val) => {
-                    const sent = item.examples?.[0]?.sentence ?? ''
-                    if (sent) {
-                      handleSaveField({
-                        examples: [{ sentence: sent, translation: val }],
-                      })
-                    }
-                  }}
-                  placeholder="Dịch nghĩa: Chúng tôi xin lỗi vì sai sót."
-                  className="text-muted-foreground"
-                  disabled={!isAdmin}
-                />
-              </div>
+                  className="h-8 px-3 text-xs"
+                >
+                  {t('actions.edit')}
+                </Button>
+              )}
             </div>
+
+            {isEditingExamples ? (
+              <div className="flex flex-col gap-4 border-2 border-border rounded-md p-4 bg-muted/10">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-muted-foreground">Chỉnh sửa danh sách ví dụ</span>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setTempExamples(prev => [...prev, { sentence: '', translation: '' }])}
+                    className="h-7 px-2 py-0.5 text-[11px]"
+                  >
+                    + {t('vocabulary.addExample')}
+                  </Button>
+                </div>
+                
+                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                  {tempExamples.map((ex, index) => (
+                    <div key={index} className="relative rounded-md border border-border p-3 space-y-2 bg-muted/20">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-muted-foreground">Ví dụ {index + 1}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setTempExamples(prev => prev.filter((_, i) => i !== index))}
+                          className="h-6 w-6 p-0 text-danger hover:text-danger/80"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div>
+                        <Input
+                          placeholder="Câu ví dụ (English)"
+                          value={ex.sentence}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setTempExamples(prev => prev.map((item, i) => i === index ? { ...item, sentence: val } : item))
+                          }}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Input
+                          placeholder="Dịch nghĩa câu ví dụ (Vietnamese)"
+                          value={ex.translation || ''}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setTempExamples(prev => prev.map((item, i) => i === index ? { ...item, translation: val } : item))
+                          }}
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                  {tempExamples.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-4">Chưa có câu ví dụ nào. Nhấp "+ Thêm ví dụ" để bắt đầu.</p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 mt-2">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    className="h-8 py-1 px-3 text-xs"
+                    onClick={async () => {
+                      const cleaned = tempExamples
+                        .map(ex => ({ sentence: ex.sentence.trim(), translation: ex.translation?.trim() || '' }))
+                        .filter(ex => ex.sentence.length > 0)
+                      await handleSaveField({ examples: cleaned })
+                      setIsEditingExamples(false)
+                    }}
+                  >
+                    {t('actions.saveChanges')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 py-1 px-3 text-xs"
+                    onClick={() => setIsEditingExamples(false)}
+                  >
+                    {t('actions.cancel')}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {item.examples && item.examples.length > 0 ? (
+                  item.examples.map((ex, index) => (
+                    <div key={index} className="p-3 border-2 border-border rounded-md bg-card border-l-4 border-l-primary">
+                      <p className="font-semibold text-sm">{ex.sentence}</p>
+                      {ex.translation ? (
+                        <p className="text-xs text-muted-foreground mt-1 font-semibold">{ex.translation}</p>
+                      ) : null}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground italic pl-1">Chưa có câu ví dụ nào.</p>
+                )}
+              </div>
+            )}
           </div>
 
           <hr className="border-border border-dashed" />
