@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect, cloneElement } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { Flag, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles } from 'lucide-react'
+import { Flag, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2 } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 
 import { Badge } from '@/components/ui/badge'
@@ -726,7 +726,7 @@ export function VocabularyDetailPage() {
   }
 
   return (
-    <div key={id}>
+    <div key={id} className="pb-20 sm:pb-0">
       <PageHeader
         title={
           <div className="flex items-center gap-2 max-w-full">
@@ -823,7 +823,7 @@ export function VocabularyDetailPage() {
         </div>
 
         {/* Thanh công cụ điều hướng/thao tác (actions) */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-background border-t-2 border-border p-3.5 flex items-center justify-center gap-1.5 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] sm:static sm:bg-transparent sm:border-none sm:p-0 sm:shadow-none sm:w-auto sm:flex-row sm:flex-wrap">
           <HotkeyTooltip hotkey="Alt + ←">
             <Button
               variant="ghost"
@@ -858,6 +858,15 @@ export function VocabularyDetailPage() {
               title={t('study.nextCard')}
             >
               <ChevronRight className="h-4 w-4" />
+            </Button>
+          </HotkeyTooltip>
+          <HotkeyTooltip hotkey="Alt + P">
+            <Button
+              variant="ghost"
+              onClick={() => speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })}
+              title={t('actions.playAudio')}
+            >
+              <Volume2 className="h-4 w-4" />
             </Button>
           </HotkeyTooltip>
           <div className="h-6 w-[2px] bg-border mx-1" />
