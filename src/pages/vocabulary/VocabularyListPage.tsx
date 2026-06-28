@@ -514,13 +514,14 @@ export function VocabularyListPage() {
                   <Card key={item.id} className={`grid gap-3 md:grid-cols-[auto_1fr_auto] md:items-center border-l-4 ${statusBorderClasses[item.status]}`}>
                     {selectMode ? (
                       <input
+                        key="check"
                         type="checkbox"
                         checked={selectedIds.has(item.id)}
                         onChange={() => toggleSelect(item.id)}
                         className="h-5 w-5 accent-primary"
                       />
                     ) : null}
-                    <div className="min-w-0">
+                    <div key="body" className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <Link to={`/app/vocabulary/${item.id}`} state={{ vocabularyIds }} className="text-xl font-black underline">{item.source_text}</Link>
                         {item.flagged ? <Flag className="h-4 w-4 text-warning" fill="currentColor" /> : null}
@@ -538,7 +539,7 @@ export function VocabularyListPage() {
                       {item.translation ? <p className="text-sm text-primary font-bold">{item.translation}</p> : null}
                       <div className="mt-2 flex flex-wrap gap-1">{item.tags.map((tag) => <Badge key={tag} className="bg-card">#{tag}</Badge>)}</div>
                     </div>
-                    <div className="flex gap-2 ml-auto">
+                    <div key="actions" className="flex gap-2 ml-auto">
                       {selectMode ? null : (
                         <>
                           <Button asChild variant="secondary"><Link to={`/app/vocabulary/${item.id}`} state={{ vocabularyIds }}>{t('vocabulary.view')}</Link></Button>
