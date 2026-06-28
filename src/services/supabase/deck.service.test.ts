@@ -4,7 +4,6 @@ import { deckService } from '@/services/supabase/deck.service'
 const from = vi.fn()
 const select = vi.fn()
 const eq = vi.fn()
-const maybeSingle = vi.fn()
 
 vi.mock('@/services/supabase/client', () => ({
   supabase: {
@@ -35,7 +34,7 @@ describe('deckService.createLessonBatch', () => {
     vi.clearAllMocks()
     
     // Dynamic mock: eq returns a object with maybeSingle resolving to the passed value
-    eq.mockImplementation((col, val) => {
+    eq.mockImplementation((_, val) => {
       return {
         maybeSingle: vi.fn().mockResolvedValue({
           data: val ? { id: val } : null,
