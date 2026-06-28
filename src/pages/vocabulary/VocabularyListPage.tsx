@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Volume2, Flag } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Volume2, Flag, SlidersHorizontal } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { AddVocabularyModal } from '@/components/vocabulary/AddVocabularyModal'
+import { FilterModal } from '@/components/vocabulary/FilterModal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -22,7 +23,7 @@ import { deckService } from '@/services/supabase/deck.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import type { Deck } from '@/types/deck.types'
-import type { VocabularyItem, VocabularyStatus } from '@/types/vocabulary.types'
+import type { VocabularyItem, VocabularyItemType, VocabularyStatus } from '@/types/vocabulary.types'
 import { speak } from '@/utils/audio'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
 
@@ -44,7 +45,47 @@ const statusBorderClasses: Record<VocabularyStatus, string> = {
   need_review: 'border-l-amber-500',
 }
 
-const statusFilterOptions: Array<VocabularyStatus | 'all' | 'flagged' | 'noDeck'> = ['all', 'flagged', 'new', 'learning', 'familiar', 'memorized', 'difficult', 'need_review', 'noDeck']
+function parseFilterParams(params: URLSearchParams): {
+  statuses: Set<VocabularyStatus>
+  itemTypes: Set<VocabularyItemType>
+  flagged: boolean
+  noDeck: boolean
+} {
+  const statuses = new Set<VocabularyStatus>(
+    (params.get('statuses') ?? '').split(',').filter((s): s is VocabularyStatus =>
+      ['new', 'learning', 'familiar', 'memorized', 'difficult', 'need_review'].includes(s)
+    )
+  )
+  const itemTypes = new Set<VocabularyItemType>(
+    (params.get('itemTypes') ?? '').split(',').filter((s): s is VocabularyItemType =>
+      ['word', 'phrase', 'idiom', 'sentence'].includes(s)
+    )
+  )
+  return {
+    statuses,
+    itemTypes,
+    flagged: params.get('flagged') === '1',
+    noDeck: params.get('noDeck') === '1',
+  }
+}
+
+function filterParamsToSearchParams(filters: {
+  statuses: Set<VocabularyStatus>
+  itemTypes: Set<VocabularyItemType>
+  flagged: boolean
+  noDeck: boolean
+}, prev: URLSearchParams): URLSearchParams {
+  const next = new URLSearchParams(prev)
+  if (filters.statuses.size > 0) next.set('statuses', [...filters.statuses].join(','))
+  else next.delete('statuses')
+  if (filters.itemTypes.size > 0) next.set('itemTypes', [...filters.itemTypes].join(','))
+  else next.delete('itemTypes')
+  if (filters.flagged) next.set('flagged', '1')
+  else next.delete('flagged')
+  if (filters.noDeck) next.set('noDeck', '1')
+  else next.delete('noDeck')
+  return next
+}
 
 export function VocabularyListPage() {
   const { t } = useI18n()
@@ -65,17 +106,21 @@ export function VocabularyListPage() {
   })
   const [searchParams, setSearchParams] = useSearchParams()
   const [cachedVocabulary, setCachedVocabulary] = useState<VocabularyItem[]>([])
-  const filterStatus = (searchParams.get('status') as VocabularyStatus | 'all' | 'flagged' | 'noDeck') || 'all'
-  const setFilterStatus = (value: VocabularyStatus | 'all' | 'flagged' | 'noDeck') => {
-    setSearchParams((prev) => {
-      if (value === 'all') { prev.delete('status') } else { prev.set('status', value) }
-      return prev
-    })
-  }
+  const [filterOpen, setFilterOpen] = useState(false)
+
+  const filters = useMemo(() => parseFilterParams(searchParams), [searchParams])
+
+  const setFilters = useCallback(
+    (next: { statuses: Set<VocabularyStatus>; itemTypes: Set<VocabularyItemType>; flagged: boolean; noDeck: boolean }) => {
+      setSearchParams((prev) => filterParamsToSearchParams(next, prev))
+    },
+    [setSearchParams]
+  )
+
   const deckedTermIdsQuery = useQuery({
     queryKey: ['decked-term-ids', user?.id],
     queryFn: () => deckService.getDeckedTermIds(user!.id),
-    enabled: shouldUseRemoteData && filterStatus === 'noDeck',
+    enabled: shouldUseRemoteData && filters.noDeck,
   })
   const [searchText, setSearchText] = useState(searchParams.get('q') ?? '')
   const debouncedSearch = useDebounce(searchText, 300)
@@ -97,13 +142,20 @@ export function VocabularyListPage() {
     : demoVocabulary).filter((v) => (v.item_type as string) !== 'grammar' && !v.tags?.some((t) => t === 'grammar' || t === 'pattern'))
   const vocabulary = useMemo(() => {
     const normalizedSearch = debouncedSearch.trim().toLowerCase()
-    let filtered = filterStatus === 'all'
-      ? rawVocabulary
-      : filterStatus === 'flagged'
-        ? rawVocabulary.filter((item) => item.flagged)
-        : filterStatus === 'noDeck'
-          ? rawVocabulary.filter((item) => !deckedTermIdsQuery.data?.has(item.id))
-          : rawVocabulary.filter((item) => item.status === filterStatus)
+    let filtered = rawVocabulary
+
+    if (filters.statuses.size > 0) {
+      filtered = filtered.filter((item) => filters.statuses.has(item.status))
+    }
+    if (filters.itemTypes.size > 0) {
+      filtered = filtered.filter((item) => filters.itemTypes.has(item.item_type))
+    }
+    if (filters.flagged) {
+      filtered = filtered.filter((item) => item.flagged)
+    }
+    if (filters.noDeck) {
+      filtered = filtered.filter((item) => !deckedTermIdsQuery.data?.has(item.id))
+    }
     if (normalizedSearch) {
       filtered = filtered.filter((item) =>
         item.source_text.toLowerCase().includes(normalizedSearch),
@@ -118,7 +170,7 @@ export function VocabularyListPage() {
       sorted.sort((a, b) => (b.wrong_count ?? 0) - (a.wrong_count ?? 0))
     }
     return sorted
-  }, [debouncedSearch, filterStatus, rawVocabulary, sortOrder, deckedTermIdsQuery.data])
+  }, [debouncedSearch, filters, rawVocabulary, sortOrder, deckedTermIdsQuery.data])
 
   const vocabularyIds = useMemo(() => vocabulary.map((v) => v.id), [vocabulary])
 
@@ -328,6 +380,8 @@ export function VocabularyListPage() {
     setPendingDelete(null)
   }
 
+  const hasActiveFilters = filters.statuses.size > 0 || filters.itemTypes.size > 0 || filters.flagged || filters.noDeck
+
   const headerActions = selectMode ? (
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="ghost" onClick={exitSelectMode}>{t('actions.cancel')}</Button>
@@ -347,6 +401,14 @@ export function VocabularyListPage() {
     </div>
   ) : (
     <div className="flex flex-wrap items-center gap-2">
+      <Button
+        variant={hasActiveFilters ? 'secondary' : 'ghost'}
+        onClick={() => setFilterOpen(true)}
+        title={t('vocabulary.filter')}
+      >
+        <SlidersHorizontal className="h-4 w-4" />
+        {hasActiveFilters && <span className="ml-1.5 text-xs font-black">●</span>}
+      </Button>
       <Button variant="ghost" disabled={!shouldUseRemoteData} onClick={enterSelectMode}>{t('vocabulary.select')}</Button>
       {profile?.is_admin && (
         <Button onClick={() => setAddModalOpen(true)}>{t('vocabulary.add')}</Button>
@@ -396,21 +458,23 @@ export function VocabularyListPage() {
           </div>
         </div>
         <div className="flex overflow-x-auto pb-1.5 -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap md:overflow-x-visible gap-1.5 scrollbar-none shrink-0 max-w-full">
-          {statusFilterOptions.map((status) => (
-            <button
-              key={status}
-              type="button"
-              onClick={() => setFilterStatus(status)}
-              className={[
-                'neo-button min-h-10 rounded-md border-2 border-border px-3 py-2 text-sm font-black whitespace-nowrap shrink-0',
-                filterStatus === status
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-card text-foreground hover:bg-muted',
-              ].join(' ')}
-            >
-              {status === 'all' ? t('vocabulary.filterAll') : status === 'flagged' ? t('vocabulary.flag') : status === 'noDeck' ? t('vocabulary.filterNoDeck') : t(statusLabelKeys[status])}
-            </button>
-          ))}
+          {hasActiveFilters && (
+            <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
+              <span className="whitespace-nowrap">
+                {[
+                  ...Array.from(filters.statuses).map((s) => t(statusLabelKeys[s])),
+                  ...Array.from(filters.itemTypes).map((it) => t({
+                    word: 'vocabulary.word',
+                    phrase: 'vocabulary.phrase',
+                    idiom: 'vocabulary.idiom',
+                    sentence: 'vocabulary.sentence',
+                  }[it])),
+                  filters.flagged ? t('vocabulary.filterFlagged') : null,
+                  filters.noDeck ? t('vocabulary.filterNoDeck') : null,
+                ].filter(Boolean).join(' · ')}
+              </span>
+            </div>
+          )}
         </div>
       </div>
       {vocabularyQuery.isLoading ? <Card className="font-black">{t('vocabulary.loading')}</Card> : null}
@@ -523,6 +587,12 @@ export function VocabularyListPage() {
         variant="danger"
         onConfirm={confirmDelete}
         onCancel={cancelDelete}
+      />
+      <FilterModal
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        filters={filters}
+        onChange={setFilters}
       />
       {profile?.is_admin && <AddVocabularyModal open={addModalOpen} onClose={() => setAddModalOpen(false)} />}
     </>
