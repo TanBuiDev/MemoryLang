@@ -39,6 +39,7 @@ export function InlineEditableField({
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync external value prop to internal edit state
     setNewValue(value)
   }, [value])
 

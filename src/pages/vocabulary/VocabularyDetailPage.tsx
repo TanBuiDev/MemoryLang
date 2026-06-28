@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback, useEffect, cloneElement } from 'react'
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { Flag, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil, MoreVertical, X } from 'lucide-react'
@@ -74,35 +74,24 @@ export function HotkeyTooltip({ children, hotkey, delay = 1000, position = 'bott
     }
   }, [])
 
-  const childProps = children.props as any
-  const trigger = cloneElement(children, {
-    onMouseEnter: (e: React.MouseEvent) => {
-      handleMouseEnter()
-      if (childProps.onMouseEnter) childProps.onMouseEnter(e)
-    },
-    onMouseLeave: (e: React.MouseEvent) => {
-      handleMouseLeave()
-      if (childProps.onMouseLeave) childProps.onMouseLeave(e)
-    },
-    onClick: (e: React.MouseEvent) => {
-      handleMouseLeave()
-      if (childProps.onClick) childProps.onClick(e)
-    }
-  } as any)
-
   const positionClasses = position === 'top'
     ? 'bottom-full mb-2'
     : 'top-full mt-2'
 
   return (
-    <div className="relative inline-block">
-      {trigger}
+    <span
+      className="relative inline-block"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleMouseLeave}
+    >
+      {children}
       {show && (
         <div className={`absolute ${positionClasses} left-1/2 -translate-x-1/2 z-50 whitespace-nowrap p-1.5 border-2 border-border bg-card shadow-[3px_3px_0_var(--border)] rounded-md text-xs font-bold text-foreground`}>
           <kbd className="px-1.5 py-0.5 rounded border border-border bg-muted font-mono text-[10px] shadow-[1px_1px_0_var(--border)]">{hotkey}</kbd>
         </div>
       )}
-    </div>
+    </span>
   )
 }
 
@@ -158,6 +147,7 @@ export function VocabularyDetailPage() {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current)
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset of all page-level UI state on route change
     setImageSearchQuery('')
     setImageSearchResults([])
     setImageSearchLoading(false)
@@ -234,8 +224,8 @@ export function VocabularyDetailPage() {
   }
 
   const vocabularyIds = useMemo(() => {
-    if (location.state && Array.isArray((location.state as any).vocabularyIds)) {
-      return (location.state as any).vocabularyIds as string[]
+    if (location.state && Array.isArray((location.state as { vocabularyIds?: string[] }).vocabularyIds)) {
+      return (location.state as { vocabularyIds?: string[] }).vocabularyIds as string[]
     }
     const baseList = shouldUseRemoteData
       ? vocabularyListQuery.data ?? []
@@ -280,6 +270,7 @@ export function VocabularyDetailPage() {
 
   useEffect(() => {
     if (currentIndex !== -1) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync page input with currentIndex changes
       setPageInputValue(String(currentIndex + 1))
     }
   }, [currentIndex])
@@ -357,7 +348,7 @@ export function VocabularyDetailPage() {
         setRelationHighlightIndex(-1)
       }
     },
-    [relationSearch, filteredTargetOptions, relationHighlightIndex, relationType]
+    [relationSearch, filteredTargetOptions, relationHighlightIndex, relationType, isSearching]
   )
 
   const invalidateVocabularyQueries = async (targetTermId?: string) => {
@@ -466,7 +457,7 @@ export function VocabularyDetailPage() {
 
     window.addEventListener('keydown', handleGlobalKeyDown)
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [id, prevId, nextId, vocabularyIds, item, isDeleting, isZoomed, navigate, invalidateVocabularyQueries])
+  }, [id, prevId, nextId, vocabularyIds, item, isDeleting, isZoomed, isAdmin, navigate, invalidateVocabularyQueries])
 
   const updateMutation = useMutation({
     mutationFn: (updatedFields: Partial<VocabularyItem>) => {
@@ -499,12 +490,12 @@ export function VocabularyDetailPage() {
     onMutate: async (updatedFields) => {
       const previousCard = queryClient.getQueryData(['vocabulary-card', id])
 
-      queryClient.setQueryData(['vocabulary-card', id], (old: any) => {
+      queryClient.setQueryData(['vocabulary-card', id], (old: { entry: VocabularyItem } | undefined) => {
         if (!old?.entry) return old
         return { ...old, entry: { ...old.entry, ...updatedFields } }
       })
 
-      queryClient.setQueryData(['vocabulary', user?.id], (old: any) => {
+      queryClient.setQueryData(['vocabulary', user?.id], (old: VocabularyItem[] | undefined) => {
         if (!Array.isArray(old)) return old
         return old.map((v: VocabularyItem) =>
           v.id === id ? { ...v, ...updatedFields } : v
