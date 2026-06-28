@@ -782,41 +782,7 @@ export function VocabularyDetailPage() {
               className="font-mono text-lg font-black text-muted-foreground"
               disabled={!isAdmin}
             />
-            {isAdmin && (
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-8 w-8 p-0 shrink-0 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
-                disabled={enrichingIpa}
-                onClick={async () => {
-                  setEnrichingIpa(true)
-                  setFormError(null)
-                  try {
-                    const activeInput = document.querySelector<HTMLInputElement>('[class*="w-\\[300px\\]"]') ?? document.querySelector<HTMLInputElement>('[class*="w-\\[500px\\]"]')
-                    const sourceText = activeInput?.value?.trim() || item.source_text
-                    const enriched = await enrichVocabulary(sourceText, item.source_language, item.native_language)
-                    if (enriched.ipa) {
-                      await handleSaveField({
-                        ipa: enriched.ipa,
-                        part_of_speech: enriched.partOfSpeech ?? item.part_of_speech,
-                      })
-                    } else {
-                      setFormError('Không tìm thấy IPA cho từ này. Bạn có thể nhập thủ công.')
-                    }
-                  } catch {
-                    setFormError('Không thể tìm IPA. Kiểm tra kết nối mạng.')
-                  }
-                  setEnrichingIpa(false)
-                }}
-                title={t('vocabulary.regenerateIpa')}
-              >
-                {enrichingIpa ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            )}
+
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0 pt-1">
@@ -867,6 +833,39 @@ export function VocabularyDetailPage() {
 
         {/* Thanh công cụ điều hướng/thao tác (actions) */}
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-background border-t-2 border-border p-3.5 flex items-center justify-center gap-1.5 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] sm:static sm:bg-transparent sm:border-none sm:p-0 sm:shadow-none sm:w-auto sm:flex-row sm:flex-wrap">
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              disabled={enrichingIpa}
+              onClick={async () => {
+                setEnrichingIpa(true)
+                setFormError(null)
+                try {
+                  const activeInput = document.querySelector<HTMLInputElement>('[class*="w-\\[300px\\]"]') ?? document.querySelector<HTMLInputElement>('[class*="w-\\[500px\\]"]')
+                  const sourceText = activeInput?.value?.trim() || item.source_text
+                  const enriched = await enrichVocabulary(sourceText, item.source_language, item.native_language)
+                  if (enriched.ipa) {
+                    await handleSaveField({
+                      ipa: enriched.ipa,
+                      part_of_speech: enriched.partOfSpeech ?? item.part_of_speech,
+                    })
+                  } else {
+                    setFormError('Không tìm thấy IPA cho từ này. Bạn có thể nhập thủ công.')
+                  }
+                } catch {
+                  setFormError('Không thể tìm IPA. Kiểm tra kết nối mạng.')
+                }
+                setEnrichingIpa(false)
+              }}
+              title={t('vocabulary.regenerateIpa')}
+            >
+              {enrichingIpa ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </Button>
+          )}
           <HotkeyTooltip hotkey="Alt + ←">
             <Button
               variant="ghost"
