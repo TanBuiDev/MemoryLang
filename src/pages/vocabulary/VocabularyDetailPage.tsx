@@ -23,28 +23,27 @@ import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { RelatedTermsSection } from '@/components/vocabulary/RelatedTermsSection'
 import { relationshipDisplayOrder, relationshipLabelKeys } from '@/components/vocabulary/relationshipDisplay'
-import type { ExampleSentence, RelationType, VocabularyItem, VocabularyItemType, VocabularyStatus } from '@/types/vocabulary.types'
+import type { ExampleSentence, RelationType, VocabularyItem } from '@/types/vocabulary.types'
 import { useAudioPreload } from '@/hooks/useAudioPreload'
 import { speak } from '@/utils/audio'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
 
 const imageRatioCache = new Map<string, number>()
 
-const itemTypeLabelKeys: Record<VocabularyItemType, string> = {
-  word: 'vocabulary.word',
-  phrase: 'vocabulary.phrase',
-  idiom: 'vocabulary.idiom',
-  sentence: 'vocabulary.sentence',
-}
-
-const statusLabelKeys: Record<VocabularyStatus, string> = {
-  new: 'vocabulary.statusNew',
-  learning: 'vocabulary.statusLearning',
-  familiar: 'vocabulary.statusFamiliar',
-  memorized: 'vocabulary.statusMemorized',
-  difficult: 'vocabulary.statusDifficult',
-  need_review: 'vocabulary.statusNeedReview',
-}
+const POS_OPTIONS = [
+  { value: 'noun', label: 'Noun' },
+  { value: 'verb', label: 'Verb' },
+  { value: 'adjective', label: 'Adjective' },
+  { value: 'adverb', label: 'Adverb' },
+  { value: 'pronoun', label: 'Pronoun' },
+  { value: 'preposition', label: 'Preposition' },
+  { value: 'conjunction', label: 'Conjunction' },
+  { value: 'interjection', label: 'Interjection' },
+  { value: 'article', label: 'Article' },
+  { value: 'determiner', label: 'Determiner' },
+  { value: 'particle', label: 'Particle' },
+  { value: '__other__', label: 'Khác...' },
+]
 
 interface HotkeyTooltipProps {
   children: React.ReactElement
@@ -792,9 +791,10 @@ export function VocabularyDetailPage() {
           <div className="flex items-center gap-1">
             <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Từ loại:</span>
             <InlineEditableField
-              value={item.part_of_speech ?? ''}
-              type="input"
-              onSave={(val) => handleSaveField({ part_of_speech: val || null })}
+              value={item.part_of_speech && POS_OPTIONS.some(o => o.value === item.part_of_speech) ? item.part_of_speech : (item.part_of_speech ? '__other__' : '')}
+              type="select"
+              options={POS_OPTIONS.map(({ value, label }) => ({ value, label }))}
+              onSave={(val) => handleSaveField({ part_of_speech: val === '__other__' ? item.part_of_speech : (val || null) })}
               placeholder={t('vocabulary.partOfSpeech')}
               disabled={!isAdmin}
               displayValue={
@@ -807,6 +807,14 @@ export function VocabularyDetailPage() {
                 )
               }
             />
+            {item.part_of_speech === '__other__' || (item.part_of_speech && !POS_OPTIONS.some(o => o.value === item.part_of_speech)) ? (
+              <input
+                className="ml-1 h-7 w-24 rounded border-2 border-border px-2 text-xs font-bold"
+                placeholder="Nhập..."
+                value={item.part_of_speech === '__other__' ? '' : item.part_of_speech ?? ''}
+                onChange={(e) => handleSaveField({ part_of_speech: e.target.value || null })}
+              />
+            ) : null}
           </div>
         </div>
 
@@ -893,6 +901,81 @@ export function VocabularyDetailPage() {
         </div>
       </div>
 
+      <div className="mb-6 grid gap-4 grid-cols-1 sm:grid-cols-[7fr_3fr]">
+        <Card className="flex flex-col gap-2">
+          <Label className="text-xs uppercase text-muted-foreground">{t('vocabulary.ipa')}</Label>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 max-w-sm">
+              <InlineEditableField
+                value={item.ipa ?? ''}
+                onSave={(val) => handleSaveField({ ipa: val || null })}
+                placeholder="/.../"
+                className="font-mono text-xl font-black"
+                disabled={!isAdmin}
+              />
+            </div>
+            {isAdmin && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-8 w-8 p-0 sm:w-auto sm:px-3 text-xs flex items-center justify-center"
+                disabled={enrichingIpa}
+                onClick={async () => {
+                  setEnrichingIpa(true)
+                  setFormError(null)
+                  try {
+                    const enriched = await enrichVocabulary(item.source_text, item.source_language, item.native_language)
+                    if (enriched.ipa) {
+                      await handleSaveField({
+                        ipa: enriched.ipa,
+                        part_of_speech: enriched.partOfSpeech ?? item.part_of_speech,
+                      })
+                    } else {
+                      setFormError('Không tìm thấy IPA cho từ này. Bạn có thể nhập thủ công.')
+                    }
+                  } catch {
+                    setFormError('Không thể tìm IPA. Kiểm tra kết nối mạng.')
+                  }
+                  setEnrichingIpa(false)
+                }}
+                title={t('vocabulary.regenerateIpa')}
+              >
+                {enrichingIpa ? (
+                  <span className="inline-flex items-center gap-0.5">
+                    <span className="inline-block animate-bounce [animation-delay:0ms]">.</span>
+                    <span className="inline-block animate-bounce [animation-delay:150ms]">.</span>
+                    <span className="inline-block animate-bounce [animation-delay:300ms]">.</span>
+                  </span>
+                ) : (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 sm:mr-1 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">{t('vocabulary.regenerateIpa')}</span>
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </Card>
+        <Card className="flex flex-col gap-2">
+          <Label className="text-xs uppercase text-muted-foreground">{t('vocabulary.partOfSpeech')}</Label>
+          <InlineEditableField
+            value={item.part_of_speech && POS_OPTIONS.some(o => o.value === item.part_of_speech) ? item.part_of_speech : (item.part_of_speech ? '__other__' : '')}
+            type="select"
+            options={POS_OPTIONS.map(({ value, label }) => ({ value, label }))}
+            onSave={(val) => handleSaveField({ part_of_speech: val === '__other__' ? item.part_of_speech : (val || null) })}
+            placeholder={t('vocabulary.partOfSpeech')}
+            disabled={!isAdmin}
+            displayValue={
+              item.part_of_speech && item.part_of_speech !== '__other__' ? (
+                <span className="text-xl font-black text-foreground">{item.part_of_speech}</span>
+              ) : (
+                <span className="text-xl font-bold text-muted-foreground italic">{t('vocabulary.partOfSpeech')}</span>
+              )
+            }
+          />
+        </Card>
+      </div>
+
       <div className={cn(
         "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] transition-opacity duration-200",
         shouldUseRemoteData && vocabularyCardQuery.isFetching && vocabularyCardQuery.data?.entry?.id !== id && "opacity-50 pointer-events-none"
@@ -952,84 +1035,10 @@ export function VocabularyDetailPage() {
                     <Button type="button" tabIndex={-1} className="h-8 py-1 px-3 text-xs" variant="ghost" onClick={cancel}>
                       {t('actions.cancel')}
                     </Button>
-        </div>
-      </div>
-
-      <div className="mb-6 grid gap-4 grid-cols-1 sm:grid-cols-[7fr_3fr]">
-        <Card className="flex flex-col gap-2">
-          <Label className="text-xs uppercase text-muted-foreground">{t('vocabulary.ipa')}</Label>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 max-w-sm">
-              <InlineEditableField
-                value={item.ipa ?? ''}
-                onSave={(val) => handleSaveField({ ipa: val || null })}
-                placeholder="/.../"
-                className="font-mono text-xl font-black"
-                disabled={!isAdmin}
-              />
-            </div>
-            {isAdmin && (
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-8 w-8 p-0 sm:w-auto sm:px-3 text-xs flex items-center justify-center"
-                disabled={enrichingIpa}
-                onClick={async () => {
-                  setEnrichingIpa(true)
-                  setFormError(null)
-                  try {
-                    const enriched = await enrichVocabulary(item.source_text, item.source_language, item.native_language)
-                    if (enriched.ipa) {
-                      await handleSaveField({
-                        ipa: enriched.ipa,
-                        part_of_speech: enriched.partOfSpeech ?? item.part_of_speech,
-                      })
-                    } else {
-                      setFormError('Không tìm thấy IPA cho từ này. Bạn có thể nhập thủ công.')
-                    }
-                  } catch {
-                    setFormError('Không thể tìm IPA. Kiểm tra kết nối mạng.')
-                  }
-                  setEnrichingIpa(false)
-                }}
-                title={t('vocabulary.regenerateIpa')}
-              >
-                {enrichingIpa ? (
-                  <span className="inline-flex items-center gap-0.5">
-                    <span className="inline-block animate-bounce [animation-delay:0ms]">.</span>
-                    <span className="inline-block animate-bounce [animation-delay:150ms]">.</span>
-                    <span className="inline-block animate-bounce [animation-delay:300ms]">.</span>
-                  </span>
-                ) : (
-                  <>
-                    <RefreshCw className="h-3.5 w-3.5 sm:mr-1 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">{t('vocabulary.regenerateIpa')}</span>
-                  </>
-                )}
-              </Button>
+                </div>
+              </div>
             )}
-          </div>
-        </Card>
-        <Card className="flex flex-col gap-2">
-          <Label className="text-xs uppercase text-muted-foreground">{t('vocabulary.partOfSpeech')}</Label>
-          <InlineEditableField
-            value={item.part_of_speech ?? ''}
-            type="input"
-            onSave={(val) => handleSaveField({ part_of_speech: val || null })}
-            placeholder={t('vocabulary.partOfSpeech')}
-            disabled={!isAdmin}
-            displayValue={
-              item.part_of_speech ? (
-                <span className="text-xl font-black text-foreground">{item.part_of_speech}</span>
-              ) : (
-                <span className="text-xl font-bold text-muted-foreground italic">{t('vocabulary.partOfSpeech')}</span>
-              )
-            }
           />
-        </Card>
-      </div>
-              )}
-            />
           </div>
 
           <hr className="border-border border-dashed" />
@@ -1070,18 +1079,7 @@ export function VocabularyDetailPage() {
                 
                 <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                   {tempExamples.map((ex, index) => (
-                    <div key={index} className="relative rounded-md border border-border p-3 space-y-2 bg-muted/20">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-muted-foreground">Ví dụ {index + 1}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => setTempExamples(prev => prev.filter((_, i) => i !== index))}
-                          className="h-6 w-6 p-0 text-danger hover:text-danger/80"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                    <div key={index} className="rounded-md border border-border p-3 space-y-2 bg-muted/20">
                       <div>
                         <Input
                           placeholder="Câu ví dụ (English)"
@@ -1093,16 +1091,26 @@ export function VocabularyDetailPage() {
                           className="text-sm"
                         />
                       </div>
-                      <div>
-                        <Input
-                          placeholder="Dịch nghĩa câu ví dụ (Vietnamese)"
-                          value={ex.translation || ''}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            setTempExamples(prev => prev.map((item, i) => i === index ? { ...item, translation: val } : item))
-                          }}
-                          className="text-sm"
-                        />
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <Input
+                            placeholder="Dịch nghĩa câu ví dụ (Vietnamese)"
+                            value={ex.translation || ''}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              setTempExamples(prev => prev.map((item, i) => i === index ? { ...item, translation: val } : item))
+                            }}
+                            className="text-sm"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setTempExamples(prev => prev.filter((_, i) => i !== index))}
+                          className="h-8 w-8 p-0 text-danger hover:text-danger/80 shrink-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   ))}
