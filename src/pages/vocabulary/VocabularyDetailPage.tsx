@@ -1122,14 +1122,14 @@ export function VocabularyDetailPage() {
               <Button
                 type="button"
                 variant="ghost"
-                className="h-8 w-8 p-0 rounded-full border-2 border-border shadow-[1.5px_1.5px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none flex items-center justify-center"
+                className="h-6 w-6 p-0 rounded-full border-2 border-border shadow-[1px_1px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none flex items-center justify-center animate-in fade-in zoom-in-50 duration-200"
                 onClick={() => setIsMeaningOpen(!isMeaningOpen)}
                 aria-label={isMeaningOpen ? 'Ẩn nghĩa' : 'Xem nghĩa'}
               >
                 {isMeaningOpen ? (
-                  <ChevronUp className="h-4 w-4" />
+                  <ChevronUp className="h-3.5 w-3.5" />
                 ) : (
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-3.5 w-3.5" />
                 )}
               </Button>
             </div>
@@ -1216,13 +1216,13 @@ export function VocabularyDetailPage() {
                 
                 <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                   {tempExamples.map((ex, index) => (
-                    <div key={index} className="relative rounded-md border border-border p-3 space-y-2 bg-muted/20 pr-8">
-                      {/* Nút Xóa là dấu x bọc trong hình tròn đặt ở góc phải trên thẻ của ví dụ đó */}
+                    <div key={index} className="relative rounded-md border border-border p-3 space-y-2 bg-muted/20">
+                      {/* Nút Xóa là dấu x bọc trong hình tròn đặt đè lên góc phải trên của viền bao bọc thẻ ví dụ */}
                       <Button
                         type="button"
                         variant="ghost"
                         onClick={() => setTempExamples(prev => prev.filter((_, i) => i !== index))}
-                        className="absolute top-2 right-2 h-6 w-6 rounded-full p-0 text-danger hover:bg-danger/10 border border-border shadow-[1px_1px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none bg-card flex items-center justify-center"
+                        className="absolute -top-2.5 -right-2.5 h-6 w-6 rounded-full p-0 text-danger hover:bg-danger/10 border-2 border-border shadow-[1.5px_1.5px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none bg-card flex items-center justify-center z-10"
                         title="Xóa ví dụ"
                       >
                         <X className="h-3.5 w-3.5" />
