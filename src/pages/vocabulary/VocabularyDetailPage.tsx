@@ -151,6 +151,7 @@ export function VocabularyDetailPage() {
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLSpanElement>(null)
   const [isMeaningOpen, setIsMeaningOpen] = useState(false)
+  const [exampleIndexToDelete, setExampleIndexToDelete] = useState<number | null>(null)
 
   // Reset toàn bộ state ở cấp độ trang khi ID từ vựng thay đổi (khi chuyển đổi giữa các từ)
   useEffect(() => {
@@ -179,6 +180,7 @@ export function VocabularyDetailPage() {
     setTempExamples([])
     setIsActionsMenuOpen(false)
     setIsMeaningOpen(false)
+    setExampleIndexToDelete(null)
   }, [id])
 
   const vocabularyCardQuery = useQuery({
@@ -1221,7 +1223,7 @@ export function VocabularyDetailPage() {
                       <Button
                         type="button"
                         variant="ghost"
-                        onClick={() => setTempExamples(prev => prev.filter((_, i) => i !== index))}
+                        onClick={() => setExampleIndexToDelete(index)}
                         className="absolute -top-2.5 -right-2.5 h-6 w-6 min-h-0 rounded-full p-0 text-danger hover:bg-danger/10 border-2 border-border shadow-[1.5px_1.5px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none bg-card flex items-center justify-center z-10"
                         title="Xóa ví dụ"
                       >
@@ -1584,6 +1586,22 @@ export function VocabularyDetailPage() {
         confirmDisabled={deleteVocabulary.isPending}
         onConfirm={() => deleteVocabulary.mutate()}
         onCancel={() => setIsDeleting(false)}
+      />
+
+      <ConfirmModal
+        open={exampleIndexToDelete !== null}
+        title={t('vocabulary.deleteExampleConfirmTitle')}
+        description={t('vocabulary.deleteExampleConfirmDescription')}
+        confirmLabel={t('vocabulary.delete')}
+        cancelLabel={t('actions.cancel')}
+        variant="danger"
+        onConfirm={() => {
+          if (exampleIndexToDelete !== null) {
+            setTempExamples(prev => prev.filter((_, i) => i !== exampleIndexToDelete))
+            setExampleIndexToDelete(null)
+          }
+        }}
+        onCancel={() => setExampleIndexToDelete(null)}
       />
     </div>
   )
