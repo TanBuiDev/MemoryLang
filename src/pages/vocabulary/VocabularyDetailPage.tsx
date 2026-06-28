@@ -775,15 +775,6 @@ export function VocabularyDetailPage() {
           </div>
 
           <div className="flex items-center gap-1.5 mt-1 text-muted-foreground">
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-8 w-8 p-0 shrink-0 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
-              onClick={() => speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })}
-              title={t('actions.playAudio')}
-            >
-              <Volume2 className="h-4 w-4" />
-            </Button>
             <InlineEditableField
               value={item.ipa ?? ''}
               onSave={(val) => handleSaveField({ ipa: val || null })}
