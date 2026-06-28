@@ -139,7 +139,7 @@ export function InlineEditableField({
         className
       )}
     >
-      <div className="flex-1">{renderVal}</div>
+      <div className="flex-1 min-w-0 break-words">{renderVal}</div>
     </div>
   )
 }
