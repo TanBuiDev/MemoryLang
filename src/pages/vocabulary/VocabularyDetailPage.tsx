@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect, cloneElement } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { Flag, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil, MoreVertical, X } from 'lucide-react'
+import { Flag, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil, MoreVertical, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
@@ -150,7 +150,7 @@ export function VocabularyDetailPage() {
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLSpanElement>(null)
-  const [isMeaningOpen, setIsMeaningOpen] = useState(true)
+  const [isMeaningOpen, setIsMeaningOpen] = useState(false)
 
   // Reset toàn bộ state ở cấp độ trang khi ID từ vựng thay đổi (khi chuyển đổi giữa các từ)
   useEffect(() => {
@@ -178,7 +178,7 @@ export function VocabularyDetailPage() {
     setIsEditingExamples(false)
     setTempExamples([])
     setIsActionsMenuOpen(false)
-    setIsMeaningOpen(true)
+    setIsMeaningOpen(false)
   }, [id])
 
   const vocabularyCardQuery = useQuery({
@@ -1122,10 +1122,15 @@ export function VocabularyDetailPage() {
               <Button
                 type="button"
                 variant="ghost"
-                className="h-7 px-2.5 text-[11px] font-black border-2 border-border shadow-[1.5px_1.5px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+                className="h-8 w-8 p-0 rounded-full border-2 border-border shadow-[1.5px_1.5px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none flex items-center justify-center"
                 onClick={() => setIsMeaningOpen(!isMeaningOpen)}
+                aria-label={isMeaningOpen ? 'Ẩn nghĩa' : 'Xem nghĩa'}
               >
-                {isMeaningOpen ? 'Ẩn nghĩa' : 'Xem nghĩa'}
+                {isMeaningOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
               </Button>
             </div>
             <div
@@ -1211,7 +1216,18 @@ export function VocabularyDetailPage() {
                 
                 <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                   {tempExamples.map((ex, index) => (
-                    <div key={index} className="rounded-md border border-border p-3 space-y-2 bg-muted/20">
+                    <div key={index} className="relative rounded-md border border-border p-3 space-y-2 bg-muted/20 pr-8">
+                      {/* Nút Xóa là dấu x bọc trong hình tròn đặt ở góc phải trên thẻ của ví dụ đó */}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setTempExamples(prev => prev.filter((_, i) => i !== index))}
+                        className="absolute top-2 right-2 h-6 w-6 rounded-full p-0 text-danger hover:bg-danger/10 border border-border shadow-[1px_1px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none bg-card flex items-center justify-center"
+                        title="Xóa ví dụ"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+
                       <div>
                         <Input
                           placeholder="Câu ví dụ (English)"
@@ -1223,26 +1239,16 @@ export function VocabularyDetailPage() {
                           className="text-sm"
                         />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1">
-                          <Input
-                            placeholder="Dịch nghĩa câu ví dụ (Vietnamese)"
-                            value={ex.translation || ''}
-                            onChange={(e) => {
-                              const val = e.target.value
-                              setTempExamples(prev => prev.map((item, i) => i === index ? { ...item, translation: val } : item))
-                            }}
-                            className="text-sm"
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => setTempExamples(prev => prev.filter((_, i) => i !== index))}
-                          className="h-8 w-8 p-0 text-danger hover:text-danger/80 shrink-0 border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none bg-card"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <div>
+                        <Input
+                          placeholder="Dịch nghĩa câu ví dụ (Vietnamese)"
+                          value={ex.translation || ''}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setTempExamples(prev => prev.map((item, i) => i === index ? { ...item, translation: val } : item))
+                          }}
+                          className="text-sm"
+                        />
                       </div>
                     </div>
                   ))}
