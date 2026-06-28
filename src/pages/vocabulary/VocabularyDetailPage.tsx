@@ -1086,7 +1086,8 @@ export function VocabularyDetailPage() {
         "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] transition-opacity duration-200",
         shouldUseRemoteData && vocabularyCardQuery.isFetching && vocabularyCardQuery.data?.entry?.id !== id && "opacity-50 pointer-events-none"
       )}>
-        <Card className="flex flex-col gap-6 min-w-0 overflow-hidden">
+        <div className="flex flex-col gap-4">
+          <Card className="flex flex-col gap-6 min-w-0 overflow-hidden">
 
           <div>
             <CardTitle className="text-sm uppercase text-muted-foreground mb-1">{t('vocabulary.translation')}</CardTitle>
@@ -1278,20 +1279,21 @@ export function VocabularyDetailPage() {
             )}
           </div>
 
-          <hr className="border-border border-dashed" />
-
-          <div>
-            <CardTitle className="text-sm uppercase text-muted-foreground mb-1">{t('vocabulary.note')}</CardTitle>
-            <InlineEditableField
-              value={item.note ?? ''}
-              type="textarea"
-              onSave={(val) => handleSaveField({ note: val || null })}
-              placeholder={t('vocabulary.noNotes')}
-              className="font-semibold text-muted-foreground"
-              disabled={!isAdmin}
-            />
-          </div>
         </Card>
+
+        {/* Ghi chú hiển thị dưới dạng card riêng bên cột trái trên Desktop (lg) */}
+        <Card className="p-5 flex flex-col gap-2 hidden lg:flex">
+          <CardTitle className="text-sm uppercase text-muted-foreground mb-1">{t('vocabulary.note')}</CardTitle>
+          <InlineEditableField
+            value={item.note ?? ''}
+            type="textarea"
+            onSave={(val) => handleSaveField({ note: val || null })}
+            placeholder={t('vocabulary.noNotes')}
+            className="font-semibold text-muted-foreground"
+            disabled={!isAdmin}
+          />
+        </Card>
+      </div>
 
         <div className="grid gap-4 self-start">
           <Card className="p-4 flex flex-col gap-3">
@@ -1557,6 +1559,19 @@ export function VocabularyDetailPage() {
           />
 
         </div>
+
+        {/* Ghi chú hiển thị dưới dạng card riêng ở dưới cùng trên Điện thoại/Màn hình nhỏ (< lg) */}
+        <Card className="p-5 flex flex-col gap-2 lg:hidden">
+          <CardTitle className="text-sm uppercase text-muted-foreground mb-1">{t('vocabulary.note')}</CardTitle>
+          <InlineEditableField
+            value={item.note ?? ''}
+            type="textarea"
+            onSave={(val) => handleSaveField({ note: val || null })}
+            placeholder={t('vocabulary.noNotes')}
+            className="font-semibold text-muted-foreground"
+            disabled={!isAdmin}
+          />
+        </Card>
       </div>
 
       {isZoomed && item.image_url && (
@@ -1595,9 +1610,14 @@ export function VocabularyDetailPage() {
         confirmLabel={t('vocabulary.delete')}
         cancelLabel={t('actions.cancel')}
         variant="danger"
-        onConfirm={() => {
+        onConfirm={async () => {
           if (exampleIndexToDelete !== null) {
-            setTempExamples(prev => prev.filter((_, i) => i !== exampleIndexToDelete))
+            const updatedExamples = tempExamples.filter((_, i) => i !== exampleIndexToDelete)
+            setTempExamples(updatedExamples)
+            const cleaned = updatedExamples
+              .map(ex => ({ sentence: ex.sentence.trim(), translation: ex.translation?.trim() || '' }))
+              .filter(ex => ex.sentence.length > 0)
+            await handleSaveField({ examples: cleaned })
             setExampleIndexToDelete(null)
           }
         }}
