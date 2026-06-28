@@ -924,7 +924,9 @@ export function VocabularyDetailPage() {
                   setEnrichingIpa(true)
                   setFormError(null)
                   try {
-                    const enriched = await enrichVocabulary(item.source_text, item.source_language, item.native_language)
+                    const activeInput = document.querySelector<HTMLInputElement>('[class*="w-\\[300px\\]"]') ?? document.querySelector<HTMLInputElement>('[class*="w-\\[500px\\]"]')
+                    const sourceText = activeInput?.value?.trim() || item.source_text
+                    const enriched = await enrichVocabulary(sourceText, item.source_language, item.native_language)
                     if (enriched.ipa) {
                       await handleSaveField({
                         ipa: enriched.ipa,
