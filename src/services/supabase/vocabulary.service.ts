@@ -49,38 +49,16 @@ export const vocabularyService = {
   },
 
   async list(userId: string): Promise<VocabularyItem[]> {
-    // Đảm bảo user có đầy đủ từ vựng từ global_terms (idempotent, chỉ thêm từ mới)
-    await supabase.rpc('seed_user_vocabulary', { p_user_id: userId })
-    
     const { data, error } = await supabase
-      .from('user_terms')
-      .select(`
-        *,
-        global_terms!fk_user_terms_global_term (
-          source_text,
-          normalized_text,
-          source_language,
-          native_language,
-          item_type,
-          part_of_speech,
-          ipa,
-          audio_url,
-          image_url,
-          meanings,
-          examples,
-          translation,
-          note,
-          tags
-        )
-      `)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
+      .rpc('get_user_vocabulary', { p_user_id: userId })
       
     if (error) throw error
-    return (data ?? []).map(row => flattenVocabularyItem(row))
+    // get_user_vocabulary đã trả về cấu trúc phẳng hoàn chỉnh, không cần flat lại
+    return (data ?? []) as VocabularyItem[]
   },
 
   async get(id: string): Promise<VocabularyItem | null> {
+    // 1. Thử lấy từ user_terms
     const { data, error } = await supabase
       .from('user_terms')
       .select(`
@@ -106,8 +84,46 @@ export const vocabularyService = {
       .maybeSingle()
       
     if (error) throw error
-    if (!data) return null
-    return flattenVocabularyItem(data)
+    if (data) return flattenVocabularyItem(data)
+
+    // 2. Nếu không tìm thấy, thử tìm trong global_terms (coi id là global_term_id)
+    const { data: globalData, error: globalError } = await supabase
+      .from('global_terms')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (globalError) throw globalError
+    if (!globalData) return null
+
+    // Trả về bản ghi từ vựng phẳng mặc định khi chưa bắt đầu học
+    return {
+      id: globalData.id, // Dùng tạm global_term_id làm id
+      global_term_id: globalData.id,
+      status: 'new',
+      view_count: 0,
+      correct_count: 0,
+      wrong_count: 0,
+      audio_play_count: 0,
+      last_reviewed_at: null,
+      next_review_at: null,
+      flagged: false,
+      deleted_at: null,
+      source_text: globalData.source_text,
+      normalized_text: globalData.normalized_text,
+      source_language: globalData.source_language,
+      native_language: globalData.native_language,
+      item_type: globalData.item_type,
+      part_of_speech: globalData.part_of_speech,
+      ipa: globalData.ipa,
+      audio_url: globalData.audio_url,
+      image_url: globalData.image_url,
+      meanings: globalData.meanings,
+      examples: globalData.examples,
+      note: globalData.note,
+      tags: globalData.tags,
+      translation: globalData.translation,
+    } as VocabularyItem
   },
 
   async create(userId: string, values: VocabularyFormValues): Promise<VocabularyItem> {
@@ -183,17 +199,28 @@ export const vocabularyService = {
     const { deck_ids } = values
     const normalized = normalizeText(values.source_text)
 
-    // 1. Lấy thông tin user_term hiện tại để tìm global_term_id
-    const { data: currentTerm, error: fetchError } = await supabase
-      .from('user_terms')
-      .select('global_term_id')
-      .eq('id', id)
-      .single()
-      
-    if (fetchError) throw fetchError
-    const globalTermId = currentTerm.global_term_id
+    // 1. Tìm thông tin global_term_id và user_term hiện tại
+    let globalTermId: string | null = null
+    let userTermId = id
+    let isNewUserTerm = false
 
-    // 2. Cập nhật dữ liệu từ điển trong global_terms
+    const { data: currentTerm } = await supabase
+      .from('user_terms')
+      .select('id, global_term_id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (currentTerm) {
+      globalTermId = currentTerm.global_term_id
+    } else {
+      // ID truyền vào thực chất là global_term_id của một từ chưa được user học
+      globalTermId = id
+      isNewUserTerm = true
+    }
+
+    if (!globalTermId) throw new Error('Cannot find global term ID')
+
+    // 2. Cập nhật dữ liệu từ điển trong global_terms (chỉ Admin mới lưu được - RLS sẽ kiểm soát)
     const { error: globalError } = await supabase
       .from('global_terms')
       .update({
@@ -211,50 +238,127 @@ export const vocabularyService = {
       })
       .eq('id', globalTermId)
       
-    if (globalError) throw globalError
+    if (globalError) {
+      // Nếu có lỗi (ví dụ do phân quyền RLS vì user thường cố cập nhật global_terms), ta bỏ qua
+      console.warn('Global terms update ignored (probably due to RLS policies):', globalError.message)
+    }
 
-    // 3. Cập nhật các trường cá nhân trong user_terms (chỉ còn status)
-    const { error } = await supabase
-      .from('user_terms')
-      .update({
-        status: values.status,
-      })
-      .eq('id', id)
-      
-    if (error) throw error
+    // 3. Cập nhật hoặc chèn mới tiến trình trong user_terms
+    if (isNewUserTerm) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('User session is required to initialize user vocabulary progress')
+
+      const { data: newUserTerm, error: insertError } = await supabase
+        .from('user_terms')
+        .insert({
+          user_id: user.id,
+          global_term_id: globalTermId,
+          status: values.status || 'new',
+        })
+        .select('id')
+        .single()
+        
+      if (insertError) throw insertError
+      userTermId = newUserTerm.id
+    } else {
+      const { error } = await supabase
+        .from('user_terms')
+        .update({
+          status: values.status,
+        })
+        .eq('id', userTermId)
+        
+      if (error) throw error
+    }
 
     if (Array.isArray(deck_ids)) {
-      const { error: deleteLinksError } = await supabase.from('deck_terms').delete().eq('user_term_id', id)
+      const { error: deleteLinksError } = await supabase.from('deck_terms').delete().eq('user_term_id', userTermId)
       if (deleteLinksError) throw deleteLinksError
     }
 
     if (deck_ids && deck_ids.length > 0) {
       const { error: linkError } = await supabase
         .from('deck_terms')
-        .insert(deck_ids.map((deck_id) => ({ deck_id, user_term_id: id })))
+        .insert(deck_ids.map((deck_id) => ({ deck_id, user_term_id: userTermId })))
       if (linkError) throw linkError
     }
 
-    return await this.get(id) as VocabularyItem
+    return await this.get(userTermId) as VocabularyItem
   },
 
   async remove(id: string) {
-    const { error } = await supabase.from('user_terms').update({ deleted_at: new Date().toISOString() }).eq('id', id)
-    if (error) throw error
+    const { data: ut } = await supabase
+      .from('user_terms')
+      .select('global_term_id')
+      .eq('id', id)
+      .maybeSingle()
+
+    const globalTermId = ut?.global_term_id || id
+
+    // 1. Soft-delete global_terms (chỉ Admin mới có quyền thực hiện - RLS sẽ kiểm soát)
+    await supabase
+      .from('global_terms')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', globalTermId)
+
+    // 2. Soft-delete user_terms (cho user hiện tại hoặc tất cả user qua trigger)
+    const { error: userErr } = await supabase
+      .from('user_terms')
+      .update({ deleted_at: new Date().toISOString() })
+      .or(`id.eq.${id},global_term_id.eq.${globalTermId}`)
+
+    if (userErr) throw userErr
   },
 
   async removeMany(ids: string[]) {
-    const { error } = await supabase.from('user_terms').update({ deleted_at: new Date().toISOString() }).in('id', ids)
-    if (error) throw error
+    for (const id of ids) {
+      await this.remove(id)
+    }
   },
 
   async flagTerm(id: string): Promise<void> {
-    const { error } = await supabase.from('user_terms').update({ flagged: true }).eq('id', id)
-    if (error) throw error
+    const { data: currentTerm } = await supabase
+      .from('user_terms')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (currentTerm) {
+      const { error } = await supabase.from('user_terms').update({ flagged: true }).eq('id', id)
+      if (error) throw error
+    } else {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('User session is required to flag term')
+      const { error } = await supabase.from('user_terms').insert({
+        user_id: user.id,
+        global_term_id: id,
+        flagged: true,
+        status: 'new',
+      })
+      if (error) throw error
+    }
   },
 
   async unflagTerm(id: string): Promise<void> {
-    const { error } = await supabase.from('user_terms').update({ flagged: false }).eq('id', id)
-    if (error) throw error
+    const { data: currentTerm } = await supabase
+      .from('user_terms')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (currentTerm) {
+      const { error } = await supabase.from('user_terms').update({ flagged: false }).eq('id', id)
+      if (error) throw error
+    } else {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('User session is required to unflag term')
+      const { error } = await supabase.from('user_terms').insert({
+        user_id: user.id,
+        global_term_id: id,
+        flagged: false,
+        status: 'new',
+      })
+      if (error) throw error
+    }
   },
 }

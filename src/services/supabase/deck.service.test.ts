@@ -2,9 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { deckService } from '@/services/supabase/deck.service'
 
 const from = vi.fn()
+const select = vi.fn()
+const eq = vi.fn()
+const maybeSingle = vi.fn()
 
 vi.mock('@/services/supabase/client', () => ({
-  supabase: { from: (...args: unknown[]) => from(...args) },
+  supabase: {
+    from: (...args: unknown[]) => from(...args),
+    auth: {
+      getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null })
+    }
+  },
 }))
 
 function createdDeck(id: string, name: string) {
@@ -23,14 +31,44 @@ function createdDeck(id: string, name: string) {
 }
 
 describe('deckService.createLessonBatch', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    
+    // Dynamic mock: eq returns a object with maybeSingle resolving to the passed value
+    eq.mockImplementation((col, val) => {
+      return {
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: val ? { id: val } : null,
+          error: null
+        })
+      }
+    })
+    
+    select.mockReturnValue({ eq })
+    
+    from.mockImplementation((table) => {
+      if (table === 'user_terms') {
+        return { select }
+      }
+      return {
+        insert: vi.fn().mockResolvedValue({ data: {}, error: null }),
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: {}, error: null }),
+          maybeSingle: vi.fn().mockResolvedValue({ data: {}, error: null })
+        })
+      }
+    })
+  })
 
   it('creates each prepared lesson and links only its selected term ids', async () => {
     const insertLinks = vi.fn().mockResolvedValue({ error: null })
     const create = vi.spyOn(deckService, 'create')
       .mockResolvedValueOnce(createdDeck('deck-1', 'Bai hoc 01'))
       .mockResolvedValueOnce(createdDeck('deck-2', 'Bai hoc 02'))
-    from.mockReturnValue({ insert: insertLinks })
+    from.mockImplementation((table) => {
+      if (table === 'deck_terms') return { insert: insertLinks }
+      return { select }
+    })
 
     const result = await deckService.createLessonBatch({
       base: { user_id: 'user-1', source_language: 'en', native_language: 'vi' },
@@ -68,7 +106,10 @@ describe('deckService.createLessonBatch', () => {
     vi.spyOn(deckService, 'create')
       .mockResolvedValueOnce(createdDeck('deck-1', 'Bai hoc 01'))
       .mockRejectedValueOnce(new Error('insert failed'))
-    from.mockReturnValue({ insert: insertLinks })
+    from.mockImplementation((table) => {
+      if (table === 'deck_terms') return { insert: insertLinks }
+      return { select }
+    })
 
     const result = await deckService.createLessonBatch({
       base: { user_id: 'user-1', source_language: 'en', native_language: 'vi' },
@@ -87,7 +128,10 @@ describe('deckService.createLessonBatch', () => {
     const linkError = new Error('link failed')
     const remove = vi.spyOn(deckService, 'remove').mockResolvedValueOnce(undefined)
     vi.spyOn(deckService, 'create').mockResolvedValueOnce(createdDeck('deck-1', 'Bai hoc 01'))
-    from.mockReturnValue({ insert: vi.fn().mockResolvedValue({ error: linkError }) })
+    from.mockImplementation((table) => {
+      if (table === 'deck_terms') return { insert: vi.fn().mockResolvedValue({ error: linkError }) }
+      return { select }
+    })
 
     const result = await deckService.createLessonBatch({
       base: { user_id: 'user-1', source_language: 'en', native_language: 'vi' },
@@ -104,7 +148,10 @@ describe('deckService.createLessonBatch', () => {
     const cleanupError = new Error('cleanup failed')
     vi.spyOn(deckService, 'remove').mockRejectedValueOnce(cleanupError)
     vi.spyOn(deckService, 'create').mockResolvedValueOnce(createdDeck('deck-1', 'Bai hoc 01'))
-    from.mockReturnValue({ insert: vi.fn().mockResolvedValue({ error: linkError }) })
+    from.mockImplementation((table) => {
+      if (table === 'deck_terms') return { insert: vi.fn().mockResolvedValue({ error: linkError }) }
+      return { select }
+    })
 
     const result = await deckService.createLessonBatch({
       base: { user_id: 'user-1', source_language: 'en', native_language: 'vi' },

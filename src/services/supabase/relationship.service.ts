@@ -26,7 +26,17 @@ async function resolveGlobalTermId(userTermId: string): Promise<string | null> {
     .select('global_term_id')
     .eq('id', userTermId)
     .maybeSingle()
-  return data?.global_term_id ?? null
+  
+  if (data?.global_term_id) return data.global_term_id
+
+  // Fallback to checking if it is already a global_term_id
+  const { data: globalData } = await supabase
+    .from('global_terms')
+    .select('id')
+    .eq('id', userTermId)
+    .maybeSingle()
+    
+  return globalData?.id ?? null
 }
 
 export const relationshipService = {
