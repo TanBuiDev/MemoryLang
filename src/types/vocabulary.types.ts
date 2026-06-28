@@ -58,7 +58,7 @@ export interface TermRelationship {
 }
 
 export interface VocabularyCardResponse {
-  entry: VocabularyItem
+  entry: VocabularyItem | null
   relationships: Record<RelationType, VocabularyItem[]>
 }
 

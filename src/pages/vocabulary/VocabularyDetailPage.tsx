@@ -777,6 +777,8 @@ export function VocabularyDetailPage() {
     return <Navigate to="/app/vocabulary" replace />
   }
 
+  if (!item) return null
+
   return (
     <div key={id} className="pb-20 sm:pb-0">
       <div className="flex items-start justify-between gap-4 mb-4">

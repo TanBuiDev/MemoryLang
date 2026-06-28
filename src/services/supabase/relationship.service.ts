@@ -70,7 +70,7 @@ async function fetchEntryById(entryId: string): Promise<VocabularyItem | null> {
   return {
     id: globalData.id,
     global_term_id: globalData.id,
-    user_id: null,
+    user_id: '',
     status: 'new',
     view_count: 0,
     correct_count: 0,

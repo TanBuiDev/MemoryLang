@@ -56,7 +56,7 @@ export const vocabularyService = {
     // get_user_vocabulary đã trả về cấu trúc phẳng hoàn chỉnh, không cần flat lại.
     // LEFT JOIN khiến user_terms.id = NULL với các từ chưa học (chỉ tồn tại trong global_terms).
     // Dùng global_term_id làm id dự phòng để các link/điều hướng trang chi tiết hoạt động.
-    return (data ?? []).map((item) => {
+    return ((data ?? []) as Record<string, unknown>[]).map((item) => {
       const row = item as { id?: string; global_term_id?: string }
       return { ...item, id: row.id ?? row.global_term_id }
     }) as VocabularyItem[]
