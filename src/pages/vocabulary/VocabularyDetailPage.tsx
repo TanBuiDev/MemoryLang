@@ -477,7 +477,6 @@ export function VocabularyDetailPage() {
       return vocabularyService.update(id, parsed.data)
     },
     onMutate: async (updatedFields) => {
-      await queryClient.cancelQueries({ queryKey: ['vocabulary-card', id] })
       const previousCard = queryClient.getQueryData(['vocabulary-card', id])
 
       queryClient.setQueryData(['vocabulary-card', id], (old: any) => {
@@ -492,6 +491,7 @@ export function VocabularyDetailPage() {
         )
       })
 
+      await queryClient.cancelQueries({ queryKey: ['vocabulary-card', id] })
       return { previousCard }
     },
     onSuccess: async () => {
