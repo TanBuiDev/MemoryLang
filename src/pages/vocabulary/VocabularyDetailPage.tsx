@@ -854,8 +854,8 @@ export function VocabularyDetailPage() {
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-background border-t-2 border-border p-3.5 flex items-center justify-center gap-1.5 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] sm:static sm:bg-transparent sm:border-none sm:p-0 sm:shadow-none sm:w-auto sm:flex-row sm:flex-wrap">
           {isAdmin && (
             <Button
-              variant="ghost"
-              className="hidden sm:inline-flex"
+              variant="primary"
+              className="hidden sm:inline-flex border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
               disabled={enrichingIpa}
               onClick={async () => {
                 setEnrichingIpa(true)
@@ -889,6 +889,7 @@ export function VocabularyDetailPage() {
           <HotkeyTooltip hotkey="Alt + ←">
             <Button
               variant="ghost"
+              className="border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
               disabled={!prevId}
               onClick={() => navigate(`/app/vocabulary/${prevId}`, { state: { vocabularyIds } })}
               title={t('study.previousCard')}
@@ -915,6 +916,7 @@ export function VocabularyDetailPage() {
           <HotkeyTooltip hotkey="Alt + →">
             <Button
               variant="ghost"
+              className="border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
               disabled={!nextId}
               onClick={() => navigate(`/app/vocabulary/${nextId}`, { state: { vocabularyIds } })}
               title={t('study.nextCard')}
@@ -924,7 +926,8 @@ export function VocabularyDetailPage() {
           </HotkeyTooltip>
           <HotkeyTooltip hotkey="Alt + P">
             <Button
-              variant="ghost"
+              variant="secondary"
+              className="border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
               onClick={() => speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })}
               title={t('actions.playAudio')}
             >
@@ -938,7 +941,8 @@ export function VocabularyDetailPage() {
             {item.flagged ? (
               <HotkeyTooltip hotkey="Alt + F">
                 <Button
-                  variant="ghost"
+                  variant="primary"
+                  className="border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
                   onClick={async () => {
                     await vocabularyService.unflagTerm(item.id)
                     await invalidateVocabularyQueries()
@@ -951,6 +955,7 @@ export function VocabularyDetailPage() {
               <HotkeyTooltip hotkey="Alt + F">
                 <Button
                   variant="ghost"
+                  className="border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
                   onClick={async () => {
                     await vocabularyService.flagTerm(item.id)
                     await invalidateVocabularyQueries()
@@ -964,7 +969,11 @@ export function VocabularyDetailPage() {
           {isAdmin && (
             <span className="hidden sm:inline-flex">
               <HotkeyTooltip hotkey="Alt + D">
-                <Button variant="danger" onClick={() => setIsDeleting(true)}>
+                <Button
+                  variant="danger"
+                  className="border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+                  onClick={() => setIsDeleting(true)}
+                >
                   {t('vocabulary.delete')}
                 </Button>
               </HotkeyTooltip>
@@ -996,8 +1005,11 @@ export function VocabularyDetailPage() {
               )}
             >
               <Button
-                variant="ghost"
-                className="justify-start gap-2 h-9 w-full text-xs font-bold text-muted-foreground hover:text-foreground"
+                variant={item.flagged ? "primary" : "ghost"}
+                className={cn(
+                  "justify-start gap-2 h-9 w-full text-xs font-bold border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none",
+                  item.flagged ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
                 onClick={async () => {
                   setIsActionsMenuOpen(false)
                   if (item.flagged) {
@@ -1014,9 +1026,9 @@ export function VocabularyDetailPage() {
 
               {isAdmin && (
                 <Button
-                  variant="ghost"
+                  variant="primary"
                   disabled={enrichingIpa}
-                  className="justify-start gap-2 h-9 w-full text-xs font-bold text-muted-foreground hover:text-foreground"
+                  className="justify-start gap-2 h-9 w-full text-xs font-bold border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
                   onClick={async () => {
                     setIsActionsMenuOpen(false)
                     setEnrichingIpa(true)
