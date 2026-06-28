@@ -476,13 +476,33 @@ export function VocabularyDetailPage() {
 
       return vocabularyService.update(id, parsed.data)
     },
+    onMutate: async (updatedFields) => {
+      await queryClient.cancelQueries({ queryKey: ['vocabulary-card', id] })
+      const previousCard = queryClient.getQueryData(['vocabulary-card', id])
+
+      queryClient.setQueryData(['vocabulary-card', id], (old: any) => {
+        if (!old?.entry) return old
+        return { ...old, entry: { ...old.entry, ...updatedFields } }
+      })
+
+      queryClient.setQueryData(['vocabulary', user?.id], (old: any) => {
+        if (!Array.isArray(old)) return old
+        return old.map((v: VocabularyItem) =>
+          v.id === id ? { ...v, ...updatedFields } : v
+        )
+      })
+
+      return { previousCard }
+    },
     onSuccess: async () => {
       setFormError(null)
-      await invalidateVocabularyQueries()
       setAutoSaveStatus('saved')
       setTimeout(() => setAutoSaveStatus('idle'), 2000)
     },
-    onError: async (error, variables) => {
+    onError: async (error, variables, context) => {
+      if (context?.previousCard) {
+        queryClient.setQueryData(['vocabulary-card', id], context.previousCard)
+      }
       setFormError(error instanceof Error ? error.message : String(error))
       setAutoSaveStatus('idle')
       if (user && item) {
@@ -494,6 +514,9 @@ export function VocabularyDetailPage() {
           createdAt: new Date().toISOString(),
         })
       }
+    },
+    onSettled: () => {
+      invalidateVocabularyQueries()
     },
   })
 
