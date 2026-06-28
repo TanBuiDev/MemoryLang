@@ -757,7 +757,12 @@ export function VocabularyDetailPage() {
 
   return (
     <div key={id} className="pb-20 sm:pb-0">
-      <div className="flex items-start justify-between gap-4 mb-4">
+      <div className="relative flex items-start justify-between gap-4 mb-4">
+        {item.part_of_speech ? (
+          <Badge className="sm:hidden absolute -top-1 right-0 bg-muted text-foreground font-black text-xs whitespace-nowrap border-2 border-border shadow-[2px_2px_0_var(--border)]">{item.part_of_speech}</Badge>
+        ) : (
+          <Badge className="sm:hidden absolute -top-1 right-0 bg-muted text-muted-foreground italic border-dashed font-bold text-xs whitespace-nowrap border-2 border-border shadow-[2px_2px_0_var(--border)]">{t('vocabulary.partOfSpeech')}</Badge>
+        )}
         <div className="flex flex-col gap-1 min-w-0 max-w-full">
           <div className="flex items-center gap-2">
             <div
@@ -809,12 +814,6 @@ export function VocabularyDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0 pt-1">
-          {item.part_of_speech && (
-            <Badge className="sm:hidden bg-muted text-foreground font-black text-xs whitespace-nowrap">{item.part_of_speech}</Badge>
-          )}
-          {!item.part_of_speech && (
-            <Badge className="sm:hidden bg-muted text-muted-foreground italic border-dashed font-bold text-xs whitespace-nowrap">{t('vocabulary.partOfSpeech')}</Badge>
-          )}
           {autoSaveStatus === 'saving' && (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           )}
