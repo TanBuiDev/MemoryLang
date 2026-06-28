@@ -842,9 +842,9 @@ export function VocabularyDetailPage() {
 
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0 pt-1">
+        <div className="relative flex items-center gap-2 shrink-0 pt-1 min-w-[4.5rem] justify-end">
           {copied && (
-            <span className="text-xs font-bold text-success animate-in fade-in duration-150">Đã sao chép</span>
+            <Check className="absolute right-0 h-4 w-4 text-success animate-in fade-in duration-150" />
           )}
           {autoSaveStatus === 'saving' && (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
