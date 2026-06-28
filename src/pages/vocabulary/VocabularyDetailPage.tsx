@@ -809,6 +809,12 @@ export function VocabularyDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0 pt-1">
+          {item.part_of_speech && (
+            <Badge className="sm:hidden bg-muted text-foreground font-black text-xs whitespace-nowrap">{item.part_of_speech}</Badge>
+          )}
+          {!item.part_of_speech && (
+            <Badge className="sm:hidden bg-muted text-muted-foreground italic border-dashed font-bold text-xs whitespace-nowrap">{t('vocabulary.partOfSpeech')}</Badge>
+          )}
           {autoSaveStatus === 'saving' && (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           )}
@@ -824,7 +830,7 @@ export function VocabularyDetailPage() {
       {/* Thanh metadata và thanh công cụ điều hướng/thao tác (actions) nằm chung một hàng */}
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-1">
+          <div className="hidden sm:flex items-center gap-1">
             <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Từ loại:</span>
             <InlineEditableField
               value={item.part_of_speech && POS_OPTIONS.some(o => o.value === item.part_of_speech) ? item.part_of_speech : (item.part_of_speech ? '__other__' : '')}
