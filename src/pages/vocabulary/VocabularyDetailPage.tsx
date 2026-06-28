@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect, cloneElement } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { Flag, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil, MoreVertical } from 'lucide-react'
+import { Flag, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil, MoreVertical, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
@@ -150,6 +150,7 @@ export function VocabularyDetailPage() {
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLSpanElement>(null)
+  const [isMeaningOpen, setIsMeaningOpen] = useState(true)
 
   // Reset toàn bộ state ở cấp độ trang khi ID từ vựng thay đổi (khi chuyển đổi giữa các từ)
   useEffect(() => {
@@ -177,6 +178,7 @@ export function VocabularyDetailPage() {
     setIsEditingExamples(false)
     setTempExamples([])
     setIsActionsMenuOpen(false)
+    setIsMeaningOpen(true)
   }, [id])
 
   const vocabularyCardQuery = useQuery({
@@ -1085,22 +1087,6 @@ export function VocabularyDetailPage() {
         <Card className="flex flex-col gap-6 min-w-0 overflow-hidden">
 
           <div>
-            <CardTitle className="text-sm uppercase text-muted-foreground mb-1">{t('vocabulary.meaning')}</CardTitle>
-             <InlineEditableField
-              value={item.meanings?.[0]?.text ?? ''}
-              type="textarea"
-              onSave={(val) =>
-                handleSaveField({
-                  meanings: val ? [{ text: val, language: item.native_language }] : [],
-                })
-              }
-              placeholder={t('vocabulary.noNotes')}
-              className="font-semibold text-muted-foreground"
-              disabled={!isAdmin}
-            />
-          </div>
-
-          <div>
             <CardTitle className="text-sm uppercase text-muted-foreground mb-1">{t('vocabulary.translation')}</CardTitle>
             <InlineEditableField
               value={item.translation ?? ''}
@@ -1124,10 +1110,43 @@ export function VocabularyDetailPage() {
                     <Button type="button" tabIndex={-1} className="h-8 py-1 px-3 text-xs" variant="ghost" onClick={cancel}>
                       {t('actions.cancel')}
                     </Button>
+                  </div>
                 </div>
-              </div>
-            )}
-          />
+              )}
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <CardTitle className="text-sm uppercase text-muted-foreground m-0">{t('vocabulary.meaning')}</CardTitle>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-7 px-2.5 text-[11px] font-black border-2 border-border shadow-[1.5px_1.5px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+                onClick={() => setIsMeaningOpen(!isMeaningOpen)}
+              >
+                {isMeaningOpen ? 'Ẩn nghĩa' : 'Xem nghĩa'}
+              </Button>
+            </div>
+            <div
+              className={cn(
+                "transition-all duration-200 origin-top overflow-hidden",
+                isMeaningOpen ? "max-h-[500px] opacity-100 mt-2" : "max-h-0 opacity-0"
+              )}
+            >
+              <InlineEditableField
+                value={item.meanings?.[0]?.text ?? ''}
+                type="textarea"
+                onSave={(val) =>
+                  handleSaveField({
+                    meanings: val ? [{ text: val, language: item.native_language }] : [],
+                  })
+                }
+                placeholder={t('vocabulary.noNotes')}
+                className="font-semibold text-muted-foreground"
+                disabled={!isAdmin}
+              />
+            </div>
           </div>
 
           <hr className="border-border border-dashed" />
@@ -1153,16 +1172,40 @@ export function VocabularyDetailPage() {
             </div>
 
             {isEditingExamples ? (
-              <div className="flex flex-col gap-4 border-2 border-border rounded-md p-4 bg-muted/10">
+              <div className="relative flex flex-col gap-4 border-2 border-border rounded-md p-4 bg-muted/10">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setIsEditingExamples(false)}
+                  className="absolute -top-3 -right-3 h-7 w-7 rounded-full p-0 border-2 border-border shadow-[2px_2px_0px_var(--border)] bg-card flex items-center justify-center hover:bg-muted active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none z-10"
+                  title={t('actions.cancel')}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-muted-foreground">Chỉnh sửa danh sách ví dụ</span>
                   <Button
                     type="button"
                     variant="secondary"
                     onClick={() => setTempExamples(prev => [...prev, { sentence: '', translation: '' }])}
-                    className="h-7 px-2 py-0.5 text-[11px]"
+                    className="h-8 px-3 text-xs border-2 border-border shadow-[2px_2px_0px_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
                   >
                     + {t('vocabulary.addExample')}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="primary"
+                    className="h-8 px-3 text-xs border-2 border-border shadow-[2px_2px_0px_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+                    onClick={async () => {
+                      const cleaned = tempExamples
+                        .map(ex => ({ sentence: ex.sentence.trim(), translation: ex.translation?.trim() || '' }))
+                        .filter(ex => ex.sentence.length > 0)
+                      await handleSaveField({ examples: cleaned })
+                      setIsEditingExamples(false)
+                    }}
+                  >
+                    {t('actions.saveChanges')}
                   </Button>
                 </div>
                 
@@ -1196,7 +1239,7 @@ export function VocabularyDetailPage() {
                           type="button"
                           variant="ghost"
                           onClick={() => setTempExamples(prev => prev.filter((_, i) => i !== index))}
-                          className="h-8 w-8 p-0 text-danger hover:text-danger/80 shrink-0"
+                          className="h-8 w-8 p-0 text-danger hover:text-danger/80 shrink-0 border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none bg-card"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -1207,31 +1250,6 @@ export function VocabularyDetailPage() {
                   {tempExamples.length === 0 && (
                     <p className="text-xs text-muted-foreground text-center py-4">Chưa có câu ví dụ nào. Nhấp "+ Thêm ví dụ" để bắt đầu.</p>
                   )}
-                </div>
-
-                <div className="flex items-center gap-2 mt-2">
-                  <Button
-                    type="button"
-                    variant="primary"
-                    className="h-8 py-1 px-3 text-xs"
-                    onClick={async () => {
-                      const cleaned = tempExamples
-                        .map(ex => ({ sentence: ex.sentence.trim(), translation: ex.translation?.trim() || '' }))
-                        .filter(ex => ex.sentence.length > 0)
-                      await handleSaveField({ examples: cleaned })
-                      setIsEditingExamples(false)
-                    }}
-                  >
-                    {t('actions.saveChanges')}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-8 py-1 px-3 text-xs"
-                    onClick={() => setIsEditingExamples(false)}
-                  >
-                    {t('actions.cancel')}
-                  </Button>
                 </div>
               </div>
             ) : (
