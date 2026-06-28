@@ -176,7 +176,7 @@ export function VocabularyDetailPage() {
   const vocabularyCardQuery = useQuery({
     queryKey: ['vocabulary-card', id],
     queryFn: () => relationshipService.getCard(id!),
-    enabled: shouldUseRemoteData && Boolean(id),
+    enabled: shouldUseRemoteData && Boolean(id) && id !== 'null' && id !== 'undefined',
     placeholderData: keepPreviousData,
   })
 
@@ -647,14 +647,14 @@ export function VocabularyDetailPage() {
         queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] }),
         queryClient.invalidateQueries({ queryKey: ['statistics', user?.id] }),
       ])
-      
+
       const updatedVocabularyIds = vocabularyIds.filter((vocabId) => vocabId !== id)
       const targetRedirectId = nextId || prevId
 
       if (targetRedirectId) {
-        navigate(`/app/vocabulary/${targetRedirectId}`, { 
+        navigate(`/app/vocabulary/${targetRedirectId}`, {
           state: { vocabularyIds: updatedVocabularyIds },
-          replace: true 
+          replace: true
         })
       } else {
         navigate('/app/vocabulary')
@@ -669,14 +669,14 @@ export function VocabularyDetailPage() {
           payload: item,
           createdAt: new Date().toISOString(),
         })
-        
+
         const updatedVocabularyIds = vocabularyIds.filter((vocabId) => vocabId !== id)
         const targetRedirectId = nextId || prevId
 
         if (targetRedirectId) {
-          navigate(`/app/vocabulary/${targetRedirectId}`, { 
+          navigate(`/app/vocabulary/${targetRedirectId}`, {
             state: { vocabularyIds: updatedVocabularyIds },
-            replace: true 
+            replace: true
           })
         } else {
           navigate('/app/vocabulary')
@@ -738,6 +738,18 @@ export function VocabularyDetailPage() {
       setFormError(error instanceof Error ? error.message : String(error))
     },
   })
+
+  if (id === 'null' || id === 'undefined' || !id) {
+    return (
+      <Card className="text-center">
+        <p className="text-xl font-black">{t('vocabulary.emptyTitle')}</p>
+        <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.emptyDescription')}</p>
+        <Button asChild className="mt-4">
+          <Link to="/app/vocabulary">{t('actions.cancel')}</Link>
+        </Button>
+      </Card>
+    )
+  }
 
   if (shouldUseRemoteData && vocabularyCardQuery.isLoading) {
     return <Card className="font-black">{t('vocabulary.loading')}</Card>
@@ -929,9 +941,9 @@ export function VocabularyDetailPage() {
               <Volume2 className="h-4 w-4" />
             </Button>
           </HotkeyTooltip>
-          
+
           <div className="h-6 w-0.5 bg-border mx-1 hidden sm:block" />
-          
+
           <span className="hidden sm:inline-flex">
             {item.flagged ? (
               <HotkeyTooltip hotkey="Alt + F">
@@ -1080,211 +1092,211 @@ export function VocabularyDetailPage() {
         <div className="flex flex-col gap-4">
           <Card className="flex flex-col gap-6 min-w-0 overflow-hidden">
 
-          <div>
-            <CardTitle className="text-sm uppercase text-muted-foreground mb-1">{t('vocabulary.translation')}</CardTitle>
-            <InlineEditableField
-              value={item.translation ?? ''}
-              type="custom"
-              onSave={(val) => handleSaveField({ translation: cleanTranslationValue(val) })}
-              placeholder={t('vocabulary.translation')}
-              displayValue={<span className="text-2xl text-primary font-black">{item.translation || t('vocabulary.translation')}</span>}
-              disabled={!isAdmin}
-              renderCustomInput={(val, onChange, save, cancel) => (
-                <div className="flex flex-col gap-2">
-                  <TranslationChips value={val} onChange={onChange} />
-                  <div className="flex gap-2 justify-end mt-1">
-                    <Button
-                      type="button"
-                      tabIndex={-1}
-                      className="h-8 py-1 px-3 text-xs bg-emerald-400"
-                      onClick={save}
-                    >
-                      {t('actions.saveChanges')}
-                    </Button>
-                    <Button type="button" tabIndex={-1} className="h-8 py-1 px-3 text-xs" variant="ghost" onClick={cancel}>
-                      {t('actions.cancel')}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <CardTitle className="text-sm uppercase text-muted-foreground m-0">{t('vocabulary.meaning')}</CardTitle>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-6 w-6 min-h-0 p-0 rounded-full border-2 border-border shadow-[1px_1px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none flex items-center justify-center animate-in fade-in zoom-in-50 duration-200"
-                onClick={() => setIsMeaningOpen(!isMeaningOpen)}
-                aria-label={isMeaningOpen ? 'Ẩn nghĩa' : 'Xem nghĩa'}
-              >
-                {isMeaningOpen ? (
-                  <ChevronUp className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronDown className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            </div>
-            <div
-              className={cn(
-                "transition-all duration-200 origin-top overflow-hidden",
-                isMeaningOpen ? "max-h-[500px] opacity-100 mt-2" : "max-h-0 opacity-0"
-              )}
-            >
+            <div>
+              <CardTitle className="text-sm uppercase text-muted-foreground mb-1">{t('vocabulary.translation')}</CardTitle>
               <InlineEditableField
-                value={item.meanings?.[0]?.text ?? ''}
-                type="textarea"
-                onSave={(val) =>
-                  handleSaveField({
-                    meanings: val ? [{ text: val, language: item.native_language }] : [],
-                  })
-                }
-                placeholder={t('vocabulary.noNotes')}
-                className="font-semibold text-muted-foreground"
+                value={item.translation ?? ''}
+                type="custom"
+                onSave={(val) => handleSaveField({ translation: cleanTranslationValue(val) })}
+                placeholder={t('vocabulary.translation')}
+                displayValue={<span className="text-2xl text-primary font-black">{item.translation || t('vocabulary.translation')}</span>}
                 disabled={!isAdmin}
+                renderCustomInput={(val, onChange, save, cancel) => (
+                  <div className="flex flex-col gap-2">
+                    <TranslationChips value={val} onChange={onChange} />
+                    <div className="flex gap-2 justify-end mt-1">
+                      <Button
+                        type="button"
+                        tabIndex={-1}
+                        className="h-8 py-1 px-3 text-xs bg-emerald-400"
+                        onClick={save}
+                      >
+                        {t('actions.saveChanges')}
+                      </Button>
+                      <Button type="button" tabIndex={-1} className="h-8 py-1 px-3 text-xs" variant="ghost" onClick={cancel}>
+                        {t('actions.cancel')}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               />
             </div>
-          </div>
 
-          <hr className="border-border border-dashed" />
-
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <CardTitle className="text-sm uppercase text-muted-foreground m-0">{t('vocabulary.examples')}</CardTitle>
-              {isAdmin && !isEditingExamples && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    setTempExamples(item.examples || [])
-                    setIsEditingExamples(true)
-                  }}
-                  className="h-8 w-8 p-0 sm:w-auto sm:px-3 text-xs flex items-center justify-center"
-                  title={t('actions.edit')}
-                >
-                  <Pencil className="h-3.5 w-3.5 sm:mr-1" />
-                  <span className="hidden sm:inline">{t('actions.edit')}</span>
-                </Button>
-              )}
-            </div>
-
-            {isEditingExamples ? (
-              <div className="relative flex flex-col gap-4 border-2 border-border rounded-md p-4 bg-muted/10">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <CardTitle className="text-sm uppercase text-muted-foreground m-0">{t('vocabulary.meaning')}</CardTitle>
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => setIsEditingExamples(false)}
-                  className="absolute -top-3 -right-3 h-7 w-7 min-h-0 rounded-full p-0 border-2 border-border shadow-[2px_2px_0px_var(--border)] bg-card flex items-center justify-center hover:bg-muted active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none z-10"
-                  title={t('actions.cancel')}
+                  className="h-6 w-6 min-h-0 p-0 rounded-full border-2 border-border shadow-[1px_1px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none flex items-center justify-center animate-in fade-in zoom-in-50 duration-200"
+                  onClick={() => setIsMeaningOpen(!isMeaningOpen)}
+                  aria-label={isMeaningOpen ? 'Ẩn nghĩa' : 'Xem nghĩa'}
                 >
-                  <X className="h-3.5 w-3.5" />
+                  {isMeaningOpen ? (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
                 </Button>
+              </div>
+              <div
+                className={cn(
+                  "transition-all duration-200 origin-top overflow-hidden",
+                  isMeaningOpen ? "max-h-125 opacity-100 mt-2" : "max-h-0 opacity-0"
+                )}
+              >
+                <InlineEditableField
+                  value={item.meanings?.[0]?.text ?? ''}
+                  type="textarea"
+                  onSave={(val) =>
+                    handleSaveField({
+                      meanings: val ? [{ text: val, language: item.native_language }] : [],
+                    })
+                  }
+                  placeholder={t('vocabulary.noNotes')}
+                  className="font-semibold text-muted-foreground"
+                  disabled={!isAdmin}
+                />
+              </div>
+            </div>
 
-                <div className="flex items-center justify-between">
+            <hr className="border-border border-dashed" />
+
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <CardTitle className="text-sm uppercase text-muted-foreground m-0">{t('vocabulary.examples')}</CardTitle>
+                {isAdmin && !isEditingExamples && (
                   <Button
                     type="button"
                     variant="secondary"
-                    onClick={() => setTempExamples(prev => [...prev, { sentence: '', translation: '' }])}
-                    className="h-8 px-3 text-xs border-2 border-border shadow-[2px_2px_0px_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
-                  >
-                    + {t('vocabulary.addExample')}
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="primary"
-                    className="h-8 px-3 text-xs border-2 border-border shadow-[2px_2px_0px_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
-                    onClick={async () => {
-                      const cleaned = tempExamples
-                        .map(ex => ({ sentence: ex.sentence.trim(), translation: ex.translation?.trim() || '' }))
-                        .filter(ex => ex.sentence.length > 0)
-                      await handleSaveField({ examples: cleaned })
-                      setIsEditingExamples(false)
+                    onClick={() => {
+                      setTempExamples(item.examples || [])
+                      setIsEditingExamples(true)
                     }}
+                    className="h-8 w-8 p-0 sm:w-auto sm:px-3 text-xs flex items-center justify-center"
+                    title={t('actions.edit')}
                   >
-                    {t('actions.saveChanges')}
+                    <Pencil className="h-3.5 w-3.5 sm:mr-1" />
+                    <span className="hidden sm:inline">{t('actions.edit')}</span>
                   </Button>
-                </div>
-                
-                <div className="space-y-3 max-h-[350px] overflow-y-auto px-3 -mx-3 py-2.5 -my-2.5">
-                  {tempExamples.map((ex, index) => (
-                    <div key={index} className="relative rounded-md border border-border p-3 space-y-2 bg-muted/20">
-                      {/* Nút Xóa là dấu x bọc trong hình tròn đặt đè lên góc phải trên của viền bao bọc thẻ ví dụ */}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => setExampleIndexToDelete(index)}
-                        className="absolute -top-2.5 -right-2.5 h-6 w-6 min-h-0 rounded-full p-0 text-danger hover:bg-danger/10 border-2 border-border shadow-[1.5px_1.5px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none bg-card flex items-center justify-center z-10"
-                        title="Xóa ví dụ"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-
-                      <div>
-                        <Input
-                          placeholder="Câu ví dụ (English)"
-                          value={ex.sentence}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            setTempExamples(prev => prev.map((item, i) => i === index ? { ...item, sentence: val } : item))
-                          }}
-                          className="text-sm"
-                        />
-                      </div>
-                      <div>
-                        <Input
-                          placeholder="Dịch nghĩa câu ví dụ (Vietnamese)"
-                          value={ex.translation || ''}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            setTempExamples(prev => prev.map((item, i) => i === index ? { ...item, translation: val } : item))
-                          }}
-                          className="text-sm"
-                        />
-                      </div>
-                    </div>
-                  ))}
-
-                  {tempExamples.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-4">Chưa có câu ví dụ nào. Nhấp "+ Thêm ví dụ" để bắt đầu.</p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {item.examples && item.examples.length > 0 ? (
-                  item.examples.map((ex, index) => (
-                    <div key={index} className="p-3 border-2 border-border rounded-md bg-card border-l-4 border-l-primary">
-                      <p className="font-semibold text-sm">{ex.sentence}</p>
-                      {ex.translation ? (
-                        <p className="text-xs text-muted-foreground mt-1 font-semibold">{ex.translation}</p>
-                      ) : null}
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground italic pl-1">Chưa có câu ví dụ nào.</p>
                 )}
               </div>
-            )}
-          </div>
 
-        </Card>
+              {isEditingExamples ? (
+                <div className="relative flex flex-col gap-4 border-2 border-border rounded-md p-4 bg-muted/10">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setIsEditingExamples(false)}
+                    className="absolute -top-3 -right-3 h-7 w-7 min-h-0 rounded-full p-0 border-2 border-border shadow-[2px_2px_0px_var(--border)] bg-card flex items-center justify-center hover:bg-muted active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none z-10"
+                    title={t('actions.cancel')}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
 
-        {/* Ghi chú hiển thị dưới dạng card riêng bên cột trái trên Desktop (lg) */}
-        <Card className="p-5 hidden lg:flex flex-col gap-2">
-          <CardTitle className="text-sm uppercase text-muted-foreground mb-1">{t('vocabulary.note')}</CardTitle>
-          <InlineEditableField
-            value={item.note ?? ''}
-            type="textarea"
-            onSave={(val) => handleSaveField({ note: val || null })}
-            placeholder={t('vocabulary.noNotes')}
-            className="font-semibold text-muted-foreground"
-            disabled={!isAdmin}
-          />
-        </Card>
-      </div>
+                  <div className="flex items-center justify-between">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setTempExamples(prev => [...prev, { sentence: '', translation: '' }])}
+                      className="h-8 px-3 text-xs border-2 border-border shadow-[2px_2px_0px_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+                    >
+                      + {t('vocabulary.addExample')}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="primary"
+                      className="h-8 px-3 text-xs border-2 border-border shadow-[2px_2px_0px_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+                      onClick={async () => {
+                        const cleaned = tempExamples
+                          .map(ex => ({ sentence: ex.sentence.trim(), translation: ex.translation?.trim() || '' }))
+                          .filter(ex => ex.sentence.length > 0)
+                        await handleSaveField({ examples: cleaned })
+                        setIsEditingExamples(false)
+                      }}
+                    >
+                      {t('actions.saveChanges')}
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3 max-h-87.5 overflow-y-auto px-3 -mx-3 py-2.5 -my-2.5">
+                    {tempExamples.map((ex, index) => (
+                      <div key={index} className="relative rounded-md border border-border p-3 space-y-2 bg-muted/20">
+                        {/* Nút Xóa là dấu x bọc trong hình tròn đặt đè lên góc phải trên của viền bao bọc thẻ ví dụ */}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setExampleIndexToDelete(index)}
+                          className="absolute -top-2.5 -right-2.5 h-6 w-6 min-h-0 rounded-full p-0 text-danger hover:bg-danger/10 border-2 border-border shadow-[1.5px_1.5px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none bg-card flex items-center justify-center z-10"
+                          title="Xóa ví dụ"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+
+                        <div>
+                          <Input
+                            placeholder="Câu ví dụ (English)"
+                            value={ex.sentence}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              setTempExamples(prev => prev.map((item, i) => i === index ? { ...item, sentence: val } : item))
+                            }}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Input
+                            placeholder="Dịch nghĩa câu ví dụ (Vietnamese)"
+                            value={ex.translation || ''}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              setTempExamples(prev => prev.map((item, i) => i === index ? { ...item, translation: val } : item))
+                            }}
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+                    ))}
+
+                    {tempExamples.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-4">Chưa có câu ví dụ nào. Nhấp "+ Thêm ví dụ" để bắt đầu.</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {item.examples && item.examples.length > 0 ? (
+                    item.examples.map((ex, index) => (
+                      <div key={index} className="p-3 border-2 border-border rounded-md bg-card border-l-4 border-l-primary">
+                        <p className="font-semibold text-sm">{ex.sentence}</p>
+                        {ex.translation ? (
+                          <p className="text-xs text-muted-foreground mt-1 font-semibold">{ex.translation}</p>
+                        ) : null}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic pl-1">Chưa có câu ví dụ nào.</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+          </Card>
+
+          {/* Ghi chú hiển thị dưới dạng card riêng bên cột trái trên Desktop (lg) */}
+          <Card className="p-5 hidden lg:flex flex-col gap-2">
+            <CardTitle className="text-sm uppercase text-muted-foreground mb-1">{t('vocabulary.note')}</CardTitle>
+            <InlineEditableField
+              value={item.note ?? ''}
+              type="textarea"
+              onSave={(val) => handleSaveField({ note: val || null })}
+              placeholder={t('vocabulary.noNotes')}
+              className="font-semibold text-muted-foreground"
+              disabled={!isAdmin}
+            />
+          </Card>
+        </div>
 
         <div className="grid gap-4 self-start">
           <Card className="p-4 flex flex-col gap-3">
@@ -1359,7 +1371,7 @@ export function VocabularyDetailPage() {
                 {imageFit === 'fit' && (
                   <div
                     className="absolute inset-0 bg-cover bg-center filter blur-lg opacity-40"
-                    style={{ 
+                    style={{
                       backgroundImage: `url(${item.image_url})`,
                       willChange: 'transform, opacity, filter',
                       transform: 'translate3d(0,0,0)'
@@ -1373,7 +1385,7 @@ export function VocabularyDetailPage() {
                   className={cn(
                     "relative z-10 transition-all duration-200",
                     imageFit === 'fit'
-                      ? "max-h-[23.5rem] w-full object-contain p-1"
+                      ? "max-h-94 w-full object-contain p-1"
                       : "w-full h-full object-cover"
                   )}
                 />
@@ -1520,11 +1532,10 @@ export function VocabularyDetailPage() {
                       type="button"
                       ref={(el) => { if (el) pillRefs.current.set(type, el); else pillRefs.current.delete(type); }}
                       onClick={(e) => { e.stopPropagation(); setRelationType(type); }}
-                      className={`px-2.5 py-1 rounded-md border-2 text-xs font-bold transition-[transform,box-shadow] duration-150 focus-visible:outline-none hover:scale-105 hover:-translate-y-0.5 hover:relative hover:z-10 hover:shadow-[3px_3px_0_var(--border)] focus-visible:scale-110 focus-visible:-translate-y-0.5 focus-visible:relative focus-visible:z-10 focus-visible:shadow-[3px_3px_0_var(--border)] ${
-                        relationType === type
+                      className={`px-2.5 py-1 rounded-md border-2 text-xs font-bold transition-[transform,box-shadow] duration-150 focus-visible:outline-none hover:scale-105 hover:-translate-y-0.5 hover:relative hover:z-10 hover:shadow-[3px_3px_0_var(--border)] focus-visible:scale-110 focus-visible:-translate-y-0.5 focus-visible:relative focus-visible:z-10 focus-visible:shadow-[3px_3px_0_var(--border)] ${relationType === type
                           ? 'border-border bg-primary text-primary-foreground group-hover:bg-card group-hover:text-foreground hover:bg-primary hover:text-primary-foreground shadow-[2px_2px_0_var(--border)]'
                           : 'border-border bg-card text-foreground hover:bg-primary hover:text-primary-foreground shadow-[2px_2px_0_var(--border)]'
-                      }`}
+                        }`}
                     >
                       {t(relationshipLabelKeys[type])}
                     </button>
@@ -1546,7 +1557,7 @@ export function VocabularyDetailPage() {
             removingKey={removingKey}
             onRemove={isAdmin ? (targetTermId, selectedRelationType) =>
               removeRelationshipMutation.mutate({ targetTermId, selectedRelationType })
-            : undefined}
+              : undefined}
           />
 
         </div>
