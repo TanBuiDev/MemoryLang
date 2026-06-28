@@ -41,3 +41,16 @@ skills-lock.json
 docs/superpowers/plans/
 .playwright-mcp/
 .opencode/skills/
+
+# Temporary vocabulary data files
+/memorylang_vocabulary.docx
+/memorylang_vocabulary.pdf
+/memorylang_vocabulary.json
+/600_tu_vung_TOEIC_Part5-6.md
+/danh_sach_tu_vung_chi_tiet.md
+/multi_word_vocab.md
+/toeic_vocab_db.md
+
+# Temporary SQL scripts and generated JSON cache
+scripts/*.sql
+scripts/*.json
