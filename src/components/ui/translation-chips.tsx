@@ -1,8 +1,9 @@
-import { type KeyboardEvent, useRef, useState } from 'react'
+import { type KeyboardEvent, useCallback, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/utils/cn'
 
 const MAX_VISIBLE = 5
+const LONG_PRESS_MS = 500
 
 export function parseTranslationValue(value: string): { chips: string[]; draft: string } {
   if (!value.trim()) return { chips: [], draft: '' }
@@ -41,13 +42,44 @@ interface TranslationChipsProps {
 export function TranslationChips({ value, onChange, className }: TranslationChipsProps) {
   const { chips, draft } = parseTranslationValue(value)
   const [expanded, setExpanded] = useState(false)
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const chipsRef = useRef(chips)
+  chipsRef.current = chips
 
   function emit(updatedChips: string[], updatedDraft: string) {
     const chipsStr = updatedChips.join(' / ')
     const combined = chipsStr + (updatedDraft !== undefined ? ' | ' + updatedDraft : '')
     onChange(combined)
   }
+
+  function fillChipToTextarea(chipText: string) {
+    emit(chipsRef.current, chipText)
+    setHighlightedIndex(null)
+    textareaRef.current?.focus()
+  }
+
+  const handlePointerDown = useCallback((chipText: string, index: number) => {
+    longPressTimerRef.current = setTimeout(() => {
+      setHighlightedIndex(index)
+      fillChipToTextarea(chipText)
+    }, LONG_PRESS_MS)
+  }, [])
+
+  const handlePointerUp = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }, [])
+
+  const handlePointerLeave = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }, [])
 
   function addChip() {
     const text = draft.trim()
@@ -87,17 +119,28 @@ export function TranslationChips({ value, onChange, className }: TranslationChip
           {(expanded ? chips : chips.slice(0, MAX_VISIBLE)).map((chip, index) => (
             <span
               key={`${chip}-${index}`}
-              className="inline-flex items-center gap-1 rounded-md border-2 border-border bg-primary px-2.5 py-1 text-xs font-black text-primary-foreground shadow-[2px_2px_0_var(--border)]"
+              onPointerDown={() => handlePointerDown(chip, index)}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerLeave}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-md border-2 px-2.5 py-1 text-xs font-black shadow-[2px_2px_0_var(--border)] select-none touch-none',
+                highlightedIndex === index
+                  ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
+                  : 'border-border bg-primary text-primary-foreground'
+              )}
             >
-              {chip}
               <button
                 type="button"
                 aria-label={`Remove ${chip}`}
-                className="ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
-                onClick={() => removeChip(index)}
+                className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  removeChip(index)
+                }}
               >
                 <X size={12} />
               </button>
+              {chip}
             </span>
           ))}
           {!expanded && chips.length > MAX_VISIBLE ? (
