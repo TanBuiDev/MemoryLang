@@ -133,14 +133,14 @@ export function InlineEditableField({
     <div
       onClick={() => !disabled && setIsEditing(true)}
       className={cn(
-        'group relative flex items-center justify-between rounded-md min-h-[1.75rem] transition-all',
+        'group relative flex items-center justify-between rounded-md min-h-7 transition-all',
         !disabled ? 'cursor-pointer border-2 border-transparent hover:border-dashed hover:border-slate-400 hover:bg-slate-50/50 p-1 -m-1' : '',
         fullWidth ? 'w-full' : 'w-fit',
         !value && 'text-muted-foreground italic',
         className
       )}
     >
-      <div className="flex-1 min-w-0 break-words">{renderVal}</div>
+      <div className="flex-1 min-w-0 wrap-break-word">{renderVal}</div>
     </div>
   )
 }

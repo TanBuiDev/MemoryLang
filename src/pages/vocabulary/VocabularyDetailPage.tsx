@@ -348,17 +348,17 @@ export function VocabularyDetailPage() {
         setRelationHighlightIndex(-1)
       }
     },
-    [relationSearch, filteredTargetOptions, relationHighlightIndex, relationType, isSearching]
+    [filteredTargetOptions, relationHighlightIndex, relationType, isSearching]
   )
 
-  const invalidateVocabularyQueries = async (targetTermId?: string) => {
+  const invalidateVocabularyQueries = useCallback(async (targetTermId?: string) => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['vocabulary-card', id] }),
       targetTermId ? queryClient.invalidateQueries({ queryKey: ['vocabulary-card', targetTermId] }) : Promise.resolve(),
       queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] }),
       queryClient.invalidateQueries({ queryKey: ['statistics', user?.id] }),
     ])
-  }
+  }, [id, user?.id, queryClient])
 
   useEffect(() => {
     if (relationHighlightIndex < 0 || !relationListRef.current) return
@@ -930,7 +930,7 @@ export function VocabularyDetailPage() {
             </Button>
           </HotkeyTooltip>
           
-          <div className="hidden sm:block h-6 w-[2px] bg-border mx-1" />
+          <div className="h-6 w-0.5 bg-border mx-1 hidden sm:block" />
           
           <span className="hidden sm:inline-flex">
             {item.flagged ? (
@@ -1273,7 +1273,7 @@ export function VocabularyDetailPage() {
         </Card>
 
         {/* Ghi chú hiển thị dưới dạng card riêng bên cột trái trên Desktop (lg) */}
-        <Card className="p-5 flex flex-col gap-2 hidden lg:flex">
+        <Card className="p-5 hidden lg:flex flex-col gap-2">
           <CardTitle className="text-sm uppercase text-muted-foreground mb-1">{t('vocabulary.note')}</CardTitle>
           <InlineEditableField
             value={item.note ?? ''}
@@ -1352,7 +1352,7 @@ export function VocabularyDetailPage() {
                 className={cn(
                   "relative group overflow-hidden rounded-md border-2 border-border shadow-[3px_3px_0_var(--border)] bg-muted/5 flex items-center justify-center cursor-zoom-in transition-all duration-200",
                   imageFit === 'fit'
-                    ? cn("w-full min-h-[8rem] max-h-[24rem]", !naturalRatio && "h-48")
+                    ? cn("w-full min-h-32 max-h-96", !naturalRatio && "h-48")
                     : "w-full h-56"
                 )}
               >
@@ -1438,7 +1438,7 @@ export function VocabularyDetailPage() {
               )}
 
               {imageSearchResults.length > 0 && (
-                <div className="grid grid-cols-2 gap-4 max-h-[320px] overflow-y-auto p-1">
+                <div className="grid grid-cols-2 gap-4 max-h-80 overflow-y-auto p-1">
                   {imageSearchResults.map((result) => (
                     <div key={result.id} className="w-full aspect-square p-1.5">
                       <button
@@ -1520,7 +1520,7 @@ export function VocabularyDetailPage() {
                       type="button"
                       ref={(el) => { if (el) pillRefs.current.set(type, el); else pillRefs.current.delete(type); }}
                       onClick={(e) => { e.stopPropagation(); setRelationType(type); }}
-                      className={`px-2.5 py-1 rounded-md border-2 text-xs font-bold transition-transform transition-shadow duration-150 focus-visible:outline-none hover:scale-105 hover:-translate-y-0.5 hover:relative hover:z-10 hover:shadow-[3px_3px_0_var(--border)] focus-visible:scale-110 focus-visible:-translate-y-0.5 focus-visible:relative focus-visible:z-10 focus-visible:shadow-[3px_3px_0_var(--border)] ${
+                      className={`px-2.5 py-1 rounded-md border-2 text-xs font-bold transition-[transform,box-shadow] duration-150 focus-visible:outline-none hover:scale-105 hover:-translate-y-0.5 hover:relative hover:z-10 hover:shadow-[3px_3px_0_var(--border)] focus-visible:scale-110 focus-visible:-translate-y-0.5 focus-visible:relative focus-visible:z-10 focus-visible:shadow-[3px_3px_0_var(--border)] ${
                         relationType === type
                           ? 'border-border bg-primary text-primary-foreground group-hover:bg-card group-hover:text-foreground hover:bg-primary hover:text-primary-foreground shadow-[2px_2px_0_var(--border)]'
                           : 'border-border bg-card text-foreground hover:bg-primary hover:text-primary-foreground shadow-[2px_2px_0_var(--border)]'
