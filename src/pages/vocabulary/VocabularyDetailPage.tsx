@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect, cloneElement } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { Flag, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil } from 'lucide-react'
+import { Flag, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil, MoreVertical } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
@@ -147,6 +147,9 @@ export function VocabularyDetailPage() {
   const [imageSearchError, setImageSearchError] = useState<string | null>(null)
   const [downloadingImageId, setDownloadingImageId] = useState<string | null>(null)
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const menuButtonRef = useRef<HTMLSpanElement>(null)
 
   // Reset toàn bộ state ở cấp độ trang khi ID từ vựng thay đổi (khi chuyển đổi giữa các từ)
   useEffect(() => {
@@ -173,6 +176,7 @@ export function VocabularyDetailPage() {
     setCopied(false)
     setIsEditingExamples(false)
     setTempExamples([])
+    setIsActionsMenuOpen(false)
   }, [id])
 
   const vocabularyCardQuery = useQuery({
@@ -379,6 +383,21 @@ export function VocabularyDetailPage() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [targetId])
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target as Node) &&
+        menuButtonRef.current &&
+        !menuButtonRef.current.contains(e.target as Node)
+      ) {
+        setIsActionsMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   useEffect(() => {
     function handleGlobalKeyDown(e: KeyboardEvent) {
@@ -836,6 +855,7 @@ export function VocabularyDetailPage() {
           {isAdmin && (
             <Button
               variant="ghost"
+              className="hidden sm:inline-flex"
               disabled={enrichingIpa}
               onClick={async () => {
                 setEnrichingIpa(true)
@@ -911,39 +931,138 @@ export function VocabularyDetailPage() {
               <Volume2 className="h-4 w-4" />
             </Button>
           </HotkeyTooltip>
-          <div className="h-6 w-[2px] bg-border mx-1" />
-          {item.flagged ? (
-            <HotkeyTooltip hotkey="Alt + F">
-              <Button
-                variant="ghost"
-                onClick={async () => {
-                  await vocabularyService.unflagTerm(item.id)
-                  await invalidateVocabularyQueries()
-                }}
-              >
-                <Flag className="h-4 w-4 text-warning" fill="currentColor" />
-              </Button>
-            </HotkeyTooltip>
-          ) : (
-            <HotkeyTooltip hotkey="Alt + F">
-              <Button
-                variant="ghost"
-                onClick={async () => {
-                  await vocabularyService.flagTerm(item.id)
-                  await invalidateVocabularyQueries()
-                }}
-              >
-                <Flag className="h-4 w-4 text-muted-foreground" />
-              </Button>
-            </HotkeyTooltip>
-          )}
+          
+          <div className="hidden sm:block h-6 w-[2px] bg-border mx-1" />
+          
+          <span className="hidden sm:inline-flex">
+            {item.flagged ? (
+              <HotkeyTooltip hotkey="Alt + F">
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    await vocabularyService.unflagTerm(item.id)
+                    await invalidateVocabularyQueries()
+                  }}
+                >
+                  <Flag className="h-4 w-4 text-warning" fill="currentColor" />
+                </Button>
+              </HotkeyTooltip>
+            ) : (
+              <HotkeyTooltip hotkey="Alt + F">
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    await vocabularyService.flagTerm(item.id)
+                    await invalidateVocabularyQueries()
+                  }}
+                >
+                  <Flag className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </HotkeyTooltip>
+            )}
+          </span>
           {isAdmin && (
-          <HotkeyTooltip hotkey="Alt + D">
-            <Button variant="danger" onClick={() => setIsDeleting(true)}>
-              {t('vocabulary.delete')}
-            </Button>
-          </HotkeyTooltip>
+            <span className="hidden sm:inline-flex">
+              <HotkeyTooltip hotkey="Alt + D">
+                <Button variant="danger" onClick={() => setIsDeleting(true)}>
+                  {t('vocabulary.delete')}
+                </Button>
+              </HotkeyTooltip>
+            </span>
           )}
+
+          {/* Menu hành động dọc trên điện thoại */}
+          <div className="relative sm:hidden" ref={menuRef}>
+            <span ref={menuButtonRef}>
+              <Button
+                variant="ghost"
+                onClick={() => setIsActionsMenuOpen(!isActionsMenuOpen)}
+                className={cn(
+                  "h-10 w-10 p-0 flex items-center justify-center rounded-md border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none transition-colors duration-150",
+                  isActionsMenuOpen && "bg-muted"
+                )}
+                title="Thao tác khác"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </span>
+
+            <div
+              className={cn(
+                "absolute bottom-full right-0 mb-3 flex flex-col gap-2 p-2 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] rounded-md transition-all duration-200 origin-bottom-right z-40 w-44",
+                isActionsMenuOpen
+                  ? "opacity-100 scale-100 pointer-events-auto"
+                  : "opacity-0 scale-95 pointer-events-none"
+              )}
+            >
+              <Button
+                variant="ghost"
+                className="justify-start gap-2 h-9 w-full text-xs font-bold text-muted-foreground hover:text-foreground"
+                onClick={async () => {
+                  setIsActionsMenuOpen(false)
+                  if (item.flagged) {
+                    await vocabularyService.unflagTerm(item.id)
+                  } else {
+                    await vocabularyService.flagTerm(item.id)
+                  }
+                  await invalidateVocabularyQueries()
+                }}
+              >
+                <Flag className={cn("h-4 w-4", item.flagged ? "text-warning fill-warning" : "text-muted-foreground")} />
+                <span>{item.flagged ? "Bỏ gắn cờ" : "Gắn cờ"}</span>
+              </Button>
+
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  disabled={enrichingIpa}
+                  className="justify-start gap-2 h-9 w-full text-xs font-bold text-muted-foreground hover:text-foreground"
+                  onClick={async () => {
+                    setIsActionsMenuOpen(false)
+                    setEnrichingIpa(true)
+                    setFormError(null)
+                    try {
+                      const activeInput = document.querySelector<HTMLInputElement>('[class*="w-\\[300px\\]"]') ?? document.querySelector<HTMLInputElement>('[class*="w-\\[500px\\]"]')
+                      const sourceText = activeInput?.value?.trim() || item.source_text
+                      const enriched = await enrichVocabulary(sourceText, item.source_language, item.native_language)
+                      if (enriched.ipa) {
+                        await handleSaveField({
+                          ipa: enriched.ipa,
+                          part_of_speech: enriched.partOfSpeech ?? item.part_of_speech,
+                        })
+                      } else {
+                        setFormError('Không tìm thấy IPA cho từ này. Bạn có thể nhập thủ công.')
+                      }
+                    } catch {
+                      setFormError('Không thể tìm IPA. Kiểm tra kết nối mạng.')
+                    }
+                    setEnrichingIpa(false)
+                  }}
+                >
+                  {enrichingIpa ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  <span>Làm mới IPA</span>
+                </Button>
+              )}
+
+              {isAdmin && (
+                <Button
+                  variant="danger"
+                  className="justify-start gap-2 h-9 w-full text-xs font-bold border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+                  onClick={() => {
+                    setIsActionsMenuOpen(false)
+                    setIsDeleting(true)
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Xóa từ vựng</span>
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
