@@ -2,8 +2,6 @@ import React, { useState, useMemo, useRef, useCallback, useEffect, cloneElement 
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { Flag, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil } from 'lucide-react'
-import { PageHeader } from '@/components/common/PageHeader'
-
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
@@ -750,80 +748,47 @@ export function VocabularyDetailPage() {
 
   return (
     <div key={id} className="pb-20 sm:pb-0">
-      <PageHeader
-        title={
-          <div className="flex items-center gap-2 max-w-full">
-            <InlineEditableField
-              value={item.source_text}
-              onSave={(val) => handleSaveField({ source_text: val })}
-              className="text-4xl font-black md:text-5xl border-dashed w-fit"
-              editClassName="w-[300px] md:w-[500px]"
-              fullWidth={false}
-              placeholder={t('vocabulary.sourceText')}
-              disabled={!isAdmin}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-foreground inline-flex items-center justify-center transition-colors rounded-md"
-              onClick={handleCopyEntry}
-              title={t('vocabulary.copyTooltip')}
-            >
-              {copied ? (
-                <Check className="h-4 w-4 text-success" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        }
-        description={
-          (autoSaveStatus !== 'idle' || formError) ? (
-            <div className="flex flex-wrap items-center gap-2 h-5">
-              {autoSaveStatus === 'saving' && (
-                <span className="text-xs font-bold text-muted-foreground animate-pulse">{t('vocabulary.autoSaving')}</span>
-              )}
-              {autoSaveStatus === 'saved' && (
-                <span className="text-xs font-bold text-success">{t('vocabulary.saved')}</span>
-              )}
-              {formError && <span className="text-xs font-bold text-danger">{formError}</span>}
-            </div>
-          ) : null
-        }
-      />
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="flex items-center gap-2 max-w-full min-w-0">
+          <InlineEditableField
+            value={item.source_text}
+            onSave={(val) => handleSaveField({ source_text: val })}
+            className="text-4xl font-black md:text-5xl border-dashed w-fit"
+            editClassName="w-[300px] md:w-[500px]"
+            fullWidth={false}
+            placeholder={t('vocabulary.sourceText')}
+            disabled={!isAdmin}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-foreground inline-flex items-center justify-center transition-colors rounded-md"
+            onClick={handleCopyEntry}
+            title={t('vocabulary.copyTooltip')}
+          >
+            {copied ? (
+              <Check className="h-4 w-4 text-success" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 pt-1">
+          {autoSaveStatus === 'saving' && (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          )}
+          {autoSaveStatus === 'saved' && (
+            <Check className="h-4 w-4 text-success" />
+          )}
+          {formError && (
+            <span className="text-xs font-bold text-danger">{formError}</span>
+          )}
+        </div>
+      </div>
 
-      {/* Thanh metadata (Loại, Trạng thái, Từ loại) và thanh công cụ điều hướng/thao tác (actions) nằm chung một hàng */}
+      {/* Thanh metadata và thanh công cụ điều hướng/thao tác (actions) nằm chung một hàng */}
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-1">
-            <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Loại:</span>
-            <InlineEditableField
-              value={item.item_type}
-              type="select"
-              options={Object.entries(itemTypeLabelKeys).map(([val, labelKey]) => ({
-                value: val,
-                label: t(labelKey),
-              }))}
-              onSave={(val) => handleSaveField({ item_type: val as VocabularyItemType })}
-              displayValue={<Badge className="cursor-pointer font-black">{t(itemTypeLabelKeys[item.item_type])}</Badge>}
-              disabled={!isAdmin}
-            />
-          </div>
-
-          <div className="flex items-center gap-1">
-            <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Trạng thái:</span>
-            <InlineEditableField
-              value={item.status}
-              type="select"
-              options={Object.entries(statusLabelKeys).map(([val, labelKey]) => ({
-                value: val,
-                label: t(labelKey),
-              }))}
-              onSave={(val) => handleSaveField({ status: val as VocabularyStatus })}
-              displayValue={<Badge className="cursor-pointer font-black">{t(statusLabelKeys[item.status])}</Badge>}
-            />
-          </div>
-
           <div className="flex items-center gap-1">
             <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Từ loại:</span>
             <InlineEditableField
@@ -932,62 +897,7 @@ export function VocabularyDetailPage() {
         "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] transition-opacity duration-200",
         shouldUseRemoteData && vocabularyCardQuery.isFetching && vocabularyCardQuery.data?.entry?.id !== id && "opacity-50 pointer-events-none"
       )}>
-        <Card className="flex flex-col gap-6">
-          <div>
-            <Label className="text-xs uppercase text-muted-foreground mb-1 block">{t('vocabulary.ipa')}</Label>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 max-w-sm">
-                <InlineEditableField
-                  value={item.ipa ?? ''}
-                  onSave={(val) => handleSaveField({ ipa: val || null })}
-                  placeholder="/.../"
-                  className="font-mono text-xl font-black"
-                  disabled={!isAdmin}
-                />
-              </div>
-              {isAdmin && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-8 w-8 p-0 sm:w-auto sm:px-3 text-xs flex items-center justify-center"
-                  disabled={enrichingIpa}
-                  onClick={async () => {
-                    setEnrichingIpa(true)
-                    setFormError(null)
-                    try {
-                      const enriched = await enrichVocabulary(item.source_text, item.source_language, item.native_language)
-                      if (enriched.ipa) {
-                        await handleSaveField({
-                          ipa: enriched.ipa,
-                          part_of_speech: enriched.partOfSpeech ?? item.part_of_speech,
-                        })
-                      } else {
-                        setFormError('Không tìm thấy IPA cho từ này. Bạn có thể nhập thủ công.')
-                      }
-                    } catch {
-                      setFormError('Không thể tìm IPA. Kiểm tra kết nối mạng.')
-                    }
-                    setEnrichingIpa(false)
-                  }}
-                  title={t('vocabulary.regenerateIpa')}
-                >
-                  {enrichingIpa ? (
-                    <span className="inline-flex items-center gap-0.5">
-                      <span className="inline-block animate-bounce [animation-delay:0ms]">.</span>
-                      <span className="inline-block animate-bounce [animation-delay:150ms]">.</span>
-                      <span className="inline-block animate-bounce [animation-delay:300ms]">.</span>
-                    </span>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-3.5 w-3.5 sm:mr-1 sm:h-4 sm:w-4" />
-                      <span className="hidden sm:inline">{t('vocabulary.regenerateIpa')}</span>
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-          </div>
-
+        <Card className="flex flex-col gap-6 min-w-0 overflow-hidden">
           <div className="hidden sm:block">
             <HotkeyTooltip hotkey="Alt + P" position="top">
               <Button
@@ -1042,8 +952,82 @@ export function VocabularyDetailPage() {
                     <Button type="button" tabIndex={-1} className="h-8 py-1 px-3 text-xs" variant="ghost" onClick={cancel}>
                       {t('actions.cancel')}
                     </Button>
-                  </div>
-                </div>
+        </div>
+      </div>
+
+      <div className="mb-6 grid gap-4 grid-cols-1 sm:grid-cols-[7fr_3fr]">
+        <Card className="flex flex-col gap-2">
+          <Label className="text-xs uppercase text-muted-foreground">{t('vocabulary.ipa')}</Label>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 max-w-sm">
+              <InlineEditableField
+                value={item.ipa ?? ''}
+                onSave={(val) => handleSaveField({ ipa: val || null })}
+                placeholder="/.../"
+                className="font-mono text-xl font-black"
+                disabled={!isAdmin}
+              />
+            </div>
+            {isAdmin && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-8 w-8 p-0 sm:w-auto sm:px-3 text-xs flex items-center justify-center"
+                disabled={enrichingIpa}
+                onClick={async () => {
+                  setEnrichingIpa(true)
+                  setFormError(null)
+                  try {
+                    const enriched = await enrichVocabulary(item.source_text, item.source_language, item.native_language)
+                    if (enriched.ipa) {
+                      await handleSaveField({
+                        ipa: enriched.ipa,
+                        part_of_speech: enriched.partOfSpeech ?? item.part_of_speech,
+                      })
+                    } else {
+                      setFormError('Không tìm thấy IPA cho từ này. Bạn có thể nhập thủ công.')
+                    }
+                  } catch {
+                    setFormError('Không thể tìm IPA. Kiểm tra kết nối mạng.')
+                  }
+                  setEnrichingIpa(false)
+                }}
+                title={t('vocabulary.regenerateIpa')}
+              >
+                {enrichingIpa ? (
+                  <span className="inline-flex items-center gap-0.5">
+                    <span className="inline-block animate-bounce [animation-delay:0ms]">.</span>
+                    <span className="inline-block animate-bounce [animation-delay:150ms]">.</span>
+                    <span className="inline-block animate-bounce [animation-delay:300ms]">.</span>
+                  </span>
+                ) : (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 sm:mr-1 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">{t('vocabulary.regenerateIpa')}</span>
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </Card>
+        <Card className="flex flex-col gap-2">
+          <Label className="text-xs uppercase text-muted-foreground">{t('vocabulary.partOfSpeech')}</Label>
+          <InlineEditableField
+            value={item.part_of_speech ?? ''}
+            type="input"
+            onSave={(val) => handleSaveField({ part_of_speech: val || null })}
+            placeholder={t('vocabulary.partOfSpeech')}
+            disabled={!isAdmin}
+            displayValue={
+              item.part_of_speech ? (
+                <span className="text-xl font-black text-foreground">{item.part_of_speech}</span>
+              ) : (
+                <span className="text-xl font-bold text-muted-foreground italic">{t('vocabulary.partOfSpeech')}</span>
+              )
+            }
+          />
+        </Card>
+      </div>
               )}
             />
           </div>
