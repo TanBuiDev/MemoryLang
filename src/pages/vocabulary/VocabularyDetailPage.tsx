@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { Flag, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil, MoreVertical, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/utils/cn'
@@ -740,15 +740,7 @@ export function VocabularyDetailPage() {
   })
 
   if (id === 'null' || id === 'undefined' || !id) {
-    return (
-      <Card className="text-center">
-        <p className="text-xl font-black">{t('vocabulary.emptyTitle')}</p>
-        <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.emptyDescription')}</p>
-        <Button asChild className="mt-4">
-          <Link to="/app/vocabulary">{t('actions.cancel')}</Link>
-        </Button>
-      </Card>
-    )
+    return <Navigate to="/app/vocabulary" replace />
   }
 
   if (shouldUseRemoteData && vocabularyCardQuery.isLoading) {
@@ -759,16 +751,8 @@ export function VocabularyDetailPage() {
     return <Card className="font-black text-danger">{vocabularyCardQuery.error.message}</Card>
   }
 
-  if (!item) {
-    return (
-      <Card className="text-center">
-        <p className="text-xl font-black">{t('vocabulary.emptyTitle')}</p>
-        <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.emptyDescription')}</p>
-        <Button asChild className="mt-4">
-          <Link to="/app/vocabulary">{t('actions.cancel')}</Link>
-        </Button>
-      </Card>
-    )
+  if (!item && !vocabularyCardQuery.isLoading && !vocabularyCardQuery.isFetching) {
+    return <Navigate to="/app/vocabulary" replace />
   }
 
   return (
