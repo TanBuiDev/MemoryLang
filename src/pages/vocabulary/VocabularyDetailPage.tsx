@@ -143,11 +143,16 @@ export function VocabularyDetailPage() {
   const [exampleIndexToDelete, setExampleIndexToDelete] = useState<number | null>(null)
   const [posOpen, setPosOpen] = useState(false)
   const posRef = useRef<HTMLDivElement>(null)
+  const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Reset toàn bộ state ở cấp độ trang khi ID từ vựng thay đổi (khi chuyển đổi giữa các từ)
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current)
+    }
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current)
+      pressTimerRef.current = null
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset of all page-level UI state on route change
     setImageSearchQuery('')
@@ -650,7 +655,11 @@ export function VocabularyDetailPage() {
 
   useEffect(() => {
     const timeout = searchTimeoutRef.current
-    return () => { if (timeout) clearTimeout(timeout) }
+    const pressTimer = pressTimerRef.current
+    return () => {
+      if (timeout) clearTimeout(timeout)
+      if (pressTimer) clearTimeout(pressTimer)
+    }
   }, [])
 
   const deleteVocabulary = useMutation({
@@ -779,6 +788,23 @@ export function VocabularyDetailPage() {
                 e.preventDefault()
                 await handleCopyEntry()
               }}
+              onTouchStart={() => {
+                pressTimerRef.current = setTimeout(() => {
+                  handleCopyEntry()
+                }, 1000)
+              }}
+              onTouchEnd={() => {
+                if (pressTimerRef.current) {
+                  clearTimeout(pressTimerRef.current)
+                  pressTimerRef.current = null
+                }
+              }}
+              onTouchMove={() => {
+                if (pressTimerRef.current) {
+                  clearTimeout(pressTimerRef.current)
+                  pressTimerRef.current = null
+                }
+              }}
             >
               <InlineEditableField
                 value={item.source_text}
@@ -789,11 +815,6 @@ export function VocabularyDetailPage() {
                 placeholder={t('vocabulary.sourceText')}
                 disabled={!isAdmin}
               />
-              {copied && (
-                <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-card border-2 border-border text-xs font-bold px-2 py-1 rounded shadow-[2px_2px_0_var(--border)] sm:hidden whitespace-nowrap animate-in fade-in slide-in-from-top-2 duration-150">
-                  Đã sao chép
-                </span>
-              )}
             </div>
             <Button
               type="button"
@@ -822,6 +843,9 @@ export function VocabularyDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0 pt-1">
+          {copied && (
+            <span className="text-xs font-bold text-success animate-in fade-in duration-150">Đã sao chép</span>
+          )}
           {autoSaveStatus === 'saving' && (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           )}
