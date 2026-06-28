@@ -51,10 +51,15 @@ export const vocabularyService = {
   async list(userId: string): Promise<VocabularyItem[]> {
     const { data, error } = await supabase
       .rpc('get_user_vocabulary', { p_user_id: userId })
-      
+
     if (error) throw error
-    // get_user_vocabulary đã trả về cấu trúc phẳng hoàn chỉnh, không cần flat lại
-    return (data ?? []) as VocabularyItem[]
+    // get_user_vocabulary đã trả về cấu trúc phẳng hoàn chỉnh, không cần flat lại.
+    // LEFT JOIN khiến user_terms.id = NULL với các từ chưa học (chỉ tồn tại trong global_terms).
+    // Dùng global_term_id làm id dự phòng để các link/điều hướng trang chi tiết hoạt động.
+    return (data ?? []).map((item) => {
+      const row = item as { id?: string; global_term_id?: string }
+      return { ...item, id: row.id ?? row.global_term_id }
+    }) as VocabularyItem[]
   },
 
   async get(id: string): Promise<VocabularyItem | null> {

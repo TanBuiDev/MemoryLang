@@ -26,7 +26,7 @@ async function resolveGlobalTermId(userTermId: string): Promise<string | null> {
     .select('global_term_id')
     .eq('id', userTermId)
     .maybeSingle()
-  
+
   if (data?.global_term_id) return data.global_term_id
 
   // Fallback to checking if it is already a global_term_id
@@ -35,8 +35,71 @@ async function resolveGlobalTermId(userTermId: string): Promise<string | null> {
     .select('id')
     .eq('id', userTermId)
     .maybeSingle()
-    
+
   return globalData?.id ?? null
+}
+
+// Lấy entry từ vựng theo id. Thử user_terms trước (kèm JOIN global_terms);
+// nếu không có (from vựng chưa bắt đầu học, id thực chất là global_term_id),
+// lấy trực tiếp từ global_terms và dựng VocabularyItem mặc định.
+async function fetchEntryById(entryId: string): Promise<VocabularyItem | null> {
+  const { data: fetchedEntry, error } = await supabase
+    .from('user_terms')
+    .select(`
+      *,
+      global_terms!fk_user_terms_global_term (
+        source_text, normalized_text, source_language, native_language,
+        item_type, part_of_speech, ipa, audio_url, image_url, meanings, examples,
+        translation, note, tags
+      )
+    `)
+    .eq('id', entryId)
+    .maybeSingle()
+  if (error) throw error
+  if (fetchedEntry) return flattenVocabularyItem(fetchedEntry)
+
+  // Fallback: id là global_term_id của từ chưa được user học
+  const { data: globalData, error: globalError } = await supabase
+    .from('global_terms')
+    .select('*')
+    .eq('id', entryId)
+    .maybeSingle()
+  if (globalError) throw globalError
+  if (!globalData) return null
+
+  return {
+    id: globalData.id,
+    global_term_id: globalData.id,
+    user_id: null,
+    status: 'new',
+    view_count: 0,
+    correct_count: 0,
+    wrong_count: 0,
+    audio_play_count: 0,
+    srs_repetition: 0,
+    srs_interval_days: 0,
+    srs_ease_factor: 2.5,
+    last_reviewed_at: null,
+    next_review_at: null,
+    flagged: false,
+    deleted_at: null,
+    created_at: globalData.created_at,
+    updated_at: globalData.updated_at,
+    source_text: globalData.source_text,
+    normalized_text: globalData.normalized_text,
+    source_language: globalData.source_language,
+    native_language: globalData.native_language,
+    item_type: globalData.item_type,
+    part_of_speech: globalData.part_of_speech,
+    ipa: globalData.ipa,
+    audio_url: globalData.audio_url,
+    image_url: globalData.image_url,
+    meanings: globalData.meanings,
+    examples: globalData.examples,
+    note: globalData.note,
+    tags: globalData.tags,
+    translation: globalData.translation,
+  } as VocabularyItem
 }
 
 export const relationshipService = {
@@ -144,20 +207,8 @@ export const relationshipService = {
     if (!globalTermId) {
       if (entry) return { entry, relationships: emptyRecord }
 
-      const { data: fetchedEntry, error } = await supabase
-        .from('user_terms')
-        .select(`
-          *,
-          global_terms!fk_user_terms_global_term (
-            source_text, normalized_text, source_language, native_language,
-            item_type, part_of_speech, ipa, audio_url, image_url, meanings, examples,
-            translation, note, tags
-          )
-        `)
-        .eq('id', entryId)
-        .maybeSingle()
-      if (error) throw error
-      return { entry: fetchedEntry ? flattenVocabularyItem(fetchedEntry) : (fetchedEntry as any), relationships: emptyRecord }
+      const fetchedEntry = await fetchEntryById(entryId)
+      return { entry: fetchedEntry, relationships: emptyRecord }
     }
 
     const relationships = await this.listBySourceId(entryId)
@@ -165,20 +216,8 @@ export const relationshipService = {
     if (relationships.length === 0) {
       if (entry) return { entry, relationships: emptyRecord }
 
-      const { data: fetchedEntry, error } = await supabase
-        .from('user_terms')
-        .select(`
-          *,
-          global_terms!fk_user_terms_global_term (
-            source_text, normalized_text, source_language, native_language,
-            item_type, part_of_speech, ipa, audio_url, image_url, meanings, examples,
-            translation, note, tags
-          )
-        `)
-        .eq('id', entryId)
-        .maybeSingle()
-      if (error) throw error
-      return { entry: fetchedEntry ? flattenVocabularyItem(fetchedEntry) : (fetchedEntry as any), relationships: emptyRecord }
+      const fetchedEntry = await fetchEntryById(entryId)
+      return { entry: fetchedEntry, relationships: emptyRecord }
     }
 
     const targetGlobalIds = relationships.map((r) => r.target_id)
@@ -215,20 +254,7 @@ export const relationshipService = {
 
     if (entry) return { entry, relationships: grouped }
 
-    const { data: fetchedEntry, error: entryError } = await supabase
-      .from('user_terms')
-      .select(`
-        *,
-        global_terms!fk_user_terms_global_term (
-          source_text, normalized_text, source_language, native_language,
-          item_type, part_of_speech, ipa, audio_url, image_url, meanings, examples,
-          translation, note, tags
-        )
-      `)
-      .eq('id', entryId)
-      .maybeSingle()
-    if (entryError) throw entryError
-
-    return { entry: fetchedEntry ? flattenVocabularyItem(fetchedEntry) : (fetchedEntry as any), relationships: grouped }
+    const fetchedEntry = await fetchEntryById(entryId)
+    return { entry: fetchedEntry, relationships: grouped }
   },
 }
