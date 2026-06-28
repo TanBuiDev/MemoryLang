@@ -1122,7 +1122,7 @@ export function VocabularyDetailPage() {
               <Button
                 type="button"
                 variant="ghost"
-                className="h-6 w-6 p-0 rounded-full border-2 border-border shadow-[1px_1px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none flex items-center justify-center animate-in fade-in zoom-in-50 duration-200"
+                className="h-6 w-6 min-h-0 p-0 rounded-full border-2 border-border shadow-[1px_1px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none flex items-center justify-center animate-in fade-in zoom-in-50 duration-200"
                 onClick={() => setIsMeaningOpen(!isMeaningOpen)}
                 aria-label={isMeaningOpen ? 'Ẩn nghĩa' : 'Xem nghĩa'}
               >
@@ -1182,7 +1182,7 @@ export function VocabularyDetailPage() {
                   type="button"
                   variant="ghost"
                   onClick={() => setIsEditingExamples(false)}
-                  className="absolute -top-3 -right-3 h-7 w-7 rounded-full p-0 border-2 border-border shadow-[2px_2px_0px_var(--border)] bg-card flex items-center justify-center hover:bg-muted active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none z-10"
+                  className="absolute -top-3 -right-3 h-7 w-7 min-h-0 rounded-full p-0 border-2 border-border shadow-[2px_2px_0px_var(--border)] bg-card flex items-center justify-center hover:bg-muted active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none z-10"
                   title={t('actions.cancel')}
                 >
                   <X className="h-3.5 w-3.5" />
@@ -1214,7 +1214,7 @@ export function VocabularyDetailPage() {
                   </Button>
                 </div>
                 
-                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                <div className="space-y-3 max-h-[350px] overflow-y-auto px-3 -mx-3 py-2.5 -my-2.5">
                   {tempExamples.map((ex, index) => (
                     <div key={index} className="relative rounded-md border border-border p-3 space-y-2 bg-muted/20">
                       {/* Nút Xóa là dấu x bọc trong hình tròn đặt đè lên góc phải trên của viền bao bọc thẻ ví dụ */}
@@ -1222,7 +1222,7 @@ export function VocabularyDetailPage() {
                         type="button"
                         variant="ghost"
                         onClick={() => setTempExamples(prev => prev.filter((_, i) => i !== index))}
-                        className="absolute -top-2.5 -right-2.5 h-6 w-6 rounded-full p-0 text-danger hover:bg-danger/10 border-2 border-border shadow-[1.5px_1.5px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none bg-card flex items-center justify-center z-10"
+                        className="absolute -top-2.5 -right-2.5 h-6 w-6 min-h-0 rounded-full p-0 text-danger hover:bg-danger/10 border-2 border-border shadow-[1.5px_1.5px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none bg-card flex items-center justify-center z-10"
                         title="Xóa ví dụ"
                       >
                         <X className="h-3.5 w-3.5" />
