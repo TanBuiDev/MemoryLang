@@ -760,19 +760,32 @@ export function VocabularyDetailPage() {
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex flex-col gap-1 min-w-0 max-w-full">
           <div className="flex items-center gap-2">
-            <InlineEditableField
-              value={item.source_text}
-              onSave={(val) => handleSaveField({ source_text: val })}
-              className="text-4xl font-black md:text-5xl border-dashed w-fit"
-              editClassName="w-[300px] md:w-[500px]"
-              fullWidth={false}
-              placeholder={t('vocabulary.sourceText')}
-              disabled={!isAdmin}
-            />
+            <div
+              className="relative"
+              onContextMenu={async (e) => {
+                e.preventDefault()
+                await handleCopyEntry()
+              }}
+            >
+              <InlineEditableField
+                value={item.source_text}
+                onSave={(val) => handleSaveField({ source_text: val })}
+                className="text-3xl font-black sm:text-4xl md:text-5xl border-dashed w-fit"
+                editClassName="w-[300px] md:w-[500px]"
+                fullWidth={false}
+                placeholder={t('vocabulary.sourceText')}
+                disabled={!isAdmin}
+              />
+              {copied && (
+                <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-card border-2 border-border text-xs font-bold px-2 py-1 rounded shadow-[2px_2px_0_var(--border)] sm:hidden whitespace-nowrap animate-in fade-in slide-in-from-top-2 duration-150">
+                  Đã sao chép
+                </span>
+              )}
+            </div>
             <Button
               type="button"
               variant="ghost"
-              className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-foreground inline-flex items-center justify-center transition-colors rounded-md"
+              className="hidden sm:inline-flex h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-foreground items-center justify-center transition-colors rounded-md"
               onClick={handleCopyEntry}
               title={t('vocabulary.copyTooltip')}
             >
