@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { Link, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom'
+import { Navigate, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { Flag, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil, MoreVertical, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/utils/cn'
@@ -141,6 +141,8 @@ export function VocabularyDetailPage() {
   const menuButtonRef = useRef<HTMLSpanElement>(null)
   const [isMeaningOpen, setIsMeaningOpen] = useState(false)
   const [exampleIndexToDelete, setExampleIndexToDelete] = useState<number | null>(null)
+  const [posOpen, setPosOpen] = useState(false)
+  const posRef = useRef<HTMLDivElement>(null)
 
   // Reset toàn bộ state ở cấp độ trang khi ID từ vựng thay đổi (khi chuyển đổi giữa các từ)
   useEffect(() => {
@@ -171,6 +173,7 @@ export function VocabularyDetailPage() {
     setIsActionsMenuOpen(false)
     setIsMeaningOpen(false)
     setExampleIndexToDelete(null)
+    setPosOpen(false)
   }, [id])
 
   const vocabularyCardQuery = useQuery({
@@ -392,6 +395,16 @@ export function VocabularyDetailPage() {
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  useEffect(() => {
+    function handlePosClick(e: MouseEvent) {
+      if (posRef.current && !posRef.current.contains(e.target as Node)) {
+        setPosOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handlePosClick)
+    return () => document.removeEventListener('mousedown', handlePosClick)
   }, [])
 
   useEffect(() => {
@@ -824,33 +837,59 @@ export function VocabularyDetailPage() {
       {/* Thanh metadata và thanh công cụ điều hướng/thao tác (actions) nằm chung một hàng */}
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-1">
+          <div className="relative flex items-center gap-1" ref={posRef}>
             <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Từ loại:</span>
-            <InlineEditableField
-              value={item.part_of_speech && POS_OPTIONS.some(o => o.value === item.part_of_speech) ? item.part_of_speech : (item.part_of_speech ? '__other__' : '')}
-              type="select"
-              options={POS_OPTIONS.map(({ value, label }) => ({ value, label }))}
-              onSave={(val) => handleSaveField({ part_of_speech: val === '__other__' ? item.part_of_speech : (val || null) })}
-              placeholder={t('vocabulary.partOfSpeech')}
+            <button
+              type="button"
               disabled={!isAdmin}
-              displayValue={
-                item.part_of_speech ? (
-                  <Badge className="cursor-pointer bg-muted text-foreground font-black">{item.part_of_speech}</Badge>
-                ) : (
-                  <Badge className="cursor-pointer bg-muted text-muted-foreground italic border-dashed font-bold">
-                    {t('vocabulary.partOfSpeech')}
-                  </Badge>
-                )
-              }
-            />
-            {item.part_of_speech === '__other__' || (item.part_of_speech && !POS_OPTIONS.some(o => o.value === item.part_of_speech)) ? (
+              onClick={() => setPosOpen(!posOpen)}
+              className={cn(
+                'flex items-center gap-1',
+                isAdmin && 'cursor-pointer'
+              )}
+            >
+              {item.part_of_speech && item.part_of_speech !== '__other__' ? (
+                <Badge className="bg-muted text-foreground font-black">{item.part_of_speech}</Badge>
+              ) : (
+                <Badge className="bg-muted text-muted-foreground italic border-dashed font-bold">
+                  {t('vocabulary.partOfSpeech')}
+                </Badge>
+              )}
+            </button>
+            {posOpen && (
+              <div className="absolute top-full left-0 mt-1 z-20 w-44 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] rounded-md py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                {POS_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={cn(
+                      'w-full text-left px-3 py-2 text-sm font-bold hover:bg-muted transition-colors',
+                      (item.part_of_speech === opt.value || (opt.value === '__other__' && item.part_of_speech && !POS_OPTIONS.some(o => o.value === item.part_of_speech)))
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-foreground'
+                    )}
+                    onClick={() => {
+                      if (opt.value === '__other__') {
+                        handleSaveField({ part_of_speech: '__other__' })
+                      } else {
+                        handleSaveField({ part_of_speech: opt.value })
+                      }
+                      setPosOpen(false)
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {(item.part_of_speech === '__other__' || (item.part_of_speech && !POS_OPTIONS.some(o => o.value === item.part_of_speech))) && (
               <input
-                className="ml-1 h-7 w-24 rounded border-2 border-border px-2 text-xs font-bold"
+                className="ml-1 h-7 w-28 rounded border-2 border-border px-2 text-xs font-bold shadow-[2px_2px_0_var(--border)] focus:outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)]"
                 placeholder="Nhập..."
                 value={item.part_of_speech === '__other__' ? '' : item.part_of_speech ?? ''}
                 onChange={(e) => handleSaveField({ part_of_speech: e.target.value || null })}
               />
-            ) : null}
+            )}
           </div>
         </div>
 
