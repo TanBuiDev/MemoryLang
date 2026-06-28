@@ -842,18 +842,18 @@ export function VocabularyDetailPage() {
 
           </div>
         </div>
-        <div className="relative flex items-center gap-2 shrink-0 pt-1 min-w-[4.5rem] justify-end">
+        <div className="relative w-5 h-5 shrink-0 mt-1">
           {copied && (
-            <Check className="absolute right-0 h-4 w-4 text-success animate-in fade-in duration-150" />
+            <Check className="absolute inset-0 h-5 w-5 text-success animate-in fade-in duration-150" />
           )}
           {autoSaveStatus === 'saving' && (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <Loader2 className="absolute inset-0 h-5 w-5 animate-spin text-muted-foreground" />
           )}
           {autoSaveStatus === 'saved' && (
-            <Check className="h-4 w-4 text-success" />
+            <Check className="absolute inset-0 h-5 w-5 text-success animate-in fade-in duration-150" />
           )}
           {formError && (
-            <span className="text-xs font-bold text-danger">{formError}</span>
+            <span className="absolute right-0 top-6 text-[10px] font-bold text-danger whitespace-nowrap">{formError}</span>
           )}
         </div>
       </div>
