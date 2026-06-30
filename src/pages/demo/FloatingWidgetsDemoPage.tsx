@@ -17,7 +17,7 @@ import {
   Info
 } from 'lucide-react'
 
-// Mascot SVG Component for Model 5
+// Mascot SVG Component for Model 5 and Combined Model
 function MascotIcon({ className = 'w-6 h-6' }: { className?: string }) {
   return (
     <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -43,15 +43,18 @@ function MascotIcon({ className = 'w-6 h-6' }: { className?: string }) {
 }
 
 export function FloatingWidgetsDemoPage() {
-  const [activeGlobalModel, setActiveGlobalModel] = useState<number | null>(1)
+  // Default to model 6 (Combined) as the featured recommendation
+  const [activeGlobalModel, setActiveGlobalModel] = useState<number | null>(6)
   
   // Local toggles for each model inside their preview boxes
+  const [isOpenM6, setIsOpenM6] = useState(false)
   const [isOpenM1, setIsOpenM1] = useState(false)
   const [isOpenM3, setIsOpenM3] = useState(false)
   const [isOpenM4, setIsOpenM4] = useState(true)
   const [isOpenM5, setIsOpenM5] = useState(false)
 
   // Global state toggles (when active in the viewport corners)
+  const [isGlobalOpenM6, setIsGlobalOpenM6] = useState(false)
   const [isGlobalOpenM1, setIsGlobalOpenM1] = useState(false)
   const [isGlobalOpenM3, setIsGlobalOpenM3] = useState(false)
   const [isGlobalOpenM4, setIsGlobalOpenM4] = useState(false)
@@ -73,29 +76,30 @@ export function FloatingWidgetsDemoPage() {
               Phòng Trải Nghiệm Giao Diện: Floating Action Widgets
             </h1>
             <p className="mt-2 text-sm font-bold text-foreground/80 max-w-2xl">
-              Khám phá và tương tác trực tiếp với 5 mẫu nút hành động nổi (FAB) được thiết kế riêng theo phong cách Neobrutalist của MemoryLang.
+              Khám phá và tương tác trực tiếp với các mẫu nút hành động nổi (FAB) được thiết kế riêng theo phong cách Neobrutalist của MemoryLang.
             </p>
           </div>
           <div className="flex gap-2">
             <span className="neo-card bg-white px-4 py-2 text-xs font-black text-foreground flex items-center gap-1.5 shadow-[2px_2px_0px_#1c293c]">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-              Sẵn sàng Review
+              Đã cập nhật Mẫu Kết Hợp
             </span>
           </div>
         </div>
       </div>
 
-      {/* Global Preview Settings */}
+      {/* Global Preview Settings (Sandbox) */}
       <div className="neo-card p-5 bg-card">
         <h2 className="text-lg font-black flex items-center gap-2">
           <Info className="w-5 h-5 text-secondary" />
           Khu vực Thử nghiệm Thực tế (Sandbox)
         </h2>
         <p className="text-xs text-muted-foreground mt-1 font-medium">
-          Chọn một mẫu dưới đây để hiển thị trực tiếp ở **góc phải dưới của màn hình**. Bạn có thể cuộn trang và xem cách nó hoạt động trên toàn bộ giao diện của MemoryLang.
+          Chọn một mẫu dưới đây để hiển thị trực tiếp ở **góc phải dưới của màn hình**. Bạn có thể cuộn trang và xem cách nó hoạt động thực tế trên điện thoại hoặc máy tính.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {[
+            { id: 6, name: '★ Mẫu Đặc Biệt: Mascot Radial (Kết hợp 3 & 5)' },
             { id: 1, name: 'Mẫu 1: Classic Speed Dial' },
             { id: 2, name: 'Mẫu 2: Expandable Pill FAB' },
             { id: 3, name: 'Mẫu 3: Radial Arc FAB' },
@@ -107,9 +111,10 @@ export function FloatingWidgetsDemoPage() {
               onClick={() => {
                 setActiveGlobalModel(m.id)
                 // Reset all states
+                setIsGlobalOpenM6(false)
                 setIsGlobalOpenM1(false)
                 setIsGlobalOpenM3(false)
-                setIsGlobalOpenM4(true)
+                setIsGlobalOpenM4(m.id === 4) // default open for toolbar
                 setIsGlobalOpenM5(false)
               }}
               className={`px-3 py-1.5 text-xs font-black transition-all ${
@@ -134,7 +139,138 @@ export function FloatingWidgetsDemoPage() {
         </div>
       </div>
 
-      {/* Grid containing all 5 models side-by-side inside parent containers */}
+      {/* FEATURED MODEL 6: Combined Mascot Radial FAB */}
+      <div className="neo-card bg-card p-6 border-4 border-secondary space-y-6 relative overflow-hidden">
+        <div className="absolute right-0 top-0 bg-secondary text-white text-[10px] font-black px-4 py-1.5 rounded-bl-lg shadow-sm uppercase tracking-wider">
+          Đề Xuất Hợp Nhất (Mẫu 3 + 5)
+        </div>
+        
+        <div className="max-w-3xl">
+          <h2 className="text-2xl font-black text-foreground">Mẫu Đặc Biệt: Mascot Radial FAB</h2>
+          <p className="text-sm text-muted-foreground mt-2 font-medium">
+            Sự kết hợp hoàn hảo giữa **Mascot đáng yêu** (Mẫu 5) và cơ chế **bay tỏa tròn Radial 45 độ** (Mẫu 3). Nút Mascot được thiết kế lớn để dễ chạm trên điện thoại, trang bị tính năng rung lắc cơ học nhẹ (wobble) để tăng tương tác, cùng với nhãn chữ đi kèm tự động định vị tối ưu trên thiết bị di động.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Simulation Box */}
+          <div className="lg:col-span-2 relative h-72 bg-muted/20 border-2 border-dashed border-border rounded-lg overflow-hidden flex items-center justify-center">
+            <div className="absolute top-2 left-2 neo-card bg-white px-2 py-0.5 text-[9px] font-black shadow-[1px_1px_0px_#1c293c]">
+              Khung mô phỏng (Di chuột / Tap thử)
+            </div>
+            
+            {/* Mascot Radial Widget */}
+            <div className="absolute bottom-6 right-6 z-10 select-none">
+              
+              {/* Secondary item 1: Sound (Top: translate-y-[85px] on mobile, [106px] on desktop) */}
+              <div 
+                className={`absolute transition-all duration-300 flex flex-col items-center justify-center ${
+                  isOpenM6 
+                    ? 'opacity-100 scale-100 translate-x-0 -translate-y-[85px] sm:-translate-y-[106px]' 
+                    : 'opacity-0 scale-50 translate-x-0 translate-y-0 pointer-events-none'
+                }`}
+              >
+                <button 
+                  title="Phát âm"
+                  className="w-11 h-11 sm:w-10 sm:h-10 rounded-full border-2 border-border bg-[#fdc800] text-foreground flex items-center justify-center shadow-[2px_2px_0px_#1c293c] hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_#1c293c] active:translate-y-0.5 active:shadow-none"
+                >
+                  <Volume2 className="w-5 h-5 sm:w-4.5 sm:h-4.5" />
+                </button>
+                <span className="absolute -bottom-6 bg-white text-[9px] font-black border-2 border-border px-1.5 py-0.5 rounded shadow-[1px_1px_0px_#1c293c] whitespace-nowrap text-foreground">
+                  Phát âm
+                </span>
+              </div>
+
+              {/* Secondary item 2: Search (Diagonal Top-Left: x/y [60px] on mobile, [76px] on desktop) */}
+              <div 
+                className={`absolute transition-all duration-300 delay-[40ms] flex flex-col items-center justify-center ${
+                  isOpenM6 
+                    ? 'opacity-100 scale-100 -translate-x-[60px] -translate-y-[60px] sm:-translate-x-[76px] sm:-translate-y-[76px]' 
+                    : 'opacity-0 scale-50 translate-x-0 translate-y-0 pointer-events-none'
+                }`}
+              >
+                <button 
+                  title="Tìm kiếm"
+                  className="w-11 h-11 sm:w-10 sm:h-10 rounded-full border-2 border-border bg-[#432dd7] text-white flex items-center justify-center shadow-[2px_2px_0px_#1c293c] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_#1c293c] active:translate-y-0.5 active:shadow-none"
+                >
+                  <Search className="w-5 h-5 sm:w-4.5 sm:h-4.5" />
+                </button>
+                <span className="absolute -bottom-6 bg-white text-[9px] font-black border-2 border-border px-1.5 py-0.5 rounded shadow-[1px_1px_0px_#1c293c] whitespace-nowrap text-foreground">
+                  Tìm từ
+                </span>
+              </div>
+
+              {/* Secondary item 3: Settings (Left: translate-x-[85px] on mobile, [106px] on desktop) */}
+              <div 
+                className={`absolute transition-all duration-300 delay-[80ms] flex flex-col items-center justify-center ${
+                  isOpenM6 
+                    ? 'opacity-100 scale-100 -translate-x-[85px] translate-y-0 sm:-translate-x-[106px]' 
+                    : 'opacity-0 scale-50 translate-x-0 translate-y-0 pointer-events-none'
+                }`}
+              >
+                <button 
+                  title="Cấu hình"
+                  className="w-11 h-11 sm:w-10 sm:h-10 rounded-full border-2 border-border bg-emerald-400 text-foreground flex items-center justify-center shadow-[2px_2px_0px_#1c293c] hover:-translate-x-0.5 hover:shadow-[3px_3px_0px_#1c293c] active:translate-y-0.5 active:shadow-none"
+                >
+                  <Settings className="w-5 h-5 sm:w-4.5 sm:h-4.5" />
+                </button>
+                <span className="absolute -bottom-6 bg-white text-[9px] font-black border-2 border-border px-1.5 py-0.5 rounded shadow-[1px_1px_0px_#1c293c] whitespace-nowrap text-foreground">
+                  Cấu hình
+                </span>
+              </div>
+
+              {/* Main Mascot Button (Trigger) */}
+              <button 
+                onClick={() => setIsOpenM6(!isOpenM6)}
+                className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full border-[3px] border-border bg-white flex items-center justify-center shadow-[3px_3px_0px_#1c293c] hover:shadow-[5px_5px_0px_#1c293c] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#1c293c] transition-all neo-wobble-hover z-20 group"
+              >
+                {/* Red Pulse Notification Dot */}
+                <span className="absolute -top-1 -right-1 flex h-5 w-5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-5 w-5 bg-danger border-2 border-border text-[9px] font-black text-white items-center justify-center">1</span>
+                </span>
+
+                {/* Transitioning Content: Mascot vs Close Icon */}
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <div className={`transition-all duration-300 ${isOpenM6 ? 'scale-0 rotate-90 opacity-0' : 'scale-100 rotate-0 opacity-100'}`}>
+                    <MascotIcon className="w-10 h-10 sm:w-11 sm:h-11" />
+                  </div>
+                  <div className={`absolute transition-all duration-300 ${isOpenM6 ? 'scale-100 rotate-0 opacity-100' : 'scale-0 -rotate-90 opacity-0'}`}>
+                    <X className="w-6 h-6 text-foreground font-black" />
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Details & Specs */}
+          <div className="flex flex-col justify-between space-y-4">
+            <div className="space-y-3">
+              <h3 className="text-lg font-black text-secondary">Thông số Tương tác</h3>
+              <ul className="text-xs space-y-2 text-muted-foreground font-medium list-disc pl-4">
+                <li><strong className="text-foreground">Wobble Animation:</strong> Mascot tự động lắc lư cơ học sinh động khi di chuột qua.</li>
+                <li><strong className="text-foreground">Smart Radial Offset:</strong> Khoảng cách bay của nút con tự thu gọn trên màn hình nhỏ để tránh chạm mép ngoài.</li>
+                <li><strong className="text-foreground">Trạng thái đóng/mở:</strong> Mascot xoay nhẹ rồi biến mất để hiển thị biểu tượng đóng `X` gọn gàng.</li>
+                <li><strong className="text-foreground">Touch-friendly:</strong> Đạt tiêu chuẩn kích thước chạm trên di động (&gt;44px), giúp dễ dàng thao tác bằng một tay.</li>
+              </ul>
+            </div>
+            
+            <button
+              onClick={() => {
+                setActiveGlobalModel(6)
+                setIsGlobalOpenM6(false)
+              }}
+              className="w-full neo-button py-2.5 bg-secondary text-white text-xs font-black hover:bg-[#321fb0] active:neo-button-active"
+            >
+              Kích hoạt xem thực tế góc màn hình
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <hr className="border-border border-2" />
+
+      {/* Grid containing other 5 models side-by-side inside parent containers */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         
         {/* MODEL 1: Classic Speed Dial */}
@@ -150,22 +286,16 @@ export function FloatingWidgetsDemoPage() {
             <p className="text-xs text-muted-foreground mt-1">
               Nút tròn chính mở ra danh sách các hành động xếp chồng dọc lên trên. Sử dụng hiệu ứng xoay biểu tượng và bóng đổ kép Neobrutalist đặc trưng.
             </p>
-            <div className="mt-2 flex flex-wrap gap-1 text-[10px] font-mono text-muted-foreground">
-              <span className="bg-muted px-1.5 py-0.5 rounded border border-border">#fdc800</span>
-              <span className="bg-muted px-1.5 py-0.5 rounded border border-border">Rotate 135deg</span>
-              <span className="bg-muted px-1.5 py-0.5 rounded border border-border">Stack Menu</span>
-            </div>
           </div>
 
           {/* Local Simulated Viewport */}
-          <div className="relative h-64 bg-muted/20 border-2 border-dashed border-border rounded-lg overflow-hidden flex items-center justify-center">
+          <div className="relative h-56 bg-muted/20 border-2 border-dashed border-border rounded-lg overflow-hidden flex items-center justify-center">
             <span className="text-xs font-bold text-muted-foreground pointer-events-none select-none">
               Mô phỏng Góc Màn Hình (Mẫu 1)
             </span>
             
             {/* The Widget */}
             <div className="absolute bottom-4 right-4 flex flex-col items-end z-10">
-              {/* Menu items list */}
               <div 
                 className={`flex flex-col items-end gap-3 mb-3 transition-all duration-300 ${
                   isOpenM1 ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'
@@ -191,7 +321,6 @@ export function FloatingWidgetsDemoPage() {
                 ))}
               </div>
 
-              {/* Main Trigger Button */}
               <button 
                 onClick={() => setIsOpenM1(!isOpenM1)}
                 className={`w-12 h-12 rounded-full border-2 border-border flex items-center justify-center bg-primary text-foreground shadow-[3px_3px_0px_#1c293c] hover:shadow-[5px_5px_0px_#1c293c] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#1c293c] transition-all`}
@@ -225,15 +354,10 @@ export function FloatingWidgetsDemoPage() {
             <p className="text-xs text-muted-foreground mt-1">
               Thiết kế dạng viên thuốc gọn gàng, tự động mở rộng theo chiều ngang khi người dùng di chuột qua để làm lộ rõ nhãn văn bản. Rất tiết kiệm diện tích.
             </p>
-            <div className="mt-2 flex flex-wrap gap-1 text-[10px] font-mono text-muted-foreground">
-              <span className="bg-muted px-1.5 py-0.5 rounded border border-border">#432dd7</span>
-              <span className="bg-muted px-1.5 py-0.5 rounded border border-border">Hover Width</span>
-              <span className="bg-muted px-1.5 py-0.5 rounded border border-border">Pill Shape</span>
-            </div>
           </div>
 
           {/* Local Simulated Viewport */}
-          <div className="relative h-64 bg-muted/20 border-2 border-dashed border-border rounded-lg overflow-hidden flex items-center justify-center">
+          <div className="relative h-56 bg-muted/20 border-2 border-dashed border-border rounded-lg overflow-hidden flex items-center justify-center">
             <span className="text-xs font-bold text-muted-foreground pointer-events-none select-none">
               Mô phỏng Góc Màn Hình (Mẫu 2 - Hover thử nút)
             </span>
@@ -243,12 +367,9 @@ export function FloatingWidgetsDemoPage() {
               <button 
                 className="group relative flex items-center justify-end h-12 w-12 hover:w-44 bg-secondary text-white border-2 border-border rounded-full shadow-[3px_3px_0px_#1c293c] hover:shadow-[5px_5px_0px_#1c293c] transition-all duration-300 ease-out overflow-hidden active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#1c293c]"
               >
-                {/* Text Label (Fades in and slides in as button expands) */}
                 <span className="absolute right-12 top-0 bottom-0 flex items-center pl-4 pr-1 font-black text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100">
                   Học bài tiếp theo
                 </span>
-                
-                {/* Icon (Stays centered, or pins to right) */}
                 <div className="w-11 h-11 flex items-center justify-center flex-shrink-0">
                   <BookOpen className="w-5 h-5 text-white" />
                 </div>
@@ -279,23 +400,16 @@ export function FloatingWidgetsDemoPage() {
             <p className="text-xs text-muted-foreground mt-1">
               Khi nhấn vào, các nút con sẽ bay ra theo hình quạt tròn (góc chéo 45 độ), tạo cảm giác sống động, vui nhộn và vô cùng độc đáo.
             </p>
-            <div className="mt-2 flex flex-wrap gap-1 text-[10px] font-mono text-muted-foreground">
-              <span className="bg-muted px-1.5 py-0.5 rounded border border-border">Radial Arc</span>
-              <span className="bg-muted px-1.5 py-0.5 rounded border border-border">Multi-Color</span>
-              <span className="bg-muted px-1.5 py-0.5 rounded border border-border">Fun Motion</span>
-            </div>
           </div>
 
           {/* Local Simulated Viewport */}
-          <div className="relative h-64 bg-muted/20 border-2 border-dashed border-border rounded-lg overflow-hidden flex items-center justify-center">
+          <div className="relative h-56 bg-muted/20 border-2 border-dashed border-border rounded-lg overflow-hidden flex items-center justify-center">
             <span className="text-xs font-bold text-muted-foreground pointer-events-none select-none">
               Mô phỏng Góc Màn Hình (Mẫu 3)
             </span>
             
             {/* The Widget */}
             <div className="absolute bottom-4 right-4 z-10">
-              
-              {/* Secondary item 1: Top-Left (-70px, -70px) */}
               <button 
                 title="Cài đặt"
                 className={`absolute w-10 h-10 rounded-full border-2 border-border bg-white text-foreground flex items-center justify-center shadow-[2px_2px_0px_#1c293c] transition-all duration-300 ${
@@ -306,8 +420,6 @@ export function FloatingWidgetsDemoPage() {
               >
                 <Settings className="w-4 h-4" />
               </button>
-
-              {/* Secondary item 2: Left (-100px, 0px) */}
               <button 
                 title="Tìm kiếm"
                 className={`absolute w-10 h-10 rounded-full border-2 border-border bg-primary text-foreground flex items-center justify-center shadow-[2px_2px_0px_#1c293c] transition-all duration-300 delay-[50ms] ${
@@ -318,8 +430,6 @@ export function FloatingWidgetsDemoPage() {
               >
                 <Search className="w-4 h-4" />
               </button>
-
-              {/* Secondary item 3: Top (0px, -100px) */}
               <button 
                 title="Phát âm"
                 className={`absolute w-10 h-10 rounded-full border-2 border-border bg-purple-500 text-white flex items-center justify-center shadow-[2px_2px_0px_#1c293c] transition-all duration-300 delay-[100ms] ${
@@ -331,7 +441,6 @@ export function FloatingWidgetsDemoPage() {
                 <Volume2 className="w-4 h-4" />
               </button>
 
-              {/* Main Trigger Button */}
               <button 
                 onClick={() => setIsOpenM3(!isOpenM3)}
                 className={`relative w-12 h-12 rounded-full border-2 border-border flex items-center justify-center bg-emerald-400 text-foreground shadow-[3px_3px_0px_#1c293c] hover:shadow-[5px_5px_0px_#1c293c] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#1c293c] transition-all z-20`}
@@ -365,23 +474,16 @@ export function FloatingWidgetsDemoPage() {
             <p className="text-xs text-muted-foreground mt-1">
               Thanh công cụ thu gọn nép gọn vào lề màn hình. Thích hợp cho các chế độ học tập tập trung hoặc các tác vụ nhanh, có nút đóng/mở tiện dụng.
             </p>
-            <div className="mt-2 flex flex-wrap gap-1 text-[10px] font-mono text-muted-foreground">
-              <span className="bg-muted px-1.5 py-0.5 rounded border border-border">Dock Panel</span>
-              <span className="bg-muted px-1.5 py-0.5 rounded border border-border">Collapsible</span>
-              <span className="bg-muted px-1.5 py-0.5 rounded border border-border">Side Slidout</span>
-            </div>
           </div>
 
           {/* Local Simulated Viewport */}
-          <div className="relative h-64 bg-muted/20 border-2 border-dashed border-border rounded-lg overflow-hidden flex items-center justify-center">
+          <div className="relative h-56 bg-muted/20 border-2 border-dashed border-border rounded-lg overflow-hidden flex items-center justify-center">
             <span className="text-xs font-bold text-muted-foreground pointer-events-none select-none">
               Mô phỏng Góc Màn Hình (Mẫu 4)
             </span>
             
-            {/* The Widget (Floating docked toolbar on the right side) */}
+            {/* The Widget */}
             <div className="absolute bottom-4 right-0 z-10 flex items-center">
-              
-              {/* Toggle Collapse Button */}
               <button 
                 onClick={() => setIsOpenM4(!isOpenM4)}
                 className="h-10 w-6 bg-primary border-y-2 border-l-2 border-border rounded-l flex items-center justify-center shadow-[-2px_2px_0px_#1c293c] z-20 hover:bg-[#ffe05c]"
@@ -389,7 +491,6 @@ export function FloatingWidgetsDemoPage() {
                 {isOpenM4 ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
               </button>
 
-              {/* Toolbar Panel */}
               <div 
                 className={`neo-card bg-white p-1.5 flex items-center gap-2 rounded-r-none transition-all duration-300 ease-out shadow-[-3px_3px_0px_#1c293c] ${
                   isOpenM4 
@@ -450,22 +551,16 @@ export function FloatingWidgetsDemoPage() {
             <p className="text-xs text-muted-foreground mt-1">
               Tích hợp Mascot thương hiệu siêu đáng yêu. Nút lắc nhẹ (wobble) khi hover thu hút sự chú ý, mở ra bong bóng thoại tương tác cao.
             </p>
-            <div className="mt-2 flex flex-wrap gap-1 text-[10px] font-mono text-muted-foreground">
-              <span className="bg-muted px-1.5 py-0.5 rounded border border-border">Mascot SVG</span>
-              <span className="bg-muted px-1.5 py-0.5 rounded border border-border">Wobble Animation</span>
-              <span className="bg-muted px-1.5 py-0.5 rounded border border-border">Speech Bubble</span>
-            </div>
           </div>
 
           {/* Local Simulated Viewport */}
-          <div className="relative h-64 bg-muted/20 border-2 border-dashed border-border rounded-lg overflow-hidden flex items-center justify-center">
+          <div className="relative h-56 bg-muted/20 border-2 border-dashed border-border rounded-lg overflow-hidden flex items-center justify-center">
             <span className="text-xs font-bold text-muted-foreground pointer-events-none select-none">
               Mô phỏng Góc Màn Hình (Mẫu 5)
             </span>
             
             {/* The Widget */}
             <div className="absolute bottom-4 right-4 z-10 flex flex-col items-end">
-              {/* Speech Bubble */}
               <div 
                 className={`neo-card bg-white p-4 w-60 rounded-xl mb-3 shadow-[4px_4px_0px_#1c293c] transition-all duration-300 relative ${
                   isOpenM5 
@@ -473,35 +568,20 @@ export function FloatingWidgetsDemoPage() {
                     : 'opacity-0 scale-90 translate-y-4 pointer-events-none'
                 }`}
               >
-                {/* Speech Bubble Tail */}
                 <div className="absolute bottom-[-10px] right-5 w-4 h-4 bg-white border-r-2 border-b-2 border-border transform rotate-45" />
-                
-                <p className="text-xs font-black text-foreground">
-                  Hôm nay học gì đây bạn?
-                </p>
-                <p className="text-[10px] text-muted-foreground mt-1 font-medium">
-                  Hãy chọn một hoạt động để tôi đồng hành cùng bạn nhé!
-                </p>
+                <p className="text-xs font-black text-foreground">Hôm nay học gì đây bạn?</p>
+                <p className="text-[10px] text-muted-foreground mt-1 font-medium">Hãy chọn một hoạt động để tôi đồng hành cùng bạn nhé!</p>
                 <div className="mt-3 flex gap-2">
-                  <button className="flex-1 px-2 py-1 bg-primary text-foreground text-[10px] font-black border-2 border-border rounded shadow-[1px_1px_0px_#1c293c] active:translate-y-0.5 hover:-translate-y-0.5">
-                    Học từ mới
-                  </button>
-                  <button className="flex-1 px-2 py-1 bg-secondary text-white text-[10px] font-black border-2 border-border rounded shadow-[1px_1px_0px_#1c293c] active:translate-y-0.5 hover:-translate-y-0.5">
-                    Thi thử
-                  </button>
+                  <button className="flex-1 px-2 py-1 bg-primary text-foreground text-[10px] font-black border-2 border-border rounded shadow-[1px_1px_0px_#1c293c]">Học từ mới</button>
+                  <button className="flex-1 px-2 py-1 bg-secondary text-white text-[10px] font-black border-2 border-border rounded shadow-[1px_1px_0px_#1c293c]">Thi thử</button>
                 </div>
               </div>
 
-              {/* Main Mascot Button */}
               <button 
                 onClick={() => setIsOpenM5(!isOpenM5)}
                 className={`w-14 h-14 rounded-full border-2 border-border bg-white flex items-center justify-center shadow-[3px_3px_0px_#1c293c] hover:shadow-[5px_5px_0px_#1c293c] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#1c293c] transition-all hover:animate-wiggle`}
               >
-                {isOpenM5 ? (
-                  <X className="w-6 h-6 text-foreground" />
-                ) : (
-                  <MascotIcon className="w-10 h-10" />
-                )}
+                {isOpenM5 ? <X className="w-6 h-6 text-foreground" /> : <MascotIcon className="w-10 h-10" />}
               </button>
             </div>
           </div>
@@ -519,38 +599,97 @@ export function FloatingWidgetsDemoPage() {
 
       </div>
 
-      {/* Quick Styling Guide Section */}
-      <div className="neo-card p-6 bg-card space-y-4">
-        <h3 className="text-xl font-black">Hướng Dẫn Thiết Kế & Nhận Xét Giao Diện</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
-          <div className="space-y-2">
-            <h4 className="font-black text-secondary uppercase tracking-wider">1. Phối Hợp Màu Sắc</h4>
-            <p className="text-muted-foreground leading-relaxed font-medium">
-              Tất cả các mẫu đều sử dụng bộ biến màu CSS trong <code className="font-mono bg-muted px-1 py-0.5 rounded border border-border">index.css</code>. Đảm bảo bóng đổ của nút khớp với thuộc tính <code className="font-mono">--brand-shadow-sm</code> hoặc tạo bóng đổ cứng thông qua Tailwind (<code className="font-mono">shadow-[3px_3px_0px_var(--border)]</code>) để đồng nhất.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <h4 className="font-black text-secondary uppercase tracking-wider">2. Hiệu ứng Micro-animations</h4>
-            <p className="text-muted-foreground leading-relaxed font-medium">
-              Nguyên lý thiết kế Neobrutalism yêu cầu hiệu ứng click tức thì. Khi nhấn vào, nút dịch chuyển chéo xuống dưới về bên phải (<code className="font-mono">translate-x-[2px] translate-y-[2px]</code>) đồng thời giảm khoảng cách bóng đổ để tạo cảm giác cơ học thật.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <h4 className="font-black text-secondary uppercase tracking-wider">3. Khả dụng trên Thiết bị di động</h4>
-            <p className="text-muted-foreground leading-relaxed font-medium">
-              Các Floating Action Widget có bán kính chạm tối thiểu 44x44px. Đối với các nút kén mở rộng hoặc radial menu, luôn đảm bảo các nút con cách xa vùng cạnh màn hình tối thiểu 16px để người dùng không bấm nhầm.
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* ========================================================= */}
       {/* GLOBAL SANDBOX RENDERER (Appears in bottom-right corner) */}
       {/* ========================================================= */}
       
+      {/* SPECIAL COMBINED MODEL 6 */}
+      {activeGlobalModel === 6 && (
+        <div className="fixed bottom-6 right-6 z-[9999] select-none flex flex-col items-end">
+          
+          {/* Secondary item 1: Sound (Top: translate-y-[85px] on mobile, [106px] on desktop) */}
+          <div 
+            className={`absolute transition-all duration-300 flex flex-col items-center justify-center ${
+              isGlobalOpenM6 
+                ? 'opacity-100 scale-100 translate-x-0 -translate-y-[85px] sm:-translate-y-[106px]' 
+                : 'opacity-0 scale-50 translate-x-0 translate-y-0 pointer-events-none'
+            }`}
+          >
+            <button 
+              title="Phát âm"
+              className="w-11 h-11 sm:w-10 sm:h-10 rounded-full border-2 border-border bg-[#fdc800] text-foreground flex items-center justify-center shadow-[2px_2px_0px_#1c293c] hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_#1c293c] active:translate-y-0.5 active:shadow-none"
+            >
+              <Volume2 className="w-5 h-5 sm:w-4.5 sm:h-4.5" />
+            </button>
+            <span className="absolute -bottom-6 bg-white text-[9px] font-black border-2 border-border px-1.5 py-0.5 rounded shadow-[1px_1px_0px_#1c293c] whitespace-nowrap text-foreground">
+              Phát âm
+            </span>
+          </div>
+
+          {/* Secondary item 2: Search (Diagonal Top-Left: x/y [60px] on mobile, [76px] on desktop) */}
+          <div 
+            className={`absolute transition-all duration-300 delay-[40ms] flex flex-col items-center justify-center ${
+              isGlobalOpenM6 
+                ? 'opacity-100 scale-100 -translate-x-[60px] -translate-y-[60px] sm:-translate-x-[76px] sm:-translate-y-[76px]' 
+                : 'opacity-0 scale-50 translate-x-0 translate-y-0 pointer-events-none'
+            }`}
+          >
+            <button 
+              title="Tìm kiếm"
+              className="w-11 h-11 sm:w-10 sm:h-10 rounded-full border-2 border-border bg-[#432dd7] text-white flex items-center justify-center shadow-[2px_2px_0px_#1c293c] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_#1c293c] active:translate-y-0.5 active:shadow-none"
+            >
+              <Search className="w-5 h-5 sm:w-4.5 sm:h-4.5" />
+            </button>
+            <span className="absolute -bottom-6 bg-white text-[9px] font-black border-2 border-border px-1.5 py-0.5 rounded shadow-[1px_1px_0px_#1c293c] whitespace-nowrap text-foreground">
+              Tìm từ
+            </span>
+          </div>
+
+          {/* Secondary item 3: Settings (Left: translate-x-[85px] on mobile, [106px] on desktop) */}
+          <div 
+            className={`absolute transition-all duration-300 delay-[80ms] flex flex-col items-center justify-center ${
+              isGlobalOpenM6 
+                ? 'opacity-100 scale-100 -translate-x-[85px] translate-y-0 sm:-translate-x-[106px]' 
+                : 'opacity-0 scale-50 translate-x-0 translate-y-0 pointer-events-none'
+            }`}
+          >
+            <button 
+              title="Cấu hình"
+              className="w-11 h-11 sm:w-10 sm:h-10 rounded-full border-2 border-border bg-emerald-400 text-foreground flex items-center justify-center shadow-[2px_2px_0px_#1c293c] hover:-translate-x-0.5 hover:shadow-[3px_3px_0px_#1c293c] active:translate-y-0.5 active:shadow-none"
+            >
+              <Settings className="w-5 h-5 sm:w-4.5 sm:h-4.5" />
+            </button>
+            <span className="absolute -bottom-6 bg-white text-[9px] font-black border-2 border-border px-1.5 py-0.5 rounded shadow-[1px_1px_0px_#1c293c] whitespace-nowrap text-foreground">
+              Cấu hình
+            </span>
+          </div>
+
+          {/* Main Mascot Button (Trigger) */}
+          <button 
+            onClick={() => setIsGlobalOpenM6(!isGlobalOpenM6)}
+            className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full border-[3px] border-border bg-white flex items-center justify-center shadow-[3px_3px_0px_#1c293c] hover:shadow-[5px_5px_0px_#1c293c] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#1c293c] transition-all neo-wobble-hover z-20 group"
+          >
+            {/* Red Pulse Notification Dot */}
+            <span className="absolute -top-1 -right-1 flex h-5 w-5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-5 w-5 bg-danger border-2 border-border text-[9px] font-black text-white items-center justify-center">1</span>
+            </span>
+
+            {/* Transitioning Content: Mascot vs Close Icon */}
+            <div className="relative w-full h-full flex items-center justify-center">
+              <div className={`transition-all duration-300 ${isGlobalOpenM6 ? 'scale-0 rotate-90 opacity-0' : 'scale-100 rotate-0 opacity-100'}`}>
+                <MascotIcon className="w-10 h-10 sm:w-11 sm:h-11" />
+              </div>
+              <div className={`absolute transition-all duration-300 ${isGlobalOpenM6 ? 'scale-100 rotate-0 opacity-100' : 'scale-0 -rotate-90 opacity-0'}`}>
+                <X className="w-6 h-6 text-foreground font-black" />
+              </div>
+            </div>
+          </button>
+        </div>
+      )}
+
       {activeGlobalModel === 1 && (
         <div className="fixed bottom-6 right-6 flex flex-col items-end z-[9999] select-none">
-          {/* Menu list */}
           <div 
             className={`flex flex-col items-end gap-3 mb-3 transition-all duration-300 ${
               isGlobalOpenM1 ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'
@@ -576,7 +715,6 @@ export function FloatingWidgetsDemoPage() {
             ))}
           </div>
 
-          {/* Main button */}
           <button 
             onClick={() => setIsGlobalOpenM1(!isGlobalOpenM1)}
             className="w-14 h-14 rounded-full border-2 border-border flex items-center justify-center bg-primary text-foreground shadow-[3px_3px_0px_#1c293c] hover:shadow-[5px_5px_0px_#1c293c] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#1c293c] transition-all"
@@ -603,7 +741,6 @@ export function FloatingWidgetsDemoPage() {
 
       {activeGlobalModel === 3 && (
         <div className="fixed bottom-6 right-6 z-[9999] select-none">
-          {/* Secondary item 1: Top-Left */}
           <button 
             title="Cài đặt"
             className={`absolute w-10 h-10 rounded-full border-2 border-border bg-white text-foreground flex items-center justify-center shadow-[2px_2px_0px_#1c293c] transition-all duration-300 ${
@@ -614,8 +751,6 @@ export function FloatingWidgetsDemoPage() {
           >
             <Settings className="w-4 h-4" />
           </button>
-
-          {/* Secondary item 2: Left */}
           <button 
             title="Tìm kiếm"
             className={`absolute w-10 h-10 rounded-full border-2 border-border bg-primary text-foreground flex items-center justify-center shadow-[2px_2px_0px_#1c293c] transition-all duration-300 delay-[50ms] ${
@@ -626,8 +761,6 @@ export function FloatingWidgetsDemoPage() {
           >
             <Search className="w-4 h-4" />
           </button>
-
-          {/* Secondary item 3: Top */}
           <button 
             title="Phát âm"
             className={`absolute w-10 h-10 rounded-full border-2 border-border bg-purple-500 text-white flex items-center justify-center shadow-[2px_2px_0px_#1c293c] transition-all duration-300 delay-[100ms] ${
@@ -639,7 +772,6 @@ export function FloatingWidgetsDemoPage() {
             <Volume2 className="w-4 h-4" />
           </button>
 
-          {/* Main button */}
           <button 
             onClick={() => setIsGlobalOpenM3(!isGlobalOpenM3)}
             className="relative w-14 h-14 rounded-full border-2 border-border flex items-center justify-center bg-emerald-400 text-foreground shadow-[3px_3px_0px_#1c293c] hover:shadow-[5px_5px_0px_#1c293c] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#1c293c] transition-all z-20"
@@ -651,7 +783,6 @@ export function FloatingWidgetsDemoPage() {
 
       {activeGlobalModel === 4 && (
         <div className="fixed bottom-6 right-0 z-[9999] flex items-center select-none">
-          {/* Toggle Button */}
           <button 
             onClick={() => setIsGlobalOpenM4(!isGlobalOpenM4)}
             className="h-12 w-6 bg-primary border-y-2 border-l-2 border-border rounded-l flex items-center justify-center shadow-[-2px_2px_0px_#1c293c] z-20 hover:bg-[#ffe05c]"
@@ -659,7 +790,6 @@ export function FloatingWidgetsDemoPage() {
             {isGlobalOpenM4 ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
           </button>
 
-          {/* Panel */}
           <div 
             className={`neo-card bg-white p-2 flex items-center gap-3 rounded-r-none transition-all duration-300 ease-out shadow-[-4px_4px_0px_#1c293c] ${
               isGlobalOpenM4 
@@ -698,7 +828,6 @@ export function FloatingWidgetsDemoPage() {
 
       {activeGlobalModel === 5 && (
         <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end select-none">
-          {/* Speech Bubble */}
           <div 
             className={`neo-card bg-white p-4 w-64 rounded-xl mb-3 shadow-[4px_4px_0px_#1c293c] transition-all duration-300 relative ${
               isGlobalOpenM5 
@@ -707,33 +836,19 @@ export function FloatingWidgetsDemoPage() {
             }`}
           >
             <div className="absolute bottom-[-10px] right-5 w-4 h-4 bg-white border-r-2 border-b-2 border-border transform rotate-45" />
-            
-            <p className="text-xs font-black text-foreground">
-              Hôm nay học gì đây bạn?
-            </p>
-            <p className="text-[10px] text-muted-foreground mt-1 font-medium">
-              Hãy chọn một hoạt động để tôi đồng hành cùng bạn nhé!
-            </p>
+            <p className="text-xs font-black text-foreground">Hôm nay học gì đây bạn?</p>
+            <p className="text-[10px] text-muted-foreground mt-1 font-medium">Hãy chọn một hoạt động để tôi đồng hành cùng bạn nhé!</p>
             <div className="mt-3 flex gap-2">
-              <button className="flex-1 px-2 py-1 bg-primary text-foreground text-[10px] font-black border-2 border-border rounded shadow-[1px_1px_0px_#1c293c] active:translate-y-0.5 hover:-translate-y-0.5">
-                Học từ mới
-              </button>
-              <button className="flex-1 px-2 py-1 bg-secondary text-white text-[10px] font-black border-2 border-border rounded shadow-[1px_1px_0px_#1c293c] active:translate-y-0.5 hover:-translate-y-0.5">
-                Thi thử
-              </button>
+              <button className="flex-1 px-2 py-1 bg-primary text-foreground text-[10px] font-black border-2 border-border rounded shadow-[1px_1px_0px_#1c293c]">Học từ mới</button>
+              <button className="flex-1 px-2 py-1 bg-secondary text-white text-[10px] font-black border-2 border-border rounded shadow-[1px_1px_0px_#1c293c]">Thi thử</button>
             </div>
           </div>
 
-          {/* Mascot Trigger Button */}
           <button 
             onClick={() => setIsGlobalOpenM5(!isGlobalOpenM5)}
             className="w-16 h-16 rounded-full border-2 border-border bg-white flex items-center justify-center shadow-[3px_3px_0px_#1c293c] hover:shadow-[5px_5px_0px_#1c293c] hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#1c293c] transition-all hover:animate-bounce"
           >
-            {isGlobalOpenM5 ? (
-              <X className="w-7 h-7 text-foreground" />
-            ) : (
-              <MascotIcon className="w-12 h-12" />
-            )}
+            {isGlobalOpenM5 ? <X className="w-7 h-7 text-foreground" /> : <MascotIcon className="w-12 h-12" />}
           </button>
         </div>
       )}
