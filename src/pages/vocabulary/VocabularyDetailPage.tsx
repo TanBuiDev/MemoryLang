@@ -1007,11 +1007,17 @@ export function VocabularyDetailPage() {
           {copied && (
             <Check className="absolute inset-0 h-5 w-5 text-success animate-in fade-in duration-150" />
           )}
-          {autoSaveStatus === 'saving' && (
+          {(autoSaveStatus === 'saving' || enrichingIpa || isTranslating) && (
             <Loader2 className="absolute inset-0 h-5 w-5 animate-spin text-muted-foreground" />
           )}
           {autoSaveStatus === 'saved' && (
             <Check className="absolute inset-0 h-5 w-5 text-success animate-in fade-in duration-150" />
+          )}
+          {enrichingIpa && (
+            <span className="absolute right-0 top-6 text-[10px] font-bold text-muted-foreground whitespace-nowrap">Đang làm mới...</span>
+          )}
+          {isTranslating && (
+            <span className="absolute right-0 top-6 text-[10px] font-bold text-muted-foreground whitespace-nowrap">Đang dịch...</span>
           )}
           {formError && (
             <span className="absolute right-0 top-6 text-[10px] font-bold text-danger whitespace-nowrap">{formError}</span>
