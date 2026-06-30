@@ -416,7 +416,7 @@ export function QuickNotesDrawer({ isOpen, onClose }: QuickNotesDrawerProps) {
 
                       {/* Date Group Notes Container */}
                       {isExpanded && (
-                        <div className="grid grid-cols-1 gap-3 pl-1 pb-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                        <div className="grid grid-cols-1 gap-3 pl-1 pt-2.5 pb-1 animate-in fade-in slide-in-from-top-1 duration-150">
                           {notesGroup.map((note) => (
                             <div 
                               key={note.id} 
@@ -441,9 +441,9 @@ export function QuickNotesDrawer({ isOpen, onClose }: QuickNotesDrawerProps) {
                                   handleDeleteClickState(note.id)
                                 }}
                                 title="Xóa ghi chú"
-                                className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full border-2 border-border bg-danger text-white flex items-center justify-center text-xs font-black hover:bg-red-600 transition-all active:scale-95 shadow-[1px_1px_0px_#1c293c] z-30"
+                                className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full border-2 border-border bg-danger text-white flex items-center justify-center hover:bg-red-600 transition-all active:scale-95 shadow-[1px_1px_0px_#1c293c] z-30"
                               >
-                                ×
+                                <X className="w-2.5 h-2.5 stroke-[4px]" />
                               </button>
 
                               {/* Custom Inline Confirmation Overlay */}
