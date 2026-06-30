@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Navigate, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { Flag, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, Repeat, RefreshCw, Pencil, MoreVertical, X } from 'lucide-react'
+import { Flag, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil, MoreVertical, X } from 'lucide-react'
+import autoplayIcon from '@/assets/brand/button-icons/autoplay.svg'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
@@ -149,6 +150,7 @@ export function VocabularyDetailPage() {
     return localStorage.getItem('memorylang_vocab_auto_play') === 'true'
   })
   const lastAutoPlayedIdRef = useRef<string | null>(null)
+  const autoPlayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Reset toàn bộ state ở cấp độ trang khi ID từ vựng thay đổi (khi chuyển đổi giữa các từ)
   useEffect(() => {
@@ -283,7 +285,15 @@ export function VocabularyDetailPage() {
     if (!autoPlayEnabled || !item) return
     if (id === lastAutoPlayedIdRef.current) return
     lastAutoPlayedIdRef.current = id
-    speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })
+
+    if (autoPlayTimeoutRef.current) clearTimeout(autoPlayTimeoutRef.current)
+    autoPlayTimeoutRef.current = setTimeout(() => {
+      speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })
+    }, 600)
+
+    return () => {
+      if (autoPlayTimeoutRef.current) clearTimeout(autoPlayTimeoutRef.current)
+    }
   }, [id, autoPlayEnabled, item])
 
   const [pageInputValue, setPageInputValue] = useState('')
@@ -1033,7 +1043,7 @@ export function VocabularyDetailPage() {
               }}
               title={t('vocabulary.autoPlay')}
             >
-              <Repeat className="h-4 w-4" />
+              <img src={autoplayIcon} className="h-4 w-4" alt="" />
             </Button>
           </HotkeyTooltip>
 
@@ -1119,7 +1129,7 @@ export function VocabularyDetailPage() {
                   localStorage.setItem('memorylang_vocab_auto_play', String(next))
                 }}
               >
-                <Repeat className="h-4 w-4" />
+                <img src={autoplayIcon} className="h-4 w-4" alt="" />
                 <span>{t('vocabulary.autoPlay')}</span>
               </Button>
 
