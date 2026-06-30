@@ -31,6 +31,14 @@ import { filterActiveVocabulary } from '@/utils/vocabulary'
 
 const imageRatioCache = new Map<string, number>()
 
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as any).message)
+  }
+  return String(error)
+}
+
 const POS_OPTIONS = [
   { value: 'noun', label: 'Noun' },
   { value: 'verb', label: 'Verb' },
@@ -561,7 +569,7 @@ export function VocabularyDetailPage() {
       if (context?.previousCard) {
         queryClient.setQueryData(['vocabulary-card', id], context.previousCard)
       }
-      setFormError(error instanceof Error ? error.message : String(error))
+      setFormError(getErrorMessage(error))
       setAutoSaveStatus('idle')
       if (user && item) {
         await studyLocalDb.enqueueMutation({
@@ -749,7 +757,7 @@ export function VocabularyDetailPage() {
       setFormError(null)
       await invalidateVocabularyQueries(addedTargetId)
     },
-    onError: (error) => setFormError(error instanceof Error ? error.message : String(error)),
+    onError: (error) => setFormError(getErrorMessage(error)),
   })
 
   const handlePillKeyDown = useCallback(
@@ -786,7 +794,7 @@ export function VocabularyDetailPage() {
     },
     onError: (error) => {
       setRemovingKey(null)
-      setFormError(error instanceof Error ? error.message : String(error))
+      setFormError(getErrorMessage(error))
     },
   })
 
@@ -903,8 +911,12 @@ export function VocabularyDetailPage() {
                 isAdmin && 'cursor-pointer'
               )}
             >
-              {item.part_of_speech && item.part_of_speech !== '__other__' ? (
+              {item.part_of_speech && POS_OPTIONS.some(o => o.value === item.part_of_speech && o.value !== '__other__') ? (
                 <Badge className="bg-muted text-foreground font-black">{item.part_of_speech}</Badge>
+              ) : item.part_of_speech ? (
+                <Badge className="bg-muted text-foreground font-black">
+                  {POS_OPTIONS.find(o => o.value === '__other__')?.label || 'Khác...'}
+                </Badge>
               ) : (
                 <Badge className="bg-muted text-muted-foreground italic border-dashed font-bold">
                   {t('vocabulary.partOfSpeech')}
@@ -1035,7 +1047,7 @@ export function VocabularyDetailPage() {
           <HotkeyTooltip hotkey="Alt + A">
             <Button
               variant={autoPlayEnabled ? "primary" : "ghost"}
-              className="border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+              className="hidden sm:inline-flex border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
               onClick={() => {
                 const next = !autoPlayEnabled
                 setAutoPlayEnabled(next)
