@@ -819,7 +819,7 @@ export function VocabularyDetailPage() {
   return (
     <div key={id} className="pb-20 sm:pb-0">
       <div className="flex items-start justify-between gap-4 mb-4">
-        <div className="flex flex-col gap-1 min-w-0 max-w-full">
+        <div className="flex flex-col gap-1 min-w-0 max-w-full flex-1">
           <div className="flex items-center gap-2">
             <div
               className="relative"
