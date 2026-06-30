@@ -31,7 +31,7 @@ export function MascotRadialFab() {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] select-none flex flex-col items-end">
+    <div className="fixed bottom-24 sm:bottom-6 right-6 z-[9999] select-none flex flex-col items-end">
       
       {/* Secondary item 1: Study (Top: translate-y-[85px] on mobile, [106px] on desktop) */}
       <div 
