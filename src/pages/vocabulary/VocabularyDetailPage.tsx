@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tansta
 import { Navigate, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { Flag, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil, MoreVertical, X } from 'lucide-react'
 import autoplayIcon from '@/assets/brand/button-icons/repeat-sound.svg'
+import translateIcon from '@/assets/brand/button-icons/translate.svg'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
@@ -119,6 +120,7 @@ export function VocabularyDetailPage() {
   }, [formError])
   const [removingKey, setRemovingKey] = useState<string | null>(null)
   const [enrichingIpa, setEnrichingIpa] = useState(false)
+  const [isTranslating, setIsTranslating] = useState(false)
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [relationType, setRelationType] = useState<RelationType>('synonym')
   const [targetId, setTargetId] = useState('')
@@ -692,6 +694,24 @@ export function VocabularyDetailPage() {
     }
   }
 
+  const handleTranslate = async () => {
+    if (!item) return
+    setIsTranslating(true)
+    setFormError(null)
+    try {
+      const enriched = await enrichVocabulary(item.source_text, item.source_language, item.native_language)
+      const translatedText = enriched.translationText
+      if (translatedText && translatedText !== item.source_text) {
+        await handleSaveField({ translation: translatedText })
+      } else {
+        setFormError('Không thể dịch từ này. Vui lòng nhập thủ công.')
+      }
+    } catch {
+      setFormError('Không thể dịch. Kiểm tra kết nối mạng.')
+    }
+    setIsTranslating(false)
+  }
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !user || !item) return
@@ -1109,6 +1129,21 @@ export function VocabularyDetailPage() {
               )}
             </Button>
           )}
+          {isAdmin && (
+            <Button
+              variant="primary"
+              className="hidden sm:inline-flex border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+              disabled={isTranslating}
+              onClick={() => void handleTranslate()}
+              title={t('vocabulary.translate')}
+            >
+              {isTranslating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <img src={translateIcon} className="h-4 w-4 scale-[1.75]" alt="" />
+              )}
+            </Button>
+          )}
           <HotkeyTooltip hotkey="Alt + ←">
             <Button
               variant="ghost"
@@ -1311,6 +1346,25 @@ export function VocabularyDetailPage() {
                     <RefreshCw className="h-4 w-4" />
                   )}
                   <span>Làm mới IPA</span>
+                </Button>
+              )}
+
+              {isAdmin && (
+                <Button
+                  variant="primary"
+                  disabled={isTranslating}
+                  className="justify-start gap-2 h-9 w-full text-xs font-bold border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+                  onClick={async () => {
+                    setIsActionsMenuOpen(false)
+                    await handleTranslate()
+                  }}
+                >
+                  {isTranslating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <img src={translateIcon} className="h-4 w-4 scale-[1.75]" alt="" />
+                  )}
+                  <span>{t('vocabulary.translate')}</span>
                 </Button>
               )}
 
