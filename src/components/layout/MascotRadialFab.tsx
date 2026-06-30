@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FileText, Plus, Settings, X } from 'lucide-react'
 import { QuickNotesDrawer } from './QuickNotesDrawer'
+import { AddVocabularyModal } from './AddVocabularyModal'
 
 // Mascot SVG Component
 function MascotIcon({ className = 'w-6 h-6' }: { className?: string }) {
@@ -31,6 +32,7 @@ function MascotIcon({ className = 'w-6 h-6' }: { className?: string }) {
 export function MascotRadialFab() {
   const [isOpen, setIsOpen] = useState(false)
   const [isNotesOpen, setIsNotesOpen] = useState(false)
+  const [isAddWordOpen, setIsAddWordOpen] = useState(false)
 
   return (
     <div className="fixed bottom-24 sm:bottom-6 right-6 z-[9999] select-none flex flex-col items-end">
@@ -67,14 +69,17 @@ export function MascotRadialFab() {
             : 'opacity-0 scale-50 translate-x-0 translate-y-0 pointer-events-none'
         }`}
       >
-        <Link 
-          to="/app/vocabulary/new"
-          onClick={() => setIsOpen(false)}
+        <button 
+          type="button"
+          onClick={() => {
+            setIsOpen(false)
+            setIsAddWordOpen(true)
+          }}
           title="Thêm từ vựng"
           className="w-11 h-11 sm:w-10 sm:h-10 rounded-full border-2 border-border bg-[#432dd7] text-white flex items-center justify-center shadow-[2px_2px_0px_#1c293c] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_#1c293c] active:translate-y-0.5 active:shadow-none"
         >
           <Plus className="w-5 h-5 sm:w-4.5 sm:h-4.5" />
-        </Link>
+        </button>
         <span className="absolute -bottom-6 bg-white text-[9px] font-black border-2 border-border px-1.5 py-0.5 rounded shadow-[1px_1px_0px_#1c293c] whitespace-nowrap text-foreground">
           Thêm từ
         </span>
@@ -121,6 +126,12 @@ export function MascotRadialFab() {
       <QuickNotesDrawer 
         isOpen={isNotesOpen} 
         onClose={() => setIsNotesOpen(false)} 
+      />
+
+      {/* Add Vocabulary Modal Component */}
+      <AddVocabularyModal 
+        isOpen={isAddWordOpen} 
+        onClose={() => setIsAddWordOpen(false)} 
       />
     </div>
   )
