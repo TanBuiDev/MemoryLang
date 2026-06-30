@@ -19,7 +19,6 @@ function parseMarkdown(text: string): string {
     .replace(/>/g, '&gt;')
 
   // Bold: **text**
-  html = html.replace(/\*\*(.*?)\*\"/g, '<strong>$1</strong>')
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
 
   // Underline: __text__ or _text_
@@ -85,6 +84,9 @@ export function QuickNotesDrawer({ isOpen, onClose }: QuickNotesDrawerProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   
+  // Custom delete confirmation state
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
   // Collapsible date groups
   const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({})
 
@@ -203,12 +205,10 @@ export function QuickNotesDrawer({ isOpen, onClose }: QuickNotesDrawerProps) {
   // Handle Save & Close
   const handleClose = async () => {
     if (content.trim()) {
-      const success = await handleSave(content)
-      if (!success) {
-        // If save fails (e.g. limit reached), let user decide whether to discard or cancel close
-        if (!window.confirm('Ghi chú chưa được lưu. Bạn có chắc chắn muốn đóng và hủy thay đổi?')) {
-          return
-        }
+      const trimmed = content.trim()
+      // Save silently if valid
+      if (trimmed.length <= maxLength && (editingNoteId || notes.length < maxCount)) {
+        await handleSave(trimmed)
       }
     }
     onClose()
@@ -248,14 +248,17 @@ export function QuickNotesDrawer({ isOpen, onClose }: QuickNotesDrawerProps) {
     textareaRef.current?.focus()
   }
 
-  const handleDeleteClick = async (id: string) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa ghi chú này?')) {
-      await notesService.deleteNote(id, userId)
-      setNotes((prev) => prev.filter((n) => n.id !== id))
-      if (editingNoteId === id) {
-        setEditingNoteId(null)
-        setContent('')
-      }
+  const handleDeleteClickState = (id: string) => {
+    setConfirmDeleteId(id)
+  }
+
+  const confirmDelete = async (id: string) => {
+    await notesService.deleteNote(id, userId)
+    setNotes((prev) => prev.filter((n) => n.id !== id))
+    setConfirmDeleteId(null)
+    if (editingNoteId === id) {
+      setEditingNoteId(null)
+      setContent('')
     }
   }
 
@@ -277,7 +280,7 @@ export function QuickNotesDrawer({ isOpen, onClose }: QuickNotesDrawerProps) {
   const groupedNotes = groupNotesByDate(notes)
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 animate-fade-in">
       {/* Backdrop */}
       <div 
         onClick={() => { void handleClose() }}
@@ -307,28 +310,6 @@ export function QuickNotesDrawer({ isOpen, onClose }: QuickNotesDrawerProps) {
         <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-none">
           {/* Note Editor */}
           <div className="neo-card bg-white p-4 space-y-3 relative border-2 border-border shadow-[2px_2px_0px_#1c293c]">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
-                {editingNoteId ? '✍ Đang Chỉnh Sửa Ghi Chú' : '✏️ Tạo Ghi Chú Mới'}
-              </span>
-              
-              {/* Save Status / Limits Indicator */}
-              <div className="text-[10px] font-bold flex items-center gap-2">
-                <span className={cn(
-                  "px-1.5 py-0.5 rounded border border-border text-muted-foreground bg-muted font-mono",
-                  content.length > maxLength && "bg-danger-100 text-danger border-danger"
-                )}>
-                  {content.length}/{maxLength}
-                </span>
-                {saveStatus === 'saving' && (
-                  <span className="text-secondary">Đang lưu...</span>
-                )}
-                {saveStatus === 'saved' && (
-                  <span className="text-emerald-600">✓ Đã lưu</span>
-                )}
-              </div>
-            </div>
-
             {/* Markdown Toolbar */}
             <div className="flex items-center gap-1 pb-1 border-b border-dashed border-border">
               <button 
@@ -356,6 +337,16 @@ export function QuickNotesDrawer({ isOpen, onClose }: QuickNotesDrawerProps) {
                 <List className="w-3.5 h-3.5" /> List
               </button>
 
+              {/* Save Status (saving/saved) */}
+              <div className="text-[10px] font-bold ml-2">
+                {saveStatus === 'saving' && (
+                  <span className="text-secondary">Đang lưu...</span>
+                )}
+                {saveStatus === 'saved' && (
+                  <span className="text-emerald-600">✓ Đã lưu</span>
+                )}
+              </div>
+
               {editingNoteId && (
                 <button
                   type="button"
@@ -367,16 +358,21 @@ export function QuickNotesDrawer({ isOpen, onClose }: QuickNotesDrawerProps) {
               )}
             </div>
 
-            {/* Textarea */}
-            <textarea
-              ref={textareaRef}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Nhập ghi chú ý tưởng, từ mới bắt gặp... (Hỗ trợ Markdown cơ bản)"
-              rows={4}
-              maxLength={maxLength}
-              className="w-full text-sm font-semibold p-3 border-2 border-border rounded bg-amber-50/10 focus:bg-white focus:outline-none transition-all placeholder:text-muted-foreground/60 resize-none"
-            />
+            {/* Textarea with embedded character limit */}
+            <div className="relative w-full">
+              <textarea
+                ref={textareaRef}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Nhập ghi chú ý tưởng, từ mới bắt gặp... (Hỗ trợ Markdown cơ bản)"
+                rows={4}
+                maxLength={maxLength}
+                className="w-full text-sm font-semibold p-3 pb-7 border-2 border-border rounded bg-amber-50/10 focus:bg-white focus:outline-none transition-all placeholder:text-muted-foreground/60 resize-none"
+              />
+              <div className="absolute bottom-2.5 right-3 text-[9px] font-mono font-black text-muted-foreground/80 pointer-events-none select-none">
+                {content.length}/{maxLength}
+              </div>
+            </div>
 
             {/* Save Button */}
             <button
@@ -420,7 +416,7 @@ export function QuickNotesDrawer({ isOpen, onClose }: QuickNotesDrawerProps) {
 
                       {/* Date Group Notes Container */}
                       {isExpanded && (
-                        <div className="grid grid-cols-1 gap-2 pl-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                        <div className="grid grid-cols-1 gap-3 pl-1 pb-1 animate-in fade-in slide-in-from-top-1 duration-150">
                           {notesGroup.map((note) => (
                             <div 
                               key={note.id} 
@@ -437,18 +433,44 @@ export function QuickNotesDrawer({ isOpen, onClose }: QuickNotesDrawerProps) {
                                 dangerouslySetInnerHTML={{ __html: parseMarkdown(note.content) }}
                               />
 
-                              {/* Rounded X button to Delete (top-right) */}
+                              {/* Rounded X button to Delete (on the border) */}
                               <button 
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  void handleDeleteClick(note.id)
+                                  handleDeleteClickState(note.id)
                                 }}
                                 title="Xóa ghi chú"
-                                className="absolute top-2 right-2 w-4.5 h-4.5 rounded-full border border-border bg-danger text-white flex items-center justify-center text-[10px] font-black hover:bg-red-600 transition-all active:scale-95 shadow-[1px_1px_0px_#1c293c]"
+                                className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full border-2 border-border bg-danger text-white flex items-center justify-center text-xs font-black hover:bg-red-600 transition-all active:scale-95 shadow-[1px_1px_0px_#1c293c] z-30"
                               >
                                 ×
                               </button>
+
+                              {/* Custom Inline Confirmation Overlay */}
+                              {confirmDeleteId === note.id && (
+                                <div 
+                                  onClick={(e) => e.stopPropagation()} // Prevent editing on overlay click
+                                  className="absolute inset-0 bg-white/95 rounded-lg flex items-center justify-between px-3 py-2 z-20 border-2 border-dashed border-danger animate-in fade-in duration-150"
+                                >
+                                  <span className="text-[11px] font-black text-danger">Xóa ghi chú này?</span>
+                                  <div className="flex gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => void confirmDelete(note.id)}
+                                      className="px-2 py-0.5 bg-danger text-white text-[9px] font-black border border-border shadow-[1px_1px_0_#1c293c] rounded active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none hover:bg-red-600"
+                                    >
+                                      Xóa
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setConfirmDeleteId(null)}
+                                      className="px-2 py-0.5 bg-muted text-foreground text-[9px] font-black border border-border shadow-[1px_1px_0_#1c293c] rounded active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none hover:bg-white"
+                                    >
+                                      Hủy
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
