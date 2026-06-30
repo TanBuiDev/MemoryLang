@@ -205,7 +205,7 @@ export default function AdminFeaturesPage() {
                     )}
                     {setting.key === 'vocabulary_pos_options' && (
                       <span className="text-[10px] text-blue-600 font-bold mt-1">
-                        * Định dạng: Danh sách đối tượng dạng JSON gồm "value" và "label". Nên giữ lại {"value": "__other__", "label": "Khác..."}.
+                        {"* Định dạng: Danh sách đối tượng dạng JSON gồm \"value\" và \"label\". Nên giữ lại {\"value\": \"__other__\", \"label\": \"Khác...\"}."}
                       </span>
                     )}
                     {setting.key === 'vocabulary_max_examples_count' && (
