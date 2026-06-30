@@ -1043,7 +1043,7 @@ export function VocabularyDetailPage() {
               }}
               title={t('vocabulary.autoPlay')}
             >
-              <img src={autoplayIcon} className="h-4 w-4 scale-[1.75]" alt="" style={autoPlayEnabled ? { filter: 'brightness(0) saturate(100%) invert(78%) sepia(48%) saturate(4032%) hue-rotate(2deg) brightness(105%) contrast(104%)' } : undefined} />
+              <img src={autoplayIcon} className={cn("h-4 w-4 scale-[1.75]", !autoPlayEnabled && "opacity-30 saturate-0")} alt="" />
             </Button>
           </HotkeyTooltip>
 
@@ -1129,7 +1129,7 @@ export function VocabularyDetailPage() {
                   localStorage.setItem('memorylang_vocab_auto_play', String(next))
                 }}
               >
-              <img src={autoplayIcon} className="h-4 w-4 scale-[1.75]" alt="" style={autoPlayEnabled ? { filter: 'brightness(0) saturate(100%) invert(78%) sepia(48%) saturate(4032%) hue-rotate(2deg) brightness(105%) contrast(104%)' } : undefined} />
+                <img src={autoplayIcon} className={cn("h-4 w-4 scale-[1.75]", !autoPlayEnabled && "opacity-30 saturate-0")} alt="" />
                 <span>{t('vocabulary.autoPlay')}</span>
               </Button>
 
