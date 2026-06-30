@@ -89,8 +89,8 @@ export default function AdminDashboardPage() {
         />
         <StatCard
           title="Thư viện từ vựng"
-          value={loading ? '...' : stats?.totalVocab ?? 0}
-          description={loading ? '...' : `Đang học (Global cache: ${stats?.globalVocab ?? 0})`}
+          value={loading ? '...' : stats?.globalVocab ?? 0}
+          description={loading ? '...' : `Đang được học: ${stats?.totalVocab ?? 0}`}
           icon={BookOpen}
           colorClass="bg-[#86efac]" // Light Green
         />
