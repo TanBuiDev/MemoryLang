@@ -369,6 +369,23 @@ export default function AdminFeaturesPage() {
                           </div>
                         )}
 
+                        {(setting.key === 'quick_notes_max_count' || setting.key === 'quick_notes_max_length') && (
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="number"
+                              min={1}
+                              value={Number(settingsForm[setting.key]) || 0}
+                              onChange={(e) =>
+                                setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
+                              }
+                              className="w-32 px-3 py-1.5 border-2 border-border rounded bg-card font-bold text-xs focus:outline-none focus:border-primary transition-all"
+                            />
+                            <span className="text-xs text-muted-foreground font-bold">
+                              {setting.key === 'quick_notes_max_count' ? 'ghi chú tối đa' : 'ký tự tối đa'}
+                            </span>
+                          </div>
+                        )}
+
                         {setting.key === 'default_speech_rate' && (
                           <div className="flex items-center gap-3">
                             <input
@@ -438,6 +455,16 @@ export default function AdminFeaturesPage() {
                     {setting.key === 'vocabulary_max_examples_count' && (
                       <span className="text-[10px] text-blue-600 font-bold mt-0.5">
                         * Định dạng: Nhập một số nguyên dương đại diện cho giới hạn số lượng ví dụ tối đa của mỗi từ vựng.
+                      </span>
+                    )}
+                    {setting.key === 'quick_notes_max_count' && (
+                      <span className="text-[10px] text-blue-600 font-bold mt-0.5">
+                        * Định dạng: Nhập một số nguyên dương đại diện cho số lượng ghi chú tối đa mỗi người dùng được phép lưu.
+                      </span>
+                    )}
+                    {setting.key === 'quick_notes_max_length' && (
+                      <span className="text-[10px] text-blue-600 font-bold mt-0.5">
+                        * Định dạng: Nhập một số nguyên dương đại diện cho số lượng ký tự tối đa được viết trong mỗi ghi chú.
                       </span>
                     )}
                   </div>

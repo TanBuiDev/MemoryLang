@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { FileText, Plus, Settings, X } from 'lucide-react'
 import { QuickNotesDrawer } from './QuickNotesDrawer'
 
@@ -31,11 +31,6 @@ function MascotIcon({ className = 'w-6 h-6' }: { className?: string }) {
 export function MascotRadialFab() {
   const [isOpen, setIsOpen] = useState(false)
   const [isNotesOpen, setIsNotesOpen] = useState(false)
-  const location = useLocation()
-
-  // Detect current vocabulary ID if on detail page
-  const match = location.pathname.match(/\/app\/vocabulary\/([a-zA-Z0-9-]+)/)
-  const currentVocabId = match ? match[1] : undefined
 
   return (
     <div className="fixed bottom-24 sm:bottom-6 right-6 z-[9999] select-none flex flex-col items-end">
@@ -122,11 +117,10 @@ export function MascotRadialFab() {
         </div>
       </button>
 
-      {/* Quick Notes Drawer Component */}
+      {/* Quick Notes Popup Component */}
       <QuickNotesDrawer 
         isOpen={isNotesOpen} 
         onClose={() => setIsNotesOpen(false)} 
-        currentVocabId={currentVocabId}
       />
     </div>
   )

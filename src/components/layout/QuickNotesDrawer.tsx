@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FileText, X, Bold, Underline, List, Trash2, Edit, Save, Loader2 } from 'lucide-react'
+import { FileText, X, Bold, Underline, List, Save, ChevronDown, ChevronUp } from 'lucide-react'
 import { notesService, type QuickNote } from '@/services/supabase/notes.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { cn } from '@/utils/cn'
@@ -8,7 +8,6 @@ import { supabase } from '@/services/supabase/client'
 interface QuickNotesDrawerProps {
   isOpen: boolean
   onClose: () => void
-  currentVocabId?: string
 }
 
 // Basic markdown parser
@@ -20,6 +19,7 @@ function parseMarkdown(text: string): string {
     .replace(/>/g, '&gt;')
 
   // Bold: **text**
+  html = html.replace(/\*\*(.*?)\*\"/g, '<strong>$1</strong>')
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
 
   // Underline: __text__ or _text_
@@ -41,93 +41,140 @@ function parseMarkdown(text: string): string {
   return formattedLines.join('<br />')
 }
 
-export function QuickNotesDrawer({ isOpen, onClose, currentVocabId }: QuickNotesDrawerProps) {
+// Get Vietnamese Date Label
+function getLocalDateLabel(dateString: string): string {
+  const noteDate = new Date(dateString)
+  const today = new Date()
+  const yesterday = new Date()
+  yesterday.setDate(today.getDate() - 1)
+  
+  if (noteDate.toDateString() === today.toDateString()) {
+    return 'Hôm nay'
+  } else if (noteDate.toDateString() === yesterday.toDateString()) {
+    return 'Hôm qua'
+  } else {
+    return noteDate.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  }
+}
+
+// Group notes by date label
+function groupNotesByDate(notesList: QuickNote[]): Record<string, QuickNote[]> {
+  const groups: Record<string, QuickNote[]> = {}
+  notesList.forEach((note) => {
+    const label = getLocalDateLabel(note.updated_at)
+    if (!groups[label]) {
+      groups[label] = []
+    }
+    groups[label].push(note)
+  })
+  return groups
+}
+
+export function QuickNotesDrawer({ isOpen, onClose }: QuickNotesDrawerProps) {
   const user = useAuthStore((s) => s.user)
   const userId = user?.id || 'demo-user'
 
   const [notes, setNotes] = useState<QuickNote[]>([])
   const [content, setContent] = useState('')
-  const [tagsInput, setTagsInput] = useState('')
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
-  const [vocabWord, setVocabWord] = useState<string | null>(null)
   
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
-  const [linkVocab, setLinkVocab] = useState(true)
+  
+  // Collapsible date groups
+  const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({})
+
+  // Admin limits
+  const [maxCount, setMaxCount] = useState(50)
+  const [maxLength, setMaxLength] = useState(1000)
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Load notes and vocab word
+  // Load notes and limits when open
   useEffect(() => {
     if (isOpen) {
       void fetchNotes()
-      // If we have current vocab, auto-enable linkVocab and load its word text
-      if (currentVocabId) {
-        setLinkVocab(true)
-        void fetchVocabWord(currentVocabId)
-      } else {
-        setVocabWord(null)
-      }
+      void fetchLimits()
     }
-  }, [isOpen, userId, currentVocabId])
+  }, [isOpen, userId])
 
   const fetchNotes = async () => {
     const list = await notesService.getNotes(userId)
     setNotes(list)
   }
 
-  const fetchVocabWord = async (vocabId: string) => {
+  const fetchLimits = async () => {
     try {
       const { data, error } = await supabase
-        .from('user_terms')
-        .select('word')
-        .eq('id', vocabId)
-        .maybeSingle()
-
-      if (!error && data?.word) {
-        setVocabWord(data.word)
-      } else {
-        // Fallback: check global_terms if user_term is not found
-        const { data: globalData } = await supabase
-          .from('global_terms')
-          .select('word')
-          .eq('id', vocabId)
-          .maybeSingle()
-        if (globalData?.word) {
-          setVocabWord(globalData.word)
-        }
+        .from('app_settings')
+        .select('key, value')
+        .in('key', ['quick_notes_max_count', 'quick_notes_max_length'])
+      
+      if (!error && data) {
+        data.forEach((s) => {
+          if (s.key === 'quick_notes_max_count') {
+            setMaxCount(Number(s.value) || 50)
+          } else if (s.key === 'quick_notes_max_length') {
+            setMaxLength(Number(s.value) || 1000)
+          }
+        })
       }
     } catch (e) {
-      console.warn('Failed to load vocab word for linking:', e)
+      console.warn('Failed to load settings limits:', e)
     }
   }
 
-  // Handle manual/auto save
-  const handleSave = async (forceContent?: string, forceTags?: string) => {
-    const activeContent = forceContent !== undefined ? forceContent : content
-    const activeTagsInput = forceTags !== undefined ? forceTags : tagsInput
+  // Initialize expanded dates state (first group is open, others closed by default)
+  useEffect(() => {
+    if (notes.length > 0) {
+      const grouped = groupNotesByDate(notes)
+      const dateLabels = Object.keys(grouped)
+      if (dateLabels.length > 0) {
+        setExpandedDates((prev) => {
+          const next = { ...prev }
+          dateLabels.forEach((label, idx) => {
+            if (next[label] === undefined) {
+              next[label] = idx === 0 // Only expand the newest date group
+            }
+          })
+          return next
+        })
+      }
+    }
+  }, [notes])
 
-    if (!activeContent.trim()) return
+  // Handle Save
+  const handleSave = async (activeContent: string): Promise<boolean> => {
+    const trimmed = activeContent.trim()
+    if (!trimmed) return false
+
+    // Check character length
+    if (trimmed.length > maxLength) {
+      alert(`Ghi chú không được vượt quá ${maxLength} ký tự!`)
+      return false
+    }
+
+    // Check count limit for new notes
+    if (!editingNoteId && notes.length >= maxCount) {
+      alert(`Bạn đã đạt giới hạn tối đa ${maxCount} ghi chú. Vui lòng xóa bớt ghi chú cũ để thêm mới!`)
+      return false
+    }
 
     setSaveStatus('saving')
     setIsSaving(true)
-
-    const tagList = activeTagsInput
-      .split(',')
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0)
 
     try {
       const savedNote = await notesService.saveNote({
         id: editingNoteId || undefined,
         userId,
-        content: activeContent,
-        tags: tagList,
-        linkedVocabId: (linkVocab && currentVocabId) ? currentVocabId : undefined
+        content: trimmed,
+        tags: []
       })
 
-      // Update state list
       setNotes((prev) => {
         const index = prev.findIndex((n) => n.id === savedNote.id)
         if (index > -1) {
@@ -138,54 +185,33 @@ export function QuickNotesDrawer({ isOpen, onClose, currentVocabId }: QuickNotes
         return [savedNote, ...prev]
       })
 
-      // If manual save, clear editor unless editing
-      if (forceContent === undefined) {
-        setContent('')
-        setTagsInput('')
-        setEditingNoteId(null)
-      } else {
-        // Update editing ID if it was a new note that got created
-        if (!editingNoteId) {
-          setEditingNoteId(savedNote.id)
-        }
-      }
-
+      // Reset editor
+      setContent('')
+      setEditingNoteId(null)
       setSaveStatus('saved')
-      setTimeout(() => setSaveStatus('idle'), 2000)
+      setTimeout(() => setSaveStatus('idle'), 1500)
+      return true
     } catch (e) {
       console.error('Error saving note:', e)
       setSaveStatus('idle')
+      return false
     } finally {
       setIsSaving(false)
     }
   }
 
-  // Debounced auto-save
-  const triggerAutoSave = (newContent: string, newTags: string) => {
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current)
+  // Handle Save & Close
+  const handleClose = async () => {
+    if (content.trim()) {
+      const success = await handleSave(content)
+      if (!success) {
+        // If save fails (e.g. limit reached), let user decide whether to discard or cancel close
+        if (!window.confirm('Ghi chú chưa được lưu. Bạn có chắc chắn muốn đóng và hủy thay đổi?')) {
+          return
+        }
+      }
     }
-
-    if (!newContent.trim()) return
-
-    setSaveStatus('saving')
-    autoSaveTimeoutRef.current = setTimeout(() => {
-      void handleSave(newContent, newTags)
-    }, 1200) // Auto-save 1.2s after user stops typing
-  }
-
-  // Handle text change
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value
-    setContent(val)
-    triggerAutoSave(val, tagsInput)
-  }
-
-  // Handle tags change
-  const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    setTagsInput(val)
-    triggerAutoSave(content, val)
+    onClose()
   }
 
   // Inserting markdown helper
@@ -201,11 +227,9 @@ export function QuickNotesDrawer({ isOpen, onClose, currentVocabId }: QuickNotes
     let cursorOffset = 0
 
     if (syntax === '- ') {
-      // List item
       newText = text.substring(0, start) + '\n- ' + text.substring(end)
       cursorOffset = start + 3
     } else {
-      // Bold or Underline wrapping selection
       const selection = text.substring(start, end)
       newText = text.substring(0, start) + syntax + selection + syntax + text.substring(end)
       cursorOffset = end + syntax.length
@@ -213,21 +237,14 @@ export function QuickNotesDrawer({ isOpen, onClose, currentVocabId }: QuickNotes
 
     setContent(newText)
     textarea.focus()
-    // Restore selection
     setTimeout(() => {
       textarea.setSelectionRange(cursorOffset, cursorOffset)
     }, 0)
-
-    triggerAutoSave(newText, tagsInput)
   }
 
   const handleEditClick = (note: QuickNote) => {
     setEditingNoteId(note.id)
     setContent(note.content)
-    setTagsInput(note.tags.join(', '))
-    if (note.linked_vocab_id) {
-      setLinkVocab(true)
-    }
     textareaRef.current?.focus()
   }
 
@@ -238,7 +255,6 @@ export function QuickNotesDrawer({ isOpen, onClose, currentVocabId }: QuickNotes
       if (editingNoteId === id) {
         setEditingNoteId(null)
         setContent('')
-        setTagsInput('')
       }
     }
   }
@@ -246,60 +262,69 @@ export function QuickNotesDrawer({ isOpen, onClose, currentVocabId }: QuickNotes
   const handleNewNoteClick = () => {
     setEditingNoteId(null)
     setContent('')
-    setTagsInput('')
     textareaRef.current?.focus()
+  }
+
+  const toggleGroup = (label: string) => {
+    setExpandedDates((prev) => ({
+      ...prev,
+      [label]: !prev[label]
+    }))
   }
 
   if (!isOpen) return null
 
+  const groupedNotes = groupNotesByDate(notes)
+
   return (
-    <div className="fixed inset-0 z-[99999] flex justify-end">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        onClick={onClose}
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" 
+        onClick={() => { void handleClose() }}
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200" 
       />
 
-      {/* Notepad Container */}
+      {/* Notepad Dialog Modal */}
       <div className={cn(
-        "relative bg-background border-l-2 md:border-l-[3px] border-border flex flex-col h-full z-10 transition-transform duration-300 ease-out",
-        "w-full md:w-100", // Fullscreen on mobile, 400px (w-100) on desktop
-        isOpen ? "translate-x-0" : "translate-x-full"
+        "relative bg-background border-[3px] border-border flex flex-col w-full max-w-lg rounded-xl shadow-[4px_4px_0px_#1c293c] z-10 max-h-[85vh] overflow-hidden transition-all transform scale-100 duration-200 animate-in zoom-in-95"
       )}>
         {/* Header */}
-        <div className="bg-primary p-4 border-b-2 border-border flex items-center justify-between">
+        <div className="bg-primary p-4 border-b-[3px] border-border flex items-center justify-between">
           <div className="flex items-center gap-2 text-[#1c293c]">
             <FileText className="w-5 h-5" />
             <span className="font-black text-base">Sổ Tay Ghi Chú Nhanh</span>
           </div>
           <button 
-            onClick={onClose}
+            type="button"
+            onClick={() => { void handleClose() }}
             className="p-1 border-2 border-border rounded bg-white text-foreground hover:bg-muted active:translate-x-[1px] active:translate-y-[1px] transition-all flex items-center justify-center"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Notepad Scrollable Area */}
+        {/* Scrollable Content Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-none">
           {/* Note Editor */}
-          <div className="neo-card bg-white p-4 space-y-3 relative">
+          <div className="neo-card bg-white p-4 space-y-3 relative border-2 border-border shadow-[2px_2px_0px_#1c293c]">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
                 {editingNoteId ? '✍ Đang Chỉnh Sửa Ghi Chú' : '✏️ Tạo Ghi Chú Mới'}
               </span>
               
-              {/* Save Status Indicator */}
-              <div className="text-[10px] font-bold">
+              {/* Save Status / Limits Indicator */}
+              <div className="text-[10px] font-bold flex items-center gap-2">
+                <span className={cn(
+                  "px-1.5 py-0.5 rounded border border-border text-muted-foreground bg-muted font-mono",
+                  content.length > maxLength && "bg-danger-100 text-danger border-danger"
+                )}>
+                  {content.length}/{maxLength}
+                </span>
                 {saveStatus === 'saving' && (
-                  <span className="text-secondary flex items-center gap-1">
-                    <Loader2 className="w-3 h-3 animate-spin" /> Đang lưu...
-                  </span>
+                  <span className="text-secondary">Đang lưu...</span>
                 )}
                 {saveStatus === 'saved' && (
-                  <span className="text-emerald-600 flex items-center gap-0.5 animate-pulse">
-                    ✓ Đã lưu & đồng bộ
-                  </span>
+                  <span className="text-emerald-600">✓ Đã lưu</span>
                 )}
               </div>
             </div>
@@ -346,46 +371,17 @@ export function QuickNotesDrawer({ isOpen, onClose, currentVocabId }: QuickNotes
             <textarea
               ref={textareaRef}
               value={content}
-              onChange={handleContentChange}
+              onChange={(e) => setContent(e.target.value)}
               placeholder="Nhập ghi chú ý tưởng, từ mới bắt gặp... (Hỗ trợ Markdown cơ bản)"
               rows={4}
-              className="w-full text-sm font-semibold p-3 border-2 border-border rounded bg-amber-50/20 focus:bg-white focus:outline-none transition-all placeholder:text-muted-foreground/60 resize-none"
+              maxLength={maxLength}
+              className="w-full text-sm font-semibold p-3 border-2 border-border rounded bg-amber-50/10 focus:bg-white focus:outline-none transition-all placeholder:text-muted-foreground/60 resize-none"
             />
 
-            {/* Tags Input */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-muted-foreground uppercase">Thẻ gắn kèm (Phân cách bằng dấu phẩy)</label>
-              <input
-                type="text"
-                value={tagsInput}
-                onChange={handleTagsChange}
-                placeholder="e.g. từ mới, toeic, giao tiếp"
-                className="w-full text-xs font-bold px-2 py-1.5 border-2 border-border rounded focus:outline-none focus:bg-white"
-              />
-            </div>
-
-            {/* Vocab Auto-Link Checkbox */}
-            {currentVocabId && vocabWord && (
-              <label className="flex items-center gap-2 cursor-pointer p-1.5 bg-yellow-50 border border-yellow-200 rounded text-[11px] font-bold text-yellow-800">
-                <input
-                  type="checkbox"
-                  checked={linkVocab}
-                  onChange={(e) => {
-                    setLinkVocab(e.target.checked)
-                    triggerAutoSave(content, tagsInput)
-                  }}
-                  className="rounded border-yellow-400 text-yellow-600 focus:ring-yellow-500"
-                />
-                <span className="flex items-center gap-1 truncate">
-                  🔗 Gắn kết từ vựng hiện tại: <strong className="underline text-foreground truncate">{vocabWord}</strong>
-                </span>
-              </label>
-            )}
-
-            {/* Explicit Save button */}
+            {/* Save Button */}
             <button
               type="button"
-              onClick={() => void handleSave()}
+              onClick={() => void handleSave(content)}
               disabled={!content.trim() || isSaving}
               className="w-full neo-button py-2 bg-primary text-foreground text-xs font-black hover:bg-[#ffe05c] active:translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-1"
             >
@@ -394,11 +390,13 @@ export function QuickNotesDrawer({ isOpen, onClose, currentVocabId }: QuickNotes
             </button>
           </div>
 
-          {/* Notes List */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-black text-foreground uppercase tracking-wider border-b-2 border-border pb-1">
-              Ghi Chú Đã Lưu ({notes.length})
-            </h3>
+          {/* Grouped Notes List */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center border-b-2 border-border pb-1">
+              <h3 className="text-xs font-black text-foreground uppercase tracking-wider">
+                Ghi Chú Đã Lưu ({notes.length}/{maxCount})
+              </h3>
+            </div>
             
             {notes.length === 0 ? (
               <div className="text-center py-6 text-xs text-muted-foreground font-medium border-2 border-dashed border-border rounded bg-white">
@@ -406,69 +404,58 @@ export function QuickNotesDrawer({ isOpen, onClose, currentVocabId }: QuickNotes
               </div>
             ) : (
               <div className="space-y-3">
-                {notes.map((note) => (
-                  <div 
-                    key={note.id} 
-                    className={cn(
-                      "neo-card bg-white p-3.5 space-y-2 hover:-translate-y-0.5 transition-all shadow-[2px_2px_0px_#1c293c] border-2 border-border",
-                      editingNoteId === note.id && "border-secondary bg-indigo-50/10 shadow-[3px_3px_0px_var(--secondary)]"
-                    )}
-                  >
-                    {/* Note Content (Rendered Markdown) */}
-                    <div 
-                      className="text-xs font-medium text-foreground break-words leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: parseMarkdown(note.content) }}
-                    />
+                {Object.entries(groupedNotes).map(([dateLabel, notesGroup]) => {
+                  const isExpanded = !!expandedDates[dateLabel]
+                  return (
+                    <div key={dateLabel} className="space-y-1.5">
+                      {/* Date Group Header */}
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(dateLabel)}
+                        className="w-full flex items-center justify-between px-2 py-1 bg-muted hover:bg-muted/80 border-2 border-border rounded text-xs font-black text-foreground transition-all"
+                      >
+                        <span>📅 {dateLabel} ({notesGroup.length})</span>
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
 
-                    {/* Linked vocab badge */}
-                    {note.linked_vocab_id && (
-                      <div className="inline-flex items-center gap-1 text-[9px] font-bold text-yellow-800 bg-yellow-50 border border-yellow-200 px-1.5 py-0.5 rounded">
-                        <span>🔗 Đã liên kết từ vựng</span>
-                      </div>
-                    )}
+                      {/* Date Group Notes Container */}
+                      {isExpanded && (
+                        <div className="grid grid-cols-1 gap-2 pl-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                          {notesGroup.map((note) => (
+                            <div 
+                              key={note.id} 
+                              onClick={() => handleEditClick(note)}
+                              className={cn(
+                                "relative bg-white p-3 pr-8 rounded-lg border-2 border-border shadow-[2px_2px_0px_#1c293c] cursor-pointer hover:bg-muted/30 transition-all select-none",
+                                editingNoteId === note.id && "border-secondary bg-indigo-50/10 shadow-[3px_3px_0px_var(--secondary)]"
+                              )}
+                              title="Bấm vào để chỉnh sửa"
+                            >
+                              {/* Content */}
+                              <div 
+                                className="text-xs font-medium text-foreground break-words leading-relaxed"
+                                dangerouslySetInnerHTML={{ __html: parseMarkdown(note.content) }}
+                              />
 
-                    {/* Tags List */}
-                    {note.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {note.tags.map((tag) => (
-                          <span 
-                            key={tag} 
-                            className="bg-muted text-muted-foreground px-1.5 py-0.5 rounded border border-border text-[9px] font-black"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Card Actions */}
-                    <div className="flex items-center justify-between pt-2 border-t border-dashed border-muted/50 text-[10px] text-muted-foreground font-semibold">
-                      <span>
-                        {new Date(note.updated_at).toLocaleDateString('vi-VN', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => handleEditClick(note)}
-                          className="text-secondary hover:underline flex items-center gap-0.5"
-                        >
-                          <Edit className="w-3 h-3" /> Sửa
-                        </button>
-                        <button 
-                          onClick={() => void handleDeleteClick(note.id)}
-                          className="text-danger hover:underline flex items-center gap-0.5"
-                        >
-                          <Trash2 className="w-3 h-3" /> Xóa
-                        </button>
-                      </div>
+                              {/* Rounded X button to Delete (top-right) */}
+                              <button 
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  void handleDeleteClick(note.id)
+                                }}
+                                title="Xóa ghi chú"
+                                className="absolute top-2 right-2 w-4.5 h-4.5 rounded-full border border-border bg-danger text-white flex items-center justify-center text-[10px] font-black hover:bg-red-600 transition-all active:scale-95 shadow-[1px_1px_0px_#1c293c]"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
