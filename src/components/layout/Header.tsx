@@ -25,7 +25,6 @@ import {
   ScrollText,
   Settings,
   ShieldAlert,
-  Sparkles,
   Sun,
   User,
   Video,
@@ -168,21 +167,6 @@ export function Header() {
                     {t(item.labelKey)}
                   </NavLink>
                 ))}
-                <div className="border-t-2 border-border my-1" />
-                <NavLink
-                  to="/app/floating-widgets"
-                  onClick={() => setMoreOpen(false)}
-                  className={({ isActive }) =>
-                    cn(
-                      dropdownLinkClass,
-                      'bg-yellow-100 text-yellow-900 border border-yellow-400 hover:bg-yellow-200',
-                      isActive && 'bg-primary text-primary-foreground border-border'
-                    )
-                  }
-                >
-                  <Sparkles size={16} className="text-yellow-600" />
-                  Review FAB UI
-                </NavLink>
               </div>
             )}
           </div>
@@ -344,19 +328,6 @@ export function Header() {
                   {t(item.labelKey)}
                 </NavLink>
               ))}
-              <NavLink
-                to="/app/floating-widgets"
-                onClick={() => setMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-bold transition border-2 border-transparent bg-yellow-100 text-yellow-900 border-yellow-400 hover:bg-yellow-200 mt-1',
-                    isActive && 'bg-primary text-primary-foreground border-border'
-                  )
-                }
-              >
-                <Sparkles size={18} className="text-yellow-600" />
-                Review FAB UI
-              </NavLink>
             </div>
 
             {profile?.is_admin && (
