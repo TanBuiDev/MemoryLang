@@ -112,6 +112,11 @@ export function VocabularyDetailPage() {
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
 
   const [formError, setFormError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!formError) return
+    const timer = setTimeout(() => setFormError(null), 5000)
+    return () => clearTimeout(timer)
+  }, [formError])
   const [removingKey, setRemovingKey] = useState<string | null>(null)
   const [enrichingIpa, setEnrichingIpa] = useState(false)
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
