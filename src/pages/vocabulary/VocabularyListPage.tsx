@@ -6,6 +6,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { cn } from '@/utils/cn'
 import { PageHeader } from '@/components/common/PageHeader'
 import { AddVocabularyModal } from '@/components/vocabulary/AddVocabularyModal'
+import { AddVocabularyModal as QuickAddVocabularyModal } from '@/components/layout/AddVocabularyModal'
 import { FilterModal } from '@/components/vocabulary/FilterModal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -292,6 +293,8 @@ export function VocabularyListPage() {
   useAudioPreload(visibleAudioItems, 6)
 
   const [addModalOpen, setAddModalOpen] = useState(false)
+  const [quickAddWord, setQuickAddWord] = useState<string | null>(null)
+  const [quickAddModalOpen, setQuickAddModalOpen] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [pendingDelete, setPendingDelete] = useState<{ ids: string[]; word?: string } | null>(null)
@@ -407,6 +410,13 @@ export function VocabularyListPage() {
     setPendingDelete(null)
   }
 
+  function openQuickAdd() {
+    const term = searchText.trim()
+    if (!term) return
+    setQuickAddWord(term)
+    setQuickAddModalOpen(true)
+  }
+
   const hasActiveFilters = filters.statuses.size > 0 || filters.itemTypes.size > 0 || filters.flagged || filters.noDeck
 
   const headerActions = selectMode ? (
@@ -476,7 +486,17 @@ export function VocabularyListPage() {
       <div className="mb-4 flex flex-col gap-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="flex-1">
-            <Input placeholder={t('vocabulary.search')} value={searchText} onChange={(event) => setSearchText(event.target.value)} />
+            <Input
+              placeholder={t('vocabulary.search')}
+              value={searchText}
+              onChange={(event) => setSearchText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  openQuickAdd()
+                }
+              }}
+            />
           </div>
           <div className="w-full sm:w-48 relative" ref={sortDropdownRef}>
             <button
@@ -547,11 +567,21 @@ export function VocabularyListPage() {
           <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.offlineDescription')}</p>
         </Card>
       ) : null}
-      {!vocabularyQuery.isLoading && !vocabularyQuery.isError && vocabulary.length === 0 ? (
+      {!vocabularyQuery.isLoading && !vocabularyQuery.isError && vocabulary.length === 0 && rawVocabulary.length === 0 && !debouncedSearch.trim() ? (
         <Card className="text-center">
           <p className="text-xl font-black">{t('vocabulary.emptyTitle')}</p>
           <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.emptyDescription')}</p>
           {profile?.is_admin && <Button className="mt-4" onClick={() => setAddModalOpen(true)}>{t('vocabulary.add')}</Button>}
+        </Card>
+      ) : null}
+      {!vocabularyQuery.isLoading && !vocabularyQuery.isError && vocabulary.length === 0 && debouncedSearch.trim() ? (
+        <Card className="text-center">
+          <p className="text-xl font-black">{t('vocabulary.notFoundTitle', { term: debouncedSearch.trim() })}</p>
+          <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.notFoundDescription')}</p>
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <Button onClick={openQuickAdd}>{t('vocabulary.notFoundAdd')}</Button>
+            <span className="text-xs text-muted-foreground font-semibold">{t('vocabulary.notFoundPressEnter')}</span>
+          </div>
         </Card>
       ) : null}
       <div ref={containerRef} className="h-[calc(100vh-280px)] overflow-auto [scrollbar-gutter:stable] pr-2">
@@ -659,6 +689,17 @@ export function VocabularyListPage() {
         onChange={setFilters}
       />
       {profile?.is_admin && <AddVocabularyModal open={addModalOpen} onClose={() => setAddModalOpen(false)} />}
+      <QuickAddVocabularyModal
+        isOpen={quickAddModalOpen}
+        onClose={() => {
+          setQuickAddModalOpen(false)
+          setQuickAddWord(null)
+        }}
+        initialWord={quickAddWord ?? undefined}
+        onSuccess={() => {
+          void queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] })
+        }}
+      />
     </>
   )
 }

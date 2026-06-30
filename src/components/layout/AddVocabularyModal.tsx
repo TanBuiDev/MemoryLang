@@ -10,9 +10,11 @@ import { Select } from '@/components/ui/select'
 interface AddVocabularyModalProps {
   isOpen: boolean
   onClose: () => void
+  initialWord?: string
+  onSuccess?: () => void
 }
 
-export function AddVocabularyModal({ isOpen, onClose }: AddVocabularyModalProps) {
+export function AddVocabularyModal({ isOpen, onClose, initialWord, onSuccess }: AddVocabularyModalProps) {
   const user = useAuthStore((s) => s.user)
   const userId = user?.id || 'demo-user'
 
@@ -39,7 +41,7 @@ export function AddVocabularyModal({ isOpen, onClose }: AddVocabularyModalProps)
 
   useEffect(() => {
     if (isOpen) {
-      setWord('')
+      setWord(initialWord ?? '')
       setTranslation('')
       setPos('noun')
       setSaveStatus('idle')
@@ -71,7 +73,7 @@ export function AddVocabularyModal({ isOpen, onClose }: AddVocabularyModalProps)
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!word.trim() || !translation.trim()) return
+    if (!word.trim()) return
 
     setIsSaving(true)
     setSaveStatus('saving')
@@ -99,14 +101,15 @@ export function AddVocabularyModal({ isOpen, onClose }: AddVocabularyModalProps)
         audio_url: '',
         image_url: '',
         note: '',
-        translation: trimmedTranslation,
-        meanings: [{ text: trimmedTranslation, language: nativeLanguage }],
+        translation: trimmedTranslation || null,
+        meanings: trimmedTranslation ? [{ text: trimmedTranslation, language: nativeLanguage }] : [],
         examples: [],
         tags: [],
         deck_ids: []
       })
 
       setSaveStatus('saved')
+      onSuccess?.()
       setTimeout(() => {
         onClose()
       }, 1200)
@@ -198,7 +201,6 @@ export function AddVocabularyModal({ isOpen, onClose }: AddVocabularyModalProps)
                 </label>
                 <input
                   type="text"
-                  required
                   value={translation}
                   onChange={(e) => setTranslation(e.target.value)}
                   placeholder="e.g. thơm ngon, làm thủ tục vào..."
@@ -210,7 +212,7 @@ export function AddVocabularyModal({ isOpen, onClose }: AddVocabularyModalProps)
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={isSaving || !word.trim() || !translation.trim()}
+                  disabled={isSaving || !word.trim()}
                   className="w-full neo-button py-2 bg-secondary text-secondary-foreground hover:bg-[#321fb0] flex items-center justify-center gap-1.5"
                 >
                   {isSaving ? (
