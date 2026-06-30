@@ -847,7 +847,12 @@ export function VocabularyDetailPage() {
             >
               <InlineEditableField
                 value={item.source_text}
-                onSave={(val) => handleSaveField({ source_text: val })}
+                onSave={(val) => {
+                  const cleanedVal = val.trim()
+                  if (cleanedVal !== item.source_text) {
+                    handleSaveField({ source_text: cleanedVal, audio_url: null })
+                  }
+                }}
                 className="text-3xl font-black sm:text-4xl md:text-5xl border-dashed w-fit"
                 editClassName="w-[300px] md:w-[500px]"
                 fullWidth={false}
