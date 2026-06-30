@@ -182,14 +182,37 @@ export default function AdminFeaturesPage() {
                   
                   <div className="mt-1 flex flex-col gap-1">
                     <label className="text-[10px] font-black text-muted-foreground uppercase">Giá trị cấu hình (JSON/Text):</label>
-                    <input
-                      type="text"
-                      value={settingsForm[setting.key] ?? ''}
-                      onChange={(e) =>
-                        setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
-                      }
-                      className="w-full px-3 py-1.5 border-2 border-border rounded bg-muted font-mono font-bold text-xs focus:outline-none focus:bg-card focus:border-primary transition-all"
-                    />
+                    {setting.key === 'vocabulary_pos_options' || 
+                     (settingsForm[setting.key] && 
+                      (settingsForm[setting.key].trim().startsWith('[') || settingsForm[setting.key].trim().startsWith('{'))) ? (
+                      <textarea
+                        value={settingsForm[setting.key] ?? ''}
+                        onChange={(e) =>
+                          setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
+                        }
+                        rows={4}
+                        className="w-full px-3 py-1.5 border-2 border-border rounded bg-muted font-mono font-bold text-xs focus:outline-none focus:bg-card focus:border-primary transition-all resize-y"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={settingsForm[setting.key] ?? ''}
+                        onChange={(e) =>
+                          setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
+                        }
+                        className="w-full px-3 py-1.5 border-2 border-border rounded bg-muted font-mono font-bold text-xs focus:outline-none focus:bg-card focus:border-primary transition-all"
+                      />
+                    )}
+                    {setting.key === 'vocabulary_pos_options' && (
+                      <span className="text-[10px] text-blue-600 font-bold mt-1">
+                        * Định dạng: Danh sách đối tượng dạng JSON gồm "value" và "label". Nên giữ lại {"value": "__other__", "label": "Khác..."}.
+                      </span>
+                    )}
+                    {setting.key === 'vocabulary_max_examples_count' && (
+                      <span className="text-[10px] text-blue-600 font-bold mt-1">
+                        * Định dạng: Nhập một số nguyên dương đại diện cho giới hạn số lượng ví dụ tối đa của mỗi từ vựng.
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}

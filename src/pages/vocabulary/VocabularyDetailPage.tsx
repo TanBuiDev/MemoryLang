@@ -39,18 +39,14 @@ const getErrorMessage = (error: unknown): string => {
   return String(error)
 }
 
-const POS_OPTIONS = [
+const DEFAULT_POS_OPTIONS = [
   { value: 'noun', label: 'Noun' },
   { value: 'verb', label: 'Verb' },
   { value: 'adjective', label: 'Adjective' },
   { value: 'adverb', label: 'Adverb' },
-  { value: 'pronoun', label: 'Pronoun' },
-  { value: 'preposition', label: 'Preposition' },
-  { value: 'conjunction', label: 'Conjunction' },
-  { value: 'interjection', label: 'Interjection' },
-  { value: 'article', label: 'Article' },
-  { value: 'determiner', label: 'Determiner' },
-  { value: 'particle', label: 'Particle' },
+  { value: 'phrase', label: 'Phrase' },
+  { value: 'idiom', label: 'Idiom' },
+  { value: 'sentence', label: 'Sentence' },
   { value: '__other__', label: 'Khác...' },
 ]
 
@@ -150,6 +146,47 @@ export function VocabularyDetailPage() {
   const menuButtonRef = useRef<HTMLSpanElement>(null)
   const [isMeaningOpen, setIsMeaningOpen] = useState(false)
   const [exampleIndexToDelete, setExampleIndexToDelete] = useState<number | null>(null)
+
+  const posOptionsQuery = useQuery({
+    queryKey: ['app-setting', 'vocabulary_pos_options'],
+    queryFn: async () => {
+      if (!isSupabaseConfigured) return DEFAULT_POS_OPTIONS
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'vocabulary_pos_options')
+        .maybeSingle()
+      if (error) throw error
+      if (data?.value) {
+        return data.value as Array<{ value: string; label: string }>
+      }
+      return DEFAULT_POS_OPTIONS
+    },
+    initialData: DEFAULT_POS_OPTIONS,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const maxExamplesQuery = useQuery({
+    queryKey: ['app-setting', 'vocabulary_max_examples_count'],
+    queryFn: async () => {
+      if (!isSupabaseConfigured) return 10
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'vocabulary_max_examples_count')
+        .maybeSingle()
+      if (error) throw error
+      if (data?.value) {
+        return Number(data.value)
+      }
+      return 10
+    },
+    initialData: 10,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const currentPosOptions = posOptionsQuery.data || DEFAULT_POS_OPTIONS
+  const maxExamplesCount = maxExamplesQuery.data ?? 10
   const [posOpen, setPosOpen] = useState(false)
   const posRef = useRef<HTMLDivElement>(null)
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -962,7 +999,7 @@ export function VocabularyDetailPage() {
         <div className="flex flex-wrap items-center gap-4">
           <div className="relative flex items-center gap-1" ref={posRef}>
             <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Từ loại:</span>
-            {!(item.part_of_speech === '__other__' || (item.part_of_speech && !POS_OPTIONS.some(o => o.value === item.part_of_speech && o.value !== '__other__'))) ? (
+            {!(item.part_of_speech === '__other__' || (item.part_of_speech && !currentPosOptions.some(o => o.value === item.part_of_speech && o.value !== '__other__'))) ? (
               <button
                 type="button"
                 disabled={!isAdmin}
@@ -1004,13 +1041,13 @@ export function VocabularyDetailPage() {
             )}
             {posOpen && (
               <div className="absolute top-full left-0 mt-1 z-20 w-44 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] rounded-md py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
-                {POS_OPTIONS.map((opt) => (
+                {currentPosOptions.map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
                     className={cn(
                       'w-full text-left px-3 py-2 text-sm font-bold hover:bg-muted transition-colors',
-                      (item.part_of_speech === opt.value || (opt.value === '__other__' && (item.part_of_speech === '__other__' || (item.part_of_speech && !POS_OPTIONS.some(o => o.value === item.part_of_speech && o.value !== '__other__')))))
+                      (item.part_of_speech === opt.value || (opt.value === '__other__' && (item.part_of_speech === '__other__' || (item.part_of_speech && !currentPosOptions.some(o => o.value === item.part_of_speech && o.value !== '__other__')))))
                         ? 'bg-primary/10 text-primary'
                         : 'text-foreground'
                     )}
@@ -1404,7 +1441,9 @@ export function VocabularyDetailPage() {
                       type="button"
                       variant="secondary"
                       onClick={() => setTempExamples(prev => [...prev, { sentence: '', translation: '' }])}
+                      disabled={tempExamples.length >= maxExamplesCount}
                       className="h-8 px-3 text-xs border-2 border-border shadow-[2px_2px_0px_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+                      title={tempExamples.length >= maxExamplesCount ? `Giới hạn tối đa là ${maxExamplesCount} ví dụ (cấu hình trong Admin)` : undefined}
                     >
                       + {t('vocabulary.addExample')}
                     </Button>
