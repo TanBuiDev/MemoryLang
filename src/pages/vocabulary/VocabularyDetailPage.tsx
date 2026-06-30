@@ -284,7 +284,7 @@ export function VocabularyDetailPage() {
   useEffect(() => {
     if (!autoPlayEnabled || !item) return
     if (id === lastAutoPlayedIdRef.current) return
-    lastAutoPlayedIdRef.current = id
+    lastAutoPlayedIdRef.current = id ?? null
 
     if (autoPlayTimeoutRef.current) clearTimeout(autoPlayTimeoutRef.current)
     autoPlayTimeoutRef.current = setTimeout(() => {
