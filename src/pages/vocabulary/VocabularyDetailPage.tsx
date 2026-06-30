@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Navigate, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { Flag, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil, MoreVertical, X } from 'lucide-react'
+import { Flag, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, Repeat, RefreshCw, Pencil, MoreVertical, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
@@ -145,6 +145,11 @@ export function VocabularyDetailPage() {
   const posRef = useRef<HTMLDivElement>(null)
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const [autoPlayEnabled, setAutoPlayEnabled] = useState(() => {
+    return localStorage.getItem('memorylang_vocab_auto_play') === 'true'
+  })
+  const lastAutoPlayedIdRef = useRef(id)
+
   // Reset toàn bộ state ở cấp độ trang khi ID từ vựng thay đổi (khi chuyển đổi giữa các từ)
   useEffect(() => {
     if (searchTimeoutRef.current) {
@@ -273,6 +278,13 @@ export function VocabularyDetailPage() {
   }, [nextId, prevId, queryClient, shouldUseRemoteData])
 
   useAudioPreload([{ audioUrl: item?.audio_url }], 1)
+
+  useEffect(() => {
+    if (!autoPlayEnabled || !item) return
+    if (id === lastAutoPlayedIdRef.current) return
+    lastAutoPlayedIdRef.current = id
+    speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })
+  }, [id, autoPlayEnabled, item])
 
   const [pageInputValue, setPageInputValue] = useState('')
 
@@ -441,6 +453,13 @@ export function VocabularyDetailPage() {
           speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })
         }
       }
+      // Alt + A: Bật/tắt tự động phát âm thanh
+      else if (e.altKey && e.key.toLowerCase() === 'a') {
+        e.preventDefault()
+        const next = !autoPlayEnabled
+        setAutoPlayEnabled(next)
+        localStorage.setItem('memorylang_vocab_auto_play', String(next))
+      }
       // Alt + F: Gắn cờ / Bỏ gắn cờ
       else if (e.altKey && e.key.toLowerCase() === 'f') {
         if (item) {
@@ -475,7 +494,7 @@ export function VocabularyDetailPage() {
 
     window.addEventListener('keydown', handleGlobalKeyDown)
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [id, prevId, nextId, vocabularyIds, item, isDeleting, isZoomed, isAdmin, navigate, invalidateVocabularyQueries])
+  }, [id, prevId, nextId, vocabularyIds, item, autoPlayEnabled, isDeleting, isZoomed, isAdmin, navigate, invalidateVocabularyQueries])
 
   const updateMutation = useMutation({
     mutationFn: (updatedFields: Partial<VocabularyItem>) => {
@@ -1003,6 +1022,20 @@ export function VocabularyDetailPage() {
               <Volume2 className="h-4 w-4" />
             </Button>
           </HotkeyTooltip>
+          <HotkeyTooltip hotkey="Alt + A">
+            <Button
+              variant={autoPlayEnabled ? "primary" : "secondary"}
+              className="border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+              onClick={() => {
+                const next = !autoPlayEnabled
+                setAutoPlayEnabled(next)
+                localStorage.setItem('memorylang_vocab_auto_play', String(next))
+              }}
+              title={t('vocabulary.autoPlay')}
+            >
+              <Repeat className="h-4 w-4" />
+            </Button>
+          </HotkeyTooltip>
 
           <div className="h-6 w-0.5 bg-border mx-1 hidden sm:block" />
 
@@ -1073,6 +1106,23 @@ export function VocabularyDetailPage() {
                   : "opacity-0 scale-95 pointer-events-none"
               )}
             >
+              <Button
+                variant={autoPlayEnabled ? "primary" : "ghost"}
+                className={cn(
+                  "justify-start gap-2 h-9 w-full text-xs font-bold border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none",
+                  autoPlayEnabled ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => {
+                  setIsActionsMenuOpen(false)
+                  const next = !autoPlayEnabled
+                  setAutoPlayEnabled(next)
+                  localStorage.setItem('memorylang_vocab_auto_play', String(next))
+                }}
+              >
+                <Repeat className="h-4 w-4" />
+                <span>{t('vocabulary.autoPlay')}</span>
+              </Button>
+
               <Button
                 variant={item.flagged ? "primary" : "ghost"}
                 className={cn(
