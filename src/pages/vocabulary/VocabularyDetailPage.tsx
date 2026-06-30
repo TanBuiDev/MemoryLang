@@ -514,6 +514,61 @@ export function VocabularyDetailPage() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
   }, [id, prevId, nextId, vocabularyIds, item, autoPlayEnabled, isDeleting, isZoomed, isAdmin, navigate, invalidateVocabularyQueries])
 
+  useEffect(() => {
+    let touchStartX = 0
+    let touchStartY = 0
+
+    function handleTouchStart(e: TouchEvent) {
+      const activeEl = document.activeElement
+      const isInputFocused =
+        activeEl?.tagName === 'INPUT' ||
+        activeEl?.tagName === 'TEXTAREA' ||
+        (activeEl as HTMLElement)?.isContentEditable
+
+      if (isInputFocused || isZoomed) return
+
+      touchStartX = e.touches[0].clientX
+      touchStartY = e.touches[0].clientY
+    }
+
+    function handleTouchEnd(e: TouchEvent) {
+      const activeEl = document.activeElement
+      const isInputFocused =
+        activeEl?.tagName === 'INPUT' ||
+        activeEl?.tagName === 'TEXTAREA' ||
+        (activeEl as HTMLElement)?.isContentEditable
+
+      if (isInputFocused || isZoomed) return
+
+      const touchEndX = e.changedTouches[0].clientX
+      const touchEndY = e.changedTouches[0].clientY
+
+      const diffX = touchEndX - touchStartX
+      const diffY = touchEndY - touchStartY
+
+      const threshold = 80
+      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > threshold) {
+        if (diffX > 0) {
+          if (prevId) {
+            navigate(`/app/vocabulary/${prevId}`, { state: { vocabularyIds } })
+          }
+        } else {
+          if (nextId) {
+            navigate(`/app/vocabulary/${nextId}`, { state: { vocabularyIds } })
+          }
+        }
+      }
+    }
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true })
+    window.addEventListener('touchend', handleTouchEnd, { passive: true })
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart)
+      window.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [prevId, nextId, vocabularyIds, isZoomed, navigate])
+
   const updateMutation = useMutation({
     mutationFn: (updatedFields: Partial<VocabularyItem>) => {
       if (!item || !id) throw new Error(t('vocabulary.emptyTitle'))
