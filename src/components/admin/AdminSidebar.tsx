@@ -29,7 +29,7 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Người dùng', to: '/app/admin/users', icon: Users, phase: 1, isReady: true },
   { name: 'Cấu hình TTS', to: '/app/admin/tts', icon: Volume2, phase: 2, isReady: true },
   { name: 'API Keys & Secrets', to: '/app/admin/secrets', icon: KeyRound, phase: 2, isReady: true },
-  { name: 'Feature Flags', to: '/app/admin/features', icon: ToggleLeft, phase: 2, isReady: true },
+  { name: 'Cấu hình & Tính năng', to: '/app/admin/features', icon: ToggleLeft, phase: 2, isReady: true },
   // Phase 3 & 4 (Show placeholder)
   { name: 'Thư viện từ vựng', to: '/app/admin/vocabulary', icon: BookOpen, phase: 3, isReady: true },
   { name: 'Quản lý Ngữ pháp', to: '/app/admin/grammar', icon: ScrollText, phase: 3, isReady: true },

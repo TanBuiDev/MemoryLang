@@ -139,7 +139,7 @@ export default function AdminDashboardPage() {
               to="/app/admin/features"
               className="px-4 py-2 border-2 border-border text-center rounded-md font-black text-sm bg-card hover:bg-muted transition-colors shadow-[2px_2px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
             >
-              Feature Flags
+              Cấu hình & Tính năng
             </Link>
             <Link
               to="/app/admin/secrets"
