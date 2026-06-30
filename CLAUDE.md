@@ -30,6 +30,8 @@ pnpm test:watch    # vitest (watch mode)
 pnpm sync:secrets  # Sync API keys from .env to Supabase Edge Function secrets
 ```
 
+**IMPORTANT:** Type-check with `pnpm tsc -b` (build mode with project references), NOT `tsc --noEmit`. The root `tsconfig.json` has `files: []` with project references, so `tsc --noEmit` on the root effectively checks nothing. CI runs `tsc -b` which catches errors that `--noEmit` misses.
+
 ## Path Aliases
 - `@/` maps to `src/` (tsconfig + vite + components.json)
 
