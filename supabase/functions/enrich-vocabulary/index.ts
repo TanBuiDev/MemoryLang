@@ -198,28 +198,30 @@ Deno.serve(async (request) => {
       .maybeSingle()
 
     if (cached) {
-      if (body.sourceLanguage !== body.nativeLanguage) {
-        const translated = await addCachedTranslations(cached, body.sourceLanguage, body.nativeLanguage)
-        return Response.json({ ...translated, globalTermId: cached.id }, { headers: corsHeaders })
-      }
+      if (cached.ipa) {
+        if (body.sourceLanguage !== body.nativeLanguage) {
+          const translated = await addCachedTranslations(cached, body.sourceLanguage, body.nativeLanguage)
+          return Response.json({ ...translated, globalTermId: cached.id }, { headers: corsHeaders })
+        }
 
-      return Response.json(
-        {
-          globalTermId: cached.id,
-          sourceText: cached.source_text,
-          normalizedText: cached.normalized_text,
-          itemType: cached.item_type,
-          ipa: cached.ipa,
-          partOfSpeech: cached.part_of_speech,
-          meanings: cached.meanings,
-          examples: cached.examples,
-          translationText: '',
-          audioUrl: cached.audio_url,
-          imageUrl: cached.image_url,
-          source: 'cache',
-        },
-        { headers: corsHeaders },
-      )
+        return Response.json(
+          {
+            globalTermId: cached.id,
+            sourceText: cached.source_text,
+            normalizedText: cached.normalized_text,
+            itemType: cached.item_type,
+            ipa: cached.ipa,
+            partOfSpeech: cached.part_of_speech,
+            meanings: cached.meanings,
+            examples: cached.examples,
+            translationText: '',
+            audioUrl: cached.audio_url,
+            imageUrl: cached.image_url,
+            source: 'cache',
+          },
+          { headers: corsHeaders },
+        )
+      }
     }
 
     // Dictionary API dùng cho IPA, partOfSpeech, meanings, examples (không dùng cho audio)
