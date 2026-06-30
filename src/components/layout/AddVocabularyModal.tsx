@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useLanguageStore } from '@/stores/useLanguageStore'
 import { cn } from '@/utils/cn'
 import { supabase } from '@/services/supabase/client'
+import { Select } from '@/components/ui/select'
 
 interface AddVocabularyModalProps {
   isOpen: boolean
@@ -183,17 +184,11 @@ export function AddVocabularyModal({ isOpen, onClose }: AddVocabularyModalProps)
                 <label className="text-xs font-black text-foreground uppercase tracking-wider">
                   Loại từ
                 </label>
-                <select
+                <Select
                   value={pos}
-                  onChange={(e) => setPos(e.target.value)}
-                  className="w-full text-sm font-bold px-3 py-2 border-2 border-border rounded bg-card focus:outline-none focus:bg-white focus:border-primary transition-all cursor-pointer"
-                >
-                  {posOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setPos(val)}
+                  options={posOptions}
+                />
               </div>
 
               {/* Bản dịch */}
@@ -212,18 +207,11 @@ export function AddVocabularyModal({ isOpen, onClose }: AddVocabularyModalProps)
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 neo-button py-2 bg-muted text-foreground hover:bg-white"
-                >
-                  Hủy
-                </button>
+              <div className="pt-2">
                 <button
                   type="submit"
                   disabled={isSaving || !word.trim() || !translation.trim()}
-                  className="flex-1 neo-button py-2 bg-secondary text-secondary-foreground hover:bg-[#321fb0] flex items-center justify-center gap-1.5"
+                  className="w-full neo-button py-2 bg-secondary text-secondary-foreground hover:bg-[#321fb0] flex items-center justify-center gap-1.5"
                 >
                   {isSaving ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
