@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Navigate, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { Flag, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil, MoreVertical, X } from 'lucide-react'
-import autoplayIcon from '@/assets/brand/button-icons/autoplay.svg'
+import autoplayIcon from '@/assets/brand/button-icons/repeat-sound.svg'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/button'
@@ -289,7 +289,7 @@ export function VocabularyDetailPage() {
     if (autoPlayTimeoutRef.current) clearTimeout(autoPlayTimeoutRef.current)
     autoPlayTimeoutRef.current = setTimeout(() => {
       speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })
-    }, 600)
+    }, 400)
 
     return () => {
       if (autoPlayTimeoutRef.current) clearTimeout(autoPlayTimeoutRef.current)
