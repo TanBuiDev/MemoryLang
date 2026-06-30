@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Save, ToggleLeft, ToggleRight, Wrench } from 'lucide-react'
+import { Save, ToggleLeft, ToggleRight, Wrench, Plus, Trash2, Eye, Code } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
 import type { AppSetting, FeatureFlag } from '@/types/admin.types'
+import { Button } from '@/components/ui/button'
 
 export default function AdminFeaturesPage() {
   const [flags, setFlags] = useState<FeatureFlag[]>([])
@@ -12,6 +13,13 @@ export default function AdminFeaturesPage() {
   // Form editing settings
   const [settingsForm, setSettingsForm] = useState<Record<string, string>>({})
   const [savingSetting, setSavingSetting] = useState<string | null>(null)
+
+  // Track expert (raw JSON/text) vs visual mode per setting key (default false = visual)
+  const [expertModes, setExpertModes] = useState<Record<string, boolean>>({})
+  
+  // Form inputs for adding a new POS option
+  const [newPosLabel, setNewPosLabel] = useState('')
+  const [newPosValue, setNewPosValue] = useState('')
 
   const loadData = async () => {
     try {
@@ -89,6 +97,41 @@ export default function AdminFeaturesPage() {
     }
   }
 
+  const handleRemovePos = (valueToRemove: string) => {
+    let currentList: Array<{ value: string; label: string }> = []
+    try {
+      currentList = JSON.parse(settingsForm['vocabulary_pos_options'] || '[]')
+    } catch {
+      return
+    }
+    const updated = currentList.filter(item => item.value !== valueToRemove)
+    setSettingsForm(prev => ({ ...prev, vocabulary_pos_options: JSON.stringify(updated) }))
+  }
+
+  const handleAddPos = () => {
+    const label = newPosLabel.trim()
+    const val = newPosValue.trim().toLowerCase().replace(/\s+/g, '_')
+    if (!label || !val) {
+      alert('Vui lòng điền đầy đủ Tên hiển thị và Mã từ loại.')
+      return
+    }
+    let currentList: Array<{ value: string; label: string }> = []
+    try {
+      currentList = JSON.parse(settingsForm['vocabulary_pos_options'] || '[]')
+    } catch {
+      alert('Dữ liệu JSON từ loại bị lỗi. Vui lòng chuyển sang Chế độ chuyên gia để sửa.')
+      return
+    }
+    if (currentList.some(item => item.value === val)) {
+      alert('Mã từ loại này đã tồn tại.')
+      return
+    }
+    const updated = [...currentList, { value: val, label }]
+    setSettingsForm(prev => ({ ...prev, vocabulary_pos_options: JSON.stringify(updated) }))
+    setNewPosLabel('')
+    setNewPosValue('')
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* Title */}
@@ -161,55 +204,240 @@ export default function AdminFeaturesPage() {
                   key={setting.key}
                   className="neo-card p-4 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex flex-col gap-2"
                 >
-                  <div className="flex justify-between items-start">
+                  <div className="flex justify-between items-center gap-2">
                     <h3 className="font-black text-sm text-foreground">{setting.key}</h3>
-                    <button
-                      onClick={() => handleSaveSetting(setting.key)}
-                      disabled={savingSetting === setting.key}
-                      className="neo-button min-h-0 px-2 py-1 rounded bg-secondary text-secondary-foreground text-xs font-black border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none hover:bg-[#321fb0] transition-all disabled:opacity-50 flex items-center gap-1"
-                    >
-                      {savingSetting === setting.key ? (
-                        <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <Save size={10} />
-                          Lưu
-                        </>
-                      )}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setExpertModes(prev => ({ ...prev, [setting.key]: !prev[setting.key] }))}
+                        className="neo-button min-h-0 px-2 py-1 rounded bg-card text-foreground text-xs font-black border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none hover:bg-muted transition-all flex items-center gap-1"
+                        title={expertModes[setting.key] ? "Chuyển sang Chỉnh sửa trực quan" : "Chuyển sang Chế độ chuyên gia (JSON/Raw)"}
+                      >
+                        {expertModes[setting.key] ? <Eye size={10} /> : <Code size={10} />}
+                        {expertModes[setting.key] ? "Giao diện" : "Mã"}
+                      </button>
+                      <button
+                        onClick={() => handleSaveSetting(setting.key)}
+                        disabled={savingSetting === setting.key}
+                        className="neo-button min-h-0 px-2 py-1 rounded bg-secondary text-secondary-foreground text-xs font-black border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none hover:bg-[#321fb0] transition-all disabled:opacity-50 flex items-center gap-1"
+                      >
+                        {savingSetting === setting.key ? (
+                          <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <Save size={10} />
+                            Lưu
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground font-bold leading-normal">{setting.description}</p>
                   
-                  <div className="mt-1 flex flex-col gap-1">
-                    <label className="text-[10px] font-black text-muted-foreground uppercase">Giá trị cấu hình (JSON/Text):</label>
-                    {setting.key === 'vocabulary_pos_options' || 
-                     (settingsForm[setting.key] && 
-                      (settingsForm[setting.key].trim().startsWith('[') || settingsForm[setting.key].trim().startsWith('{'))) ? (
-                      <textarea
-                        value={settingsForm[setting.key] ?? ''}
-                        onChange={(e) =>
-                          setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
-                        }
-                        rows={4}
-                        className="w-full px-3 py-1.5 border-2 border-border rounded bg-muted font-mono font-bold text-xs focus:outline-none focus:bg-card focus:border-primary transition-all resize-y"
-                      />
+                  <div className="mt-1 flex flex-col gap-1.5">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase">
+                      {expertModes[setting.key] ? "Giá trị cấu hình (JSON/Text):" : "Giá trị cấu hình:"}
+                    </label>
+
+                    {expertModes[setting.key] ? (
+                      /* Expert Mode - Raw Text / Textarea */
+                      (setting.key === 'vocabulary_pos_options' || 
+                       (settingsForm[setting.key] && 
+                        (settingsForm[setting.key].trim().startsWith('[') || settingsForm[setting.key].trim().startsWith('{'))) ? (
+                        <textarea
+                          value={settingsForm[setting.key] ?? ''}
+                          onChange={(e) =>
+                            setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
+                          }
+                          rows={4}
+                          className="w-full px-3 py-1.5 border-2 border-border rounded bg-muted font-mono font-bold text-xs focus:outline-none focus:bg-card focus:border-primary transition-all resize-y"
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={settingsForm[setting.key] ?? ''}
+                          onChange={(e) =>
+                            setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
+                          }
+                          className="w-full px-3 py-1.5 border-2 border-border rounded bg-muted font-mono font-bold text-xs focus:outline-none focus:bg-card focus:border-primary transition-all"
+                        />
+                      ))
                     ) : (
-                      <input
-                        type="text"
-                        value={settingsForm[setting.key] ?? ''}
-                        onChange={(e) =>
-                          setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
-                        }
-                        className="w-full px-3 py-1.5 border-2 border-border rounded bg-muted font-mono font-bold text-xs focus:outline-none focus:bg-card focus:border-primary transition-all"
-                      />
+                      /* Visual Mode - Custom UI controls */
+                      <>
+                        {setting.key === 'vocabulary_pos_options' && (() => {
+                          let posList: Array<{ value: string; label: string }> = []
+                          let hasError = false
+                          try {
+                            posList = JSON.parse(settingsForm['vocabulary_pos_options'] || '[]')
+                          } catch {
+                            hasError = true
+                          }
+
+                          if (hasError) {
+                            return (
+                              <div className="p-3 border-2 border-amber-300 bg-amber-50 text-amber-950 text-xs font-bold rounded">
+                                Lỗi định dạng JSON từ loại. Vui lòng chuyển sang Chế độ mã (nút "Mã" phía trên) để kiểm tra và sửa đổi.
+                              </div>
+                            )
+                          }
+
+                          return (
+                            <div className="flex flex-col gap-3">
+                              {/* Tag list */}
+                              <div className="flex flex-wrap gap-2 p-2 border-2 border-dashed border-border rounded-md bg-muted/20">
+                                {posList.map((pos) => (
+                                  <div
+                                    key={pos.value}
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 border-2 border-border bg-card shadow-[2px_2px_0_var(--border)] rounded font-bold text-xs text-foreground"
+                                  >
+                                    <span>{pos.label} <span className="text-[10px] text-muted-foreground">({pos.value})</span></span>
+                                    {pos.value !== '__other__' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemovePos(pos.value)}
+                                        className="text-danger hover:text-red-700 font-black ml-1 text-sm leading-none"
+                                        title="Xóa từ loại này"
+                                      >
+                                        ×
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                                {posList.length === 0 && (
+                                  <span className="text-xs text-muted-foreground italic py-1 px-2">Chưa có cấu hình từ loại nào.</span>
+                                )}
+                              </div>
+
+                              {/* Form to add a new POS */}
+                              <div className="flex flex-wrap gap-2 items-center">
+                                <input
+                                  type="text"
+                                  placeholder="Tên hiển thị (ví dụ: Danh từ)"
+                                  value={newPosLabel}
+                                  onChange={(e) => setNewPosLabel(e.target.value)}
+                                  className="px-3 py-1.5 border-2 border-border rounded text-xs font-bold bg-card focus:outline-none focus:border-primary flex-1 min-w-[150px]"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Mã (ví dụ: noun)"
+                                  value={newPosValue}
+                                  onChange={(e) => setNewPosValue(e.target.value)}
+                                  className="px-3 py-1.5 border-2 border-border rounded text-xs font-bold bg-card focus:outline-none focus:border-primary w-32"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleAddPos}
+                                  className="neo-button min-h-0 px-3 py-1.5 rounded bg-secondary text-secondary-foreground text-xs font-black border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none hover:bg-[#321fb0] transition-all flex items-center gap-1"
+                                >
+                                  <Plus size={12} />
+                                  Thêm
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })()}
+
+                        {setting.key === 'vocabulary_max_examples_count' && (
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="number"
+                              min={1}
+                              max={100}
+                              value={Number(settingsForm[setting.key]) || 10}
+                              onChange={(e) =>
+                                setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
+                              }
+                              className="w-32 px-3 py-1.5 border-2 border-border rounded bg-card font-bold text-xs focus:outline-none focus:border-primary transition-all"
+                            />
+                            <span className="text-xs text-muted-foreground font-bold">câu ví dụ tối đa</span>
+                          </div>
+                        )}
+
+                        {setting.key === 'default_daily_goal' && (
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="number"
+                              min={1}
+                              max={100}
+                              value={Number(settingsForm[setting.key]) || 10}
+                              onChange={(e) =>
+                                setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
+                              }
+                              className="w-32 px-3 py-1.5 border-2 border-border rounded bg-card font-bold text-xs focus:outline-none focus:border-primary transition-all"
+                            />
+                            <span className="text-xs text-muted-foreground font-bold">từ/ngày</span>
+                          </div>
+                        )}
+
+                        {setting.key === 'default_speech_rate' && (
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="range"
+                              min="0.5"
+                              max="2.0"
+                              step="0.1"
+                              value={Number(settingsForm[setting.key]) || 1.0}
+                              onChange={(e) =>
+                                setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
+                              }
+                              className="w-44 accent-primary"
+                            />
+                            <span className="font-bold text-xs font-mono">{settingsForm[setting.key] || '1.0'}x (Tốc độ đọc)</span>
+                          </div>
+                        )}
+
+                        {setting.key === 'default_speech_pitch' && (
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="range"
+                              min="-20"
+                              max="20"
+                              step="1"
+                              value={Number(settingsForm[setting.key]) || 0}
+                              onChange={(e) =>
+                                setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
+                              }
+                              className="w-44 accent-primary"
+                            />
+                            <span className="font-bold text-xs font-mono">{settingsForm[setting.key] || '0'} (Độ cao giọng)</span>
+                          </div>
+                        )}
+
+                        {/* Fallback visual view if it's none of the recognized keys */}
+                        {!['vocabulary_pos_options', 'vocabulary_max_examples_count', 'default_daily_goal', 'default_speech_rate', 'default_speech_pitch'].includes(setting.key) && (
+                          (settingsForm[setting.key] && 
+                           (settingsForm[setting.key].trim().startsWith('[') || settingsForm[setting.key].trim().startsWith('{'))) ? (
+                            <textarea
+                              value={settingsForm[setting.key] ?? ''}
+                              onChange={(e) =>
+                                setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
+                              }
+                              rows={4}
+                              className="w-full px-3 py-1.5 border-2 border-border rounded bg-muted font-mono font-bold text-xs focus:outline-none focus:bg-card focus:border-primary transition-all resize-y"
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={settingsForm[setting.key] ?? ''}
+                              onChange={(e) =>
+                                setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
+                              }
+                              className="w-full px-3 py-1.5 border-2 border-border rounded bg-muted font-mono font-bold text-xs focus:outline-none focus:bg-card focus:border-primary transition-all"
+                            />
+                          )
+                        )}
+                      </>
                     )}
+
+                    {/* Helper text display (underneath both modes) */}
                     {setting.key === 'vocabulary_pos_options' && (
-                      <span className="text-[10px] text-blue-600 font-bold mt-1">
+                      <span className="text-[10px] text-blue-600 font-bold mt-0.5">
                         {"* Định dạng: Danh sách đối tượng dạng JSON gồm \"value\" và \"label\". Nên giữ lại {\"value\": \"__other__\", \"label\": \"Khác...\"}."}
                       </span>
                     )}
                     {setting.key === 'vocabulary_max_examples_count' && (
-                      <span className="text-[10px] text-blue-600 font-bold mt-1">
+                      <span className="text-[10px] text-blue-600 font-bold mt-0.5">
                         * Định dạng: Nhập một số nguyên dương đại diện cho giới hạn số lượng ví dụ tối đa của mỗi từ vựng.
                       </span>
                     )}
