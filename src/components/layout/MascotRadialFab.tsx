@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { BookOpen, Plus, Settings, X } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
+import { FileText, Plus, Settings, X } from 'lucide-react'
+import { QuickNotesDrawer } from './QuickNotesDrawer'
 
 // Mascot SVG Component
 function MascotIcon({ className = 'w-6 h-6' }: { className?: string }) {
@@ -29,11 +30,17 @@ function MascotIcon({ className = 'w-6 h-6' }: { className?: string }) {
 
 export function MascotRadialFab() {
   const [isOpen, setIsOpen] = useState(false)
+  const [isNotesOpen, setIsNotesOpen] = useState(false)
+  const location = useLocation()
+
+  // Detect current vocabulary ID if on detail page
+  const match = location.pathname.match(/\/app\/vocabulary\/([a-zA-Z0-9-]+)/)
+  const currentVocabId = match ? match[1] : undefined
 
   return (
     <div className="fixed bottom-24 sm:bottom-6 right-6 z-[9999] select-none flex flex-col items-end">
       
-      {/* Secondary item 1: Study (Top: translate-y-[85px] on mobile, [106px] on desktop) */}
+      {/* Secondary item 1: Quick Notes */}
       <div 
         className={`absolute transition-all duration-300 flex flex-col items-center justify-center ${
           isOpen 
@@ -41,16 +48,19 @@ export function MascotRadialFab() {
             : 'opacity-0 scale-50 translate-x-0 translate-y-0 pointer-events-none'
         }`}
       >
-        <Link 
-          to="/app/study"
-          onClick={() => setIsOpen(false)}
-          title="Ôn tập từ vựng"
+        <button 
+          type="button"
+          onClick={() => {
+            setIsOpen(false)
+            setIsNotesOpen(true)
+          }}
+          title="Ghi chú nhanh"
           className="w-11 h-11 sm:w-10 sm:h-10 rounded-full border-2 border-border bg-[#fdc800] text-foreground flex items-center justify-center shadow-[2px_2px_0px_#1c293c] hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_#1c293c] active:translate-y-0.5 active:shadow-none"
         >
-          <BookOpen className="w-5 h-5 sm:w-4.5 sm:h-4.5" />
-        </Link>
+          <FileText className="w-5 h-5 sm:w-4.5 sm:h-4.5" />
+        </button>
         <span className="absolute -bottom-6 bg-white text-[9px] font-black border-2 border-border px-1.5 py-0.5 rounded shadow-[1px_1px_0px_#1c293c] whitespace-nowrap text-foreground">
-          Học tập
+          Ghi chú
         </span>
       </div>
 
@@ -111,6 +121,13 @@ export function MascotRadialFab() {
           </div>
         </div>
       </button>
+
+      {/* Quick Notes Drawer Component */}
+      <QuickNotesDrawer 
+        isOpen={isNotesOpen} 
+        onClose={() => setIsNotesOpen(false)} 
+        currentVocabId={currentVocabId}
+      />
     </div>
   )
 }

@@ -58,12 +58,23 @@ export interface PendingMutation {
   createdAt: string
 }
 
+export interface QuickNoteRecord {
+  id: string
+  userId: string
+  content: string
+  tags: string[]
+  linkedVocabId?: string
+  createdAt: string
+  updatedAt: string
+}
+
 class StudyLocalDatabase extends Dexie {
   cachedVocabulary!: Table<CachedVocabularyRecord, string>
   activeSessions!: Table<ActiveStudySessionRecord, string>
   pendingStudy!: Table<PendingStudyRecord, string>
   pendingMutations!: Table<PendingMutation, string>
   audioCache!: Table<AudioCacheRecord, string>
+  quickNotes!: Table<QuickNoteRecord, string>
 
   constructor() {
     super('memorylang-study')
@@ -84,6 +95,14 @@ class StudyLocalDatabase extends Dexie {
       pendingStudy: 'userId,updatedAt',
       pendingMutations: 'id,userId,createdAt',
       audioCache: 'word,cachedAt',
+    })
+    this.version(4).stores({
+      cachedVocabulary: 'key,userId,deckId,updatedAt',
+      activeSessions: 'key',
+      pendingStudy: 'userId,updatedAt',
+      pendingMutations: 'id,userId,createdAt',
+      audioCache: 'word,cachedAt',
+      quickNotes: 'id,userId,updatedAt,linkedVocabId',
     })
   }
 }
