@@ -902,27 +902,46 @@ export function VocabularyDetailPage() {
         <div className="flex flex-wrap items-center gap-4">
           <div className="relative flex items-center gap-1" ref={posRef}>
             <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Từ loại:</span>
-            <button
-              type="button"
-              disabled={!isAdmin}
-              onClick={() => setPosOpen(!posOpen)}
-              className={cn(
-                'flex items-center gap-1',
-                isAdmin && 'cursor-pointer'
-              )}
-            >
-              {item.part_of_speech && POS_OPTIONS.some(o => o.value === item.part_of_speech && o.value !== '__other__') ? (
-                <Badge className="bg-muted text-foreground font-black">{item.part_of_speech}</Badge>
-              ) : item.part_of_speech ? (
-                <Badge className="bg-muted text-foreground font-black">
-                  {POS_OPTIONS.find(o => o.value === '__other__')?.label || 'Khác...'}
-                </Badge>
-              ) : (
-                <Badge className="bg-muted text-muted-foreground italic border-dashed font-bold">
-                  {t('vocabulary.partOfSpeech')}
-                </Badge>
-              )}
-            </button>
+            {!(item.part_of_speech === '__other__' || (item.part_of_speech && !POS_OPTIONS.some(o => o.value === item.part_of_speech && o.value !== '__other__'))) ? (
+              <button
+                type="button"
+                disabled={!isAdmin}
+                onClick={() => setPosOpen(!posOpen)}
+                className={cn(
+                  'flex items-center gap-1',
+                  isAdmin && 'cursor-pointer'
+                )}
+              >
+                {item.part_of_speech ? (
+                  <Badge className="bg-muted text-foreground font-black">{item.part_of_speech}</Badge>
+                ) : (
+                  <Badge className="bg-muted text-muted-foreground italic border-dashed font-bold">
+                    {t('vocabulary.partOfSpeech')}
+                  </Badge>
+                )}
+              </button>
+            ) : (
+              <div className="flex items-center gap-1">
+                <input
+                  className="h-7 w-28 rounded border-2 border-border px-2 text-xs font-bold shadow-[2px_2px_0_var(--border)] focus:outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)]"
+                  placeholder="Nhập..."
+                  value={item.part_of_speech === '__other__' ? '' : item.part_of_speech ?? ''}
+                  onChange={(e) => handleSaveField({ part_of_speech: e.target.value || null })}
+                  disabled={!isAdmin}
+                  autoFocus={item.part_of_speech === '__other__'}
+                />
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setPosOpen(!posOpen)}
+                    className="h-7 w-7 rounded border-2 border-border bg-muted flex items-center justify-center shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none hover:bg-slate-200 transition-colors"
+                    title="Chọn từ loại mặc định"
+                  >
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                )}
+              </div>
+            )}
             {posOpen && (
               <div className="absolute top-full left-0 mt-1 z-20 w-44 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] rounded-md py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
                 {POS_OPTIONS.map((opt) => (
@@ -931,7 +950,7 @@ export function VocabularyDetailPage() {
                     type="button"
                     className={cn(
                       'w-full text-left px-3 py-2 text-sm font-bold hover:bg-muted transition-colors',
-                      (item.part_of_speech === opt.value || (opt.value === '__other__' && item.part_of_speech && !POS_OPTIONS.some(o => o.value === item.part_of_speech)))
+                      (item.part_of_speech === opt.value || (opt.value === '__other__' && (item.part_of_speech === '__other__' || (item.part_of_speech && !POS_OPTIONS.some(o => o.value === item.part_of_speech && o.value !== '__other__')))))
                         ? 'bg-primary/10 text-primary'
                         : 'text-foreground'
                     )}
@@ -948,14 +967,6 @@ export function VocabularyDetailPage() {
                   </button>
                 ))}
               </div>
-            )}
-            {(item.part_of_speech === '__other__' || (item.part_of_speech && !POS_OPTIONS.some(o => o.value === item.part_of_speech))) && (
-              <input
-                className="ml-1 h-7 w-28 rounded border-2 border-border px-2 text-xs font-bold shadow-[2px_2px_0_var(--border)] focus:outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)]"
-                placeholder="Nhập..."
-                value={item.part_of_speech === '__other__' ? '' : item.part_of_speech ?? ''}
-                onChange={(e) => handleSaveField({ part_of_speech: e.target.value || null })}
-              />
             )}
           </div>
         </div>
