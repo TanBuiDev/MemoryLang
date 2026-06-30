@@ -1043,7 +1043,7 @@ export function VocabularyDetailPage() {
               }}
               title={t('vocabulary.autoPlay')}
             >
-              <img src={autoplayIcon} className="h-6 w-6" alt="" />
+              <img src={autoplayIcon} className="h-4 w-4 scale-150" alt="" />
             </Button>
           </HotkeyTooltip>
 
@@ -1129,7 +1129,7 @@ export function VocabularyDetailPage() {
                   localStorage.setItem('memorylang_vocab_auto_play', String(next))
                 }}
               >
-                <img src={autoplayIcon} className="h-6 w-6" alt="" />
+                <img src={autoplayIcon} className="h-4 w-4 scale-150" alt="" />
                 <span>{t('vocabulary.autoPlay')}</span>
               </Button>
 
