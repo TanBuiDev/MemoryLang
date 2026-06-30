@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Save, ToggleLeft, ToggleRight, Wrench, Plus, Trash2, Eye, Code } from 'lucide-react'
+import { Save, ToggleLeft, ToggleRight, Wrench, Plus, Eye, Code } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
 import type { AppSetting, FeatureFlag } from '@/types/admin.types'
-import { Button } from '@/components/ui/button'
 
 export default function AdminFeaturesPage() {
   const [flags, setFlags] = useState<FeatureFlag[]>([])
