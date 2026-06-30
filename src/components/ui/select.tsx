@@ -60,7 +60,7 @@ export function Select({
         className={cn(
           "w-full flex items-center justify-between text-sm font-bold px-3 py-2 border-2 border-border rounded bg-card hover:bg-muted/10 transition-all text-left",
           "shadow-[2px_2px_0px_#1c293c] hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_#1c293c] active:translate-y-0.5 active:shadow-none",
-          isOpen && "bg-white",
+          isOpen && "bg-white rounded-b-none border-b-0 shadow-none translate-y-0 hover:translate-y-0 hover:shadow-none",
           disabled && "opacity-50 cursor-not-allowed pointer-events-none shadow-none translate-y-0"
         )}
       >
@@ -76,7 +76,7 @@ export function Select({
 
       {/* Options List Dropdown */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1.5 bg-background border-2 border-border rounded shadow-[3px_3px_0px_#1c293c] z-[99999] max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="absolute left-0 right-0 top-full bg-background border-2 border-t-0 border-border rounded-b shadow-[3px_3px_0px_#1c293c] z-[99999] max-h-60 overflow-y-auto animate-in fade-in duration-150">
           {options.length === 0 ? (
             <div className="px-3 py-2 text-xs text-muted-foreground font-semibold text-center bg-card">
               Không có tùy chọn nào

@@ -130,10 +130,10 @@ export function AddVocabularyModal({ isOpen, onClose }: AddVocabularyModalProps)
 
       {/* Dialog Modal Container */}
       <div className={cn(
-        "relative bg-background border-[3px] border-border flex flex-col w-full max-w-md rounded-xl shadow-[4px_4px_0px_#1c293c] z-10 overflow-hidden transition-all transform scale-100 duration-200 animate-in zoom-in-95"
+        "relative bg-background border-[3px] border-border flex flex-col w-full max-w-md rounded-xl shadow-[4px_4px_0px_#1c293c] z-10 transition-all transform scale-100 duration-200 animate-in zoom-in-95"
       )}>
         {/* Header */}
-        <div className="bg-primary p-4 border-b-[3px] border-border flex items-center justify-between">
+        <div className="bg-primary p-4 border-b-[3px] border-border flex items-center justify-between rounded-t-[9px]">
           <div className="flex items-center gap-2 text-[#1c293c]">
             <Plus className="w-5 h-5" />
             <span className="font-black text-base">Thêm Từ Vựng Mới</span>
