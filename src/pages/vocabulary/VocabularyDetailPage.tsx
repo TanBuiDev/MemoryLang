@@ -148,7 +148,7 @@ export function VocabularyDetailPage() {
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(() => {
     return localStorage.getItem('memorylang_vocab_auto_play') === 'true'
   })
-  const lastAutoPlayedIdRef = useRef(id)
+  const lastAutoPlayedIdRef = useRef<string | null>(null)
 
   // Reset toàn bộ state ở cấp độ trang khi ID từ vựng thay đổi (khi chuyển đổi giữa các từ)
   useEffect(() => {
