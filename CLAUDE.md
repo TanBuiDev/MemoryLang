@@ -89,6 +89,7 @@ src/
 - `/app/templates` - MVP 2 placeholder
 - `/app/statistics` - Redirects to `/app/dashboard` because statistics are integrated into Overview
 - `/app/settings` - Profile, language, study, audio settings
+- `/app/floating-widgets` - UI design review sandbox page for Floating Action Widgets
 
 ## Key Patterns
 
