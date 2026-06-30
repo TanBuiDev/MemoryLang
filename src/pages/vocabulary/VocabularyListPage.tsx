@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Volume2, Flag, SlidersHorizontal } from 'lucide-react'
+import { Volume2, Flag, SlidersHorizontal, ChevronDown } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { cn } from '@/utils/cn'
 import { PageHeader } from '@/components/common/PageHeader'
 import { AddVocabularyModal } from '@/components/vocabulary/AddVocabularyModal'
 import { FilterModal } from '@/components/vocabulary/FilterModal'
@@ -107,6 +108,18 @@ export function VocabularyListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [cachedVocabulary, setCachedVocabulary] = useState<VocabularyItem[]>([])
   const [filterOpen, setFilterOpen] = useState(false)
+  const [isSortOpen, setIsSortOpen] = useState(false)
+  const sortDropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(e.target as Node)) {
+        setIsSortOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const filters = useMemo(() => parseFilterParams(searchParams), [searchParams])
 
@@ -130,13 +143,27 @@ export function VocabularyListPage() {
       return prev
     })
   }, [debouncedSearch, searchParams, setSearchParams])
-  const sortOrder = (searchParams.get('sort') as 'created' | 'next_review' | 'wrong' | 'alpha') || 'created'
+  const sortOrder = (searchParams.get('sort') as 'created' | 'next_review' | 'wrong' | 'alpha') || 
+                    (localStorage.getItem('vocab_list_sort') as 'created' | 'next_review' | 'wrong' | 'alpha') || 
+                    'created'
+
   const setSortOrder = (value: 'created' | 'next_review' | 'wrong' | 'alpha') => {
+    localStorage.setItem('vocab_list_sort', value)
     setSearchParams((prev) => {
       if (value === 'created') { prev.delete('sort') } else { prev.set('sort', value) }
       return prev
     })
   }
+
+  useEffect(() => {
+    const savedSort = localStorage.getItem('vocab_list_sort')
+    if (savedSort && !searchParams.has('sort') && savedSort !== 'created') {
+      setSearchParams((prev) => {
+        prev.set('sort', savedSort)
+        return prev
+      }, { replace: true })
+    }
+  }, [])
   const rawVocabulary = filterActiveVocabulary(shouldUseRemoteData
     ? vocabularyQuery.data ?? cachedVocabulary
     : demoVocabulary).filter((v) => (v.item_type as string) !== 'grammar' && !v.tags?.some((t) => t === 'grammar' || t === 'pattern'))
@@ -405,8 +432,11 @@ export function VocabularyListPage() {
         variant={hasActiveFilters ? 'secondary' : 'ghost'}
         onClick={() => setFilterOpen(true)}
         title={t('vocabulary.filter')}
+        className={cn(
+          hasActiveFilters ? 'text-secondary-foreground' : 'text-foreground'
+        )}
       >
-        <SlidersHorizontal className="h-4 w-4" />
+        <SlidersHorizontal className={cn("h-4 w-4", hasActiveFilters ? "text-secondary-foreground" : "text-foreground")} />
         {hasActiveFilters && <span className="ml-1.5 text-xs font-black">●</span>}
       </Button>
       <Button variant="ghost" disabled={!shouldUseRemoteData} onClick={enterSelectMode}>{t('vocabulary.select')}</Button>
@@ -418,7 +448,7 @@ export function VocabularyListPage() {
 
   return (
     <>
-      <PageHeader title={t('vocabulary.title')} description={t('vocabulary.description')} actions={headerActions} />
+      <PageHeader title={t('vocabulary.title')} actions={headerActions} />
       {lessonFeedback ? (
         <Card className="mb-4">
           <p className="font-black">
@@ -448,13 +478,47 @@ export function VocabularyListPage() {
           <div className="flex-1">
             <Input placeholder={t('vocabulary.search')} value={searchText} onChange={(event) => setSearchText(event.target.value)} />
           </div>
-          <div className="w-full sm:w-48">
-            <Select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
-              <option value="created">{t('vocabulary.sortCreated')}</option>
-              <option value="alpha">{t('vocabulary.sortAlpha')}</option>
-              <option value="next_review">{t('vocabulary.sortReview')}</option>
-              <option value="wrong">{t('vocabulary.sortWrong')}</option>
-            </Select>
+          <div className="w-full sm:w-48 relative" ref={sortDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsSortOpen(!isSortOpen)}
+              className="flex items-center justify-between w-full min-h-10 rounded-[var(--radius)] border-2 border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-[2px_2px_0_var(--border)] outline-none transition hover:translate-x-[0.5px] hover:translate-y-[0.5px] hover:shadow-[1px_1px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_var(--border)]"
+            >
+              <span>
+                {sortOrder === 'created' && t('vocabulary.sortCreated')}
+                {sortOrder === 'alpha' && t('vocabulary.sortAlpha')}
+                {sortOrder === 'next_review' && t('vocabulary.sortReview')}
+                {sortOrder === 'wrong' && t('vocabulary.sortWrong')}
+              </span>
+              <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isSortOpen && "rotate-180")} />
+            </button>
+            {isSortOpen && (
+              <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] rounded-[var(--radius)] overflow-hidden py-1 divide-y divide-border animate-in fade-in duration-100">
+                {[
+                  { value: 'created', label: t('vocabulary.sortCreated') },
+                  { value: 'alpha', label: t('vocabulary.sortAlpha') },
+                  { value: 'next_review', label: t('vocabulary.sortReview') },
+                  { value: 'wrong', label: t('vocabulary.sortWrong') },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      setSortOrder(opt.value as any)
+                      setIsSortOpen(false)
+                    }}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-xs font-bold transition-colors cursor-pointer",
+                      sortOrder === opt.value
+                        ? "bg-primary text-primary-foreground"
+                        : "text-foreground hover:bg-muted"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex overflow-x-auto pb-1.5 -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap md:overflow-x-visible gap-1.5 scrollbar-none shrink-0 max-w-full">
@@ -469,7 +533,6 @@ export function VocabularyListPage() {
                     idiom: 'vocabulary.idiom',
                     sentence: 'vocabulary.sentence',
                   }[it])),
-                  filters.flagged ? t('vocabulary.filterFlagged') : null,
                   filters.noDeck ? t('vocabulary.filterNoDeck') : null,
                 ].filter(Boolean).join(' · ')}
               </span>
