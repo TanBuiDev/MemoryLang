@@ -16,7 +16,7 @@ export function AdminLayout() {
   return (
     <div className="brand-grid-bg min-h-screen bg-background text-foreground flex flex-col">
       {/* Admin Header */}
-      <header className="sticky top-0 z-30 h-16 border-b-2 border-border bg-background/95 backdrop-blur">
+      <header className="sticky top-0 z-40 h-16 border-b-2 border-border bg-background/95 backdrop-blur">
         <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-full w-full">
           <div className="flex items-center gap-3">
             <Link to="/app/admin" className="flex items-center gap-2 rounded-md p-1 border border-transparent hover:border-border hover:bg-muted transition">
