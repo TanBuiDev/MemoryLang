@@ -156,6 +156,7 @@ The authenticated `nav.study` sidebar link resumes an active stored flashcard se
 - Without these, app runs in demo mode with hardcoded data
 - `UNSPLASH_ACCESS_KEY`, `PEXELS_API_KEY`, `PIXABAY_API_KEY` in `.env` (for image search Edge Function)
 - `GOOGLE_TTS_CREDENTIALS_B64` in `.env` (base64 of Google Cloud Service Account JSON key for TTS Edge Function)
+- `DEEPL_API_KEY` in `.env` (DeepL API auth key for machine translation; falls back to MyMemory when absent)
 - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_DOMAIN` in `.env` (Cloudflare R2 for storing generated TTS audio)
 - Supabase local dev: `supabase/config.toml` (ports 54321/54322)
 - Run `pnpm sync:secrets` after changing API keys in `.env` to push them to Supabase
