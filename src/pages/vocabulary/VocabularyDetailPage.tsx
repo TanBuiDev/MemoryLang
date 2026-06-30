@@ -1034,7 +1034,7 @@ export function VocabularyDetailPage() {
           </HotkeyTooltip>
           <HotkeyTooltip hotkey="Alt + A">
             <Button
-              variant={autoPlayEnabled ? "primary" : "secondary"}
+              variant={autoPlayEnabled ? "primary" : "ghost"}
               className="border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
               onClick={() => {
                 const next = !autoPlayEnabled
@@ -1043,7 +1043,7 @@ export function VocabularyDetailPage() {
               }}
               title={t('vocabulary.autoPlay')}
             >
-              <img src={autoplayIcon} className={cn("h-4 w-4 scale-[1.75]", !autoPlayEnabled && "opacity-30 saturate-0")} alt="" />
+              <img src={autoplayIcon} className="h-4 w-4 scale-[1.75]" alt="" />
             </Button>
           </HotkeyTooltip>
 
@@ -1129,7 +1129,7 @@ export function VocabularyDetailPage() {
                   localStorage.setItem('memorylang_vocab_auto_play', String(next))
                 }}
               >
-                <img src={autoplayIcon} className={cn("h-4 w-4 scale-[1.75]", !autoPlayEnabled && "opacity-30 saturate-0")} alt="" />
+                <img src={autoplayIcon} className="h-4 w-4 scale-[1.75]" alt="" />
                 <span>{t('vocabulary.autoPlay')}</span>
               </Button>
 
