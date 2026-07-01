@@ -66,7 +66,7 @@ export default function GrammarLessonPage() {
 
       <div className="neo-card p-6 mb-6">
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          <Badge variant="secondary">{topic.category}</Badge>
+          <Badge className="bg-purple-100 text-purple-800">{topic.category}</Badge>
           <span className={`text-xs font-bold px-2 py-0.5 rounded-full border-2 border-(--border) ${levelColors[topic.level] ?? 'bg-gray-100'}`}>
             {topic.level === 'beginner' ? 'Co ban' : topic.level === 'intermediate' ? 'Trung cap' : 'Nang cao'}
           </span>

@@ -104,7 +104,7 @@ export function GrammarPage() {
               className="neo-card p-5 hover:shadow-[6px_6px_0_var(--border)] transition-shadow cursor-pointer"
             >
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <Badge variant="secondary">{topic.category}</Badge>
+                <Badge className="bg-purple-100 text-purple-800">{topic.category}</Badge>
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full border-2 border-(--border) ${levelColors[topic.level] ?? 'bg-gray-100'}`}>
                   {levelLabels[topic.level] ?? topic.level}
                 </span>

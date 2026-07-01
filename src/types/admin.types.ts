@@ -51,7 +51,7 @@ export interface GrammarTopic {
   explanation: string
   examples: { sentence: string; translation?: string }[]
   is_published: boolean
-  view_count: number
+  view_count?: number
   created_at: string
 }
 

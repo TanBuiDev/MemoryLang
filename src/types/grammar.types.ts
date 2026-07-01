@@ -73,10 +73,7 @@ export interface SummaryContent {
   items: string[]
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface DividerContent {
-  // empty
-}
+export type DividerContent = Record<string, never>
 
 export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
   heading: 'Tieu de',

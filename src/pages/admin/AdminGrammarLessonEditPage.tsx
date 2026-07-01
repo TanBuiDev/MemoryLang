@@ -196,7 +196,7 @@ export default function AdminGrammarLessonEditPage() {
 
             {/* Block info */}
             <div className="flex-1 min-w-0">
-              <Badge variant="secondary" className="text-xs mb-1">
+              <Badge className="bg-purple-100 text-purple-800 text-xs mb-1">
                 {BLOCK_TYPE_LABELS[block.block_type as BlockType] ?? block.block_type}
               </Badge>
               <p className="text-xs text-gray-500 truncate">
