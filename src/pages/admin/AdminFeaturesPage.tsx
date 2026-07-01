@@ -3,6 +3,19 @@ import { Save, ToggleLeft, ToggleRight, Wrench, Plus, Eye, Code } from 'lucide-r
 import { adminService } from '@/services/supabase/admin.service'
 import type { AppSetting, FeatureFlag } from '@/types/admin.types'
 
+function SmoothToggle({ on, size = 48, onColor = 'text-green-500', offColor = 'text-muted-foreground' }: { on: boolean; size?: number; onColor?: string; offColor?: string }) {
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ease-out ${on ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 -rotate-90 pointer-events-none'}`}>
+        <ToggleRight className={`${onColor} transition-colors duration-200`} size={size} />
+      </div>
+      <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ease-out ${!on ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 rotate-90 pointer-events-none'}`}>
+        <ToggleLeft className={`${offColor} transition-colors duration-200`} size={size} />
+      </div>
+    </div>
+  )
+}
+
 export default function AdminFeaturesPage() {
   const [flags, setFlags] = useState<FeatureFlag[]>([])
   const [settings, setSettings] = useState<AppSetting[]>([])
@@ -200,14 +213,10 @@ export default function AdminFeaturesPage() {
 
                     <button
                       onClick={() => handleToggleFlag(flag.flag, flag.enabled)}
-                      className="shrink-0 transition-transform active:scale-95"
+                      className="transition-transform active:scale-95"
                       title={flag.enabled ? 'Tắt tính năng' : 'Bật tính năng'}
                     >
-                      {flag.enabled ? (
-                        <ToggleRight className="text-green-500 hover:text-green-600 cursor-pointer" size={48} />
-                      ) : (
-                        <ToggleLeft className="text-muted-foreground hover:text-foreground cursor-pointer" size={48} />
-                      )}
+                      <SmoothToggle on={flag.enabled} size={48} />
                     </button>
                   </div>
 
@@ -222,11 +231,7 @@ export default function AdminFeaturesPage() {
                           className="flex items-center gap-1.5 transition-transform active:scale-95 disabled:pointer-events-none"
                           title={fabDevice.desktop ? 'Đang hiển thị trên desktop' : 'Đang ẩn trên desktop'}
                         >
-                          {flag.enabled && fabDevice.desktop ? (
-                            <ToggleRight className="text-green-500 hover:text-green-600" size={28} />
-                          ) : (
-                            <ToggleLeft className="text-muted-foreground" size={28} />
-                          )}
+                          <SmoothToggle on={flag.enabled && fabDevice.desktop} size={28} />
                           <span className="text-xs font-bold">Desktop</span>
                         </button>
                         <button
@@ -236,11 +241,7 @@ export default function AdminFeaturesPage() {
                           className="flex items-center gap-1.5 transition-transform active:scale-95 disabled:pointer-events-none"
                           title={fabDevice.mobile ? 'Đang hiển thị trên mobile' : 'Đang ẩn trên mobile'}
                         >
-                          {flag.enabled && fabDevice.mobile ? (
-                            <ToggleRight className="text-green-500 hover:text-green-600" size={28} />
-                          ) : (
-                            <ToggleLeft className="text-muted-foreground" size={28} />
-                          )}
+                          <SmoothToggle on={flag.enabled && fabDevice.mobile} size={28} />
                           <span className="text-xs font-bold">Mobile</span>
                         </button>
                       </div>
