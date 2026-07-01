@@ -212,32 +212,34 @@ export default function AdminFeaturesPage() {
                   </div>
 
                   {flag.flag === 'mascot_radial_fab' && (
-                    <div className="flex items-center gap-4 pt-2 border-t-2 border-dashed border-border">
+                    <div className={`flex items-center gap-4 pt-2 border-t-2 border-dashed border-border ${!flag.enabled ? 'opacity-50' : ''}`}>
                       <span className="text-[11px] font-black text-muted-foreground uppercase">Thiết bị:</span>
                       <div className="flex items-center gap-4">
                         <button
                           type="button"
+                          disabled={!flag.enabled}
                           onClick={() => handleToggleFabDevice('desktop')}
-                          className="flex items-center gap-1.5 transition-transform active:scale-95"
+                          className="flex items-center gap-1.5 transition-transform active:scale-95 disabled:pointer-events-none"
                           title={fabDevice.desktop ? 'Đang hiển thị trên desktop' : 'Đang ẩn trên desktop'}
                         >
-                          {fabDevice.desktop ? (
-                            <ToggleRight className="text-green-500 hover:text-green-600 cursor-pointer" size={28} />
+                          {flag.enabled && fabDevice.desktop ? (
+                            <ToggleRight className="text-green-500 hover:text-green-600" size={28} />
                           ) : (
-                            <ToggleLeft className="text-muted-foreground hover:text-foreground cursor-pointer" size={28} />
+                            <ToggleLeft className="text-muted-foreground" size={28} />
                           )}
                           <span className="text-xs font-bold">Desktop</span>
                         </button>
                         <button
                           type="button"
+                          disabled={!flag.enabled}
                           onClick={() => handleToggleFabDevice('mobile')}
-                          className="flex items-center gap-1.5 transition-transform active:scale-95"
+                          className="flex items-center gap-1.5 transition-transform active:scale-95 disabled:pointer-events-none"
                           title={fabDevice.mobile ? 'Đang hiển thị trên mobile' : 'Đang ẩn trên mobile'}
                         >
-                          {fabDevice.mobile ? (
-                            <ToggleRight className="text-green-500 hover:text-green-600 cursor-pointer" size={28} />
+                          {flag.enabled && fabDevice.mobile ? (
+                            <ToggleRight className="text-green-500 hover:text-green-600" size={28} />
                           ) : (
-                            <ToggleLeft className="text-muted-foreground hover:text-foreground cursor-pointer" size={28} />
+                            <ToggleLeft className="text-muted-foreground" size={28} />
                           )}
                           <span className="text-xs font-bold">Mobile</span>
                         </button>
