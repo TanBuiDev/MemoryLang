@@ -144,21 +144,21 @@ export function VocabularyListPage() {
       return prev
     })
   }, [debouncedSearch, searchParams, setSearchParams])
-  const sortOrder = (searchParams.get('sort') as 'created' | 'next_review' | 'wrong' | 'alpha') || 
-                    (localStorage.getItem('vocab_list_sort') as 'created' | 'next_review' | 'wrong' | 'alpha') || 
-                    'created'
+  const sortOrder = (searchParams.get('sort') as 'newest' | 'oldest' | 'next_review' | 'wrong' | 'alpha') || 
+                    (localStorage.getItem('vocab_list_sort') as 'newest' | 'oldest' | 'next_review' | 'wrong' | 'alpha') || 
+                    'newest'
 
-  const setSortOrder = (value: 'created' | 'next_review' | 'wrong' | 'alpha') => {
+  const setSortOrder = (value: 'newest' | 'oldest' | 'next_review' | 'wrong' | 'alpha') => {
     localStorage.setItem('vocab_list_sort', value)
     setSearchParams((prev) => {
-      if (value === 'created') { prev.delete('sort') } else { prev.set('sort', value) }
+      if (value === 'newest') { prev.delete('sort') } else { prev.set('sort', value) }
       return prev
     })
   }
 
   useEffect(() => {
     const savedSort = localStorage.getItem('vocab_list_sort')
-    if (savedSort && !searchParams.has('sort') && savedSort !== 'created') {
+    if (savedSort && !searchParams.has('sort') && savedSort !== 'newest') {
       setSearchParams((prev) => {
         prev.set('sort', savedSort)
         return prev
@@ -192,6 +192,10 @@ export function VocabularyListPage() {
     const sorted = [...filtered]
     if (sortOrder === 'alpha') {
       sorted.sort((a, b) => a.source_text.localeCompare(b.source_text))
+    } else if (sortOrder === 'newest') {
+      sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    } else if (sortOrder === 'oldest') {
+      sorted.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
     } else if (sortOrder === 'next_review') {
       sorted.sort((a, b) => (a.next_review_at ?? '').localeCompare(b.next_review_at ?? ''))
     } else if (sortOrder === 'wrong') {
@@ -505,7 +509,8 @@ export function VocabularyListPage() {
               className="flex items-center justify-between w-full min-h-10 rounded-[var(--radius)] border-2 border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-[2px_2px_0_var(--border)] outline-none transition hover:translate-x-[0.5px] hover:translate-y-[0.5px] hover:shadow-[1px_1px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_var(--border)]"
             >
               <span>
-                {sortOrder === 'created' && t('vocabulary.sortCreated')}
+                {sortOrder === 'newest' && t('vocabulary.sortNewest')}
+                {sortOrder === 'oldest' && t('vocabulary.sortOldest')}
                 {sortOrder === 'alpha' && t('vocabulary.sortAlpha')}
                 {sortOrder === 'next_review' && t('vocabulary.sortReview')}
                 {sortOrder === 'wrong' && t('vocabulary.sortWrong')}
@@ -515,7 +520,8 @@ export function VocabularyListPage() {
             {isSortOpen && (
               <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] rounded-[var(--radius)] overflow-hidden py-1 divide-y divide-border animate-in fade-in duration-100">
                 {[
-                  { value: 'created', label: t('vocabulary.sortCreated') },
+                  { value: 'newest', label: t('vocabulary.sortNewest') },
+                  { value: 'oldest', label: t('vocabulary.sortOldest') },
                   { value: 'alpha', label: t('vocabulary.sortAlpha') },
                   { value: 'next_review', label: t('vocabulary.sortReview') },
                   { value: 'wrong', label: t('vocabulary.sortWrong') },
