@@ -16,6 +16,7 @@ import { demoVocabulary } from '@/features/demo/demoData'
 import { vocabularyUpdateFormSchema } from '@/features/vocabulary/vocabulary.schema'
 import { useI18n } from '@/i18n'
 import { enrichVocabulary } from '@/services/api/enrichVocabulary.api'
+import { translateText } from '@/services/api/translate.api'
 import { imageSearchService } from '@/services/api/imageSearch.api'
 import type { ImageSearchResult } from '@/services/api/imageSearch.api'
 import { studyLocalDb } from '@/services/local/studyLocalDb'
@@ -699,8 +700,7 @@ export function VocabularyDetailPage() {
     setIsTranslating(true)
     setFormError(null)
     try {
-      const enriched = await enrichVocabulary(item.source_text, item.source_language, item.native_language)
-      const translatedText = enriched.translationText
+      const translatedText = await translateText(item.source_text, item.source_language, item.native_language)
       if (translatedText && translatedText !== item.source_text) {
         await handleSaveField({ translation: translatedText })
       } else {
