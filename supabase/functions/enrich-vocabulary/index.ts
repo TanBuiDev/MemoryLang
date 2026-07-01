@@ -260,6 +260,7 @@ Deno.serve(async (request) => {
     // Dictionary API dùng cho IPA, partOfSpeech, meanings, examples (không dùng cho audio)
     const dictionary = itemType === 'word' && body.sourceLanguage === 'en' ? await dictionaryLookup(body.text, body.nativeLanguage) : null
     const translatedDictionary = await addDictionaryTranslations(body.text, body.sourceLanguage, body.nativeLanguage, dictionary)
+    const translationText = translatedDictionary?.translationText ?? await translateText(body.text, body.sourceLanguage, body.nativeLanguage)
 
     // Audio chỉ lấy từ Google Cloud TTS
     const audioUrl = await generateTtsAudio(supabase, body.text, body.sourceLanguage)
@@ -295,7 +296,7 @@ Deno.serve(async (request) => {
         partOfSpeech: payload.part_of_speech,
         meanings: payload.meanings,
         examples: payload.examples,
-        translationText: translatedDictionary?.translationText ?? '',
+        translationText,
         audioUrl: payload.audio_url,
         imageUrl: payload.image_url,
         source: dictionary ? 'dictionary' : 'fallback',
