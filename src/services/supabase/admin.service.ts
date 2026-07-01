@@ -1,5 +1,6 @@
 import { supabase } from '@/services/supabase/client'
 import type { AppSetting, TtsVoiceConfig, FeatureFlag, AdminAuditLog, AdminUserStats, GrammarTopic, GrammarExercise } from '@/types/admin.types'
+import type { LessonBlock } from '@/types/grammar.types'
 import type { Profile } from '@/types/auth.types'
 
 export const adminService = {
@@ -402,6 +403,71 @@ export const adminService = {
       .delete()
       .eq('id', id)
     if (error) throw error
+  },
+
+  // 8b. Lesson Blocks Management
+  async listLessonBlocks(topicId: string): Promise<LessonBlock[]> {
+    const { data, error } = await supabase
+      .from('lesson_blocks')
+      .select('*')
+      .eq('topic_id', topicId)
+      .order('sort_order', { ascending: true })
+
+    if (error) throw error
+    return data as LessonBlock[]
+  },
+
+  async createLessonBlock(block: {
+    topic_id: string
+    sort_order: number
+    block_type: string
+    content: Record<string, unknown>
+  }): Promise<LessonBlock> {
+    const { data, error } = await supabase
+      .from('lesson_blocks')
+      .insert(block)
+      .select()
+      .single()
+
+    if (error) throw error
+    await this.logAction('create_lesson_block', 'lesson_block', data.id, { block_type: block.block_type })
+    return data as LessonBlock
+  },
+
+  async updateLessonBlock(
+    id: string,
+    updates: { block_type?: string; content?: Record<string, unknown> }
+  ): Promise<LessonBlock> {
+    const { data, error } = await supabase
+      .from('lesson_blocks')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data as LessonBlock
+  },
+
+  async deleteLessonBlock(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('lesson_blocks')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+    await this.logAction('delete_lesson_block', 'lesson_block', id, {})
+  },
+
+  async reorderLessonBlocks(topicId: string, orderedIds: string[]): Promise<void> {
+    for (let i = 0; i < orderedIds.length; i++) {
+      const { error } = await supabase
+        .from('lesson_blocks')
+        .update({ sort_order: i })
+        .eq('id', orderedIds[i])
+      if (error) throw error
+    }
+    await this.logAction('reorder_lesson_blocks', 'grammar_topic', topicId, { count: orderedIds.length })
   },
 
   // 9. Listening Management
