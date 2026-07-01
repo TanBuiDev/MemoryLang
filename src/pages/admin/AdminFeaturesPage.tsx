@@ -420,8 +420,57 @@ export default function AdminFeaturesPage() {
                           </div>
                         )}
 
+                        {setting.key === 'mascot_radial_fab_device' && (() => {
+                          let deviceConfig = { desktop: true, mobile: true }
+                          try {
+                            const parsed = JSON.parse(settingsForm[setting.key] || '{}')
+                            if (typeof parsed.desktop === 'boolean') deviceConfig.desktop = parsed.desktop
+                            if (typeof parsed.mobile === 'boolean') deviceConfig.mobile = parsed.mobile
+                          } catch { /* giữ nguyên defaults */ }
+
+                          const toggleDevice = (device: 'desktop' | 'mobile') => {
+                            const updated = { ...deviceConfig, [device]: !deviceConfig[device] }
+                            setSettingsForm((prev) => ({ ...prev, [setting.key]: JSON.stringify(updated) }))
+                          }
+
+                          return (
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs font-bold w-20">Desktop:</span>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleDevice('desktop')}
+                                  className="shrink-0 transition-transform active:scale-95"
+                                  title={deviceConfig.desktop ? 'Đang hiển thị trên desktop' : 'Đang ẩn trên desktop'}
+                                >
+                                  {deviceConfig.desktop ? (
+                                    <ToggleRight className="text-green-500 hover:text-green-600 cursor-pointer" size={36} />
+                                  ) : (
+                                    <ToggleLeft className="text-muted-foreground hover:text-foreground cursor-pointer" size={36} />
+                                  )}
+                                </button>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs font-bold w-20">Mobile:</span>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleDevice('mobile')}
+                                  className="shrink-0 transition-transform active:scale-95"
+                                  title={deviceConfig.mobile ? 'Đang hiển thị trên mobile' : 'Đang ẩn trên mobile'}
+                                >
+                                  {deviceConfig.mobile ? (
+                                    <ToggleRight className="text-green-500 hover:text-green-600 cursor-pointer" size={36} />
+                                  ) : (
+                                    <ToggleLeft className="text-muted-foreground hover:text-foreground cursor-pointer" size={36} />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })()}
+
                         {/* Fallback visual view if it's none of the recognized keys */}
-                        {!['vocabulary_pos_options', 'vocabulary_max_examples_count', 'default_daily_goal', 'default_speech_rate', 'default_speech_pitch'].includes(setting.key) && (
+                        {!['vocabulary_pos_options', 'vocabulary_max_examples_count', 'default_daily_goal', 'default_speech_rate', 'default_speech_pitch', 'mascot_radial_fab_device'].includes(setting.key) && (
                           (settingsForm[setting.key] && 
                            (settingsForm[setting.key].trim().startsWith('[') || settingsForm[setting.key].trim().startsWith('{'))) ? (
                             <textarea
@@ -465,6 +514,11 @@ export default function AdminFeaturesPage() {
                     {setting.key === 'quick_notes_max_length' && (
                       <span className="text-[10px] text-blue-600 font-bold mt-0.5">
                         * Định dạng: Nhập một số nguyên dương đại diện cho số lượng ký tự tối đa được viết trong mỗi ghi chú.
+                      </span>
+                    )}
+                    {setting.key === 'mascot_radial_fab_device' && (
+                      <span className="text-[10px] text-blue-600 font-bold mt-0.5">
+                        * Bật/tắt hiển thị nút mascot (Radial FAB) trên từng loại thiết bị. Desktop: màn hình ≥ 640px. Mobile: màn hình &lt; 640px.
                       </span>
                     )}
                   </div>
