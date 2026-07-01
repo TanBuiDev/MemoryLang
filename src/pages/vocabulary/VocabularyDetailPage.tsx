@@ -630,7 +630,7 @@ export function VocabularyDetailPage() {
         image_url: item.image_url ?? '',
         note: item.note,
         translation: item.translation,
-        meanings: item.meanings,
+        meanings: (item.meanings ?? []).filter(m => m.text),
         examples: item.examples,
         tags: item.tags ?? [],
         ...updatedFields,
