@@ -1,17 +1,31 @@
 import { useEffect, useState } from 'react'
-import { Save, ToggleLeft, ToggleRight, Wrench, Plus, Eye, Code } from 'lucide-react'
+import { Eye, Code, PlugZap, Wrench, Plus, Save } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
 import type { AppSetting, FeatureFlag } from '@/types/admin.types'
 
-function SmoothToggle({ on, size = 48, onColor = 'text-green-500', offColor = 'text-muted-foreground' }: { on: boolean; size?: number; onColor?: string; offColor?: string }) {
+function SmoothToggle({ on, size = 48 }: { on: boolean; size?: number }) {
+  const h = size
+  const w = Math.round(size * 1.75)
+  const knobSize = Math.round(h * 0.7)
+  const gap = Math.round((h - knobSize) / 2)
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ease-out ${on ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 -rotate-90 pointer-events-none'}`}>
-        <ToggleRight className={`${onColor} transition-colors duration-200`} size={size} />
-      </div>
-      <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ease-out ${!on ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 rotate-90 pointer-events-none'}`}>
-        <ToggleLeft className={`${offColor} transition-colors duration-200`} size={size} />
-      </div>
+    <div
+      className="shrink-0 rounded-full transition-colors duration-300 ease-out"
+      style={{
+        width: w,
+        height: h,
+        backgroundColor: on ? '#22c55e' : '#d1d5db',
+        padding: gap,
+      }}
+    >
+      <div
+        className="rounded-full bg-white shadow-sm transition-all duration-300 ease-out"
+        style={{
+          width: knobSize,
+          height: knobSize,
+          transform: on ? `translateX(${w - h}px)` : 'translateX(0)',
+        }}
+      />
     </div>
   )
 }
@@ -192,7 +206,7 @@ export default function AdminFeaturesPage() {
           {/* Section 1: Feature Flags */}
           <div className="flex flex-col gap-4">
             <h2 className="text-lg font-black border-b-2 border-border pb-2 text-foreground flex items-center gap-1.5">
-              <ToggleRight className="text-primary" size={20} />
+              <PlugZap className="text-primary" size={20} />
               FEATURE FLAGS (BẬT/TẮT TÍNH NĂNG)
             </h2>
             
