@@ -47,6 +47,8 @@ const AdminFunctionsPage = React.lazy(() => import('@/pages/admin/AdminFunctions
 const AdminI18nPage = React.lazy(() => import('@/pages/admin/AdminI18nPage'))
 const AdminAuditPage = React.lazy(() => import('@/pages/admin/AdminAuditPage'))
 const AdminAnalyticsPage = React.lazy(() => import('@/pages/admin/AdminAnalyticsPage'))
+const GrammarLessonPage = React.lazy(() => import('@/pages/grammar/GrammarLessonPage'))
+const AdminGrammarLessonEditPage = React.lazy(() => import('@/pages/admin/AdminGrammarLessonEditPage'))
 
 export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
@@ -85,6 +87,14 @@ export const router = createBrowserRouter([
           { path: 'listening/session/:partId/:mode', element: <ListeningSessionPage /> },
           { path: 'listening/result/:partId', element: <ListeningResultPage /> },
           { path: 'grammar', element: <GrammarPage /> },
+          {
+            path: 'grammar/:topicId',
+            element: (
+              <React.Suspense fallback={<AppLoading />}>
+                <GrammarLessonPage />
+              </React.Suspense>
+            ),
+          },
           { path: 'statistics', element: <Navigate to="/app/dashboard" replace /> },
           { path: 'settings', element: <SettingsPage /> },
         ],
@@ -109,6 +119,14 @@ export const router = createBrowserRouter([
               // Phase 3 & 4 routes mapping to real pages
               { path: 'vocabulary', element: <AdminVocabularyPage /> },
               { path: 'grammar', element: <AdminGrammarPage /> },
+              {
+                path: 'grammar/:topicId',
+                element: (
+                  <React.Suspense fallback={<AppLoading />}>
+                    <AdminGrammarLessonEditPage />
+                  </React.Suspense>
+                ),
+              },
               { path: 'listening', element: <AdminListeningPage /> },
               { path: 'storage', element: <AdminStoragePage /> },
               { path: 'functions', element: <AdminFunctionsPage /> },
