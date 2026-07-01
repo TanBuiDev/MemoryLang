@@ -20,6 +20,9 @@ export default function AdminFeaturesPage() {
   const [newPosLabel, setNewPosLabel] = useState('')
   const [newPosValue, setNewPosValue] = useState('')
 
+  // Mascot FAB device config (loaded from app_settings, persisted immediately on toggle)
+  const [fabDevice, setFabDevice] = useState({ desktop: true, mobile: true })
+
   const loadData = async () => {
     try {
       setLoading(true)
@@ -30,6 +33,12 @@ export default function AdminFeaturesPage() {
       setFlags(flagsData)
       setSettings(settingsData)
       
+      const fabSetting = settingsData.find(s => s.key === 'mascot_radial_fab_device')
+      if (fabSetting?.value) {
+        const v = fabSetting.value as { desktop?: boolean; mobile?: boolean }
+        setFabDevice({ desktop: v.desktop ?? true, mobile: v.mobile ?? true })
+      }
+
       // Khởi tạo form values
       const initialForm: Record<string, string> = {}
       settingsData.forEach((s) => {
@@ -57,6 +66,20 @@ export default function AdminFeaturesPage() {
     } catch (err: any) {
       console.error(err)
       setError(err.message || 'Lỗi khi cập nhật Feature Flag')
+    }
+  }
+
+  const handleToggleFabDevice = async (device: 'desktop' | 'mobile') => {
+    const updated = { ...fabDevice, [device]: !fabDevice[device] }
+    setFabDevice(updated)
+    try {
+      setError(null)
+      const updatedSetting = await adminService.updateSetting('mascot_radial_fab_device', updated)
+      setSettings((prev) => prev.map((s) => (s.key === 'mascot_radial_fab_device' ? updatedSetting : s)))
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message || 'Lỗi khi cập nhật cấu hình thiết bị mascot')
+      setFabDevice(fabDevice) // rollback
     }
   }
 
@@ -164,27 +187,63 @@ export default function AdminFeaturesPage() {
               {flags.map((flag) => (
                 <div
                   key={flag.flag}
-                  className="neo-card p-4 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex items-center justify-between gap-4"
+                  className="neo-card p-4 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex flex-col gap-3"
                 >
-                  <div className="flex flex-col gap-0.5">
-                    <h3 className="font-black text-sm text-foreground uppercase tracking-wider">{flag.flag.replace('_', ' ')}</h3>
-                    <p className="text-xs text-muted-foreground font-bold">{flag.description || 'Không có mô tả.'}</p>
-                    <span className="text-[9px] font-black text-muted-foreground mt-1 font-mono">
-                      KEY: {flag.flag}
-                    </span>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col gap-0.5">
+                      <h3 className="font-black text-sm text-foreground uppercase tracking-wider">{flag.flag.replace('_', ' ')}</h3>
+                      <p className="text-xs text-muted-foreground font-bold">{flag.description || 'Không có mô tả.'}</p>
+                      <span className="text-[9px] font-black text-muted-foreground mt-1 font-mono">
+                        KEY: {flag.flag}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => handleToggleFlag(flag.flag, flag.enabled)}
+                      className="shrink-0 transition-transform active:scale-95"
+                      title={flag.enabled ? 'Tắt tính năng' : 'Bật tính năng'}
+                    >
+                      {flag.enabled ? (
+                        <ToggleRight className="text-green-500 hover:text-green-600 cursor-pointer" size={48} />
+                      ) : (
+                        <ToggleLeft className="text-muted-foreground hover:text-foreground cursor-pointer" size={48} />
+                      )}
+                    </button>
                   </div>
 
-                  <button
-                    onClick={() => handleToggleFlag(flag.flag, flag.enabled)}
-                    className="shrink-0 transition-transform active:scale-95"
-                    title={flag.enabled ? 'Tắt tính năng' : 'Bật tính năng'}
-                  >
-                    {flag.enabled ? (
-                      <ToggleRight className="text-green-500 hover:text-green-600 cursor-pointer" size={48} />
-                    ) : (
-                      <ToggleLeft className="text-muted-foreground hover:text-foreground cursor-pointer" size={48} />
-                    )}
-                  </button>
+                  {flag.flag === 'mascot_radial_fab' && (
+                    <div className="flex items-center gap-4 pt-2 border-t-2 border-dashed border-border">
+                      <span className="text-[11px] font-black text-muted-foreground uppercase">Thiết bị:</span>
+                      <div className="flex items-center gap-4">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleFabDevice('desktop')}
+                          className="flex items-center gap-1.5 transition-transform active:scale-95"
+                          title={fabDevice.desktop ? 'Đang hiển thị trên desktop' : 'Đang ẩn trên desktop'}
+                        >
+                          {fabDevice.desktop ? (
+                            <ToggleRight className="text-green-500 hover:text-green-600 cursor-pointer" size={28} />
+                          ) : (
+                            <ToggleLeft className="text-muted-foreground hover:text-foreground cursor-pointer" size={28} />
+                          )}
+                          <span className="text-xs font-bold">Desktop</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleFabDevice('mobile')}
+                          className="flex items-center gap-1.5 transition-transform active:scale-95"
+                          title={fabDevice.mobile ? 'Đang hiển thị trên mobile' : 'Đang ẩn trên mobile'}
+                        >
+                          {fabDevice.mobile ? (
+                            <ToggleRight className="text-green-500 hover:text-green-600 cursor-pointer" size={28} />
+                          ) : (
+                            <ToggleLeft className="text-muted-foreground hover:text-foreground cursor-pointer" size={28} />
+                          )}
+                          <span className="text-xs font-bold">Mobile</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -198,7 +257,7 @@ export default function AdminFeaturesPage() {
             </h2>
 
             <div className="flex flex-col gap-4">
-              {settings.map((setting) => (
+              {settings.filter(s => s.key !== 'mascot_radial_fab_device').map((setting) => (
                 <div
                   key={setting.key}
                   className="neo-card p-4 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex flex-col gap-2"
@@ -420,57 +479,8 @@ export default function AdminFeaturesPage() {
                           </div>
                         )}
 
-                        {setting.key === 'mascot_radial_fab_device' && (() => {
-                          let deviceConfig = { desktop: true, mobile: true }
-                          try {
-                            const parsed = JSON.parse(settingsForm[setting.key] || '{}')
-                            if (typeof parsed.desktop === 'boolean') deviceConfig.desktop = parsed.desktop
-                            if (typeof parsed.mobile === 'boolean') deviceConfig.mobile = parsed.mobile
-                          } catch { /* giữ nguyên defaults */ }
-
-                          const toggleDevice = (device: 'desktop' | 'mobile') => {
-                            const updated = { ...deviceConfig, [device]: !deviceConfig[device] }
-                            setSettingsForm((prev) => ({ ...prev, [setting.key]: JSON.stringify(updated) }))
-                          }
-
-                          return (
-                            <div className="flex flex-col gap-2">
-                              <div className="flex items-center gap-3">
-                                <span className="text-xs font-bold w-20">Desktop:</span>
-                                <button
-                                  type="button"
-                                  onClick={() => toggleDevice('desktop')}
-                                  className="shrink-0 transition-transform active:scale-95"
-                                  title={deviceConfig.desktop ? 'Đang hiển thị trên desktop' : 'Đang ẩn trên desktop'}
-                                >
-                                  {deviceConfig.desktop ? (
-                                    <ToggleRight className="text-green-500 hover:text-green-600 cursor-pointer" size={36} />
-                                  ) : (
-                                    <ToggleLeft className="text-muted-foreground hover:text-foreground cursor-pointer" size={36} />
-                                  )}
-                                </button>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-xs font-bold w-20">Mobile:</span>
-                                <button
-                                  type="button"
-                                  onClick={() => toggleDevice('mobile')}
-                                  className="shrink-0 transition-transform active:scale-95"
-                                  title={deviceConfig.mobile ? 'Đang hiển thị trên mobile' : 'Đang ẩn trên mobile'}
-                                >
-                                  {deviceConfig.mobile ? (
-                                    <ToggleRight className="text-green-500 hover:text-green-600 cursor-pointer" size={36} />
-                                  ) : (
-                                    <ToggleLeft className="text-muted-foreground hover:text-foreground cursor-pointer" size={36} />
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        })()}
-
                         {/* Fallback visual view if it's none of the recognized keys */}
-                        {!['vocabulary_pos_options', 'vocabulary_max_examples_count', 'default_daily_goal', 'default_speech_rate', 'default_speech_pitch', 'mascot_radial_fab_device'].includes(setting.key) && (
+                        {!['vocabulary_pos_options', 'vocabulary_max_examples_count', 'default_daily_goal', 'default_speech_rate', 'default_speech_pitch'].includes(setting.key) && (
                           (settingsForm[setting.key] && 
                            (settingsForm[setting.key].trim().startsWith('[') || settingsForm[setting.key].trim().startsWith('{'))) ? (
                             <textarea
@@ -514,11 +524,6 @@ export default function AdminFeaturesPage() {
                     {setting.key === 'quick_notes_max_length' && (
                       <span className="text-[10px] text-blue-600 font-bold mt-0.5">
                         * Định dạng: Nhập một số nguyên dương đại diện cho số lượng ký tự tối đa được viết trong mỗi ghi chú.
-                      </span>
-                    )}
-                    {setting.key === 'mascot_radial_fab_device' && (
-                      <span className="text-[10px] text-blue-600 font-bold mt-0.5">
-                        * Bật/tắt hiển thị nút mascot (Radial FAB) trên từng loại thiết bị. Desktop: màn hình ≥ 640px. Mobile: màn hình &lt; 640px.
                       </span>
                     )}
                   </div>
