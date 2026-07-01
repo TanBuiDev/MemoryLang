@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2, Edit3, Eye, CheckCircle2, ChevronRight, BookOpen, AlertCircle } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { adminService } from '@/services/supabase/admin.service'
 import type { GrammarTopic, GrammarExercise } from '@/types/admin.types'
 
@@ -277,6 +278,12 @@ export default function AdminGrammarPage() {
                     >
                       <Eye size={12} className={topic.is_published ? 'text-primary' : 'text-muted-foreground'} />
                     </button>
+                    <Link
+                      to={`/app/admin/grammar/${topic.id}`}
+                      className="text-xs px-3 py-1.5 border-2 border-purple-400 rounded-lg bg-purple-50 font-bold text-purple-600 hover:bg-purple-100"
+                    >
+                      Blocks
+                    </Link>
                     <button
                       onClick={() => handleEditTopic(topic)}
                       className="p-1.5 rounded border border-border bg-card hover:bg-muted text-foreground transition-all"
