@@ -144,8 +144,13 @@ export function VocabularyListPage() {
       return prev
     })
   }, [debouncedSearch, searchParams, setSearchParams])
-  const sortOrder = (searchParams.get('sort') as 'newest' | 'oldest' | 'next_review' | 'wrong' | 'alpha') || 
-                    (localStorage.getItem('vocab_list_sort') as 'newest' | 'oldest' | 'next_review' | 'wrong' | 'alpha') || 
+  const VALID_SORTS = ['newest', 'oldest', 'next_review', 'wrong', 'alpha'] as const
+  const normalizeSort = (raw: string | null): string | null => {
+    if (!raw) return null
+    return VALID_SORTS.includes(raw as any) ? raw : null
+  }
+  const sortOrder = (normalizeSort(searchParams.get('sort')) as 'newest' | 'oldest' | 'next_review' | 'wrong' | 'alpha') || 
+                    (normalizeSort(localStorage.getItem('vocab_list_sort')) as 'newest' | 'oldest' | 'next_review' | 'wrong' | 'alpha') || 
                     'newest'
 
   const setSortOrder = (value: 'newest' | 'oldest' | 'next_review' | 'wrong' | 'alpha') => {
@@ -157,7 +162,7 @@ export function VocabularyListPage() {
   }
 
   useEffect(() => {
-    const savedSort = localStorage.getItem('vocab_list_sort')
+    const savedSort = normalizeSort(localStorage.getItem('vocab_list_sort'))
     if (savedSort && !searchParams.has('sort') && savedSort !== 'newest') {
       setSearchParams((prev) => {
         prev.set('sort', savedSort)
