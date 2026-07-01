@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, X, Loader2, Save } from 'lucide-react'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -29,6 +29,9 @@ export function AddVocabularyModal({ isOpen, onClose, initialWord, onSuccess }: 
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
+  const formRef = useRef<HTMLFormElement>(null)
+  const wordInputRef = useRef<HTMLInputElement>(null)
+
   const [posOptions, setPosOptions] = useState<{ value: string; label: string }[]>([
     { value: 'noun', label: 'Danh từ (Noun)' },
     { value: 'verb', label: 'Động từ (Verb)' },
@@ -47,6 +50,7 @@ export function AddVocabularyModal({ isOpen, onClose, initialWord, onSuccess }: 
       setSaveStatus('idle')
       setErrorMessage('')
       void fetchPosOptions()
+      setTimeout(() => wordInputRef.current?.focus(), 100)
     }
   }, [isOpen])
 
@@ -132,7 +136,16 @@ export function AddVocabularyModal({ isOpen, onClose, initialWord, onSuccess }: 
       />
 
       {/* Dialog Modal Container */}
-      <div className={cn(
+      <div
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !isSaving && saveStatus !== 'saved') {
+            const target = e.target as HTMLElement
+            if (target.closest('[role="listbox"]') || target.closest('[role="option"]')) return
+            e.preventDefault()
+            formRef.current?.requestSubmit()
+          }
+        }}
+        className={cn(
         "relative bg-background border-[3px] border-border flex flex-col w-full max-w-md rounded-xl shadow-[4px_4px_0px_#1c293c] z-10 transition-all transform scale-100 duration-200 animate-in zoom-in-95"
       )}>
         {/* Header */}
@@ -151,7 +164,7 @@ export function AddVocabularyModal({ isOpen, onClose, initialWord, onSuccess }: 
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSave} className="p-4 space-y-4">
+        <form ref={formRef} onSubmit={handleSave} className="p-4 space-y-4">
           {saveStatus === 'saved' ? (
             <div className="text-center py-8 space-y-2 animate-in zoom-in duration-200">
               <div className="w-12 h-12 bg-emerald-100 border-2 border-emerald-500 rounded-full flex items-center justify-center mx-auto text-emerald-600 text-2xl font-black shadow-[2px_2px_0_#1c293c]">
@@ -173,6 +186,7 @@ export function AddVocabularyModal({ isOpen, onClose, initialWord, onSuccess }: 
                   Từ / Cụm từ gốc ({targetLanguage.toUpperCase()})
                 </label>
                 <input
+                  ref={wordInputRef}
                   type="text"
                   required
                   value={word}
