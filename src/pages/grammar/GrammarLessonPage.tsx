@@ -45,7 +45,7 @@ export default function GrammarLessonPage() {
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="p-8 text-center neo-card">
           <p className="text-gray-500 font-semibold">
-            Dang nhap de xem bai hoc ngu phap
+            Đăng nhập để xem bài học ngữ pháp
           </p>
         </div>
       </div>
@@ -61,17 +61,17 @@ export default function GrammarLessonPage() {
         to="/app/grammar"
         className="inline-flex items-center gap-1 text-sm text-purple-600 hover:text-purple-800 font-semibold mb-4"
       >
-        Quay lai danh sach
+        ← Quay lại danh sách
       </Link>
 
       <div className="neo-card p-6 mb-6">
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <Badge className="bg-purple-100 text-purple-800">{topic.category}</Badge>
           <span className={`text-xs font-bold px-2 py-0.5 rounded-full border-2 border-(--border) ${levelColors[topic.level] ?? 'bg-gray-100'}`}>
-            {topic.level === 'beginner' ? 'Co ban' : topic.level === 'intermediate' ? 'Trung cap' : 'Nang cao'}
+            {topic.level === 'beginner' ? 'Cơ bản' : topic.level === 'intermediate' ? 'Trung cấp' : 'Nâng cao'}
           </span>
           <span className="text-xs text-gray-500 ml-auto">
-            {topic.view_count ?? 0} luot hoc
+            {topic.view_count ?? 0} lượt học
           </span>
         </div>
         <h1 className="text-2xl font-black">{topic.title}</h1>
@@ -88,7 +88,7 @@ export default function GrammarLessonPage() {
           to="/app/grammar"
           className="neo-button px-6 py-3 font-bold"
         >
-          Quay lai danh sach
+          ← Quay lại danh sách
         </Link>
       </div>
     </div>

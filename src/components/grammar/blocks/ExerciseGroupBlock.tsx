@@ -24,7 +24,7 @@ function QuestionCard({ question, index }: QuestionCardProps) {
   return (
     <div className="border-2 border-(--border) rounded-lg p-4 bg-white">
       <p className="font-semibold mb-3">
-        <span className="text-purple-600 font-bold">Cau {index + 1}:</span>{' '}
+        <span className="text-purple-600 font-bold">Câu {index + 1}:</span>{' '}
         {question.question}
       </p>
       <div className="space-y-2 mb-3">
@@ -64,14 +64,14 @@ function QuestionCard({ question, index }: QuestionCardProps) {
             selectedIndex === null && 'opacity-50 cursor-not-allowed'
           )}
         >
-          Kiem tra
+          Kiểm tra
         </button>
       ) : (
         <div className={cn(
           'p-3 border-2 rounded-lg font-semibold',
           isCorrect ? 'border-green-400 bg-green-50 text-green-800' : 'border-red-400 bg-red-50 text-red-800'
         )}>
-          {isCorrect ? 'Chinh xac!' : `Chua dung. Dap an: ${String.fromCharCode(65 + question.correctIndex)}. ${question.options[question.correctIndex]}`}
+          {isCorrect ? 'Chính xác!' : `Chưa đúng. Đáp án: ${String.fromCharCode(65 + question.correctIndex)}. ${question.options[question.correctIndex]}`}
           {question.explanation && (
             <p className="mt-2 text-sm font-normal text-gray-600">
               {question.explanation}

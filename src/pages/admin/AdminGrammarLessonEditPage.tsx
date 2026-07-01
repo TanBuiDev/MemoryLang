@@ -37,7 +37,7 @@ export default function AdminGrammarLessonEditPage() {
       const data = await adminService.listLessonBlocks(topicId)
       setBlocks(data)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Loi tai du lieu')
+      setError(err instanceof Error ? err.message : 'Lỗi tải dữ liệu')
     } finally {
       setLoading(false)
     }
@@ -57,7 +57,7 @@ export default function AdminGrammarLessonEditPage() {
       setBlocks((prev) => [...prev, block])
       setAddingType(null)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Loi them block')
+      setError(err instanceof Error ? err.message : 'Lỗi thêm block')
     }
   }
 
@@ -69,7 +69,7 @@ export default function AdminGrammarLessonEditPage() {
         return filtered.map((b, i) => ({ ...b, sort_order: i }))
       })
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Loi xoa block')
+      setError(err instanceof Error ? err.message : 'Lỗi xóa block')
     }
   }
 
@@ -85,7 +85,7 @@ export default function AdminGrammarLessonEditPage() {
       try {
         content = JSON.parse(editContent)
       } catch {
-        setError('JSON khong hop le')
+        setError('JSON không hợp lệ')
         return
       }
 
@@ -94,7 +94,7 @@ export default function AdminGrammarLessonEditPage() {
       setEditingBlock(null)
       setEditContent('')
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Loi luu block')
+      setError(err instanceof Error ? err.message : 'Lỗi lưu block')
     }
   }
 
@@ -107,7 +107,7 @@ export default function AdminGrammarLessonEditPage() {
     try {
       await adminService.reorderLessonBlocks(topicId!, ordered.map((b) => b.id))
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Loi sap xep')
+      setError(err instanceof Error ? err.message : 'Lỗi sắp xếp')
       loadBlocks()
     }
   }
@@ -121,7 +121,7 @@ export default function AdminGrammarLessonEditPage() {
     try {
       await adminService.reorderLessonBlocks(topicId!, ordered.map((b) => b.id))
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Loi sap xep')
+      setError(err instanceof Error ? err.message : 'Lỗi sắp xếp')
       loadBlocks()
     }
   }
@@ -135,7 +135,7 @@ export default function AdminGrammarLessonEditPage() {
           to="/app/admin/grammar"
           className="text-sm text-purple-600 hover:text-purple-800 font-bold"
         >
-          Quay lai danh sach chu de
+          Quay lại danh sách chủ đề
         </Link>
         <span className="text-sm text-gray-500">{blocks.length} blocks</span>
       </div>
@@ -143,7 +143,7 @@ export default function AdminGrammarLessonEditPage() {
       {error && (
         <div className="p-3 border-2 border-red-400 bg-red-50 rounded-lg text-red-800 text-sm font-semibold">
           {error}
-          <button onClick={() => setError(null)} className="ml-2 underline">Dong</button>
+          <button onClick={() => setError(null)} className="ml-2 underline">Đóng</button>
         </div>
       )}
 
@@ -154,7 +154,7 @@ export default function AdminGrammarLessonEditPage() {
           onChange={(e) => setAddingType((e.target.value || null) as BlockType | null)}
           className="border-2 border-(--border) rounded-lg px-3 py-2 text-sm font-semibold bg-white"
         >
-          <option value="">+ Them block...</option>
+          <option value="">+ Thêm block...</option>
           {(Object.entries(BLOCK_TYPE_LABELS) as [BlockType, string][]).map(([type, label]) => (
             <option key={type} value={type}>{label}</option>
           ))}
@@ -164,7 +164,7 @@ export default function AdminGrammarLessonEditPage() {
             onClick={handleAdd}
             className="neo-button px-4 py-2 text-sm font-bold"
           >
-            Them
+Thêm
           </button>
         )}
       </div>
@@ -183,14 +183,14 @@ export default function AdminGrammarLessonEditPage() {
                 disabled={index === 0}
                 className="text-xs px-2 py-0.5 border border-(--border) rounded hover:bg-gray-100 disabled:opacity-30"
               >
-                Up
+▲
               </button>
               <button
                 onClick={() => handleMoveDown(index)}
                 disabled={index >= blocks.length - 1}
                 className="text-xs px-2 py-0.5 border border-(--border) rounded hover:bg-gray-100 disabled:opacity-30"
               >
-                Down
+▼
               </button>
             </div>
 
@@ -210,13 +210,13 @@ export default function AdminGrammarLessonEditPage() {
                 onClick={() => handleEdit(block)}
                 className="text-xs px-3 py-1.5 border-2 border-(--border) rounded-lg bg-white font-bold hover:bg-purple-50"
               >
-                Sua
+                Sửa
               </button>
               <button
                 onClick={() => handleDelete(block.id)}
                 className="text-xs px-3 py-1.5 border-2 border-red-400 rounded-lg bg-white font-bold text-red-600 hover:bg-red-50"
               >
-                Xoa
+                Xóa
               </button>
             </div>
           </div>
@@ -224,7 +224,7 @@ export default function AdminGrammarLessonEditPage() {
 
         {blocks.length === 0 && !loading && (
           <div className="text-center py-12 text-gray-500 font-semibold">
-            Chua co block nao. Chon loai block va nhan "Them" de bat dau.
+            Chưa có block nào. Chọn loại block và nhấn "Thêm" để bắt đầu.
           </div>
         )}
       </div>
@@ -234,10 +234,10 @@ export default function AdminGrammarLessonEditPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="neo-card p-6 w-full max-w-lg mx-4 max-h-[80vh] overflow-y-auto">
             <h3 className="text-lg font-bold mb-4">
-              Sua block: {BLOCK_TYPE_LABELS[editingBlock.block_type as BlockType]}
+              Sửa block: {BLOCK_TYPE_LABELS[editingBlock.block_type as BlockType]}
             </h3>
             <p className="text-xs text-gray-500 mb-2">
-              Chinh sua noi dung JSON ben duoi
+              Chỉnh sửa nội dung JSON bên dưới
             </p>
             <textarea
               value={editContent}
@@ -249,13 +249,13 @@ export default function AdminGrammarLessonEditPage() {
                 onClick={() => { setEditingBlock(null); setEditContent('') }}
                 className="px-4 py-2 text-sm font-bold border-2 border-(--border) rounded-lg bg-white"
               >
-                Huy
+                Hủy
               </button>
               <button
                 onClick={handleSaveEdit}
                 className="neo-button px-4 py-2 text-sm font-bold"
               >
-                Luu
+                Lưu
               </button>
             </div>
           </div>

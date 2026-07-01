@@ -17,9 +17,9 @@ const levelColors: Record<string, string> = {
 }
 
 const levelLabels: Record<string, string> = {
-  beginner: 'Co ban',
-  intermediate: 'Trung cap',
-  advanced: 'Nang cao',
+  beginner: 'Cơ bản',
+  intermediate: 'Trung cấp',
+  advanced: 'Nâng cao',
 }
 
 export function GrammarPage() {
@@ -50,7 +50,7 @@ export function GrammarPage() {
         <PageHeader title={t('grammar.title')} description={t('grammar.description', { count: 0 })} />
         <EmptyState
           title={t('grammar.emptyTitle')}
-          description="Dang nhap de xem bai hoc ngu phap"
+          description="Đăng nhập để xem bài học ngữ pháp"
         />
       </div>
     )

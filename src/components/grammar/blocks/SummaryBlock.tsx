@@ -24,7 +24,7 @@ export function SummaryBlock({ block }: SummaryBlockProps) {
 
   return (
     <div className="my-4 p-4 border-2 border-(--border) rounded-lg bg-yellow-50">
-      <p className="font-bold mb-2">TOM TAT</p>
+      <p className="font-bold mb-2">✅ TÓM TẮT</p>
       <ul className="list-disc list-inside space-y-1 text-sm">
         {items.map((item, i) => (
           <li key={i}>{item}</li>

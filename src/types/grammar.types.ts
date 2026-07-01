@@ -76,13 +76,13 @@ export interface SummaryContent {
 export type DividerContent = Record<string, never>
 
 export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
-  heading: 'Tieu de',
-  paragraph: 'Doan van',
-  table: 'Bang',
+  heading: 'Tiêu đề',
+  paragraph: 'Đoạn văn',
+  table: 'Bảng',
   code: 'Code block',
   callout: 'Callout',
-  example_list: 'Vi du',
-  exercise_group: 'Bai tap',
-  summary: 'Tong ket',
-  divider: 'Duong phan cach',
+  example_list: 'Ví dụ',
+  exercise_group: 'Bài tập',
+  summary: 'Tổng kết',
+  divider: 'Đường phân cách',
 }
