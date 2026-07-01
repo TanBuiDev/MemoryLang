@@ -4,28 +4,28 @@ import { adminService } from '@/services/supabase/admin.service'
 import type { AppSetting, FeatureFlag } from '@/types/admin.types'
 
 function SmoothToggle({ on, size = 48 }: { on: boolean; size?: number }) {
-  const h = size
-  const w = Math.round(size * 1.75)
-  const knobSize = Math.round(h * 0.7)
-  const gap = Math.round((h - knobSize) / 2)
+  const h = Math.round(size * 0.56)
+  const w = size
   return (
-    <div
-      className="shrink-0 rounded-full transition-colors duration-300 ease-out"
-      style={{
-        width: w,
-        height: h,
-        backgroundColor: on ? '#22c55e' : '#d1d5db',
-        padding: gap,
-      }}
-    >
-      <div
-        className="rounded-full bg-white shadow-sm transition-all duration-300 ease-out"
-        style={{
-          width: knobSize,
-          height: knobSize,
-          transform: on ? `translateX(${w - h}px)` : 'translateX(0)',
-        }}
-      />
+    <div className="relative shrink-0" style={{ width: w, height: h }}>
+      <svg
+        className={`absolute inset-0 transition-all duration-300 ease-out ${on ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
+        viewBox="0 0 32 18"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <rect x="2" y="1" width="28" height="16" rx="8" fill="#22c55e" />
+        <circle cx="21" cy="9" r="6" fill="white" />
+      </svg>
+      <svg
+        className={`absolute inset-0 transition-all duration-300 ease-out ${!on ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
+        viewBox="0 0 32 18"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <rect x="2" y="1" width="28" height="16" rx="8" fill="#d1d5db" />
+        <circle cx="11" cy="9" r="6" fill="white" />
+      </svg>
     </div>
   )
 }
