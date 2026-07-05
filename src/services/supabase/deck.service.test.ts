@@ -24,6 +24,8 @@ function createdDeck(id: string, name: string) {
     native_language: 'vi',
     color: null,
     icon: null,
+    visibility: 'private',
+    parent_id: null,
     created_at: '2026-05-25T00:00:00.000Z',
     updated_at: '2026-05-25T00:00:00.000Z',
   } as const

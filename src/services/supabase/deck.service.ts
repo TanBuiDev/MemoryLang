@@ -1,6 +1,6 @@
 import { supabase } from '@/services/supabase/client'
 import type { LessonDraft } from '@/features/decks/bulkLessons'
-import type { Deck } from '@/types/deck.types'
+import type { Deck, DeckVisibility } from '@/types/deck.types'
 import type { LanguageCode } from '@/types/language.types'
 import type { VocabularyItem } from '@/types/vocabulary.types'
 import { flattenVocabularyItem } from './vocabulary.service'
@@ -13,6 +13,8 @@ export interface DeckInput {
   native_language: LanguageCode
   color?: string
   icon?: string
+  visibility?: DeckVisibility
+  parent_id?: string | null
 }
 
 export interface CreateLessonBatchInput {
@@ -62,7 +64,7 @@ export const deckService = {
     const { data, error } = await supabase
       .from('decks')
       .select('*, deck_terms(count)')
-      .eq('user_id', userId)
+      .or(`user_id.eq.${userId},visibility.eq.public`)
       .order('created_at', { ascending: false })
     if (error) throw error
     return (data ?? []).map((deck) => ({ ...deck, term_count: deck.deck_terms?.[0]?.count ?? 0 })) as Deck[]
