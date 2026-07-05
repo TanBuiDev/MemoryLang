@@ -69,6 +69,7 @@ export const deckService = {
       .from('deck_terms')
       .select(`
         global_terms!fk_deck_terms_global_term (
+          id,
           source_text,
           normalized_text,
           source_language,
@@ -89,9 +90,10 @@ export const deckService = {
       .order('created_at', { ascending: true })
     if (error) throw error
     return (data ?? []).map((entry) => {
-      const gt = entry.global_terms
-      if (!gt) return null
-      return flattenVocabularyItem({ global_terms: gt })
+      const gt = entry.global_terms as any
+      if (!gt || (Array.isArray(gt) && gt.length === 0)) return null
+      const term = Array.isArray(gt) ? gt[0] : gt
+      return flattenVocabularyItem({ global_terms: term, id: term.id, global_term_id: term.id, status: 'new' })
     }).filter(Boolean) as VocabularyItem[]
   },
   async create(input: DeckInput): Promise<Deck> {
