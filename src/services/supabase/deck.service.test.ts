@@ -87,11 +87,11 @@ describe('deckService.createLessonBatch', () => {
       name: 'Bai hoc 01',
     })
     expect(insertLinks).toHaveBeenNthCalledWith(1, [
-      { deck_id: 'deck-1', user_term_id: 'term-1' },
-      { deck_id: 'deck-1', user_term_id: 'term-2' },
+      { deck_id: 'deck-1', global_term_id: 'term-1' },
+      { deck_id: 'deck-1', global_term_id: 'term-2' },
     ])
     expect(insertLinks).toHaveBeenNthCalledWith(2, [
-      { deck_id: 'deck-2', user_term_id: 'term-3' },
+      { deck_id: 'deck-2', global_term_id: 'term-3' },
     ])
     expect(result).toEqual({
       createdDecks: [

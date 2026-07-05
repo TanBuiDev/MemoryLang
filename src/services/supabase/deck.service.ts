@@ -27,36 +27,26 @@ export interface CreateLessonBatchResult {
   error: unknown | null
 }
 
-async function ensureUserTermId(termIdOrGlobalId: string, userId: string): Promise<string> {
-  const { data: current } = await supabase
+async function resolveGlobalTermId(termId: string): Promise<string> {
+  // Check if it's already a user_terms id
+  const { data: ut } = await supabase
     .from('user_terms')
-    .select('id')
-    .eq('id', termIdOrGlobalId)
+    .select('global_term_id')
+    .eq('id', termId)
     .maybeSingle()
 
-  if (current) return current.id
+  if (ut) return ut.global_term_id
 
-  const { data: currentByGlobal } = await supabase
-    .from('user_terms')
+  // Check if it's a global_terms id
+  const { data: gt } = await supabase
+    .from('global_terms')
     .select('id')
-    .eq('global_term_id', termIdOrGlobalId)
-    .eq('user_id', userId)
+    .eq('id', termId)
     .maybeSingle()
 
-  if (currentByGlobal) return currentByGlobal.id
+  if (gt) return gt.id
 
-  const { data: inserted, error } = await supabase
-    .from('user_terms')
-    .insert({
-      user_id: userId,
-      global_term_id: termIdOrGlobalId,
-      status: 'new',
-    })
-    .select('id')
-    .single()
-
-  if (error) throw error
-  return inserted.id
+  throw new Error(`Cannot resolve term ID: ${termId}`)
 }
 
 export const deckService = {
@@ -78,36 +68,31 @@ export const deckService = {
     const { data, error } = await supabase
       .from('deck_terms')
       .select(`
-        user_terms (
-          *,
-          global_terms!fk_user_terms_global_term (
-            source_text,
-            normalized_text,
-            source_language,
-            native_language,
-            item_type,
-            part_of_speech,
-            ipa,
-            audio_url,
-            image_url,
-            meanings,
-            examples,
-            translation,
-            note,
-            tags
-          )
+        global_terms!fk_deck_terms_global_term (
+          source_text,
+          normalized_text,
+          source_language,
+          native_language,
+          item_type,
+          part_of_speech,
+          ipa,
+          audio_url,
+          image_url,
+          meanings,
+          examples,
+          translation,
+          note,
+          tags
         )
       `)
       .eq('deck_id', deckId)
       .order('created_at', { ascending: true })
     if (error) throw error
-    return (data ?? []).flatMap((entry) => {
-      const term = entry.user_terms
-      if (!term) return []
-      return Array.isArray(term)
-        ? term.map((t) => flattenVocabularyItem(t))
-        : [flattenVocabularyItem(term)]
-    })
+    return (data ?? []).map((entry) => {
+      const gt = entry.global_terms
+      if (!gt) return null
+      return flattenVocabularyItem({ global_terms: gt })
+    }).filter(Boolean) as VocabularyItem[]
   },
   async create(input: DeckInput): Promise<Deck> {
     const { data, error } = await supabase.from('decks').insert(input).select('*').single()
@@ -121,15 +106,8 @@ export const deckService = {
       for (const lesson of lessons) {
         const deck = await deckService.create({ ...base, name: lesson.name })
 
-        // Đảm bảo tất cả termIds đã được tạo user_terms
-        const resolvedTermIds: string[] = []
-        for (const termId of lesson.termIds) {
-          const resolvedId = await ensureUserTermId(termId, base.user_id)
-          resolvedTermIds.push(resolvedId)
-        }
-
         const { error } = await supabase.from('deck_terms').insert(
-          resolvedTermIds.map((user_term_id) => ({ deck_id: deck.id, user_term_id })),
+          lesson.termIds.map((id) => ({ deck_id: deck.id, global_term_id: id })),
         )
         if (error) {
           try {
@@ -161,44 +139,37 @@ export const deckService = {
     const { error } = await supabase.from('decks').delete().eq('id', id)
     if (error) throw error
   },
-  async addTerm(deckId: string, userTermId: string) {
+  async addTerm(deckId: string, termId: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('User session is required to add term to deck')
-    
-    const resolvedId = await ensureUserTermId(userTermId, user.id)
+
+    const globalTermId = await resolveGlobalTermId(termId)
 
     const { error } = await supabase
       .from('deck_terms')
-      .insert({ deck_id: deckId, user_term_id: resolvedId })
+      .insert({ deck_id: deckId, global_term_id: globalTermId })
     if (error) throw error
   },
-  async removeTerm(deckId: string, userTermId: string) {
+  async removeTerm(deckId: string, termId: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('User session is required to remove term from deck')
 
-    // Thử tìm user_term_id thực tế (nếu userTermId truyền vào là global_term_id)
-    const { data: ut } = await supabase
-      .from('user_terms')
-      .select('id')
-      .eq('user_id', user.id)
-      .or(`id.eq.${userTermId},global_term_id.eq.${userTermId}`)
-      .maybeSingle()
-
-    const resolvedId = ut?.id || userTermId
+    // Resolve to global_term_id
+    const globalTermId = await resolveGlobalTermId(termId)
 
     const { error } = await supabase
       .from('deck_terms')
       .delete()
       .eq('deck_id', deckId)
-      .eq('user_term_id', resolvedId)
+      .eq('global_term_id', globalTermId)
     if (error) throw error
   },
   async getDeckedTermIds(userId: string): Promise<Set<string>> {
     const { data, error } = await supabase
       .from('deck_terms')
-      .select('user_term_id, deck:decks!inner(user_id)')
+      .select('global_term_id, deck:decks!inner(user_id)')
       .eq('deck.user_id', userId)
     if (error) throw error
-    return new Set((data ?? []).map((row) => row.user_term_id))
+    return new Set((data ?? []).map((row) => row.global_term_id))
   },
 }
