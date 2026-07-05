@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { FolderOpen } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -52,6 +53,14 @@ export function DeckDetailPage() {
     queryKey: ['decked-term-ids', user?.id],
     queryFn: () => deckService.getDeckedTermIds(user!.id),
     enabled: shouldUseRemoteData && Boolean(user) && filterNoDeck,
+  })
+  const childrenQuery = useQuery({
+    queryKey: ['deck-children', id],
+    queryFn: async () => {
+      const all = await deckService.list(user!.id)
+      return all.filter((d) => d.parent_id === id)
+    },
+    enabled: shouldUseRemoteData && Boolean(id),
   })
   const deck = shouldUseRemoteData ? deckQuery.data : demoDecks.find((item) => item.id === id) ?? demoDecks[0]
   const vocabulary = useMemo(
@@ -129,8 +138,17 @@ export function DeckDetailPage() {
     )
   }
 
+  const parentId = deck?.parent_id
+
   return (
     <>
+      {parentId ? (
+        <div className="mb-2">
+          <Link to={`/app/decks/${parentId}`} className="text-sm font-bold text-muted-foreground hover:text-foreground underline">
+            &larr; {t('decks.backToParent')}
+          </Link>
+        </div>
+      ) : null}
       <PageHeader title={deck.name} description={deck.description ?? t('decks.fallbackDescription')} actions={<div className="flex flex-wrap gap-2">{shouldUseRemoteData ? <Button variant="ghost" onClick={() => { setEditingDeck(true); setEditName(deck.name); setEditDescription(deck.description ?? '') }}>{t('vocabulary.edit')}</Button> : null}<Button asChild><Link to="/app/study" onClick={() => setSelectedDeckId(deck.id)}>{t('decks.startFlashcard')}</Link></Button><Button asChild variant="secondary"><Link to="/app/quiz" onClick={() => setQuizDeckId(deck.id)}>{t('decks.quiz')}</Link></Button></div>} />
       {editingDeck ? (
         <Card className="mb-4 max-w-2xl">
@@ -153,6 +171,27 @@ export function DeckDetailPage() {
         </Card>
       ) : null}
       <div className="mb-4 flex gap-2"><Badge>{t('decks.languagePair', { source: deck.source_language, native: deck.native_language })}</Badge><Badge>{t('decks.terms', { count: deck.term_count ?? 0 })}</Badge></div>
+      {childrenQuery.data && childrenQuery.data.length > 0 ? (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <FolderOpen size={18} className="text-amber-500" />
+            <h2 className="text-lg font-black">{t('decks.childDecks', { count: childrenQuery.data.length })}</h2>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {childrenQuery.data.map((child) => (
+              <Card key={child.id}>
+                <CardTitle>{child.name}</CardTitle>
+                <p className="mt-2 text-2xl font-black">{t('decks.words', { count: child.term_count ?? 0 })}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button asChild variant="secondary"><Link to={`/app/decks/${child.id}`}>{t('decks.open')}</Link></Button>
+                  <Button asChild variant="secondary"><Link to="/app/study" onClick={() => setSelectedDeckId(child.id)}>{t('decks.study')}</Link></Button>
+                  <Button asChild variant="secondary"><Link to="/app/quiz" onClick={() => setQuizDeckId(child.id)}>{t('decks.quiz')}</Link></Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {shouldUseRemoteData ? (
         <Card className="mb-4">
           {!bulkSelectMode ? (
