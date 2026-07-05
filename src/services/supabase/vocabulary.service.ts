@@ -1,12 +1,17 @@
 import { supabase } from '@/services/supabase/client'
 import type { VocabularyFormValues, VocabularyUpdateFormValues } from '@/features/vocabulary/vocabulary.schema'
 import type { VocabularyItem } from '@/types/vocabulary.types'
+import { derivePartOfSpeech, deriveTranslation, deriveExamples } from '@/types/vocabulary.types'
 import { normalizeText } from '@/utils/normalizeText'
 
 // Hàm trợ giúp làm phẳng đối tượng sau khi JOIN bảng
 export function flattenVocabularyItem(row: any): VocabularyItem {
   if (!row) return row
   const { global_terms, ...userTerm } = row
+  const meanings = global_terms?.meanings ?? []
+  const derivedPos = derivePartOfSpeech(meanings)
+  const derivedTranslation = deriveTranslation(meanings)
+  const derivedExamples = deriveExamples(meanings)
   return {
     ...userTerm,
     source_text: global_terms?.source_text ?? '',
@@ -14,15 +19,15 @@ export function flattenVocabularyItem(row: any): VocabularyItem {
     source_language: global_terms?.source_language ?? 'en',
     native_language: global_terms?.native_language ?? 'vi',
     item_type: global_terms?.item_type ?? 'word',
-    part_of_speech: global_terms?.part_of_speech ?? null,
+    part_of_speech: derivedPos || global_terms?.part_of_speech || null,
     ipa: global_terms?.ipa ?? null,
     audio_url: global_terms?.audio_url ?? null,
     image_url: global_terms?.image_url ?? null,
-    meanings: global_terms?.meanings ?? [],
-    examples: global_terms?.examples ?? [],
+    meanings,
+    examples: derivedExamples.length > 0 ? derivedExamples : (global_terms?.examples ?? []),
     note: global_terms?.note ?? null,
     tags: global_terms?.tags ?? [],
-    translation: global_terms?.translation ?? null,
+    translation: derivedTranslation || global_terms?.translation || null,
   } as VocabularyItem
 }
 
@@ -102,10 +107,12 @@ export const vocabularyService = {
     if (!globalData) return null
 
     // Trả về bản ghi từ vựng phẳng mặc định khi chưa bắt đầu học
+    const flat = flattenVocabularyItem({ global_terms: globalData })
     return {
-      id: globalData.id, // Dùng tạm global_term_id làm id
+      ...flat,
+      id: globalData.id,
       global_term_id: globalData.id,
-      status: 'new',
+      status: 'new' as const,
       view_count: 0,
       correct_count: 0,
       wrong_count: 0,
@@ -114,20 +121,6 @@ export const vocabularyService = {
       next_review_at: null,
       flagged: false,
       deleted_at: null,
-      source_text: globalData.source_text,
-      normalized_text: globalData.normalized_text,
-      source_language: globalData.source_language,
-      native_language: globalData.native_language,
-      item_type: globalData.item_type,
-      part_of_speech: globalData.part_of_speech,
-      ipa: globalData.ipa,
-      audio_url: globalData.audio_url,
-      image_url: globalData.image_url,
-      meanings: globalData.meanings,
-      examples: globalData.examples,
-      note: globalData.note,
-      tags: globalData.tags,
-      translation: globalData.translation,
     } as VocabularyItem
   },
 

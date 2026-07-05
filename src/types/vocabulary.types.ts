@@ -6,11 +6,27 @@ export type VocabularyStatus = 'new' | 'learning' | 'familiar' | 'memorized' | '
 export interface Meaning {
   text: string
   language: LanguageCode
+  part_of_speech?: string | null
+  translation?: string | null
+  examples?: ExampleSentence[]
+}
+
+export function derivePartOfSpeech(meanings: Meaning[]): string | null {
+  const pos = [...new Set(meanings.map((m) => m.part_of_speech).filter(Boolean) as string[])]
+  return pos.length > 0 ? pos.join(', ') : null
+}
+
+export function deriveTranslation(meanings: Meaning[]): string | null {
+  return meanings[0]?.translation ?? null
+}
+
+export function deriveExamples(meanings: Meaning[]): ExampleSentence[] {
+  return meanings.flatMap((m) => m.examples ?? [])
 }
 
 export interface ExampleSentence {
   sentence: string
-  translation?: string
+  translation?: string | null
 }
 
 export interface VocabularyItem {

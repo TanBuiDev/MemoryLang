@@ -630,7 +630,11 @@ export function VocabularyListPage() {
                         <Link to={`/app/vocabulary/${item.id}`} state={{ vocabularyIds }} className="text-xl font-black underline">{item.source_text}</Link>
                         {item.flagged ? <Flag className="h-4 w-4 text-warning" fill="currentColor" /> : null}
                         <Badge>{t(statusLabelKeys[item.status])}</Badge>
-                        {item.part_of_speech ? <Badge className="bg-muted">{item.part_of_speech}</Badge> : null}
+                        {item.part_of_speech
+                          ? item.part_of_speech.split(', ').map((pos) => (
+                              <Badge key={pos} className="bg-muted">{pos.trim()}</Badge>
+                            ))
+                          : null}
                         <Button variant="ghost" className="h-6 min-h-0 w-6 p-0" onClick={() => speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })}><Volume2 className="h-4 w-4" /></Button>
                       </div>
                       <p className="mt-1 font-mono text-sm">{item.ipa}</p>

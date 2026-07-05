@@ -41,17 +41,6 @@ const getErrorMessage = (error: unknown): string => {
   return String(error)
 }
 
-const DEFAULT_POS_OPTIONS = [
-  { value: 'noun', label: 'Noun' },
-  { value: 'verb', label: 'Verb' },
-  { value: 'adjective', label: 'Adjective' },
-  { value: 'adverb', label: 'Adverb' },
-  { value: 'phrase', label: 'Phrase' },
-  { value: 'idiom', label: 'Idiom' },
-  { value: 'sentence', label: 'Sentence' },
-  { value: '__other__', label: 'Khác...' },
-]
-
 interface HotkeyTooltipProps {
   children: React.ReactElement
   hotkey: string
@@ -155,25 +144,6 @@ export function VocabularyDetailPage() {
   const [isMeaningOpen, setIsMeaningOpen] = useState(false)
   const [exampleIndexToDelete, setExampleIndexToDelete] = useState<number | null>(null)
 
-  const posOptionsQuery = useQuery({
-    queryKey: ['app-setting', 'vocabulary_pos_options'],
-    queryFn: async () => {
-      if (!isSupabaseConfigured) return DEFAULT_POS_OPTIONS
-      const { data, error } = await supabase
-        .from('app_settings')
-        .select('value')
-        .eq('key', 'vocabulary_pos_options')
-        .maybeSingle()
-      if (error) throw error
-      if (data?.value) {
-        return data.value as Array<{ value: string; label: string }>
-      }
-      return DEFAULT_POS_OPTIONS
-    },
-    initialData: DEFAULT_POS_OPTIONS,
-    staleTime: 5 * 60 * 1000,
-  })
-
   const maxExamplesQuery = useQuery({
     queryKey: ['app-setting', 'vocabulary_max_examples_count'],
     queryFn: async () => {
@@ -193,10 +163,7 @@ export function VocabularyDetailPage() {
     staleTime: 5 * 60 * 1000,
   })
 
-  const currentPosOptions = posOptionsQuery.data || DEFAULT_POS_OPTIONS
   const maxExamplesCount = maxExamplesQuery.data ?? 10
-  const [posOpen, setPosOpen] = useState(false)
-  const posRef = useRef<HTMLDivElement>(null)
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(() => {
@@ -238,7 +205,6 @@ export function VocabularyDetailPage() {
     setIsActionsMenuOpen(false)
     setIsMeaningOpen(false)
     setExampleIndexToDelete(null)
-    setPosOpen(false)
   }, [id])
 
   const vocabularyCardQuery = useQuery({
@@ -475,16 +441,6 @@ export function VocabularyDetailPage() {
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  useEffect(() => {
-    function handlePosClick(e: MouseEvent) {
-      if (posRef.current && !posRef.current.contains(e.target as Node)) {
-        setPosOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handlePosClick)
-    return () => document.removeEventListener('mousedown', handlePosClick)
   }, [])
 
   useEffect(() => {
@@ -1028,74 +984,31 @@ export function VocabularyDetailPage() {
       {/* Thanh metadata và thanh công cụ điều hướng/thao tác (actions) nằm chung một hàng */}
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex flex-wrap items-center gap-4">
-          <div className="relative flex items-center gap-1" ref={posRef}>
+          <div className="relative flex items-center gap-1">
             <span className="text-xs font-bold text-muted-foreground mr-1 whitespace-nowrap">Từ loại:</span>
-            {!(item.part_of_speech === '__other__' || (item.part_of_speech && !currentPosOptions.some(o => o.value === item.part_of_speech && o.value !== '__other__'))) ? (
-              <button
-                type="button"
-                disabled={!isAdmin}
-                onClick={() => setPosOpen(!posOpen)}
-                className={cn(
-                  'flex items-center gap-1',
-                  isAdmin && 'cursor-pointer'
-                )}
-              >
-                {item.part_of_speech ? (
-                  <Badge className="bg-muted text-foreground font-black">{item.part_of_speech}</Badge>
-                ) : (
-                  <Badge className="bg-muted text-muted-foreground italic border-dashed font-bold">
-                    {t('vocabulary.partOfSpeech')}
-                  </Badge>
-                )}
-              </button>
-            ) : (
-              <div className="flex items-center gap-1">
-                <input
-                  className="h-7 w-28 rounded border-2 border-border px-2 text-xs font-bold shadow-[2px_2px_0_var(--border)] focus:outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)]"
-                  placeholder="Nhập..."
-                  value={item.part_of_speech === '__other__' ? '' : item.part_of_speech ?? ''}
-                  onChange={(e) => handleSaveField({ part_of_speech: e.target.value || null })}
-                  disabled={!isAdmin}
-                  autoFocus={item.part_of_speech === '__other__'}
-                />
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => setPosOpen(!posOpen)}
-                    className="h-7 w-7 rounded border-2 border-border bg-muted flex items-center justify-center shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none hover:bg-slate-200 transition-colors"
-                    title="Chọn từ loại mặc định"
-                  >
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                )}
-              </div>
-            )}
-            {posOpen && (
-              <div className="absolute top-full left-0 mt-1 z-20 w-44 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] rounded-md py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
-                {currentPosOptions.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    className={cn(
-                      'w-full text-left px-3 py-2 text-sm font-bold hover:bg-muted transition-colors',
-                      (item.part_of_speech === opt.value || (opt.value === '__other__' && (item.part_of_speech === '__other__' || (item.part_of_speech && !currentPosOptions.some(o => o.value === item.part_of_speech && o.value !== '__other__')))))
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-foreground'
-                    )}
-                    onClick={() => {
-                      if (opt.value === '__other__') {
-                        handleSaveField({ part_of_speech: '__other__' })
-                      } else {
-                        handleSaveField({ part_of_speech: opt.value })
-                      }
-                      setPosOpen(false)
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            )}
+            {(() => {
+              const posFromMeanings = (item.meanings ?? [])
+                .map((m) => m.part_of_speech)
+                .filter(Boolean) as string[]
+              const uniquePos = [...new Set(posFromMeanings)]
+              if (uniquePos.length > 0) {
+                return (
+                  <div className="flex flex-wrap items-center gap-1">
+                    {uniquePos.map((pos) => (
+                      <Badge key={pos} className="bg-muted text-foreground font-black">{pos}</Badge>
+                    ))}
+                  </div>
+                )
+              }
+              if (item.part_of_speech) {
+                return <Badge className="bg-muted text-foreground font-black">{item.part_of_speech}</Badge>
+              }
+              return (
+                <Badge className="bg-muted text-muted-foreground italic border-dashed font-bold">
+                  {t('vocabulary.partOfSpeech')}
+                </Badge>
+              )
+            })()}
           </div>
         </div>
 
@@ -1452,18 +1365,48 @@ export function VocabularyDetailPage() {
                   isMeaningOpen ? "max-h-125 opacity-100 mt-2" : "max-h-0 opacity-0"
                 )}
               >
-                <InlineEditableField
-                  value={item.meanings?.[0]?.text ?? ''}
-                  type="textarea"
-                  onSave={(val) =>
-                    handleSaveField({
-                      meanings: val ? [{ text: val, language: item.native_language }] : [],
-                    })
-                  }
-                  placeholder={t('vocabulary.noNotes')}
-                  className="font-semibold text-muted-foreground"
-                  disabled={!isAdmin}
-                />
+                {(item.meanings ?? []).length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    {(item.meanings ?? []).map((m, i) => (
+                      <div key={i} className="p-3 border-2 border-border rounded-md bg-card border-l-4 border-l-secondary">
+                        {m.part_of_speech && (
+                          <Badge className="mb-1 bg-secondary/20 text-secondary font-black text-xs">{m.part_of_speech}</Badge>
+                        )}
+                        {m.translation && (
+                          <p className="text-sm text-primary font-bold">{m.translation}</p>
+                        )}
+                        {m.text && (
+                          <p className="text-sm font-semibold text-muted-foreground">{m.text}</p>
+                        )}
+                        {(m.examples ?? []).length > 0 && (
+                          <div className="mt-2 flex flex-col gap-1.5">
+                            {m.examples!.map((ex, j) => (
+                              <div key={j} className="pl-3 border-l-2 border-border">
+                                <p className="text-xs font-semibold">{ex.sentence}</p>
+                                {ex.translation && (
+                                  <p className="text-xs text-muted-foreground mt-0.5 font-semibold">{ex.translation}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <InlineEditableField
+                    value=""
+                    type="textarea"
+                    onSave={(val) =>
+                      handleSaveField({
+                        meanings: val ? [{ text: val, language: item.native_language }] : [],
+                      })
+                    }
+                    placeholder={t('vocabulary.noNotes')}
+                    className="font-semibold text-muted-foreground"
+                    disabled={!isAdmin}
+                  />
+                )}
               </div>
             </div>
 

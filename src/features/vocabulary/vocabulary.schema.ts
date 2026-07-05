@@ -1,13 +1,16 @@
 import { z } from 'zod'
 
-export const meaningSchema = z.object({
-  text: z.string().min(1, 'Meaning is required'),
-  language: z.enum(['vi', 'en', 'ko', 'ja', 'zh', 'fr', 'de', 'other']),
-})
-
 export const exampleSchema = z.object({
   sentence: z.string().min(1, 'Example is required'),
   translation: z.string().nullable().optional(),
+})
+
+export const meaningSchema = z.object({
+  text: z.string().min(1, 'Meaning is required'),
+  language: z.enum(['vi', 'en', 'ko', 'ja', 'zh', 'fr', 'de', 'other']),
+  part_of_speech: z.string().nullable().optional(),
+  translation: z.string().nullable().optional(),
+  examples: z.array(exampleSchema).optional(),
 })
 
 export const vocabularyFormSchema = z.object({
