@@ -30,6 +30,7 @@ interface FilterState {
   itemTypes: Set<VocabularyItemType>
   flagged: boolean
   noDeck: boolean
+  deckId: string | null
 }
 
 interface FilterModalProps {
@@ -37,9 +38,10 @@ interface FilterModalProps {
   onClose: () => void
   filters: FilterState
   onChange: (filters: FilterState) => void
+  decks: Array<{ id: string; name: string }>
 }
 
-export function FilterModal({ open, onClose, filters, onChange }: FilterModalProps) {
+export function FilterModal({ open, onClose, filters, onChange, decks }: FilterModalProps) {
   const { t } = useI18n()
   const sheetRef = useRef<HTMLDivElement>(null)
 
@@ -79,7 +81,7 @@ export function FilterModal({ open, onClose, filters, onChange }: FilterModalPro
     onChange({ ...filters, itemTypes: next })
   }
 
-  const hasActiveFilters = filters.statuses.size > 0 || filters.itemTypes.size > 0 || filters.flagged || filters.noDeck
+  const hasActiveFilters = filters.statuses.size > 0 || filters.itemTypes.size > 0 || filters.flagged || filters.noDeck || filters.deckId !== null
 
   const resetFilters = () => {
     onChange({
@@ -87,6 +89,7 @@ export function FilterModal({ open, onClose, filters, onChange }: FilterModalPro
       itemTypes: new Set(),
       flagged: false,
       noDeck: false,
+      deckId: null,
     })
   }
 
@@ -203,6 +206,25 @@ export function FilterModal({ open, onClose, filters, onChange }: FilterModalPro
               </label>
             </div>
           </fieldset>
+
+          {/* Deck filter */}
+          {decks.length > 0 && (
+            <fieldset>
+              <legend className="text-xs uppercase font-black text-muted-foreground mb-2.5">
+                {t('decks.title')}
+              </legend>
+              <select
+                value={filters.deckId ?? ''}
+                onChange={(e) => onChange({ ...filters, deckId: e.target.value || null })}
+                className="w-full h-10 rounded-md border-2 border-border bg-card px-3 text-sm font-bold shadow-[2px_2px_0_var(--border)] outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)]"
+              >
+                <option value="">{t('vocabulary.allDecks')}</option>
+                {decks.map((deck) => (
+                  <option key={deck.id} value={deck.id}>{deck.name}</option>
+                ))}
+              </select>
+            </fieldset>
+          )}
         </div>
 
         {/* Bottom actions */}

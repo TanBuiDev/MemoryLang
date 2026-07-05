@@ -52,6 +52,7 @@ function parseFilterParams(params: URLSearchParams): {
   itemTypes: Set<VocabularyItemType>
   flagged: boolean
   noDeck: boolean
+  deckId: string | null
 } {
   const statuses = new Set<VocabularyStatus>(
     (params.get('statuses') ?? '').split(',').filter((s): s is VocabularyStatus =>
@@ -68,6 +69,7 @@ function parseFilterParams(params: URLSearchParams): {
     itemTypes,
     flagged: params.get('flagged') === '1',
     noDeck: params.get('noDeck') === '1',
+    deckId: params.get('deckId') || null,
   }
 }
 
@@ -76,6 +78,7 @@ function filterParamsToSearchParams(filters: {
   itemTypes: Set<VocabularyItemType>
   flagged: boolean
   noDeck: boolean
+  deckId: string | null
 }, prev: URLSearchParams): URLSearchParams {
   const next = new URLSearchParams(prev)
   if (filters.statuses.size > 0) next.set('statuses', [...filters.statuses].join(','))
@@ -86,6 +89,8 @@ function filterParamsToSearchParams(filters: {
   else next.delete('flagged')
   if (filters.noDeck) next.set('noDeck', '1')
   else next.delete('noDeck')
+  if (filters.deckId) next.set('deckId', filters.deckId)
+  else next.delete('deckId')
   return next
 }
 
@@ -125,7 +130,7 @@ export function VocabularyListPage() {
   const filters = useMemo(() => parseFilterParams(searchParams), [searchParams])
 
   const setFilters = useCallback(
-    (next: { statuses: Set<VocabularyStatus>; itemTypes: Set<VocabularyItemType>; flagged: boolean; noDeck: boolean }) => {
+    (next: { statuses: Set<VocabularyStatus>; itemTypes: Set<VocabularyItemType>; flagged: boolean; noDeck: boolean; deckId: string | null }) => {
       setSearchParams((prev) => filterParamsToSearchParams(next, prev))
     },
     [setSearchParams]
@@ -135,6 +140,15 @@ export function VocabularyListPage() {
     queryKey: ['decked-term-ids', user?.id],
     queryFn: () => deckService.getDeckedTermIds(user!.id),
     enabled: shouldUseRemoteData && filters.noDeck,
+  })
+  const deckTermIdsQuery = useQuery({
+    queryKey: ['deck-term-ids', filters.deckId],
+    queryFn: async () => {
+      if (!filters.deckId) return new Set<string>()
+      const terms = await deckService.listTerms(filters.deckId)
+      return new Set(terms.map((t) => t.global_term_id ?? t.id))
+    },
+    enabled: shouldUseRemoteData && Boolean(filters.deckId),
   })
   const [searchText, setSearchText] = useState(searchParams.get('q') ?? '')
   const debouncedSearch = useDebounce(searchText, 300)
@@ -188,6 +202,9 @@ export function VocabularyListPage() {
     }
     if (filters.noDeck) {
       filtered = filtered.filter((item) => !deckedTermIdsQuery.data?.has(item.id))
+    }
+    if (filters.deckId && deckTermIdsQuery.data) {
+      filtered = filtered.filter((item) => deckTermIdsQuery.data.has(item.global_term_id ?? item.id))
     }
     if (normalizedSearch) {
       filtered = filtered.filter((item) =>
@@ -426,7 +443,7 @@ export function VocabularyListPage() {
     setQuickAddModalOpen(true)
   }
 
-  const hasActiveFilters = filters.statuses.size > 0 || filters.itemTypes.size > 0 || filters.flagged || filters.noDeck
+  const hasActiveFilters = filters.statuses.size > 0 || filters.itemTypes.size > 0 || filters.flagged || filters.noDeck || filters.deckId !== null
 
   const headerActions = selectMode ? (
     <div className="flex flex-wrap items-center gap-2">
@@ -565,6 +582,7 @@ export function VocabularyListPage() {
                     sentence: 'vocabulary.sentence',
                   }[it])),
                   filters.noDeck ? t('vocabulary.filterNoDeck') : null,
+                  filters.deckId ? (decksQuery.data ?? []).find((d) => d.id === filters.deckId)?.name : null,
                 ].filter(Boolean).join(' · ')}
               </span>
             </div>
@@ -702,6 +720,7 @@ export function VocabularyListPage() {
         onClose={() => setFilterOpen(false)}
         filters={filters}
         onChange={setFilters}
+        decks={(decksQuery.data ?? []).map((d) => ({ id: d.id, name: d.name }))}
       />
       {profile?.is_admin && <AddVocabularyModal open={addModalOpen} onClose={() => setAddModalOpen(false)} />}
       <QuickAddVocabularyModal
