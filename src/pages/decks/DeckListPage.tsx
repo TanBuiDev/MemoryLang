@@ -110,13 +110,13 @@ export function DeckListPage() {
     return { parents: [...parentMap.values()], standalone: standaloneDecks }
   }, [allDecks])
 
-  const renderDeckCard = (deck: Deck, isChild?: boolean) => {
+  const renderDeckCard = (deck: Deck) => {
     const hasChildren = deck.children && deck.children.length > 0
     const isOwner = user && deck.user_id === user.id
     const childCount = deck.children?.length ?? 0
 
     return (
-      <Card key={deck.id} className={isChild ? 'ml-6 border-l-4 border-l-secondary/50' : ''}>
+      <Card key={deck.id}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             {editingId === deck.id ? (
@@ -188,12 +188,7 @@ export function DeckListPage() {
           </Card>
         ) : null}
 
-        {parents.map((deck) => (
-          <div key={deck.id}>
-            {renderDeckCard(deck)}
-            {deck.children?.map((child) => renderDeckCard(child, true))}
-          </div>
-        ))}
+        {parents.map((deck) => renderDeckCard(deck))}
 
         {standalone.map((deck) => renderDeckCard(deck))}
       </div>
