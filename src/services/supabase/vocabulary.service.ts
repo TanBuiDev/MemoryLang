@@ -54,14 +54,29 @@ export const vocabularyService = {
   },
 
   async list(userId: string): Promise<VocabularyItem[]> {
-    const { data, error } = await supabase
-      .rpc('get_user_vocabulary', { p_user_id: userId })
+    // PostgREST silently truncates RPC responses at the project's API max-rows
+    // cap (default 1000). Paginate with .range() until a short page arrives so
+    // every consumer (vocabulary list, dashboard, study, quiz, review,
+    // statistics, deck picker) sees the full vocabulary set.
+    const PAGE_SIZE = 1000
+    const MAX_PAGES = 100
+    const rows: Record<string, unknown>[] = []
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const from = page * PAGE_SIZE
+      const to = from + PAGE_SIZE - 1
+      const { data, error } = await supabase
+        .rpc('get_user_vocabulary', { p_user_id: userId })
+        .range(from, to)
+      if (error) throw error
+      const pageRows = (data ?? []) as Record<string, unknown>[]
+      rows.push(...pageRows)
+      if (pageRows.length < PAGE_SIZE) break
+    }
 
-    if (error) throw error
     // get_user_vocabulary đã trả về cấu trúc phẳng hoàn chỉnh, không cần flat lại.
     // LEFT JOIN khiến user_terms.id = NULL với các từ chưa học (chỉ tồn tại trong global_terms).
     // Dùng global_term_id làm id dự phòng để các link/điều hướng trang chi tiết hoạt động.
-    return ((data ?? []) as Record<string, unknown>[]).map((item) => {
+    return rows.map((item) => {
       const row = item as { id?: string; global_term_id?: string }
       return { ...item, id: row.id ?? row.global_term_id }
     }) as VocabularyItem[]
