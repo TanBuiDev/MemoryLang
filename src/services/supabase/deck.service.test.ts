@@ -39,7 +39,7 @@ describe('deckService.createLessonBatch', () => {
     eq.mockImplementation((_, val) => {
       return {
         maybeSingle: vi.fn().mockResolvedValue({
-          data: val ? { id: val } : null,
+          data: val ? { id: val, global_term_id: val } : null,
           error: null
         })
       }

@@ -104,12 +104,22 @@ export const deckService = {
   async createLessonBatch({ base, lessons }: CreateLessonBatchInput): Promise<CreateLessonBatchResult> {
     const createdDecks: Deck[] = []
 
+    const uniqueTermIds = Array.from(new Set(lessons.flatMap((lesson) => lesson.termIds)))
+    const globalTermIdByTermId = new Map<string, string>()
+    try {
+      for (const termId of uniqueTermIds) {
+        globalTermIdByTermId.set(termId, await resolveGlobalTermId(termId))
+      }
+    } catch (error) {
+      return { createdDecks, error }
+    }
+
     try {
       for (const lesson of lessons) {
         const deck = await deckService.create({ ...base, name: lesson.name })
 
         const { error } = await supabase.from('deck_terms').insert(
-          lesson.termIds.map((id) => ({ deck_id: deck.id, global_term_id: id })),
+          lesson.termIds.map((id) => ({ deck_id: deck.id, global_term_id: globalTermIdByTermId.get(id) })),
         )
         if (error) {
           try {
