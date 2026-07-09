@@ -654,7 +654,7 @@ export function VocabularyListPage() {
                     ) : null}
                     <div key="body" className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Link to={`/app/vocabulary/${item.id}`} state={{ vocabularyIds }} className="text-xl font-black underline">{item.source_text}</Link>
+                        <Link to={`/app/vocabulary/${item.id}`} state={{ vocabularyIds }} className="text-xl font-black no-underline">{item.source_text}</Link>
                         {item.flagged ? <Flag className="h-4 w-4 text-warning" fill="currentColor" /> : null}
                         <Badge>{t(statusLabelKeys[item.status])}</Badge>
                         {item.part_of_speech
