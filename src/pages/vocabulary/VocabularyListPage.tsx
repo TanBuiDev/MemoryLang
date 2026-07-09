@@ -145,8 +145,17 @@ export function VocabularyListPage() {
     queryKey: ['deck-term-ids', filters.deckId],
     queryFn: async () => {
       if (!filters.deckId) return new Set<string>()
-      const terms = await deckService.listTerms(filters.deckId)
-      return new Set(terms.map((t) => t.global_term_id ?? t.id))
+      const allDecks = decksQuery.data ?? []
+      const descendantIds = deckService.collectDescendantIds(filters.deckId, allDecks)
+      const allDeckIds = [filters.deckId, ...descendantIds]
+      const termSets = await Promise.all(allDeckIds.map((deckId) => deckService.listTerms(deckId)))
+      const result = new Set<string>()
+      for (const terms of termSets) {
+        for (const t of terms) {
+          result.add(t.global_term_id ?? t.id)
+        }
+      }
+      return result
     },
     enabled: shouldUseRemoteData && Boolean(filters.deckId),
   })

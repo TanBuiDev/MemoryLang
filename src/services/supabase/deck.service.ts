@@ -49,7 +49,13 @@ async function resolveGlobalTermId(termId: string): Promise<string> {
   throw new Error(`Cannot resolve term ID: ${termId}`)
 }
 
+function collectDescendantIds(parentId: string, allDecks: Pick<Deck, 'id' | 'parent_id'>[]): string[] {
+  const children = allDecks.filter((d) => d.parent_id === parentId)
+  return children.flatMap((child) => [child.id, ...collectDescendantIds(child.id, allDecks)])
+}
+
 export const deckService = {
+  collectDescendantIds,
   async list(userId: string): Promise<Deck[]> {
     const { data, error } = await supabase
       .from('decks')
