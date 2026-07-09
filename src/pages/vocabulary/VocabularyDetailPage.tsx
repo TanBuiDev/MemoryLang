@@ -1381,8 +1381,8 @@ export function VocabularyDetailPage() {
               </div>
               <div
                 className={cn(
-                  "transition-all duration-200 origin-top overflow-hidden",
-                  isMeaningOpen ? "max-h-125 opacity-100 mt-2" : "max-h-0 opacity-0"
+                  "transition-all duration-200 origin-top",
+                  isMeaningOpen ? "max-h-125 opacity-100 mt-2 overflow-y-auto" : "max-h-0 opacity-0 overflow-hidden"
                 )}
               >
                 {isEditingMeanings ? (
