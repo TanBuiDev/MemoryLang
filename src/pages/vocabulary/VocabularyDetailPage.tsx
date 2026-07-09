@@ -1418,20 +1418,14 @@ export function VocabularyDetailPage() {
                             />
                           </div>
                           <div>
-                            <Label className="text-[10px] uppercase font-black text-muted-foreground">Dịch nghĩa</Label>
-                            <Input
-                              value={m.translation ?? ''}
-                              onChange={(e) => setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, translation: e.target.value || undefined } : tm))}
-                              placeholder="bản dịch sang tiếng Việt"
-                              className="text-xs h-8"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-[10px] uppercase font-black text-muted-foreground">Định nghĩa</Label>
+                            <Label className="text-[10px] uppercase font-black text-muted-foreground">Nghĩa</Label>
                             <textarea
                               value={m.text}
-                              onChange={(e) => setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, text: e.target.value } : tm))}
-                              placeholder="(n) một loại trái cây..."
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, text: val, translation: val || undefined } : tm))
+                              }}
+                              placeholder="(n) mục tiêu..."
                               className="w-full rounded-md border-2 border-border bg-input px-3 py-2 text-xs font-semibold shadow-[2px_2px_0_var(--border)] outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)] min-h-[60px] resize-y"
                               rows={3}
                             />
@@ -1472,7 +1466,7 @@ export function VocabularyDetailPage() {
                         {m.part_of_speech && (
                           <Badge className="mb-1 bg-secondary/20 text-secondary font-black text-xs">{m.part_of_speech}</Badge>
                         )}
-                        {m.translation && (
+                        {m.translation && m.translation !== m.text && (
                           <p className="text-sm text-primary font-bold">{m.translation}</p>
                         )}
                         {m.text && (
