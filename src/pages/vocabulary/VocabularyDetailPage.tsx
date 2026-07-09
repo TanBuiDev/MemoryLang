@@ -1412,7 +1412,7 @@ export function VocabularyDetailPage() {
               ) : (item.meanings ?? []).length > 0 ? (
                 <div className="flex flex-col gap-2.5">
                   {(item.meanings ?? []).filter((m) => m.text.trim() || m.part_of_speech?.trim()).map((m, i) => (
-                    <div key={i} className="flex items-start gap-2.5">
+                    <div key={i} className="flex items-center gap-2.5">
                       {m.part_of_speech && (
                         <Badge className="shrink-0 mt-0.5 bg-secondary/20 text-secondary font-black text-xs">{m.part_of_speech}</Badge>
                       )}
