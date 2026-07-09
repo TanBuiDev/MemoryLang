@@ -157,7 +157,7 @@ export function VocabularyListPage() {
       }
       return result
     },
-    enabled: shouldUseRemoteData && Boolean(filters.deckId),
+    enabled: shouldUseRemoteData && Boolean(filters.deckId) && decksQuery.isSuccess,
   })
   const [searchText, setSearchText] = useState(searchParams.get('q') ?? '')
   const debouncedSearch = useDebounce(searchText, 300)
