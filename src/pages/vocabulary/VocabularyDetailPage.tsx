@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Navigate, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { Flag, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil, MoreVertical, X } from 'lucide-react'
+import { Flag, ChevronLeft, ChevronRight, Upload, Image as ImageIcon, Trash2, Loader2, Maximize2, Minimize2, Copy, Check, ExternalLink, Sparkles, Volume2, RefreshCw, Pencil, MoreVertical, X } from 'lucide-react'
 import autoplayIcon from '@/assets/brand/button-icons/repeat-sound.svg'
 import translateIcon from '@/assets/brand/button-icons/translate.svg'
 import { Badge } from '@/components/ui/badge'
@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label, SearchInput } from '@/components/ui/input'
-import { TranslationChips, cleanTranslationValue } from '@/components/ui/translation-chips'
 import { InlineEditableField } from '@/components/ui/inline-editable-field'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { vocabularyUpdateFormSchema } from '@/features/vocabulary/vocabulary.schema'
@@ -143,7 +142,6 @@ export function VocabularyDetailPage() {
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLSpanElement>(null)
-  const [isMeaningOpen, setIsMeaningOpen] = useState(false)
   const [exampleIndexToDelete, setExampleIndexToDelete] = useState<number | null>(null)
 
   const maxExamplesQuery = useQuery({
@@ -204,8 +202,8 @@ export function VocabularyDetailPage() {
     setCopied(false)
     setIsEditingExamples(false)
     setTempExamples([])
+    setIsEditingMeanings(false)
     setIsActionsMenuOpen(false)
-    setIsMeaningOpen(false)
     setExampleIndexToDelete(null)
   }, [id])
 
@@ -1315,181 +1313,128 @@ export function VocabularyDetailPage() {
           <Card className="flex flex-col gap-6 min-w-0 overflow-hidden">
 
             <div>
-              <CardTitle className="text-sm uppercase text-muted-foreground mb-1">{t('vocabulary.translation')}</CardTitle>
-              <InlineEditableField
-                value={item.translation ?? ''}
-                type="custom"
-                onSave={(val) => handleSaveField({ translation: cleanTranslationValue(val) })}
-                placeholder={t('vocabulary.translation')}
-                displayValue={<span className="text-2xl text-primary font-black">{item.translation || t('vocabulary.translation')}</span>}
-                disabled={!isAdmin}
-                renderCustomInput={(val, onChange, save, cancel) => (
-                  <div className="flex flex-col gap-2">
-                    <TranslationChips value={val} onChange={onChange} />
-                    <div className="flex gap-2 justify-end mt-1">
-                      <Button
-                        type="button"
-                        tabIndex={-1}
-                        className="h-8 py-1 px-3 text-xs bg-emerald-400"
-                        onClick={save}
-                      >
-                        {t('actions.saveChanges')}
-                      </Button>
-                      <Button type="button" tabIndex={-1} className="h-8 py-1 px-3 text-xs" variant="ghost" onClick={cancel}>
-                        {t('actions.cancel')}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              />
-            </div>
-
-            <div>
               <div className="flex items-center justify-between mb-1">
                 <CardTitle className="text-sm uppercase text-muted-foreground m-0">{t('vocabulary.meaning')}</CardTitle>
-                <div className="flex items-center gap-1.5">
-                  {isAdmin && !isEditingMeanings && (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => {
-                        setTempMeanings(structuredClone(item.meanings ?? []))
-                        setIsEditingMeanings(true)
-                        setIsMeaningOpen(true)
-                      }}
-                      className="h-6 w-6 p-0 sm:w-auto sm:px-2 text-[10px] flex items-center justify-center"
-                      title={t('actions.edit')}
-                    >
-                      <Pencil className="h-3 w-3 sm:mr-1" />
-                      <span className="hidden sm:inline">{t('actions.edit')}</span>
-                    </Button>
-                  )}
+                {isAdmin && !isEditingMeanings && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setTempMeanings(structuredClone(item.meanings ?? []))
+                      setIsEditingMeanings(true)
+                    }}
+                    className="h-6 w-6 p-0 sm:w-auto sm:px-2 text-[10px] flex items-center justify-center"
+                    title={t('actions.edit')}
+                  >
+                    <Pencil className="h-3 w-3 sm:mr-1" />
+                    <span className="hidden sm:inline">{t('actions.edit')}</span>
+                  </Button>
+                )}
+              </div>
+
+              {isEditingMeanings ? (
+                <div className="relative flex flex-col gap-3 border-2 border-border rounded-md p-4 bg-muted/10">
                   <Button
                     type="button"
                     variant="ghost"
-                    className="h-6 w-6 min-h-0 p-0 rounded-full border-2 border-border shadow-[1px_1px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none flex items-center justify-center animate-in fade-in zoom-in-50 duration-200"
-                    onClick={() => setIsMeaningOpen(!isMeaningOpen)}
-                    aria-label={isMeaningOpen ? 'Ẩn nghĩa' : 'Xem nghĩa'}
+                    onClick={() => setIsEditingMeanings(false)}
+                    className="absolute -top-3 -right-3 h-7 w-7 min-h-0 rounded-full p-0 border-2 border-border shadow-[2px_2px_0px_var(--border)] bg-card flex items-center justify-center hover:bg-muted active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none z-10"
+                    title={t('actions.cancel')}
                   >
-                    {isMeaningOpen ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
+                    <X className="h-3.5 w-3.5" />
                   </Button>
-                </div>
-              </div>
-              <div
-                className={cn(
-                  "transition-all duration-200 origin-top",
-                  isMeaningOpen ? "max-h-125 opacity-100 mt-2 overflow-y-auto" : "max-h-0 opacity-0 overflow-hidden"
-                )}
-              >
-                {isEditingMeanings ? (
-                  <div className="relative flex flex-col gap-3 border-2 border-border rounded-md p-4 bg-muted/10">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setIsEditingMeanings(false)}
-                      className="absolute -top-3 -right-3 h-7 w-7 min-h-0 rounded-full p-0 border-2 border-border shadow-[2px_2px_0px_var(--border)] bg-card flex items-center justify-center hover:bg-muted active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none z-10"
-                      title={t('actions.cancel')}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                    {tempMeanings.map((m, i) => (
-                      <div key={i} className="relative p-3 border-2 border-border rounded-md bg-card border-l-4 border-l-secondary">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => setTempMeanings((prev) => prev.filter((_, idx) => idx !== i))}
-                          className="absolute -top-2 -right-2 h-6 w-6 min-h-0 rounded-full p-0 border-2 border-border shadow-[1px_1px_0_var(--border)] bg-card flex items-center justify-center hover:bg-danger/10 active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none z-10"
-                          title="Xóa nghĩa"
-                        >
-                          <X className="h-3 w-3 text-danger" />
-                        </Button>
-                        <div className="grid gap-2.5">
-                          <div>
-                            <Label className="text-[10px] uppercase font-black text-muted-foreground">Từ loại</Label>
-                            <Input
-                              value={m.part_of_speech ?? ''}
-                              onChange={(e) => setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, part_of_speech: e.target.value || undefined } : tm))}
-                              placeholder="noun, verb, adjective..."
-                              className="text-xs h-8"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-[10px] uppercase font-black text-muted-foreground">Nghĩa</Label>
-                            <textarea
-                              value={m.text}
-                              onChange={(e) => {
-                                const val = e.target.value
-                                setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, text: val, translation: val || undefined } : tm))
-                              }}
-                              placeholder="(n) mục tiêu..."
-                              className="w-full rounded-md border-2 border-border bg-input px-3 py-2 text-xs font-semibold shadow-[2px_2px_0_var(--border)] outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)] min-h-[60px] resize-y"
-                              rows={3}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setTempMeanings((prev) => [...prev, { text: '', language: item.native_language },])}
-                      className="self-start text-xs"
-                    >
-                      + {t('vocabulary.add')}
-                    </Button>
-                    <div className="flex gap-2 pt-1 border-t border-border">
+                  {tempMeanings.map((m, i) => (
+                    <div key={i} className="relative p-3 border-2 border-border rounded-md bg-card border-l-4 border-l-secondary">
                       <Button
                         type="button"
-                        onClick={() => {
-                          const cleaned = tempMeanings
-                            .filter((m) => m.text.trim() || m.translation?.trim() || m.part_of_speech?.trim())
-                            .map((m) => ({ ...m, text: m.text.trim(), translation: m.translation?.trim() || undefined, part_of_speech: m.part_of_speech?.trim() || undefined }))
-                          handleSaveField({ meanings: cleaned })
-                          setIsEditingMeanings(false)
-                        }}
+                        variant="ghost"
+                        onClick={() => setTempMeanings((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="absolute -top-2 -right-2 h-6 w-6 min-h-0 rounded-full p-0 border-2 border-border shadow-[1px_1px_0_var(--border)] bg-card flex items-center justify-center hover:bg-danger/10 active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none z-10"
+                        title="Xóa nghĩa"
                       >
-                        {t('actions.save')}
+                        <X className="h-3 w-3 text-danger" />
                       </Button>
-                      <Button type="button" variant="ghost" onClick={() => setIsEditingMeanings(false)}>
-                        {t('actions.cancel')}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (item.meanings ?? []).length > 0 ? (
-                  <div className="flex flex-col gap-3">
-                    {(item.meanings ?? []).map((m, i) => (
-                      <div key={i} className="p-3 border-2 border-border rounded-md bg-card border-l-4 border-l-secondary">
-                        {m.part_of_speech && (
-                          <Badge className="mb-1 bg-secondary/20 text-secondary font-black text-xs">{m.part_of_speech}</Badge>
-                        )}
-                        {m.translation && m.translation !== m.text && (
-                          <p className="text-sm text-primary font-bold">{m.translation}</p>
-                        )}
-                        {m.text && (
-                          <p className="text-sm font-semibold text-muted-foreground">{m.text}</p>
-                        )}
+                      <div className="grid gap-2.5">
+                        <div>
+                          <Label className="text-[10px] uppercase font-black text-muted-foreground">Từ loại</Label>
+                          <Input
+                            value={m.part_of_speech ?? ''}
+                            onChange={(e) => setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, part_of_speech: e.target.value || undefined } : tm))}
+                            placeholder="noun, verb, adjective..."
+                            className="text-xs h-8"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[10px] uppercase font-black text-muted-foreground">Nghĩa</Label>
+                          <textarea
+                            value={m.text}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, text: val, translation: val || undefined } : tm))
+                            }}
+                            placeholder="(n) mục tiêu..."
+                            className="w-full rounded-md border-2 border-border bg-input px-3 py-2 text-xs font-semibold shadow-[2px_2px_0_var(--border)] outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)] min-h-[60px] resize-y"
+                            rows={3}
+                          />
+                        </div>
                       </div>
-                    ))}
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setTempMeanings((prev) => [...prev, { text: '', language: item.native_language },])}
+                    className="self-start text-xs"
+                  >
+                    + {t('vocabulary.add')}
+                  </Button>
+                  <div className="flex gap-2 pt-1 border-t border-border">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        const cleaned = tempMeanings
+                          .filter((m) => m.text.trim() || m.translation?.trim() || m.part_of_speech?.trim())
+                          .map((m) => ({ ...m, text: m.text.trim(), translation: m.translation?.trim() || undefined, part_of_speech: m.part_of_speech?.trim() || undefined }))
+                        handleSaveField({
+                          meanings: cleaned,
+                          translation: cleaned.length > 0 ? cleaned.map((m) => m.translation || m.text).filter(Boolean).join('; ') : null,
+                        })
+                        setIsEditingMeanings(false)
+                      }}
+                    >
+                      {t('actions.save')}
+                    </Button>
+                    <Button type="button" variant="ghost" onClick={() => setIsEditingMeanings(false)}>
+                      {t('actions.cancel')}
+                    </Button>
                   </div>
-                ) : (
-                  <InlineEditableField
-                    value=""
-                    type="textarea"
-                    onSave={(val) =>
-                      handleSaveField({
-                        meanings: val ? [{ text: val, language: item.native_language }] : [],
-                      })
-                    }
-                    placeholder={t('vocabulary.noNotes')}
-                    className="font-semibold text-muted-foreground"
-                    disabled={!isAdmin}
-                  />
-                )}
-              </div>
+                </div>
+              ) : (item.meanings ?? []).length > 0 ? (
+                <div className="flex flex-col gap-2.5">
+                  {(item.meanings ?? []).filter((m) => m.text.trim() || m.part_of_speech?.trim()).map((m, i) => (
+                    <div key={i} className="flex items-start gap-2.5">
+                      {m.part_of_speech && (
+                        <Badge className="shrink-0 mt-0.5 bg-secondary/20 text-secondary font-black text-xs">{m.part_of_speech}</Badge>
+                      )}
+                      <p className="text-sm text-primary font-bold leading-relaxed">{m.text || m.translation}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <InlineEditableField
+                  value=""
+                  type="textarea"
+                  onSave={(val) =>
+                    handleSaveField({
+                      meanings: val ? [{ text: val, language: item.native_language, translation: val }] : [],
+                      translation: val || null,
+                    })
+                  }
+                  placeholder={t('vocabulary.noNotes')}
+                  className="font-semibold text-muted-foreground"
+                  disabled={!isAdmin}
+                />
+              )}
             </div>
 
             <hr className="border-border border-dashed" />
