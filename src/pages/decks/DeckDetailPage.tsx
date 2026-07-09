@@ -144,7 +144,7 @@ export function DeckDetailPage() {
     <>
       {parentId ? (
         <div className="mb-2">
-          <Link to={`/app/decks/${parentId}`} className="text-sm font-bold text-muted-foreground hover:text-foreground underline">
+          <Link to={`/app/decks/${parentId}`} className="text-sm font-bold text-muted-foreground hover:text-foreground no-underline">
             &larr; {t('decks.backToParent')}
           </Link>
         </div>
@@ -181,7 +181,7 @@ export function DeckDetailPage() {
             {childrenQuery.data.map((child) => (
               <Card key={child.id}>
                 <CardTitle>{child.name}</CardTitle>
-                <p className="mt-2 text-2xl font-black">{t('decks.words', { count: child.term_count ?? 0 })}</p>
+                <p className="mt-2 text-2xl font-bold">{t('decks.words', { count: child.term_count ?? 0 })}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button asChild variant="secondary"><Link to={`/app/decks/${child.id}`}>{t('decks.open')}</Link></Button>
                   <Button asChild variant="secondary"><Link to="/app/study" onClick={() => setSelectedDeckId(child.id)}>{t('decks.study')}</Link></Button>

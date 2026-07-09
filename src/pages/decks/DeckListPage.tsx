@@ -151,7 +151,7 @@ export function DeckListPage() {
             <CardDescription className="mt-2">{deck.description}</CardDescription>
           </div>
         </div>
-        <p className="mt-4 text-3xl font-black">{hasChildren ? t('decks.childDecks', { count: childCount }) : t('decks.words', { count: deck.term_count ?? 0 })}</p>
+        <p className="mt-4 text-3xl font-bold">{hasChildren ? t('decks.childDecks', { count: childCount }) : t('decks.words', { count: deck.term_count ?? 0 })}</p>
         {shouldUseRemoteData && !hasChildren ? (
           <p className="mt-1 text-sm font-bold text-muted-foreground">{t('decks.quizAttempts', { count: attemptCounts[deck.id] ?? 0 })}</p>
         ) : null}
