@@ -41,20 +41,22 @@ const getErrorMessage = (error: unknown): string => {
   return String(error)
 }
 
-const PART_OF_SPEECH_OPTIONS = [
-  { value: 'noun', label: 'Danh từ (noun)' },
-  { value: 'verb', label: 'Động từ (verb)' },
-  { value: 'adjective', label: 'Tính từ (adjective)' },
-  { value: 'adverb', label: 'Trạng từ (adverb)' },
-  { value: 'pronoun', label: 'Đại từ (pronoun)' },
-  { value: 'preposition', label: 'Giới từ (preposition)' },
-  { value: 'conjunction', label: 'Liên từ (conjunction)' },
-  { value: 'interjection', label: 'Thán từ (interjection)' },
-  { value: 'phrase', label: 'Cụm từ (phrase)' },
-  { value: 'noun phrase', label: 'Cụm danh từ (noun phrase)' },
-  { value: 'verb phrase', label: 'Cụm động từ (verb phrase)' },
-  { value: 'idiom', label: 'Thành ngữ (idiom)' },
+const DEFAULT_PART_OF_SPEECH_OPTIONS = [
+  { value: 'noun', label: 'Noun' },
+  { value: 'verb', label: 'Verb' },
+  { value: 'adjective', label: 'Adjective' },
+  { value: 'adverb', label: 'Adverb' },
+  { value: 'phrase', label: 'Phrase' },
+  { value: 'idiom', label: 'Idiom' },
+  { value: 'sentence', label: 'Sentence' },
+  { value: '__other__', label: 'Khác...' }
 ]
+
+const isCustomPos = (pos: string | undefined | null, options: { value: string; label: string }[]) => {
+  if (!pos) return false
+  const isStandard = options.some(opt => opt.value !== '__other__' && opt.value === pos)
+  return !isStandard
+}
 
 interface HotkeyTooltipProps {
   children: React.ReactElement
@@ -116,6 +118,33 @@ export function VocabularyDetailPage() {
   const profile = useAuthStore((state) => state.profile)
   const isAdmin = Boolean(profile?.is_admin)
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
+
+  const { data: posOptionsSetting } = useQuery({
+    queryKey: ['app-settings', 'vocabulary_pos_options'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'vocabulary_pos_options')
+        .maybeSingle()
+      if (error) throw error
+      if (data?.value) {
+        let parsed = data.value
+        if (typeof parsed === 'string') {
+          parsed = JSON.parse(parsed)
+        }
+        if (Array.isArray(parsed)) {
+          return parsed as { value: string; label: string }[]
+        }
+      }
+      return null
+    },
+    enabled: shouldUseRemoteData
+  })
+
+  const posOptions = useMemo(() => {
+    return posOptionsSetting || DEFAULT_PART_OF_SPEECH_OPTIONS
+  }, [posOptionsSetting])
 
   const [formError, setFormError] = useState<string | null>(null)
   useEffect(() => {
@@ -1374,9 +1403,9 @@ export function VocabularyDetailPage() {
                         <div className="grid gap-1">
                           <Label className="text-[10px] uppercase font-black text-muted-foreground">Từ loại</Label>
                           <Select
-                            value={PART_OF_SPEECH_OPTIONS.some(opt => opt.value === m.part_of_speech) ? (m.part_of_speech ?? '') : (m.part_of_speech ? 'other' : '')}
+                            value={isCustomPos(m.part_of_speech, posOptions) ? '__other__' : (m.part_of_speech ?? '')}
                             onChange={(val) => {
-                              if (val === 'other') {
+                              if (val === '__other__') {
                                 setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, part_of_speech: '' } : tm))
                               } else {
                                 setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, part_of_speech: val || undefined } : tm))
@@ -1384,13 +1413,13 @@ export function VocabularyDetailPage() {
                             }}
                             options={[
                               { value: '', label: 'Chưa chọn từ loại' },
-                              ...PART_OF_SPEECH_OPTIONS,
-                              { value: 'other', label: 'Khác (Tự nhập...)' }
+                              ...posOptions.filter(opt => opt.value !== '__other__'),
+                              { value: '__other__', label: 'Khác (Tự nhập...)' }
                             ]}
                             placeholder="Chọn từ loại..."
                             className="text-xs"
                           />
-                          {(!m.part_of_speech || !PART_OF_SPEECH_OPTIONS.some(opt => opt.value === m.part_of_speech)) && (
+                          {(m.part_of_speech === '' || isCustomPos(m.part_of_speech, posOptions)) && (
                             <Input
                               value={m.part_of_speech ?? ''}
                               onChange={(e) => setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, part_of_speech: e.target.value || undefined } : tm))}
