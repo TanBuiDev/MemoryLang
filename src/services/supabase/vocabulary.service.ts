@@ -8,7 +8,17 @@ import { normalizeText } from '@/utils/normalizeText'
 export function flattenVocabularyItem(row: any): VocabularyItem {
   if (!row) return row
   const { global_terms, ...userTerm } = row
-  const meanings = global_terms?.meanings ?? []
+  
+  let meanings = global_terms?.meanings ?? []
+  if (meanings.length === 0 && (global_terms?.translation || global_terms?.part_of_speech)) {
+    meanings = [{
+      text: global_terms.translation || '',
+      translation: global_terms.translation || null,
+      part_of_speech: global_terms.part_of_speech || null,
+      language: global_terms.native_language || 'vi'
+    }]
+  }
+
   const derivedPos = derivePartOfSpeech(meanings)
   const derivedTranslation = deriveTranslation(meanings)
   const derivedExamples = deriveExamples(meanings)
