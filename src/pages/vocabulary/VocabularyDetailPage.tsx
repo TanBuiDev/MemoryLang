@@ -586,7 +586,7 @@ export function VocabularyDetailPage() {
         image_url: item.image_url ?? '',
         note: item.note,
         translation: item.translation,
-        meanings: (item.meanings ?? []).filter(m => m.text),
+        meanings: (item.meanings ?? []).filter(m => m.text?.trim() || m.translation?.trim()),
         examples: item.examples,
         tags: item.tags ?? [],
         ...updatedFields,
@@ -1393,8 +1393,8 @@ export function VocabularyDetailPage() {
                       type="button"
                       onClick={() => {
                         const cleaned = tempMeanings
-                          .filter((m) => m.text.trim() || m.translation?.trim() || m.part_of_speech?.trim())
-                          .map((m) => ({ ...m, text: m.text.trim(), translation: m.translation?.trim() || undefined, part_of_speech: m.part_of_speech?.trim() || undefined }))
+                          .filter((m) => m.text?.trim() || m.translation?.trim() || m.part_of_speech?.trim())
+                          .map((m) => ({ ...m, text: m.text?.trim() ?? '', translation: m.translation?.trim() || undefined, part_of_speech: m.part_of_speech?.trim() || undefined }))
                         handleSaveField({
                           meanings: cleaned,
                           translation: cleaned.length > 0 ? cleaned.map((m) => m.translation || m.text).filter(Boolean).join('; ') : null,
@@ -1411,7 +1411,7 @@ export function VocabularyDetailPage() {
                 </div>
               ) : (item.meanings ?? []).length > 0 ? (
                 <div className="flex flex-col gap-2.5">
-                  {(item.meanings ?? []).filter((m) => m.text.trim() || m.part_of_speech?.trim()).map((m, i) => (
+                  {(item.meanings ?? []).filter((m) => m.text?.trim() || m.translation?.trim() || m.part_of_speech?.trim()).map((m, i) => (
                     <div key={i} className="flex items-center gap-2.5">
                       {m.part_of_speech && (
                         <Badge className="shrink-0 mt-0.5 bg-secondary/20 text-secondary font-black text-xs">{m.part_of_speech}</Badge>
