@@ -2,12 +2,12 @@ import { useRouteError, isRouteErrorResponse, Link, useNavigate } from 'react-ro
 import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
 import { AlertTriangle, ArrowLeft, Home } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { useI18n } from '@/i18n'
 
 export function ErrorPage() {
   const error = useRouteError()
   const navigate = useNavigate()
-  const { t } = useTranslation()
+  const { t } = useI18n()
 
   let title = t('error.title', 'Lỗi ứng dụng')
   let description = t('error.description', 'Đã xảy ra lỗi không mong muốn.')
