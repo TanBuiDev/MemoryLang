@@ -226,9 +226,29 @@ export const vocabularyService = {
     if (currentTerm) {
       globalTermId = currentTerm.global_term_id
     } else {
-      // ID truyền vào thực chất là global_term_id của một từ chưa được user học
-      globalTermId = id
-      isNewUserTerm = true
+      // ID truyền vào có thể là global_term_id.
+      // Kiểm tra xem user hiện tại đã có dòng trong user_terms cho global_term_id này chưa
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: existingUserTerm } = await supabase
+          .from('user_terms')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('global_term_id', id)
+          .maybeSingle()
+
+        if (existingUserTerm) {
+          userTermId = existingUserTerm.id
+          globalTermId = id
+          isNewUserTerm = false
+        } else {
+          globalTermId = id
+          isNewUserTerm = true
+        }
+      } else {
+        globalTermId = id
+        isNewUserTerm = true
+      }
     }
 
     if (!globalTermId) throw new Error('Cannot find global term ID')
