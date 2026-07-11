@@ -31,6 +31,7 @@ import { PartSelectionPage } from '@/pages/listening/PartSelectionPage'
 import { ListeningSessionPage } from '@/pages/listening/ListeningSessionPage'
 import { ListeningResultPage } from '@/pages/listening/ListeningResultPage'
 import { GrammarPage } from '@/pages/grammar/GrammarPage'
+import { ErrorPage } from '@/pages/public/ErrorPage'
 
 // Lazy-load Admin Layout & Pages
 const LazyAdminLayout = React.lazy(() => import('@/components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })))
@@ -51,88 +52,94 @@ const GrammarLessonPage = React.lazy(() => import('@/pages/grammar/GrammarLesson
 const AdminGrammarLessonEditPage = React.lazy(() => import('@/pages/admin/AdminGrammarLessonEditPage'))
 
 export const router = createBrowserRouter([
-  { path: '/', element: <LandingPage /> },
-  { path: '/login', element: <LoginPage /> },
-  { path: '/register', element: <Navigate to="/login" replace /> },
-  { path: '/forgot-password', element: <ForgotPasswordPage /> },
-  { path: '/create-password', element: <CreatePasswordPage /> },
-  { path: '/onboarding', element: <OnboardingPage /> },
   {
-    element: <ProtectedRoute />,
+    path: '/',
+    errorElement: <ErrorPage />,
     children: [
+      { path: '/', element: <LandingPage /> },
+      { path: '/login', element: <LoginPage /> },
+      { path: '/register', element: <Navigate to="/login" replace /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      { path: '/create-password', element: <CreatePasswordPage /> },
+      { path: '/onboarding', element: <OnboardingPage /> },
       {
-        path: '/app',
-        element: <AppLayout />,
-        children: [
-          { index: true, element: <Navigate to="/app/dashboard" replace /> },
-          { path: 'dashboard', element: <DashboardPage /> },
-          { path: 'vocabulary', element: <VocabularyListPage /> },
-          { path: 'vocabulary/new', element: <AddVocabularyPage /> },
-          { path: 'vocabulary/:id', element: <VocabularyDetailPage /> },
-          { path: 'decks', element: <DeckListPage /> },
-          { path: 'decks/:id', element: <DeckDetailPage /> },
-          { path: 'study', element: <StudySetupPage /> },
-          { path: 'study/session/:sessionId', element: <FlashcardStudyPage /> },
-          { path: 'study/result/:sessionId', element: <StudyResultPage /> },
-          { path: 'quiz', element: <QuizSetupPage /> },
-          { path: 'quiz/session/:sessionId', element: <QuizSessionPage /> },
-          { path: 'quiz/result/:resultId', element: <QuizResultPage /> },
-          { path: 'review', element: <ReviewTodayPage /> },
-          { path: 'templates', element: <TemplateListPage /> },
-          { path: 'templates/new', element: <TemplateBuilderPage /> },
-          { path: 'templates/:id/edit', element: <TemplateBuilderPage /> },
-          { path: 'listening', element: <TopicSelectionPage /> },
-          { path: 'listening/:topicId', element: <TestSelectionPage /> },
-          { path: 'listening/:topicId/:testId', element: <PartSelectionPage /> },
-          { path: 'listening/session/:partId/:mode', element: <ListeningSessionPage /> },
-          { path: 'listening/result/:partId', element: <ListeningResultPage /> },
-          { path: 'grammar', element: <GrammarPage /> },
-          {
-            path: 'grammar/:topicId',
-            element: (
-              <React.Suspense fallback={<AppLoading />}>
-                <GrammarLessonPage />
-              </React.Suspense>
-            ),
-          },
-          { path: 'statistics', element: <Navigate to="/app/dashboard" replace /> },
-          { path: 'settings', element: <SettingsPage /> },
-        ],
-      },
-      // Admin Routes Group
-      {
-        element: <AdminRoute />,
+        element: <ProtectedRoute />,
         children: [
           {
-            path: '/app/admin',
-            element: (
-              <React.Suspense fallback={<AppLoading />}>
-                <LazyAdminLayout />
-              </React.Suspense>
-            ),
+            path: '/app',
+            element: <AppLayout />,
             children: [
-              { index: true, element: <AdminDashboardPage /> },
-              { path: 'users', element: <AdminUsersPage /> },
-              { path: 'tts', element: <AdminTtsPage /> },
-              { path: 'secrets', element: <AdminSecretsPage /> },
-              { path: 'features', element: <AdminFeaturesPage /> },
-              // Phase 3 & 4 routes mapping to real pages
-              { path: 'vocabulary', element: <AdminVocabularyPage /> },
-              { path: 'grammar', element: <AdminGrammarPage /> },
+              { index: true, element: <Navigate to="/app/dashboard" replace /> },
+              { path: 'dashboard', element: <DashboardPage /> },
+              { path: 'vocabulary', element: <VocabularyListPage /> },
+              { path: 'vocabulary/new', element: <AddVocabularyPage /> },
+              { path: 'vocabulary/:id', element: <VocabularyDetailPage /> },
+              { path: 'decks', element: <DeckListPage /> },
+              { path: 'decks/:id', element: <DeckDetailPage /> },
+              { path: 'study', element: <StudySetupPage /> },
+              { path: 'study/session/:sessionId', element: <FlashcardStudyPage /> },
+              { path: 'study/result/:sessionId', element: <StudyResultPage /> },
+              { path: 'quiz', element: <QuizSetupPage /> },
+              { path: 'quiz/session/:sessionId', element: <QuizSessionPage /> },
+              { path: 'quiz/result/:resultId', element: <QuizResultPage /> },
+              { path: 'review', element: <ReviewTodayPage /> },
+              { path: 'templates', element: <TemplateListPage /> },
+              { path: 'templates/new', element: <TemplateBuilderPage /> },
+              { path: 'templates/:id/edit', element: <TemplateBuilderPage /> },
+              { path: 'listening', element: <TopicSelectionPage /> },
+              { path: 'listening/:topicId', element: <TestSelectionPage /> },
+              { path: 'listening/:topicId/:testId', element: <PartSelectionPage /> },
+              { path: 'listening/session/:partId/:mode', element: <ListeningSessionPage /> },
+              { path: 'listening/result/:partId', element: <ListeningResultPage /> },
+              { path: 'grammar', element: <GrammarPage /> },
               {
                 path: 'grammar/:topicId',
                 element: (
                   <React.Suspense fallback={<AppLoading />}>
-                    <AdminGrammarLessonEditPage />
+                    <GrammarLessonPage />
                   </React.Suspense>
                 ),
               },
-              { path: 'listening', element: <AdminListeningPage /> },
-              { path: 'storage', element: <AdminStoragePage /> },
-              { path: 'functions', element: <AdminFunctionsPage /> },
-              { path: 'i18n', element: <AdminI18nPage /> },
-              { path: 'audit', element: <AdminAuditPage /> },
-              { path: 'analytics', element: <AdminAnalyticsPage /> },
+              { path: 'statistics', element: <Navigate to="/app/dashboard" replace /> },
+              { path: 'settings', element: <SettingsPage /> },
+            ],
+          },
+          // Admin Routes Group
+          {
+            element: <AdminRoute />,
+            children: [
+              {
+                path: '/app/admin',
+                element: (
+                  <React.Suspense fallback={<AppLoading />}>
+                    <LazyAdminLayout />
+                  </React.Suspense>
+                ),
+                children: [
+                  { index: true, element: <AdminDashboardPage /> },
+                  { path: 'users', element: <AdminUsersPage /> },
+                  { path: 'tts', element: <AdminTtsPage /> },
+                  { path: 'secrets', element: <AdminSecretsPage /> },
+                  { path: 'features', element: <AdminFeaturesPage /> },
+                  // Phase 3 & 4 routes mapping to real pages
+                  { path: 'vocabulary', element: <AdminVocabularyPage /> },
+                  { path: 'grammar', element: <AdminGrammarPage /> },
+                  {
+                    path: 'grammar/:topicId',
+                    element: (
+                      <React.Suspense fallback={<AppLoading />}>
+                        <AdminGrammarLessonEditPage />
+                      </React.Suspense>
+                    ),
+                  },
+                  { path: 'listening', element: <AdminListeningPage /> },
+                  { path: 'storage', element: <AdminStoragePage /> },
+                  { path: 'functions', element: <AdminFunctionsPage /> },
+                  { path: 'i18n', element: <AdminI18nPage /> },
+                  { path: 'audit', element: <AdminAuditPage /> },
+                  { path: 'analytics', element: <AdminAnalyticsPage /> },
+                ],
+              },
             ],
           },
         ],
