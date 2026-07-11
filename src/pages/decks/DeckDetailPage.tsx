@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FolderOpen, Pencil, Trash2, Plus } from 'lucide-react'
+import { FolderOpen, Pencil, Trash2, Plus, ChevronLeft } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -188,9 +188,13 @@ export function DeckDetailPage() {
   return (
     <>
       {parentId ? (
-        <div className="mb-2">
-          <Link to={`/app/decks/${parentId}`} className="text-sm font-bold text-muted-foreground hover:text-foreground no-underline">
-            &larr; {t('decks.backToParent')}
+        <div className="mb-4">
+          <Link 
+            to={`/app/decks/${parentId}`} 
+            className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-foreground bg-[#1c293c]/5 hover:bg-[#1c293c]/10 px-2.5 py-1.5 rounded transition-all no-underline border-2 border-border shadow-[1px_1px_0_#1c293c]"
+          >
+            <ChevronLeft size={14} className="stroke-[2.5px]" />
+            <span>Quay lại</span>
           </Link>
         </div>
       ) : null}
@@ -253,7 +257,7 @@ export function DeckDetailPage() {
       {!(childrenQuery.data && childrenQuery.data.length > 0) && (
         <div className="mb-4 flex gap-2">
           <Badge className="bg-primary/10 text-primary font-bold">
-            {t('decks.words', { count: deck.term_count ?? 0 })}
+            {t('decks.words', { count: vocabulary.length })}
           </Badge>
         </div>
       )}
@@ -383,25 +387,40 @@ export function DeckDetailPage() {
       {shouldUseRemoteData && !(childrenQuery.data && childrenQuery.data.length > 0) ? (
         <Card className="mb-4">
           {!bulkSelectMode ? (
-            <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
-              <div>
-                <Label>{t('decks.addTerm')}</Label>
-                <Select value={selectedTermId} onChange={(event) => setSelectedTermId(event.target.value)}>
-                  <option value="">{availableVocabulary.length === 0 ? t('decks.noAvailableTerms') : t('decks.chooseTerm')}</option>
-                  {availableVocabulary.map((item) => <option key={item.id} value={item.id}>{item.source_text}</option>)}
-                </Select>
-                <label className="mt-2 flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={filterNoDeck}
-                    onChange={(event) => setFilterNoDeck(event.target.checked)}
-                    className="h-4 w-4 accent-primary"
-                  />
-                  <span className="text-xs font-bold">{t('decks.filterNoDeck')}</span>
-                </label>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-end gap-3 w-full">
+                <div className="flex-1 min-w-[200px]">
+                  <Label className="text-xs font-black uppercase text-muted-foreground mb-1.5 block">{t('decks.addTerm')}</Label>
+                  <Select value={selectedTermId} onChange={(event) => setSelectedTermId(event.target.value)}>
+                    <option value="">{availableVocabulary.length === 0 ? t('decks.noAvailableTerms') : t('decks.chooseTerm')}</option>
+                    {availableVocabulary.map((item) => <option key={item.id} value={item.id}>{item.source_text}</option>)}
+                  </Select>
+                </div>
+                <Button 
+                  disabled={!selectedTermId || addTermMutation.isPending} 
+                  onClick={() => addTermMutation.mutate()}
+                  className="min-h-10 px-6 shrink-0"
+                >
+                  {addTermMutation.isPending ? t('actions.saving') : t('decks.addTerm')}
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  disabled={availableVocabulary.length === 0} 
+                  onClick={() => { setSelectedAvailableIds(new Set()); setBulkSelectMode(true) }}
+                  className="min-h-10 px-4 shrink-0"
+                >
+                  {t('decks.bulkAdd')}
+                </Button>
               </div>
-              <Button disabled={!selectedTermId || addTermMutation.isPending} onClick={() => addTermMutation.mutate()}>{addTermMutation.isPending ? t('actions.saving') : t('decks.addTerm')}</Button>
-              <Button variant="ghost" disabled={availableVocabulary.length === 0} onClick={() => { setSelectedAvailableIds(new Set()); setBulkSelectMode(true) }}>{t('decks.bulkAdd')}</Button>
+              <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
+                <input
+                  type="checkbox"
+                  checked={filterNoDeck}
+                  onChange={(event) => setFilterNoDeck(event.target.checked)}
+                  className="h-4 w-4 accent-primary"
+                />
+                <span className="text-xs font-bold">{t('decks.filterNoDeck')}</span>
+              </label>
             </div>
           ) : (
             <div>
