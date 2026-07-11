@@ -32,6 +32,7 @@ import { ListeningSessionPage } from '@/pages/listening/ListeningSessionPage'
 import { ListeningResultPage } from '@/pages/listening/ListeningResultPage'
 import { GrammarPage } from '@/pages/grammar/GrammarPage'
 import { ErrorPage } from '@/pages/public/ErrorPage'
+import { ComingSoonPage } from '@/pages/public/ComingSoonPage'
 
 // Lazy-load Admin Layout & Pages
 const LazyAdminLayout = React.lazy(() => import('@/components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })))
@@ -102,6 +103,7 @@ export const router = createBrowserRouter([
               },
               { path: 'statistics', element: <Navigate to="/app/dashboard" replace /> },
               { path: 'settings', element: <SettingsPage /> },
+              { path: '*', element: <ComingSoonPage /> },
             ],
           },
           // Admin Routes Group
