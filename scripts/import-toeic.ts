@@ -23,7 +23,7 @@ loadEnv();
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? '';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 const TARGET_USER_ID = '7112930d-527c-47dc-85f6-1f03a49d603c'; // Bùi Lê Hoàng Tấn
-const DATA_FILE = resolve(__dirname, '..', 'docs', 'toeic_vocabulary.json');
+const DATA_FILE = resolve(__dirname, '..', 'docs', 'ETS_TOEIC_LISTENING_2026.json');
 const AUDIO_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/generate-audio`;
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
