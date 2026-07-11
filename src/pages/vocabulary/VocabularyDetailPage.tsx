@@ -11,6 +11,7 @@ import { Card, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label, SearchInput } from '@/components/ui/input'
 import { InlineEditableField } from '@/components/ui/inline-editable-field'
+import { Select } from '@/components/ui/select'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { vocabularyUpdateFormSchema } from '@/features/vocabulary/vocabulary.schema'
 import { useI18n } from '@/i18n'
@@ -39,6 +40,21 @@ const getErrorMessage = (error: unknown): string => {
   }
   return String(error)
 }
+
+const PART_OF_SPEECH_OPTIONS = [
+  { value: 'noun', label: 'Danh từ (noun)' },
+  { value: 'verb', label: 'Động từ (verb)' },
+  { value: 'adjective', label: 'Tính từ (adjective)' },
+  { value: 'adverb', label: 'Trạng từ (adverb)' },
+  { value: 'pronoun', label: 'Đại từ (pronoun)' },
+  { value: 'preposition', label: 'Giới từ (preposition)' },
+  { value: 'conjunction', label: 'Liên từ (conjunction)' },
+  { value: 'interjection', label: 'Thán từ (interjection)' },
+  { value: 'phrase', label: 'Cụm từ (phrase)' },
+  { value: 'noun phrase', label: 'Cụm danh từ (noun phrase)' },
+  { value: 'verb phrase', label: 'Cụm động từ (verb phrase)' },
+  { value: 'idiom', label: 'Thành ngữ (idiom)' },
+]
 
 interface HotkeyTooltipProps {
   children: React.ReactElement
@@ -1355,14 +1371,33 @@ export function VocabularyDetailPage() {
                         <X className="h-3 w-3 text-danger" />
                       </Button>
                       <div className="grid gap-2.5">
-                        <div>
+                        <div className="grid gap-1">
                           <Label className="text-[10px] uppercase font-black text-muted-foreground">Từ loại</Label>
-                          <Input
-                            value={m.part_of_speech ?? ''}
-                            onChange={(e) => setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, part_of_speech: e.target.value || undefined } : tm))}
-                            placeholder="noun, verb, adjective..."
-                            className="text-xs h-8"
+                          <Select
+                            value={PART_OF_SPEECH_OPTIONS.some(opt => opt.value === m.part_of_speech) ? (m.part_of_speech ?? '') : (m.part_of_speech ? 'other' : '')}
+                            onChange={(val) => {
+                              if (val === 'other') {
+                                setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, part_of_speech: '' } : tm))
+                              } else {
+                                setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, part_of_speech: val || undefined } : tm))
+                              }
+                            }}
+                            options={[
+                              { value: '', label: 'Chưa chọn từ loại' },
+                              ...PART_OF_SPEECH_OPTIONS,
+                              { value: 'other', label: 'Khác (Tự nhập...)' }
+                            ]}
+                            placeholder="Chọn từ loại..."
+                            className="text-xs"
                           />
+                          {(!m.part_of_speech || !PART_OF_SPEECH_OPTIONS.some(opt => opt.value === m.part_of_speech)) && (
+                            <Input
+                              value={m.part_of_speech ?? ''}
+                              onChange={(e) => setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, part_of_speech: e.target.value || undefined } : tm))}
+                              placeholder="Nhập từ loại khác (n, v, noun, verb...)"
+                              className="text-xs h-8 mt-1.5"
+                            />
+                          )}
                         </div>
                         <div>
                           <Label className="text-[10px] uppercase font-black text-muted-foreground">Nghĩa dịch (tiếng Việt)</Label>
