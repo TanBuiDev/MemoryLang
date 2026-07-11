@@ -380,7 +380,7 @@ export function DeckDetailPage() {
           </div>
         </div>
       ) : null}
-      {shouldUseRemoteData ? (
+      {shouldUseRemoteData && !(childrenQuery.data && childrenQuery.data.length > 0) ? (
         <Card className="mb-4">
           {!bulkSelectMode ? (
             <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
@@ -465,21 +465,23 @@ export function DeckDetailPage() {
           )}
         </Card>
       ) : null}
-      <div className="grid gap-3">
-        {vocabulary.length === 0 ? <Card className="font-black text-muted-foreground">{t('vocabulary.emptyTitle')}</Card> : null}
-        {vocabulary.map((item) => (
-          <Card key={item.id} className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
-            <div>
-              <p className="text-xl font-black">{item.source_text}</p>
-              <p className="font-semibold text-muted-foreground">{item.meanings[0]?.text}</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button asChild variant="ghost"><Link to={`/app/vocabulary/${item.id}`}>{t('decks.view')}</Link></Button>
-              {shouldUseRemoteData ? <Button variant="secondary" onClick={() => setPendingRemoveTermId(item.id)}>{t('decks.removeFromDeck')}</Button> : null}
-            </div>
-          </Card>
-        ))}
-      </div>
+      {!(childrenQuery.data && childrenQuery.data.length > 0) && (
+        <div className="grid gap-3">
+          {vocabulary.length === 0 ? <Card className="font-black text-muted-foreground">{t('vocabulary.emptyTitle')}</Card> : null}
+          {vocabulary.map((item) => (
+            <Card key={item.id} className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+              <div>
+                <p className="text-xl font-black">{item.source_text}</p>
+                <p className="font-semibold text-muted-foreground">{item.meanings[0]?.text}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild variant="ghost"><Link to={`/app/vocabulary/${item.id}`}>{t('decks.view')}</Link></Button>
+                {shouldUseRemoteData ? <Button variant="secondary" onClick={() => setPendingRemoveTermId(item.id)}>{t('decks.removeFromDeck')}</Button> : null}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
       <ConfirmModal
         open={Boolean(pendingRemoveTermId)}
         title={t('decks.removeTermConfirm')}
