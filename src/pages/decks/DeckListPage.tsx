@@ -126,7 +126,7 @@ export function DeckListPage() {
                   onChange={(e) => setEditName(e.target.value)} 
                   className="min-w-[200px] flex-1 font-bold" 
                   autoFocus
-                  placeholder="Tên bộ thẻ"
+                  placeholder={t('decks.name')}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') updateMutation.mutate({ id: deck.id, name: editName.trim() })
                     if (e.key === 'Escape') setEditingId(null)

@@ -291,14 +291,14 @@ export function DeckDetailPage() {
                           onClick={() => updateChildMutation.mutate({ childId: child.id, name: editChildName.trim() })}
                           className="inline-flex h-8 items-center justify-center rounded border-2 border-border bg-primary text-primary-foreground font-black text-xs px-2.5 shadow-[1px_1px_0_var(--border)] hover:bg-[#ffe05c] transition-all active:translate-y-0.5 active:shadow-none disabled:opacity-50"
                         >
-                          Lưu
+                          {t('actions.save')}
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditingChildId(null)}
                           className="inline-flex h-8 items-center justify-center rounded border-2 border-border bg-card text-foreground font-black text-xs px-2.5 shadow-[1px_1px_0_var(--border)] hover:bg-muted transition-all active:translate-y-0.5 active:shadow-none"
                         >
-                          Hủy
+                          {t('actions.cancel')}
                         </button>
                       </div>
                     ) : (
@@ -339,12 +339,12 @@ export function DeckDetailPage() {
             {shouldUseRemoteData && (
               isCreatingChild ? (
                 <Card className="border-dashed bg-card/50">
-                  <CardTitle className="text-sm font-black text-muted-foreground mb-3">Tạo bộ con mới</CardTitle>
+                  <CardTitle className="text-sm font-black text-muted-foreground mb-3">{t('decks.createChildTitle')}</CardTitle>
                   <div className="grid gap-2">
                     <Input 
                       value={newChildName} 
                       onChange={(e) => setNewChildName(e.target.value)} 
-                      placeholder="Tên bộ con (ví dụ: TEST 11)" 
+                      placeholder={t('decks.childDeckTitle')} 
                       className="text-xs h-8 font-bold"
                       autoFocus
                       onKeyDown={(e) => {
@@ -359,14 +359,14 @@ export function DeckDetailPage() {
                         onClick={() => createChildMutation.mutate(newChildName.trim())}
                         className="inline-flex h-8 items-center justify-center rounded border-2 border-border bg-primary text-primary-foreground font-black text-xs px-3 shadow-[1px_1px_0_var(--border)] hover:bg-[#ffe05c] transition-all active:translate-y-0.5 active:shadow-none disabled:opacity-50"
                       >
-                        Lưu
+                        {t('actions.save')}
                       </button>
                       <button
                         type="button"
                         onClick={() => setIsCreatingChild(false)}
                         className="inline-flex h-8 items-center justify-center rounded border-2 border-border bg-card text-foreground font-black text-xs px-3 shadow-[1px_1px_0_var(--border)] hover:bg-muted transition-all active:translate-y-0.5 active:shadow-none"
                       >
-                        Hủy
+                        {t('actions.cancel')}
                       </button>
                     </div>
                   </div>
@@ -377,7 +377,7 @@ export function DeckDetailPage() {
                   onClick={() => { setIsCreatingChild(true); setNewChildName('') }}
                 >
                   <Plus size={20} className="mb-1" />
-                  <span className="text-xs font-bold">Thêm bộ con</span>
+                  <span className="text-xs font-bold">{t('decks.addChild')}</span>
                 </Card>
               )
             )}
@@ -511,8 +511,8 @@ export function DeckDetailPage() {
       />
       <ConfirmModal
         open={Boolean(pendingDeleteChildId)}
-        title="Xóa bộ thẻ con"
-        description="Bạn có chắc chắn muốn xóa bộ thẻ con này? Hành động này sẽ xóa vĩnh viễn bộ thẻ và toàn bộ liên kết từ vựng bên trong."
+        title={t('decks.deleteChildConfirmTitle')}
+        description={t('decks.deleteChildConfirmDesc')}
         confirmLabel={t('vocabulary.delete')}
         cancelLabel={t('actions.cancel')}
         isDanger

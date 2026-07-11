@@ -1226,7 +1226,7 @@ export function VocabularyDetailPage() {
                   "h-10 w-10 p-0 flex items-center justify-center rounded-md border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none transition-colors duration-150",
                   isActionsMenuOpen && "bg-muted"
                 )}
-                title="Thao tác khác"
+                title={t('actions.moreActions')}
               >
                 <MoreVertical className="h-4 w-4" />
               </Button>
@@ -1274,7 +1274,7 @@ export function VocabularyDetailPage() {
                 }}
               >
                 <Flag className={cn("h-4 w-4", item.flagged ? "text-warning fill-warning" : "text-muted-foreground")} />
-                <span>{item.flagged ? "Bỏ gắn cờ" : "Gắn cờ"}</span>
+                <span>{item.flagged ? t('vocabulary.unflagTerm') : t('vocabulary.flagTerm')}</span>
               </Button>
 
               {isAdmin && (
@@ -1309,7 +1309,7 @@ export function VocabularyDetailPage() {
                   ) : (
                     <RefreshCw className="h-4 w-4" />
                   )}
-                  <span>Làm mới IPA</span>
+                  <span>{t('actions.refreshIpa')}</span>
                 </Button>
               )}
 
@@ -1395,13 +1395,13 @@ export function VocabularyDetailPage() {
                         variant="ghost"
                         onClick={() => setTempMeanings((prev) => prev.filter((_, idx) => idx !== i))}
                         className="absolute -top-2 -right-2 h-6 w-6 min-h-0 rounded-full p-0 border-2 border-border shadow-[1px_1px_0_var(--border)] bg-card flex items-center justify-center hover:bg-danger/10 active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none z-10"
-                        title="Xóa nghĩa"
+                        title={t('vocabulary.removeMeaning')}
                       >
                         <X className="h-3 w-3 text-danger" />
                       </Button>
                       <div className="grid gap-2.5">
                         <div className="grid gap-1">
-                          <Label className="text-[10px] uppercase font-black text-muted-foreground">Từ loại</Label>
+                          <Label className="text-[10px] uppercase font-black text-muted-foreground">{t('vocabulary.partOfSpeech')}</Label>
                           <Select
                             value={isCustomPos(m.part_of_speech, posOptions) ? '__other__' : (m.part_of_speech ?? '')}
                             onChange={(val) => {
@@ -1412,43 +1412,43 @@ export function VocabularyDetailPage() {
                               }
                             }}
                             options={[
-                              { value: '', label: 'Chưa chọn từ loại' },
+                              { value: '', label: t('vocabulary.noPartOfSpeech') },
                               ...posOptions.filter(opt => opt.value !== '__other__'),
-                              { value: '__other__', label: 'Khác (Tự nhập...)' }
+                              { value: '__other__', label: t('vocabulary.otherPartOfSpeech') }
                             ]}
-                            placeholder="Chọn từ loại..."
+                            placeholder={t('vocabulary.selectPartOfSpeech')}
                             className="text-xs"
                           />
                           {(m.part_of_speech === '' || isCustomPos(m.part_of_speech, posOptions)) && (
                             <Input
                               value={m.part_of_speech ?? ''}
                               onChange={(e) => setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, part_of_speech: e.target.value || undefined } : tm))}
-                              placeholder="Nhập từ loại khác (n, v, noun, verb...)"
+                              placeholder={t('vocabulary.enterPartOfSpeechPlaceholder')}
                               className="text-xs h-8 mt-1.5"
                             />
                           )}
                         </div>
                         <div>
-                          <Label className="text-[10px] uppercase font-black text-muted-foreground">Nghĩa dịch (tiếng Việt)</Label>
+                          <Label className="text-[10px] uppercase font-black text-muted-foreground">{t('vocabulary.translationLabel')}</Label>
                           <Input
                             value={m.translation ?? ''}
                             onChange={(e) => {
                               const val = e.target.value
                               setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, translation: val || undefined } : tm))
                             }}
-                            placeholder="đồ cổ, lưng..."
+                            placeholder={t('vocabulary.translationPlaceholder')}
                             className="text-xs h-8"
                           />
                         </div>
                         <div>
-                          <Label className="text-[10px] uppercase font-black text-muted-foreground">Định nghĩa (tiếng Anh)</Label>
+                          <Label className="text-[10px] uppercase font-black text-muted-foreground">{t('vocabulary.definitionLabel')}</Label>
                           <textarea
                             value={m.text ?? ''}
                             onChange={(e) => {
                               const val = e.target.value
                               setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, text: val } : tm))
                             }}
-                            placeholder="an object having special value because of its age..."
+                            placeholder={t('vocabulary.definitionPlaceholder')}
                             className="w-full rounded-md border-2 border-border bg-input px-3 py-2 text-xs font-semibold shadow-[2px_2px_0_var(--border)] outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)] min-h-[50px] resize-y"
                             rows={2}
                           />
