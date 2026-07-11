@@ -194,7 +194,7 @@ export function DeckDetailPage() {
             className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-foreground bg-[#1c293c]/5 hover:bg-[#1c293c]/10 px-2.5 py-1.5 rounded transition-all no-underline border-2 border-border shadow-[1px_1px_0_#1c293c]"
           >
             <ChevronLeft size={14} className="stroke-[2.5px]" />
-            <span>Quay lại</span>
+            <span>{t('actions.back')}</span>
           </Link>
         </div>
       ) : null}
