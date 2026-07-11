@@ -9,14 +9,14 @@ export function ErrorPage() {
   const navigate = useNavigate()
   const { t } = useI18n()
 
-  let title = t('error.title', 'Lỗi ứng dụng')
-  let description = t('error.description', 'Đã xảy ra lỗi không mong muốn.')
+  let title = t('error.title')
+  let description = t('error.description')
   let is404 = false
 
   if (isRouteErrorResponse(error)) {
     if (error.status === 404) {
-      title = t('error.notFoundTitle', 'Không tìm thấy trang (404)')
-      description = t('error.notFoundDescription', 'Trang bạn đang tìm kiếm không tồn tại hoặc chưa được phát triển.')
+      title = t('error.notFoundTitle')
+      description = t('error.notFoundDescription')
       is404 = true
     } else {
       description = error.statusText || description
@@ -57,7 +57,7 @@ export function ErrorPage() {
             className="flex items-center gap-2 px-5 min-h-11 font-black shadow-[3px_3px_0px_#000]"
           >
             <ArrowLeft size={16} className="stroke-[2.5]" />
-            <span>{t('error.goBack', 'Quay lại')}</span>
+            <span>{t('error.goBack')}</span>
           </Button>
 
           <Button 
@@ -66,7 +66,7 @@ export function ErrorPage() {
           >
             <Link to="/" className="no-underline">
               <Home size={16} className="stroke-[2.5]" />
-              <span>{t('error.goHome', 'Về trang chủ')}</span>
+              <span>{t('error.goHome')}</span>
             </Link>
           </Button>
         </div>

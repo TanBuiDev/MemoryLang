@@ -16,12 +16,12 @@ export function ComingSoonPage() {
         </div>
 
         <CardTitle className="text-2xl font-black mb-3 text-foreground flex items-center gap-2 justify-center">
-          {t('comingSoon.title', 'Tính năng đang phát triển!')}
+          {t('comingSoon.title')}
           <Sparkles size={20} className="text-amber-500 fill-amber-500 animate-pulse" />
         </CardTitle>
 
         <p className="text-sm font-bold text-muted-foreground mb-8 max-w-sm leading-relaxed">
-          {t('comingSoon.description', 'Hãy chờ đợi đi, tính năng này sắp ra mắt rồi! 😉 Chúng tôi đang nỗ lực hoàn thiện để mang lại trải nghiệm học tập tốt nhất cho bạn.')}
+          {t('comingSoon.description')}
         </p>
 
         <Button
@@ -30,7 +30,7 @@ export function ComingSoonPage() {
           className="flex items-center gap-2 px-6 min-h-10 font-black shadow-[3px_3px_0px_#000] bg-primary hover:bg-[#ffe05c]"
         >
           <ArrowLeft size={16} className="stroke-[2.5]" />
-          <span>{t('error.goBack', 'Quay lại')}</span>
+          <span>{t('error.goBack')}</span>
         </Button>
       </Card>
     </div>

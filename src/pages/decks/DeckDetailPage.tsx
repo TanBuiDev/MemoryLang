@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { Input, Label, Select, Textarea } from '@/components/ui/input'
+import { Input, Label, Select } from '@/components/ui/input'
 import { demoDecks, demoVocabulary } from '@/features/demo/demoData'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
@@ -29,7 +29,6 @@ export function DeckDetailPage() {
   const [pendingRemoveTermId, setPendingRemoveTermId] = useState<string | null>(null)
   const [editingDeck, setEditingDeck] = useState(false)
   const [editName, setEditName] = useState('')
-  const [editDescription, setEditDescription] = useState('')
   const [isCreatingChild, setIsCreatingChild] = useState(false)
   const [newChildName, setNewChildName] = useState('')
   const [editingChildId, setEditingChildId] = useState<string | null>(null)
@@ -207,7 +206,7 @@ export function DeckDetailPage() {
                 type="button" 
                 title={t('decks.edit')}
                 className="inline-flex h-7 w-7 items-center justify-center rounded border-2 border-border bg-secondary text-secondary-foreground opacity-60 shadow-[1px_1px_0_var(--border)] hover:opacity-100 transition-all active:translate-y-0.5 active:shadow-none"
-                onClick={() => { setEditingDeck(true); setEditName(deck.name); setEditDescription(deck.description ?? '') }}
+                onClick={() => { setEditingDeck(true); setEditName(deck.name) }}
               >
                 <Pencil size={14} />
               </button>
@@ -515,12 +514,12 @@ export function DeckDetailPage() {
         description={t('decks.deleteChildConfirmDesc')}
         confirmLabel={t('vocabulary.delete')}
         cancelLabel={t('actions.cancel')}
-        isDanger
+        variant="danger"
+        confirmDisabled={deleteChildMutation.isPending}
         onConfirm={() => {
           if (pendingDeleteChildId) deleteChildMutation.mutate(pendingDeleteChildId)
         }}
         onCancel={() => setPendingDeleteChildId(null)}
-        loading={deleteChildMutation.isPending}
       />
     </>
   )
