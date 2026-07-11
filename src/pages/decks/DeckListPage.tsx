@@ -29,6 +29,7 @@ export function DeckListPage() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
+  const [editDescription, setEditDescription] = useState('')
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
   const decksQuery = useQuery({
     queryKey: ['decks', user?.id],
@@ -67,7 +68,8 @@ export function DeckListPage() {
     },
   })
   const updateMutation = useMutation({
-    mutationFn: ({ id, name: newName }: { id: string; name: string }) => deckService.update(id, { name: newName, user_id: user!.id }),
+    mutationFn: ({ id, name: newName, description: newDescription }: { id: string; name: string; description: string }) => 
+      deckService.update(id, { name: newName, description: newDescription, user_id: user!.id }),
     onSuccess: async () => {
       setEditingId(null)
       await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
@@ -120,35 +122,67 @@ export function DeckListPage() {
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             {editingId === deck.id ? (
-              <div className="flex gap-2 items-center">
-                <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="min-w-[200px]" autoFocus
+              <div className="flex flex-col gap-2 w-full">
+                <div className="flex gap-2 items-center">
+                  <Input 
+                    value={editName} 
+                    onChange={(e) => setEditName(e.target.value)} 
+                    className="min-w-[200px] flex-1 font-bold" 
+                    autoFocus
+                    placeholder="Tên bộ thẻ"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') updateMutation.mutate({ id: deck.id, name: editName.trim(), description: editDescription.trim() })
+                      if (e.key === 'Escape') setEditingId(null)
+                    }}
+                  />
+                  <Button 
+                    variant="primary" 
+                    className="text-xs shrink-0" 
+                    disabled={!editName.trim() || updateMutation.isPending} 
+                    onClick={() => updateMutation.mutate({ id: deck.id, name: editName.trim(), description: editDescription.trim() })}
+                  >
+                    {t('decks.saveEdit')}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    className="text-xs shrink-0" 
+                    onClick={() => setEditingId(null)}
+                  >
+                    {t('decks.cancelEdit')}
+                  </Button>
+                </div>
+                <Input
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Nhập mô tả bộ thẻ..."
+                  className="w-full text-xs mt-1"
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') updateMutation.mutate({ id: deck.id, name: editName.trim() })
+                    if (e.key === 'Enter') updateMutation.mutate({ id: deck.id, name: editName.trim(), description: editDescription.trim() })
                     if (e.key === 'Escape') setEditingId(null)
                   }}
                 />
-                <Button variant="primary" className="text-xs" disabled={!editName.trim() || updateMutation.isPending} onClick={() => updateMutation.mutate({ id: deck.id, name: editName.trim() })}>{t('decks.saveEdit')}</Button>
-                <Button variant="ghost" className="text-xs" onClick={() => setEditingId(null)}>{t('decks.cancelEdit')}</Button>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {hasChildren && <FolderOpen size={16} className="text-amber-500" />}
-                <Link to={`/app/decks/${deck.id}`} className="hover:underline">
-                  <CardTitle>{deck.name}</CardTitle>
-                </Link>
-                <Badge className={deck.visibility === 'public' ? 'bg-emerald-100 text-emerald-800 font-bold' : 'bg-muted text-muted-foreground font-bold'}>
-                  {deck.visibility === 'public' ? t('decks.public') : t('decks.private')}
-                </Badge>
-                {hasChildren && <Badge className="bg-amber-100 text-amber-800 font-bold">{t('decks.childDecks', { count: childCount })}</Badge>}
-                {shouldUseRemoteData && isOwner ? (
-                  <button type="button" title={t('decks.edit')}
-                    className="inline-flex h-6 w-6 items-center justify-center rounded border-2 border-border bg-secondary text-secondary-foreground opacity-60 shadow-[1px_1px_0_var(--border)] hover:opacity-100"
-                    onClick={() => { setEditingId(deck.id); setEditName(deck.name) }}
-                  ><Pencil size={12} /></button>
-                ) : null}
-              </div>
+              <>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {hasChildren && <FolderOpen size={16} className="text-amber-500" />}
+                  <Link to={`/app/decks/${deck.id}`} className="hover:underline">
+                    <CardTitle>{deck.name}</CardTitle>
+                  </Link>
+                  <Badge className={deck.visibility === 'public' ? 'bg-emerald-100 text-emerald-800 font-bold' : 'bg-muted text-muted-foreground font-bold'}>
+                    {deck.visibility === 'public' ? t('decks.public') : t('decks.private')}
+                  </Badge>
+                  {hasChildren && <Badge className="bg-amber-100 text-amber-800 font-bold">{t('decks.childDecks', { count: childCount })}</Badge>}
+                  {shouldUseRemoteData && isOwner ? (
+                    <button type="button" title={t('decks.edit')}
+                      className="inline-flex h-6 w-6 items-center justify-center rounded border-2 border-border bg-secondary text-secondary-foreground opacity-60 shadow-[1px_1px_0_var(--border)] hover:opacity-100"
+                      onClick={() => { setEditingId(deck.id); setEditName(deck.name); setEditDescription(deck.description ?? '') }}
+                    ><Pencil size={12} /></button>
+                  ) : null}
+                </div>
+                {deck.description && <CardDescription className="mt-2">{deck.description}</CardDescription>}
+              </>
             )}
-            <CardDescription className="mt-2">{deck.description}</CardDescription>
           </div>
         </div>
         <p className="mt-4 text-3xl font-bold">{hasChildren ? t('decks.childDecks', { count: childCount }) : t('decks.words', { count: deck.term_count ?? 0 })}</p>
