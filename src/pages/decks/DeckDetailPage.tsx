@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FolderOpen } from 'lucide-react'
+import { FolderOpen, Pencil, Trash2, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -30,6 +30,11 @@ export function DeckDetailPage() {
   const [editingDeck, setEditingDeck] = useState(false)
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [isCreatingChild, setIsCreatingChild] = useState(false)
+  const [newChildName, setNewChildName] = useState('')
+  const [editingChildId, setEditingChildId] = useState<string | null>(null)
+  const [editChildName, setEditChildName] = useState('')
+  const [pendingDeleteChildId, setPendingDeleteChildId] = useState<string | null>(null)
   const [filterNoDeck, setFilterNoDeck] = useState(false)
   const [bulkSelectMode, setBulkSelectMode] = useState(false)
   const [selectedAvailableIds, setSelectedAvailableIds] = useState<Set<string>>(new Set())
@@ -96,12 +101,52 @@ export function DeckDetailPage() {
     },
   })
   const updateDeckMutation = useMutation({
-    mutationFn: () => deckService.update(id!, { name: editName.trim(), description: editDescription.trim() || undefined, user_id: user!.id }),
+    mutationFn: () => deckService.update(id!, { name: editName.trim(), user_id: user!.id }),
     onSuccess: async () => {
       setEditingDeck(false)
       await queryClient.invalidateQueries({ queryKey: ['deck', id] })
       await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
     },
+  })
+
+  const createChildMutation = useMutation({
+    mutationFn: async (name: string) => {
+      return deckService.create({
+        user_id: user!.id,
+        name: name,
+        parent_id: id,
+        source_language: deck!.source_language,
+        native_language: deck!.native_language,
+        visibility: deck!.visibility
+      })
+    },
+    onSuccess: async () => {
+      setIsCreatingChild(false)
+      setNewChildName('')
+      await queryClient.invalidateQueries({ queryKey: ['deck-children', id] })
+      await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
+    }
+  })
+
+  const updateChildMutation = useMutation({
+    mutationFn: async ({ childId, name }: { childId: string; name: string }) => {
+      return deckService.update(childId, { name, user_id: user!.id })
+    },
+    onSuccess: async () => {
+      setEditingChildId(null)
+      setEditChildName('')
+      await queryClient.invalidateQueries({ queryKey: ['deck-children', id] })
+      await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
+    }
+  })
+
+  const deleteChildMutation = useMutation({
+    mutationFn: (childId: string) => deckService.remove(childId),
+    onSuccess: async () => {
+      setPendingDeleteChildId(null)
+      await queryClient.invalidateQueries({ queryKey: ['deck-children', id] })
+      await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
+    }
   })
   const removeTermMutation = useMutation({
     mutationFn: (termId: string) => deckService.removeTerm(id!, termId),
@@ -149,18 +194,52 @@ export function DeckDetailPage() {
           </Link>
         </div>
       ) : null}
-      <PageHeader title={deck.name} description={deck.description ?? t('decks.fallbackDescription')} actions={<div className="flex flex-wrap gap-2">{shouldUseRemoteData ? <Button variant="ghost" onClick={() => { setEditingDeck(true); setEditName(deck.name); setEditDescription(deck.description ?? '') }}>{t('vocabulary.edit')}</Button> : null}<Button asChild><Link to="/app/study" onClick={() => setSelectedDeckId(deck.id)}>{t('decks.startFlashcard')}</Link></Button><Button asChild variant="secondary"><Link to="/app/quiz" onClick={() => setQuizDeckId(deck.id)}>{t('decks.quiz')}</Link></Button></div>} />
+      <PageHeader 
+        title={
+          <div className="flex items-center gap-2 flex-wrap">
+            <span>{deck.name}</span>
+            {shouldUseRemoteData ? (
+              <button 
+                type="button" 
+                title={t('decks.edit')}
+                className="inline-flex h-7 w-7 items-center justify-center rounded border-2 border-border bg-secondary text-secondary-foreground opacity-60 shadow-[1px_1px_0_var(--border)] hover:opacity-100 transition-all active:translate-y-0.5 active:shadow-none"
+                onClick={() => { setEditingDeck(true); setEditName(deck.name); setEditDescription(deck.description ?? '') }}
+              >
+                <Pencil size={14} />
+              </button>
+            ) : null}
+          </div>
+        } 
+        description={undefined} 
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link to="/app/study" onClick={() => setSelectedDeckId(deck.id)}>
+                {t('decks.startFlashcard')}
+              </Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link to="/app/quiz" onClick={() => setQuizDeckId(deck.id)}>
+                {t('decks.quiz')}
+              </Link>
+            </Button>
+          </div>
+        } 
+      />
       {editingDeck ? (
         <Card className="mb-4 max-w-2xl">
           <CardTitle>{t('decks.editTitle')}</CardTitle>
           <div className="mt-4 grid gap-3">
             <div>
               <Label>{t('decks.name')}</Label>
-              <Input value={editName} onChange={(event) => setEditName(event.target.value)} />
-            </div>
-            <div>
-              <Label>{t('decks.descriptionLabel')}</Label>
-              <Textarea value={editDescription} onChange={(event) => setEditDescription(event.target.value)} />
+              <Input 
+                value={editName} 
+                onChange={(event) => setEditName(event.target.value)} 
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && editName.trim()) updateDeckMutation.mutate()
+                  if (e.key === 'Escape') setEditingDeck(false)
+                }}
+              />
             </div>
             {updateDeckMutation.error instanceof Error ? <p className="text-sm font-black text-danger">{updateDeckMutation.error.message}</p> : null}
             <div className="flex gap-2">
@@ -170,8 +249,16 @@ export function DeckDetailPage() {
           </div>
         </Card>
       ) : null}
-      <div className="mb-4 flex gap-2"><Badge>{t('decks.languagePair', { source: deck.source_language, native: deck.native_language })}</Badge><Badge>{t('decks.terms', { count: deck.term_count ?? 0 })}</Badge></div>
-      {childrenQuery.data && childrenQuery.data.length > 0 ? (
+      
+      {!(childrenQuery.data && childrenQuery.data.length > 0) && (
+        <div className="mb-4 flex gap-2">
+          <Badge className="bg-primary/10 text-primary font-bold">
+            {t('decks.words', { count: deck.term_count ?? 0 })}
+          </Badge>
+        </div>
+      )}
+
+      {childrenQuery.data && (childrenQuery.data.length > 0 || !deck.parent_id) ? (
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-3">
             <FolderOpen size={18} className="text-amber-500" />
@@ -180,7 +267,61 @@ export function DeckDetailPage() {
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {childrenQuery.data.map((child) => (
               <Card key={child.id}>
-                <CardTitle>{child.name}</CardTitle>
+                <div className="flex items-start justify-between gap-3 w-full">
+                  <div className="flex-1 min-w-0">
+                    {editingChildId === child.id ? (
+                      <div className="flex gap-2 items-center w-full">
+                        <Input 
+                          value={editChildName} 
+                          onChange={(e) => setEditChildName(e.target.value)} 
+                          className="min-w-[120px] flex-1 font-bold h-8 text-xs" 
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && editChildName.trim()) updateChildMutation.mutate({ childId: child.id, name: editChildName.trim() })
+                            if (e.key === 'Escape') setEditingChildId(null)
+                          }}
+                        />
+                        <button
+                          type="button"
+                          disabled={!editChildName.trim() || updateChildMutation.isPending}
+                          onClick={() => updateChildMutation.mutate({ childId: child.id, name: editChildName.trim() })}
+                          className="inline-flex h-8 items-center justify-center rounded border-2 border-border bg-primary text-primary-foreground font-black text-xs px-2.5 shadow-[1px_1px_0_var(--border)] hover:bg-[#ffe05c] transition-all active:translate-y-0.5 active:shadow-none disabled:opacity-50"
+                        >
+                          Lưu
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingChildId(null)}
+                          className="inline-flex h-8 items-center justify-center rounded border-2 border-border bg-card text-foreground font-black text-xs px-2.5 shadow-[1px_1px_0_var(--border)] hover:bg-muted transition-all active:translate-y-0.5 active:shadow-none"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2 w-full">
+                        <Link to={`/app/decks/${child.id}`} className="hover:underline">
+                          <CardTitle>{child.name}</CardTitle>
+                        </Link>
+                        {shouldUseRemoteData ? (
+                          <div className="flex gap-1 shrink-0">
+                            <button type="button" title={t('decks.edit')}
+                              className="inline-flex h-6 w-6 items-center justify-center rounded border-2 border-border bg-secondary text-secondary-foreground opacity-60 shadow-[1px_1px_0_var(--border)] hover:opacity-100 transition-all active:translate-y-0.5 active:shadow-none"
+                              onClick={() => { setEditingChildId(child.id); setEditChildName(child.name) }}
+                            >
+                              <Pencil size={11} />
+                            </button>
+                            <button type="button" title={t('vocabulary.delete')}
+                              className="inline-flex h-6 w-6 items-center justify-center rounded border-2 border-border bg-danger text-white opacity-60 shadow-[1px_1px_0_var(--border)] hover:opacity-100 transition-all active:translate-y-0.5 active:shadow-none"
+                              onClick={() => setPendingDeleteChildId(child.id)}
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <p className="mt-2 text-2xl font-bold">{t('decks.words', { count: child.term_count ?? 0 })}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button asChild variant="secondary"><Link to={`/app/decks/${child.id}`}>{t('decks.open')}</Link></Button>
@@ -189,6 +330,53 @@ export function DeckDetailPage() {
                 </div>
               </Card>
             ))}
+
+            {/* Card Thêm bộ con mới */}
+            {shouldUseRemoteData && (
+              isCreatingChild ? (
+                <Card className="border-dashed bg-card/50">
+                  <CardTitle className="text-sm font-black text-muted-foreground mb-3">Tạo bộ con mới</CardTitle>
+                  <div className="grid gap-2">
+                    <Input 
+                      value={newChildName} 
+                      onChange={(e) => setNewChildName(e.target.value)} 
+                      placeholder="Tên bộ con (ví dụ: TEST 11)" 
+                      className="text-xs h-8 font-bold"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newChildName.trim()) createChildMutation.mutate(newChildName.trim())
+                        if (e.key === 'Escape') setIsCreatingChild(false)
+                      }}
+                    />
+                    <div className="flex gap-1.5 mt-1">
+                      <button
+                        type="button"
+                        disabled={!newChildName.trim() || createChildMutation.isPending}
+                        onClick={() => createChildMutation.mutate(newChildName.trim())}
+                        className="inline-flex h-8 items-center justify-center rounded border-2 border-border bg-primary text-primary-foreground font-black text-xs px-3 shadow-[1px_1px_0_var(--border)] hover:bg-[#ffe05c] transition-all active:translate-y-0.5 active:shadow-none disabled:opacity-50"
+                      >
+                        Lưu
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsCreatingChild(false)}
+                        className="inline-flex h-8 items-center justify-center rounded border-2 border-border bg-card text-foreground font-black text-xs px-3 shadow-[1px_1px_0_var(--border)] hover:bg-muted transition-all active:translate-y-0.5 active:shadow-none"
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  </div>
+                </Card>
+              ) : (
+                <Card 
+                  className="border-dashed hover:bg-muted/10 border-muted-foreground/30 cursor-pointer flex flex-col items-center justify-center min-h-[140px] text-muted-foreground hover:text-foreground transition-all"
+                  onClick={() => { setIsCreatingChild(true); setNewChildName('') }}
+                >
+                  <Plus size={20} className="mb-1" />
+                  <span className="text-xs font-bold">Thêm bộ con</span>
+                </Card>
+              )
+            )}
           </div>
         </div>
       ) : null}
@@ -299,6 +487,19 @@ export function DeckDetailPage() {
         cancelLabel={t('actions.cancel')}
         onCancel={() => setPendingRemoveTermId(null)}
         onConfirm={() => pendingRemoveTermId ? removeTermMutation.mutate(pendingRemoveTermId) : undefined}
+      />
+      <ConfirmModal
+        open={Boolean(pendingDeleteChildId)}
+        title="Xóa bộ thẻ con"
+        description="Bạn có chắc chắn muốn xóa bộ thẻ con này? Hành động này sẽ xóa vĩnh viễn bộ thẻ và toàn bộ liên kết từ vựng bên trong."
+        confirmLabel={t('vocabulary.delete')}
+        cancelLabel={t('actions.cancel')}
+        isDanger
+        onConfirm={() => {
+          if (pendingDeleteChildId) deleteChildMutation.mutate(pendingDeleteChildId)
+        }}
+        onCancel={() => setPendingDeleteChildId(null)}
+        loading={deleteChildMutation.isPending}
       />
     </>
   )
