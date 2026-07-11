@@ -1365,16 +1365,28 @@ export function VocabularyDetailPage() {
                           />
                         </div>
                         <div>
-                          <Label className="text-[10px] uppercase font-black text-muted-foreground">Nghĩa</Label>
-                          <textarea
-                            value={m.text}
+                          <Label className="text-[10px] uppercase font-black text-muted-foreground">Nghĩa dịch (tiếng Việt)</Label>
+                          <Input
+                            value={m.translation ?? ''}
                             onChange={(e) => {
                               const val = e.target.value
-                              setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, text: val, translation: val || undefined } : tm))
+                              setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, translation: val || undefined } : tm))
                             }}
-                            placeholder="(n) mục tiêu..."
-                            className="w-full rounded-md border-2 border-border bg-input px-3 py-2 text-xs font-semibold shadow-[2px_2px_0_var(--border)] outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)] min-h-[60px] resize-y"
-                            rows={3}
+                            placeholder="đồ cổ, lưng..."
+                            className="text-xs h-8"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[10px] uppercase font-black text-muted-foreground">Định nghĩa (tiếng Anh)</Label>
+                          <textarea
+                            value={m.text ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, text: val } : tm))
+                            }}
+                            placeholder="an object having special value because of its age..."
+                            className="w-full rounded-md border-2 border-border bg-input px-3 py-2 text-xs font-semibold shadow-[2px_2px_0_var(--border)] outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)] min-h-[50px] resize-y"
+                            rows={2}
                           />
                         </div>
                       </div>
@@ -1394,7 +1406,16 @@ export function VocabularyDetailPage() {
                       onClick={() => {
                         const cleaned = tempMeanings
                           .filter((m) => m.text?.trim() || m.translation?.trim() || m.part_of_speech?.trim())
-                          .map((m) => ({ ...m, text: m.text?.trim() ?? '', translation: m.translation?.trim() || undefined, part_of_speech: m.part_of_speech?.trim() || undefined }))
+                          .map((m) => {
+                            const txt = m.text?.trim()
+                            const trans = m.translation?.trim()
+                            return {
+                              ...m,
+                              translation: trans || undefined,
+                              text: txt || trans || '',
+                              part_of_speech: m.part_of_speech?.trim() || undefined
+                            }
+                          })
                         handleSaveField({
                           meanings: cleaned,
                           translation: cleaned.length > 0 ? cleaned.map((m) => m.translation || m.text).filter(Boolean).join('; ') : null,
@@ -1412,11 +1433,20 @@ export function VocabularyDetailPage() {
               ) : (item.meanings ?? []).length > 0 ? (
                 <div className="flex flex-col gap-2.5">
                   {(item.meanings ?? []).filter((m) => m.text?.trim() || m.translation?.trim() || m.part_of_speech?.trim()).map((m, i) => (
-                    <div key={i} className="flex items-center gap-2.5">
+                    <div key={i} className="flex items-start gap-2.5">
                       {m.part_of_speech && (
                         <Badge className="shrink-0 mt-0.5 bg-secondary/20 text-secondary font-black text-xs">{m.part_of_speech}</Badge>
                       )}
-                      <p className="text-sm text-primary font-bold leading-relaxed">{m.text || m.translation}</p>
+                      <div className="flex-1">
+                        {m.text && m.translation && m.text.trim() !== m.translation.trim() ? (
+                          <div className="flex flex-col gap-0.5">
+                            <p className="text-sm text-primary font-bold leading-relaxed">{m.translation}</p>
+                            <p className="text-xs text-muted-foreground italic leading-relaxed">{m.text}</p>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-primary font-bold leading-relaxed">{m.translation || m.text}</p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
