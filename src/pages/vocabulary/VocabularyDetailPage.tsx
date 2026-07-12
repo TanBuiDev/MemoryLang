@@ -1438,7 +1438,7 @@ export function VocabularyDetailPage() {
                             }}
                           />
                         </div>
-                        {(!(m.language === 'en' || (m.text && m.translation && m.text.trim() !== m.translation.trim()))) ? (
+                        {(!(m.language === 'en' || (m.text && m.translation && m.text.trim() !== cleanTranslationValue(m.translation || '').trim()))) ? (
                           <div className="mt-1">
                             <Button
                               type="button"
