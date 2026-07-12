@@ -268,3 +268,15 @@
 .neo-wobble-hover:hover {
   animation: neo-wobble 0.6s ease-in-out;
 }
+
+@keyframes maintenance-progress {
+  0% {
+    width: 0%;
+  }
+  50% {
+    width: 100%;
+  }
+  100% {
+    width: 0%;
+  }
+}

@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useMemo, type ReactNode } from 'react'
+import { MaintenanceGuard } from '@/app/MaintenanceGuard'
 import { studySyncService } from '@/services/local/studySync.service'
 import { authService } from '@/services/supabase/auth.service'
 import { isSupabaseConfigured } from '@/services/supabase/client'
@@ -144,8 +145,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthBootstrap>
-        <StudySyncBootstrap />
-        {children}
+        <MaintenanceGuard>
+          <StudySyncBootstrap />
+          {children}
+        </MaintenanceGuard>
       </AuthBootstrap>
     </QueryClientProvider>
   )

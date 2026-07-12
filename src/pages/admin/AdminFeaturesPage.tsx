@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Eye, Code, PlugZap, Wrench, Plus, Save } from 'lucide-react'
+import { Eye, Code, PlugZap, Wrench, Plus, Save, Construction, AlertTriangle } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
 import type { AppSetting, FeatureFlag } from '@/types/admin.types'
 
@@ -50,6 +50,12 @@ export default function AdminFeaturesPage() {
   // Mascot FAB device config (loaded from app_settings, persisted immediately on toggle)
   const [fabDevice, setFabDevice] = useState({ desktop: true, mobile: true })
 
+  // Maintenance mode state
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState(false)
+  const [maintenanceMessage, setMaintenanceMessage] = useState('')
+  const [maintenanceEstimatedEnd, setMaintenanceEstimatedEnd] = useState('')
+  const [savingMaintenance, setSavingMaintenance] = useState(false)
+
   const loadData = async () => {
     try {
       setLoading(true)
@@ -64,6 +70,15 @@ export default function AdminFeaturesPage() {
       if (fabSetting?.value) {
         const v = fabSetting.value as { desktop?: boolean; mobile?: boolean }
         setFabDevice({ desktop: v.desktop ?? true, mobile: v.mobile ?? true })
+      }
+
+      // Load maintenance mode state
+      const maintenanceSetting = settingsData.find(s => s.key === 'maintenance_mode')
+      if (maintenanceSetting?.value) {
+        const m = maintenanceSetting.value as { enabled?: boolean; message?: string; estimated_end?: string | null }
+        setMaintenanceEnabled(Boolean(m.enabled))
+        setMaintenanceMessage(m.message || '')
+        setMaintenanceEstimatedEnd(m.estimated_end || '')
       }
 
       // Khởi tạo form values
@@ -84,6 +99,33 @@ export default function AdminFeaturesPage() {
   useEffect(() => {
     void loadData()
   }, [])
+
+  const handleSaveMaintenance = async (newEnabled?: boolean) => {
+    const enabled = newEnabled ?? maintenanceEnabled
+    try {
+      setSavingMaintenance(true)
+      setError(null)
+      const value = {
+        enabled,
+        message: maintenanceMessage,
+        estimated_end: maintenanceEstimatedEnd || null,
+      }
+      const updated = await adminService.updateSetting(
+        'maintenance_mode',
+        value,
+        'Chế độ bảo trì: enabled (bật/tắt), message (thông báo cho người dùng), estimated_end (thời gian kết thúc dự kiến ISO 8601)',
+      )
+      setSettings((prev) => prev.map((s) => (s.key === 'maintenance_mode' ? updated : s)))
+      setMaintenanceEnabled(enabled)
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message || 'Lỗi khi cập nhật chế độ bảo trì')
+      // Rollback toggle if it was a toggle action
+      if (newEnabled !== undefined) setMaintenanceEnabled(!newEnabled)
+    } finally {
+      setSavingMaintenance(false)
+    }
+  }
 
   const handleToggleFlag = async (flagName: string, currentStatus: boolean) => {
     try {
@@ -197,6 +239,83 @@ export default function AdminFeaturesPage() {
         </div>
       )}
 
+      {/* Maintenance Mode Section — luôn hiển thị ở đầu trang */}
+      {!loading && (
+        <div className={`neo-card p-5 border-3 ${maintenanceEnabled ? 'border-rose-500 bg-rose-50' : 'border-border bg-card'} shadow-[4px_4px_0_var(--border)] flex flex-col gap-4 transition-colors`}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`h-10 w-10 rounded-full border-3 ${maintenanceEnabled ? 'border-rose-500 bg-rose-100' : 'border-border bg-primary/20'} flex items-center justify-center shadow-[2px_2px_0_var(--border)]`}>
+                <Construction size={20} className={maintenanceEnabled ? 'text-rose-600' : 'text-foreground'} />
+              </div>
+              <div>
+                <h2 className="text-lg font-black tracking-tight text-foreground flex items-center gap-2">
+                  CHẾ ĐỘ BẢO TRÌ
+                  {maintenanceEnabled && (
+                    <span className="inline-flex items-center gap-1 text-xs font-black text-rose-600 bg-rose-100 border-2 border-rose-400 px-2 py-0.5 rounded-full animate-pulse">
+                      <AlertTriangle size={12} />
+                      ĐANG BẬT
+                    </span>
+                  )}
+                </h2>
+                <p className="text-xs font-bold text-muted-foreground">
+                  Chủ động đóng web để bảo trì. Khi bật, người dùng sẽ thấy trang thông báo bảo trì.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => handleSaveMaintenance(!maintenanceEnabled)}
+              disabled={savingMaintenance}
+              className="transition-transform active:scale-95 disabled:opacity-50"
+              title={maintenanceEnabled ? 'Tắt chế độ bảo trì' : 'Bật chế độ bảo trì'}
+            >
+              <SmoothToggle on={maintenanceEnabled} size={56} />
+            </button>
+          </div>
+
+          {/* Expanded config when maintenance is ON or user wants to configure */}
+          <div className="flex flex-col gap-3 pt-3 border-t-2 border-dashed border-border">
+            <div>
+              <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">
+                Thông báo cho người dùng
+              </label>
+              <textarea
+                value={maintenanceMessage}
+                onChange={(e) => setMaintenanceMessage(e.target.value)}
+                placeholder="VD: Chúng tôi đang nâng cấp hệ thống. Vui lòng quay lại sau 30 phút."
+                rows={2}
+                className="w-full p-2.5 text-sm font-semibold border-2 border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">
+                Thời gian hoàn thành dự kiến
+              </label>
+              <input
+                type="datetime-local"
+                value={maintenanceEstimatedEnd}
+                onChange={(e) => setMaintenanceEstimatedEnd(e.target.value)}
+                className="w-full max-w-xs p-2.5 text-sm font-semibold border-2 border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <button
+              onClick={() => handleSaveMaintenance()}
+              disabled={savingMaintenance}
+              className="neo-button self-start min-h-0 px-4 py-2 rounded bg-secondary text-secondary-foreground text-xs font-black border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none hover:bg-[#321fb0] transition-all disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {savingMaintenance ? (
+                <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Save size={12} />
+              )}
+              Lưu cấu hình bảo trì
+            </button>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="text-center font-bold text-muted-foreground py-10">
           Đang tải cấu hình tính năng...
@@ -274,7 +393,7 @@ export default function AdminFeaturesPage() {
             </h2>
 
             <div className="flex flex-col gap-4">
-              {settings.filter(s => s.key !== 'mascot_radial_fab_device').map((setting) => (
+              {settings.filter(s => s.key !== 'mascot_radial_fab_device' && s.key !== 'maintenance_mode').map((setting) => (
                 <div
                   key={setting.key}
                   className="neo-card p-4 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex flex-col gap-2"
