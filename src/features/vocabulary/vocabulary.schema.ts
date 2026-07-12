@@ -6,12 +6,22 @@ export const exampleSchema = z.object({
 })
 
 export const meaningSchema = z.object({
-  text: z.string().min(1, 'Meaning is required'),
+  text: z.string().nullable().optional().or(z.literal('')),
   language: z.enum(['vi', 'en', 'ko', 'ja', 'zh', 'fr', 'de', 'other']),
   part_of_speech: z.string().nullable().optional(),
   translation: z.string().nullable().optional(),
   examples: z.array(exampleSchema).optional(),
-})
+}).refine(
+  (data) => {
+    const hasText = typeof data.text === 'string' && data.text.trim().length > 0
+    const hasTranslation = typeof data.translation === 'string' && data.translation.trim().length > 0
+    return hasText || hasTranslation
+  },
+  {
+    message: 'Meaning or translation is required',
+    path: ['text'],
+  }
+)
 
 export const vocabularyFormSchema = z.object({
   source_text: z.string().min(1, 'Word, phrase, or sentence is required'),

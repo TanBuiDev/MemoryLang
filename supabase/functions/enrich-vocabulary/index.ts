@@ -265,19 +265,29 @@ Deno.serve(async (request) => {
     // Audio chỉ lấy từ Google Cloud TTS
     const audioUrl = await generateTtsAudio(supabase, body.text, body.sourceLanguage)
 
+    const hasCached = !!cached;
     const payload = {
+      ...(hasCached ? { id: cached.id } : {}),
       source_text: body.text,
       normalized_text: normalizedText,
       source_language: body.sourceLanguage,
       native_language: body.nativeLanguage,
       item_type: itemType,
-      part_of_speech: dictionary?.partOfSpeech ?? null,
-      ipa: dictionary?.ipa ?? null,
-      audio_url: audioUrl,
-      image_url: null,
-      meanings: translatedDictionary?.meanings?.[0]?.text ? translatedDictionary.meanings : [{ text: '', language: body.nativeLanguage }],
-      examples: translatedDictionary?.examples ?? [],
-      source: dictionary ? 'dictionary' : 'system',
+      part_of_speech: hasCached ? (cached.part_of_speech || dictionary?.partOfSpeech || null) : (dictionary?.partOfSpeech ?? null),
+      ipa: hasCached ? (cached.ipa || dictionary?.ipa || null) : (dictionary?.ipa ?? null),
+      audio_url: hasCached ? (cached.audio_url || audioUrl) : audioUrl,
+      image_url: hasCached ? cached.image_url : null,
+      meanings: hasCached && cached.meanings && Array.isArray(cached.meanings) && cached.meanings.length > 0 && 
+        (String(cached.meanings[0]?.text || '').trim() !== '' || String(cached.meanings[0]?.translation || '').trim() !== '')
+        ? cached.meanings
+        : (translatedDictionary?.meanings?.[0]?.text ? translatedDictionary.meanings : [{ text: '', language: body.nativeLanguage }]),
+      examples: hasCached && cached.examples && Array.isArray(cached.examples) && cached.examples.length > 0
+        ? cached.examples
+        : (translatedDictionary?.examples ?? []),
+      translation: hasCached ? (cached.translation || translationText || null) : (translationText || null),
+      note: hasCached ? cached.note : null,
+      tags: hasCached ? (cached.tags || []) : [],
+      source: hasCached ? (cached.source || (dictionary ? 'dictionary' : 'system')) : (dictionary ? 'dictionary' : 'system'),
     }
 
     const { data: upserted } = await supabase
