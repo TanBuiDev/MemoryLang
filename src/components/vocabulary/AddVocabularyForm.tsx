@@ -70,7 +70,13 @@ export function AddVocabularyForm({ onSuccess }: AddVocabularyFormProps) {
             audio_url: values.audio_url ?? null,
             image_url: values.image_url ?? null,
             note: values.note ?? null,
-            meanings: values.meanings,
+            meanings: (values.meanings ?? []).map(m => ({
+              text: m.text || m.translation || '',
+              language: m.language,
+              part_of_speech: m.part_of_speech ?? null,
+              translation: m.translation ?? null,
+              examples: m.examples?.map(ex => ({ sentence: ex.sentence, translation: ex.translation ?? undefined })) || []
+            })),
             translation: values.translation ?? null,
             examples: values.examples?.map(ex => ({ sentence: ex.sentence, translation: ex.translation ?? undefined })) || [],
             tags: values.tags,
@@ -163,7 +169,12 @@ export function AddVocabularyForm({ onSuccess }: AddVocabularyFormProps) {
       audio_url: audioUrl,
       image_url: imageUrl,
       note,
-      meanings: [{ text: meaning.trim(), language: nativeLanguage }],
+      meanings: [{
+        text: meaning.trim(),
+        language: nativeLanguage,
+        translation: cleanTranslationValue(translation) || undefined,
+        part_of_speech: partOfSpeech || undefined
+      }],
       translation: cleanTranslationValue(translation) || undefined,
       examples: examples
         .map(ex => ({ sentence: ex.sentence.trim(), translation: ex.translation?.trim() || undefined }))

@@ -12,6 +12,7 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label, SearchInput } from '@/components/ui/input'
 import { InlineEditableField } from '@/components/ui/inline-editable-field'
 import { Select } from '@/components/ui/select'
+import { TranslationChips, cleanTranslationValue } from '@/components/ui/translation-chips'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { vocabularyUpdateFormSchema } from '@/features/vocabulary/vocabulary.schema'
 import { useI18n } from '@/i18n'
@@ -1428,31 +1429,63 @@ export function VocabularyDetailPage() {
                             />
                           )}
                         </div>
-                        <div>
+                        <div className="grid gap-1">
                           <Label className="text-[10px] uppercase font-black text-muted-foreground">{t('vocabulary.translationLabel')}</Label>
-                          <Input
+                          <TranslationChips
                             value={m.translation ?? ''}
-                            onChange={(e) => {
-                              const val = e.target.value
+                            onChange={(val) => {
                               setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, translation: val || undefined } : tm))
                             }}
-                            placeholder={t('vocabulary.translationPlaceholder')}
-                            className="text-xs h-8"
                           />
                         </div>
-                        <div>
-                          <Label className="text-[10px] uppercase font-black text-muted-foreground">{t('vocabulary.definitionLabel')}</Label>
-                          <textarea
-                            value={m.text ?? ''}
-                            onChange={(e) => {
-                              const val = e.target.value
-                              setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, text: val } : tm))
-                            }}
-                            placeholder={t('vocabulary.definitionPlaceholder')}
-                            className="w-full rounded-md border-2 border-border bg-input px-3 py-2 text-xs font-semibold shadow-[2px_2px_0_var(--border)] outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)] min-h-[50px] resize-y"
-                            rows={2}
-                          />
-                        </div>
+                        {(!(m.language === 'en' || (m.text && m.translation && m.text.trim() !== m.translation.trim()))) ? (
+                          <div className="mt-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="text-[10px] h-6 px-2 py-0.5 border border-dashed border-border"
+                              onClick={() => {
+                                setTempMeanings((prev) =>
+                                  prev.map((tm, idx) =>
+                                    idx === i ? { ...tm, language: 'en', text: '' } : tm
+                                  )
+                                )
+                              }}
+                            >
+                              + Thêm định nghĩa tiếng Anh
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="grid gap-1">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[10px] uppercase font-black text-muted-foreground">{t('vocabulary.definitionLabel')}</Label>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="text-[10px] h-5 px-1 py-0 text-danger hover:bg-danger/10"
+                                onClick={() => {
+                                  setTempMeanings((prev) =>
+                                    prev.map((tm, idx) =>
+                                      idx === i ? { ...tm, language: 'vi', text: tm.translation ?? '' } : tm
+                                    )
+                                  )
+                                }}
+                              >
+                                Xóa định nghĩa
+                              </Button>
+                            </div>
+                            <textarea
+                              value={m.text ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, text: val } : tm))
+                              }}
+                              placeholder={t('vocabulary.definitionPlaceholder')}
+                              className="w-full rounded-md border-2 border-border bg-input px-3 py-2 text-xs font-semibold shadow-[2px_2px_0_var(--border)] outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)] min-h-[50px] resize-y"
+                              rows={2}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1472,7 +1505,7 @@ export function VocabularyDetailPage() {
                           .filter((m) => m.text?.trim() || m.translation?.trim() || m.part_of_speech?.trim())
                           .map((m) => {
                             const txt = m.text?.trim()
-                            const trans = m.translation?.trim()
+                            const trans = m.translation ? cleanTranslationValue(m.translation) : undefined
                             return {
                               ...m,
                               translation: trans || undefined,
@@ -1504,11 +1537,11 @@ export function VocabularyDetailPage() {
                       <div className="flex-1">
                         {m.text && m.translation && m.text.trim() !== m.translation.trim() ? (
                           <div className="flex flex-col gap-0.5">
-                            <p className="text-sm text-primary font-bold leading-relaxed">{m.translation}</p>
+                            <p className="text-sm text-foreground font-bold leading-relaxed">{m.translation}</p>
                             <p className="text-xs text-muted-foreground italic leading-relaxed">{m.text}</p>
                           </div>
                         ) : (
-                          <p className="text-sm text-primary font-bold leading-relaxed">{m.translation || m.text}</p>
+                          <p className="text-sm text-foreground font-bold leading-relaxed">{m.translation || m.text}</p>
                         )}
                       </div>
                     </div>
