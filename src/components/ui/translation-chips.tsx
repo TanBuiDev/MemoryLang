@@ -5,6 +5,38 @@ import { cn } from '@/utils/cn'
 const MAX_VISIBLE = 5
 const LONG_PRESS_MS = 500
 
+export function splitTranslation(value: string): string[] {
+  const result: string[] = []
+  let current = ''
+  let depth = 0
+  
+  for (let i = 0; i < value.length; i++) {
+    const char = value[i]
+    if (char === '(') {
+      depth++
+      current += char
+    } else if (char === ')') {
+      depth = Math.max(0, depth - 1)
+      current += char
+    } else if (depth === 0 && (char === '/' || char === ';' || char === ',' || char === '|' || char === '\n')) {
+      const trimmed = current.trim()
+      if (trimmed) {
+        result.push(trimmed)
+      }
+      current = ''
+    } else {
+      current += char
+    }
+  }
+  
+  const trimmed = current.trim()
+  if (trimmed) {
+    result.push(trimmed)
+  }
+  
+  return result
+}
+
 export function parseTranslationValue(value: string): { chips: string[]; draft: string } {
   if (!value.trim()) return { chips: [], draft: '' }
   
@@ -12,25 +44,17 @@ export function parseTranslationValue(value: string): { chips: string[]; draft: 
   const chipsPart = parts[0] || ''
   const draftPart = parts[1] || ''
   
-  const chips = chipsPart
-    .split(/[\/,;|\n]+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
+  const chips = splitTranslation(chipsPart)
     
   return { chips, draft: draftPart }
 }
 
 export function cleanTranslationValue(value: string): string {
   if (!value.trim()) return ''
-  return value
-    .split(/[|]+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .join(' / ')
-    .split(/[\/,;|\n]+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .join(' / ')
+  const parts = value.split(' | ')
+  const chipsPart = parts[0] || ''
+  const chips = splitTranslation(chipsPart)
+  return chips.join(' / ')
 }
 
 interface TranslationChipsProps {
