@@ -1439,7 +1439,21 @@ export function VocabularyDetailPage() {
                           />
                         </div>
                         <div className="grid gap-1">
-                          <Label className="text-[10px] uppercase font-black text-muted-foreground">{t('vocabulary.definitionLabel')}</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-[10px] uppercase font-black text-muted-foreground">{t('vocabulary.definitionLabel')}</Label>
+                            {m.text && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="text-[10px] h-5 px-1 py-0 text-danger hover:bg-danger/10"
+                                onClick={() => {
+                                  setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, text: '' } : tm))
+                                }}
+                              >
+                                Xóa định nghĩa
+                              </Button>
+                            )}
+                          </div>
                           <textarea
                             value={m.text ?? ''}
                             onChange={(e) => {
