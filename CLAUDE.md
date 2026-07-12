@@ -112,7 +112,10 @@ Quiz demo sessions scope vocabulary by deck through `getDemoVocabularyForDeck()`
 - Translation-input quiz sessions freeze generated questions and persist versioned progress (`index`, `score`, revealed/completed question IDs, and active session key) in `sessionStorage`, so reloads preserve order and reveal penalties without storing the draft input. Results currently show score only and do not write quiz statistics or update SRS. The legacy true/false generator and quiz database tables remain for compatibility, but are not exposed by the current quiz UI.
 
 ### Service abstraction
-All Supabase calls wrapped in service objects (`authService`, `vocabularyService`, `deckService`, `studyService`, `quizService`, `statisticsService`). Never call Supabase client directly from components.
+All Supabase calls wrapped in service objects (`authService`, `vocabularyService`, `deckService`, `studyService`, `quizService`, `statisticsService`, `maintenanceService`). Never call Supabase client directly from components.
+
+### Maintenance mode
+Admin can toggle maintenance mode from `/app/admin/features`. When enabled, `MaintenanceGuard` (inside `providers.tsx`, wrapping `AuthBootstrap` children) blocks all non-admin users with a full-screen `MaintenancePage`. Config is stored in `app_settings` key `maintenance_mode` (JSON: `{ enabled, message, estimated_end }`). The `anon` RLS policy allows unauthenticated users to read this key so the maintenance page displays before login. `maintenanceService.getStatus()` checks the setting every 30 seconds via React Query. Admin users bypass the guard and retain full app access.
 
 ### ConfirmModal (reusable confirmation dialog)
 Use `ConfirmModal` from `@/components/ui/confirm-modal` instead of `window.confirm()`. Pattern: store pending action in state (e.g. `pendingDeleteIds`), render `<ConfirmModal open={...} onConfirm={...} onCancel={...} />`, execute action on confirm. Never use browser default dialogs.
