@@ -22,14 +22,19 @@ function loadEnv() {
 loadEnv();
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+// Sử dụng service_role key trực tiếp để bypass RLS
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error("Missing Supabase credentials in .env");
+  console.error("Missing Supabase credentials (URL or Service Role Key) in .env");
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: false
+  }
+});
 
 async function run() {
   const files = [
@@ -37,7 +42,6 @@ async function run() {
     'docs/ETS_TOEIC_READING_2026.json'
   ];
 
-  // Tạo map từ word -> meanings gốc từ cả 2 file JSON
   const jsonWordsMap = new Map<string, any[]>();
 
   for (const filePath of files) {
@@ -50,7 +54,7 @@ async function run() {
     console.log(`Loaded ${filePath}. Mapping vocabulary...`);
 
     if (Array.isArray(data)) {
-      // Dành cho Listening (Mảng phẳng các VocabularyItem)
+      // Listening
       for (const item of data) {
         if (!item.source_text) continue;
         const norm = normalizeText(item.source_text);
@@ -69,7 +73,7 @@ async function run() {
         }
       }
     } else {
-      // Dành cho Reading (Object chứa các group test)
+      // Reading
       for (const [testName, words] of Object.entries(data)) {
         if (!Array.isArray(words)) continue;
         for (const item of words) {
@@ -99,15 +103,16 @@ async function run() {
   console.log(`Mapped ${jsonWordsMap.size} unique words from JSON files.`);
 
   const allNormalizedTexts = Array.from(jsonWordsMap.keys());
-  const BATCH_SIZE = 100;
+  const BATCH_SIZE = 50; // Giảm xuống 50 để an toàn hơn
   let restoredCount = 0;
-  const restoredWords: string[] = [];
 
   for (let i = 0; i < allNormalizedTexts.length; i += BATCH_SIZE) {
     const batchTexts = allNormalizedTexts.slice(i, i + BATCH_SIZE);
+    
+    // Tìm các global_terms trong DB tương ứng
     const { data: terms, error } = await supabase
       .from('global_terms')
-      .select('id, source_text, normalized_text, meanings, translation, examples')
+      .select('id, source_text, normalized_text')
       .in('normalized_text', batchTexts)
       .eq('source_language', 'en')
       .eq('native_language', 'vi')
@@ -118,64 +123,42 @@ async function run() {
       continue;
     }
 
-    for (const term of (terms ?? [])) {
-      const dbMeanings = term.meanings ?? [];
+    if (!terms || terms.length === 0) continue;
+
+    for (const term of terms) {
       const sourceNorm = term.normalized_text;
       const jsonMeanings = jsonWordsMap.get(sourceNorm);
 
-      if (!jsonMeanings || jsonMeanings.length === 0) continue;
+      if (jsonMeanings && jsonMeanings.length > 0) {
+        const primaryTranslation = jsonMeanings.map(m => m.translation).filter(Boolean).join('; ');
+        const allExamples = jsonMeanings.flatMap(m => m.examples || []);
 
-      // Điều kiện khôi phục:
-      // 1. dbMeanings trống
-      // 2. Hoặc dbMeanings thiếu nghĩa dịch tiếng Việt (translation bị rỗng ở bất kỳ meaning nào)
-      const needsRestore = dbMeanings.length === 0 || 
-        dbMeanings.some((m: any) => !m.translation || String(m.translation).trim() === '');
-
-      if (needsRestore) {
-        // Xây dựng lại mảng meanings chuẩn theo cấu trúc của hệ thống
-        const restoredMeanings = jsonMeanings.map((m: any) => ({
-          text: m.definition_vi || '',
-          translation: m.definition_vi || null,
-          part_of_speech: m.part_of_speech || null,
-          language: 'vi',
-          examples: m.example ? [{
-            sentence: m.example,
-            translation: m.example_vi || null
-          }] : []
-        }));
-
-        const primaryTranslation = restoredMeanings.map(m => m.translation).filter(Boolean).join('; ');
-        const allExamples = restoredMeanings.flatMap(m => m.examples || []);
-
-        // Cập nhật lại vào database
-        const { error: updateErr } = await supabase
+        // Thực hiện CẬP NHẬT CƯỠNG BỨC (FORCE UPDATE) meanings từ file JSON gốc
+        const { data: updatedData, error: updateErr } = await supabase
           .from('global_terms')
           .update({
-            meanings: restoredMeanings,
+            meanings: jsonMeanings,
             translation: primaryTranslation || null,
             examples: allExamples
           })
-          .eq('id', term.id);
+          .eq('id', term.id)
+          .select('id, source_text');
 
         if (updateErr) {
           console.error(`Failed to restore meanings for word "${term.source_text}":`, updateErr.message);
-        } else {
+        } else if (updatedData && updatedData.length > 0) {
           restoredCount++;
-          restoredWords.push(term.source_text);
-          console.log(`[RESTORED] Word: "${term.source_text}" (ID: ${term.id}) successfully restored meanings.`);
+          if (term.source_text === 'a majority of' || term.source_text === 'abrasive') {
+            console.log(`[CONFIRMED RESTORED] Word: "${term.source_text}" successfully synced:`, JSON.stringify(jsonMeanings, null, 2));
+          }
         }
       }
     }
   }
 
   console.log("\n========================================");
-  console.log(`Restoration completed successfully!`);
-  console.log(`Total words restored: ${restoredCount}`);
-  if (restoredWords.length > 0) {
-    console.log("Restored words list:", restoredWords.join(', '));
-  } else {
-    console.log("No missing or corrupted meanings detected in database. All terms are healthy!");
-  }
+  console.log(`Force sync completed successfully!`);
+  console.log(`Total words synced: ${restoredCount}`);
 }
 
 run().catch(console.error);
