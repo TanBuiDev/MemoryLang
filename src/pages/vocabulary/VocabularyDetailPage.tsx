@@ -1438,33 +1438,54 @@ export function VocabularyDetailPage() {
                             }}
                           />
                         </div>
-                        <div className="grid gap-1">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-[10px] uppercase font-black text-muted-foreground">{t('vocabulary.definitionLabel')}</Label>
-                            {m.text && (
+                        {(!(m.language === 'en' || (m.text && m.text.trim().length > 0))) ? (
+                          <div className="mt-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="text-[10px] h-6 px-2 py-0.5 border border-dashed border-border"
+                              onClick={() => {
+                                setTempMeanings((prev) =>
+                                  prev.map((tm, idx) =>
+                                    idx === i ? { ...tm, language: 'en', text: '' } : tm
+                                  )
+                                )
+                              }}
+                            >
+                              + Thêm định nghĩa tiếng Anh
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="grid gap-1">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[10px] uppercase font-black text-muted-foreground">{t('vocabulary.definitionLabel')}</Label>
                               <Button
                                 type="button"
                                 variant="ghost"
                                 className="text-[10px] h-5 px-1 py-0 text-danger hover:bg-danger/10"
                                 onClick={() => {
-                                  setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, text: '' } : tm))
+                                  setTempMeanings((prev) =>
+                                    prev.map((tm, idx) =>
+                                      idx === i ? { ...tm, language: 'vi', text: '' } : tm
+                                    )
+                                  )
                                 }}
                               >
                                 Xóa định nghĩa
                               </Button>
-                            )}
+                            </div>
+                            <textarea
+                              value={m.text ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, text: val } : tm))
+                              }}
+                              placeholder={t('vocabulary.definitionPlaceholder')}
+                              className="w-full rounded-md border-2 border-border bg-input px-3 py-2 text-xs font-semibold shadow-[2px_2px_0_var(--border)] outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)] min-h-[50px] resize-y"
+                              rows={2}
+                            />
                           </div>
-                          <textarea
-                            value={m.text ?? ''}
-                            onChange={(e) => {
-                              const val = e.target.value
-                              setTempMeanings((prev) => prev.map((tm, idx) => idx === i ? { ...tm, text: val } : tm))
-                            }}
-                            placeholder={t('vocabulary.definitionPlaceholder')}
-                            className="w-full rounded-md border-2 border-border bg-input px-3 py-2 text-xs font-semibold shadow-[2px_2px_0_var(--border)] outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)] min-h-[50px] resize-y"
-                            rows={2}
-                          />
-                        </div>
+                        )}
                       </div>
                     </div>
                   ))}
