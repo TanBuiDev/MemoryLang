@@ -54,16 +54,15 @@ export function TranslationChips({ value, onChange, className }: TranslationChip
     onChange(combined)
   }
 
-  function fillChipToTextarea(chipText: string) {
+  function fillChipToTextarea(chipText: string, index: number) {
     emit(chipsRef.current, chipText)
-    setHighlightedIndex(null)
+    setHighlightedIndex(index)
     textareaRef.current?.focus()
   }
 
   const handlePointerDown = useCallback((chipText: string, index: number) => {
     longPressTimerRef.current = setTimeout(() => {
-      setHighlightedIndex(index)
-      fillChipToTextarea(chipText)
+      fillChipToTextarea(chipText, index)
     }, LONG_PRESS_MS)
   }, [])
 
@@ -83,23 +82,52 @@ export function TranslationChips({ value, onChange, className }: TranslationChip
 
   function addChip() {
     const text = draft.trim()
-    if (!text) return
-    if (chips.includes(text)) {
-      emit(chips, '')
-      return
+    let updatedChips = [...chips]
+
+    if (highlightedIndex !== null && highlightedIndex >= 0 && highlightedIndex < chips.length) {
+      if (!text) {
+        // Delete the chip if cleared
+        updatedChips = updatedChips.filter((_, i) => i !== highlightedIndex)
+      } else {
+        // Replace the chip being edited
+        updatedChips[highlightedIndex] = text
+      }
+    } else {
+      // Normal append behavior
+      if (!text) return
+      if (chips.includes(text)) {
+        emit(chips, '')
+        return
+      }
+      updatedChips.push(text)
     }
-    emit([...chips, text], '')
+
+    emit(updatedChips, '')
+    setHighlightedIndex(null)
     textareaRef.current?.focus()
   }
 
   function removeChip(index: number) {
-    emit(chips.filter((_, i) => i !== index), draft)
+    const updated = chips.filter((_, i) => i !== index)
+    const isEditingCurrent = highlightedIndex === index
+    const nextDraft = isEditingCurrent ? '' : draft
+    emit(updated, nextDraft)
+    
+    if (isEditingCurrent) {
+      setHighlightedIndex(null)
+    } else if (highlightedIndex !== null && index < highlightedIndex) {
+      setHighlightedIndex(highlightedIndex - 1)
+    }
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter') {
       event.preventDefault()
       addChip()
+    } else if (event.key === 'Escape') {
+      event.preventDefault()
+      setHighlightedIndex(null)
+      emit(chips, '')
     }
   }
 
