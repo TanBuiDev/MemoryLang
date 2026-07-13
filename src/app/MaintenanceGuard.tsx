@@ -30,8 +30,12 @@ export function MaintenanceGuard({ children }: MaintenanceGuardProps) {
     enabled: isSupabaseConfigured,
   })
 
-  // Maintenance mode đang bật VÀ user hiện tại KHÔNG phải admin → chặn
-  if (status?.enabled && !profile?.is_admin) {
+  // Các đường dẫn auth được phép bypass để admin có thể đăng nhập
+  const bypassPaths = ['/login', '/forgot-password', '/create-password']
+  const isBypassPath = bypassPaths.includes(window.location.pathname)
+
+  // Maintenance mode đang bật VÀ user hiện tại KHÔNG phải admin VÀ không phải là trang auth bypass → chặn
+  if (status?.enabled && !profile?.is_admin && !isBypassPath) {
     return (
       <MaintenancePage
         message={status.message}
