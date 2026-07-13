@@ -131,7 +131,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 h-16 border-b-2 border-border bg-background/95 backdrop-blur">
       <div className="flex items-center justify-between px-4 py-2.5">
-        <div className="flex items-center gap-1.5 flex-1 shrink-0">
+        <div className="flex items-center gap-1.5 flex-1 shrink-0 min-w-max">
           <button
             type="button"
             onClick={() => { setMobileMenuOpen(!mobileMenuOpen); setProfileOpen(false); setNotifOpen(false); setMoreOpen(false) }}
@@ -197,7 +197,7 @@ export function Header() {
           </div>
         </nav>
 
-        <div className="flex items-center gap-1 flex-1 justify-end shrink-0">
+        <div className="flex items-center gap-1 flex-1 justify-end shrink-0 min-w-max">
           <button
             type="button"
             className="hidden sm:inline-flex items-center gap-1.5 neo-button min-h-0 px-3 py-1.5 rounded-md border-2 border-border text-sm font-black bg-secondary text-secondary-foreground hover:bg-[#321fb0] active:neo-button-active transition whitespace-nowrap"
