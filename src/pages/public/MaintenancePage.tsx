@@ -70,11 +70,19 @@ export function MaintenancePage({ message, estimatedEnd }: MaintenancePageProps)
         <Button
           type="button"
           onClick={() => window.location.reload()}
-          className="flex items-center gap-2 px-6 min-h-11 font-black shadow-[3px_3px_0px_#000] bg-primary hover:bg-[#ffe05c]"
+          className="flex items-center gap-2 px-6 min-h-11 font-black shadow-[3px_3px_0px_#000] bg-primary hover:bg-[#ffe05c] mb-4"
         >
           <RefreshCw size={16} className="stroke-[2.5]" />
           <span>{t('maintenance.refresh')}</span>
         </Button>
+
+        {/* Subtle admin login link */}
+        <a
+          href="/login"
+          className="text-xs font-bold text-muted-foreground/30 hover:text-foreground transition hover:underline"
+        >
+          {t('maintenance.adminLogin')}
+        </a>
       </Card>
     </div>
   )
