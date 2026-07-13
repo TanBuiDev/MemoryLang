@@ -172,6 +172,7 @@ export function VocabularyDetailPage() {
   const [tempExamples, setTempExamples] = useState<ExampleSentence[]>([])
   const [isEditingMeanings, setIsEditingMeanings] = useState(false)
   const [tempMeanings, setTempMeanings] = useState<Meaning[]>([])
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [isZoomed, setIsZoomed] = useState(false)
   const [copied, setCopied] = useState(false)
   const [imageFit, setImageFit] = useState<'fit' | 'cover'>(() => {
@@ -273,6 +274,15 @@ export function VocabularyDetailPage() {
   const relationships = shouldUseRemoteData
     ? vocabularyCardQuery.data?.relationships ?? createEmptyRelationshipGroups()
     : createEmptyRelationshipGroups()
+
+  const handleCancelMeanings = () => {
+    const hasChanges = JSON.stringify(tempMeanings) !== JSON.stringify(item?.meanings ?? [])
+    if (hasChanges) {
+      setShowCancelConfirm(true)
+    } else {
+      setIsEditingMeanings(false)
+    }
+  }
 
   const currentImageUrl = item?.image_url ?? null
   if (currentImageUrl !== prevImageUrl) {
@@ -1383,7 +1393,7 @@ export function VocabularyDetailPage() {
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => setIsEditingMeanings(false)}
+                    onClick={handleCancelMeanings}
                     className="absolute -top-3 -right-3 h-7 w-7 min-h-0 rounded-full p-0 border-2 border-border shadow-[2px_2px_0px_var(--border)] bg-card flex items-center justify-center hover:bg-muted active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none z-10"
                     title={t('actions.cancel')}
                   >
@@ -1395,10 +1405,10 @@ export function VocabularyDetailPage() {
                         type="button"
                         variant="ghost"
                         onClick={() => setTempMeanings((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="absolute -top-2 -right-2 h-6 w-6 min-h-0 rounded-full p-0 border-2 border-border shadow-[1px_1px_0_var(--border)] bg-card flex items-center justify-center hover:bg-danger/10 active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none z-10"
+                        className="group absolute -top-2 -right-2 h-6 w-6 min-h-0 rounded-full p-0 border-2 border-border shadow-[1px_1px_0_var(--border)] bg-card flex items-center justify-center hover:bg-danger active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none z-10"
                         title={t('vocabulary.removeMeaning')}
                       >
-                        <X className="h-3 w-3 text-danger" />
+                        <X className="h-3 w-3 text-danger group-hover:text-white transition-colors" />
                       </Button>
                       <div className="grid gap-2.5">
                         <div className="grid gap-1">
@@ -1524,7 +1534,7 @@ export function VocabularyDetailPage() {
                     >
                       {t('actions.save')}
                     </Button>
-                    <Button type="button" variant="ghost" onClick={() => setIsEditingMeanings(false)}>
+                    <Button type="button" variant="ghost" onClick={handleCancelMeanings}>
                       {t('actions.cancel')}
                     </Button>
                   </div>
@@ -1636,10 +1646,10 @@ export function VocabularyDetailPage() {
                           type="button"
                           variant="ghost"
                           onClick={() => setExampleIndexToDelete(index)}
-                          className="absolute -top-2.5 -right-2.5 h-6 w-6 min-h-0 rounded-full p-0 text-danger hover:bg-danger/10 border-2 border-border shadow-[1.5px_1.5px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none bg-card flex items-center justify-center z-10"
+                          className="group absolute -top-2.5 -right-2.5 h-6 w-6 min-h-0 rounded-full p-0 text-danger hover:bg-danger border-2 border-border shadow-[1.5px_1.5px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none bg-card flex items-center justify-center z-10"
                           title="Xóa ví dụ"
                         >
-                          <X className="h-3.5 w-3.5" />
+                          <X className="h-3.5 w-3.5 group-hover:text-white transition-colors" />
                         </Button>
 
                         <div>
@@ -2032,6 +2042,20 @@ export function VocabularyDetailPage() {
           }
         }}
         onCancel={() => setExampleIndexToDelete(null)}
+      />
+
+      <ConfirmModal
+        open={showCancelConfirm}
+        title={t('vocabulary.discardChangesTitle')}
+        description={t('vocabulary.discardChangesDescription')}
+        confirmLabel={t('actions.confirm')}
+        cancelLabel={t('actions.cancel')}
+        variant="danger"
+        onConfirm={() => {
+          setShowCancelConfirm(false)
+          setIsEditingMeanings(false)
+        }}
+        onCancel={() => setShowCancelConfirm(false)}
       />
     </div>
   )
