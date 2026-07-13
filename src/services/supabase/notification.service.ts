@@ -11,6 +11,8 @@ export const notificationService = {
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
+      .eq('is_active', true)
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .order('created_at', { ascending: false })
       .limit(50)
 
