@@ -1506,8 +1506,10 @@ export function VocabularyDetailPage() {
                           .map((m) => {
                             const txt = m.text?.trim()
                             const trans = m.translation ? cleanTranslationValue(m.translation) : undefined
+                            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                            const { examples, ...rest } = m
                             return {
-                              ...m,
+                              ...rest,
                               translation: trans || undefined,
                               text: txt !== undefined ? txt : (trans || ''),
                               part_of_speech: m.part_of_speech?.trim() || undefined

@@ -34,11 +34,16 @@ export function flattenVocabularyItem(row: any): VocabularyItem {
     audio_url: global_terms?.audio_url ?? null,
     image_url: global_terms?.image_url ?? null,
     meanings,
-    examples: derivedExamples.length > 0 ? derivedExamples : (global_terms?.examples ?? []),
+    examples: (global_terms?.examples && global_terms.examples.length > 0) ? global_terms.examples : derivedExamples,
     note: global_terms?.note ?? null,
     tags: global_terms?.tags ?? [],
     translation: derivedTranslation || global_terms?.translation || null,
   } as VocabularyItem
+}
+
+function cleanMeanings(meanings: any[] | undefined) {
+  if (!meanings) return []
+  return meanings.map(({ examples, ...m }) => m)
 }
 
 export const vocabularyService = {
@@ -180,8 +185,8 @@ export const vocabularyService = {
             part_of_speech: values.part_of_speech || null,
             ipa: values.ipa || null,
             audio_url: values.audio_url || null,
-            image_url: values.image_url || null,
-            meanings: values.meanings,
+            image_url: values.image_url ?? null,
+            meanings: cleanMeanings(values.meanings),
             examples: values.examples || [],
             translation: values.translation || null,
             note: values.note || null,
@@ -273,7 +278,7 @@ export const vocabularyService = {
         ipa: values.ipa || null,
         audio_url: values.audio_url || null,
         image_url: values.image_url || null,
-        meanings: values.meanings,
+        meanings: cleanMeanings(values.meanings),
         examples: values.examples || [],
         translation: values.translation || null,
         note: values.note || null,
