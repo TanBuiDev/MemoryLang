@@ -61,7 +61,7 @@ src/
   test/             # Vitest setup
 ```
 
-## Database (11 tables, all RLS-enabled)
+## Database (13 tables, all RLS-enabled)
 | Table | Purpose |
 |---|---|
 | `profiles` | User profile (linked to auth.users) |
@@ -75,6 +75,8 @@ src/
 | `study_sessions` | Study session records |
 | `quiz_results` | Legacy quiz attempt records (retained; translation-input MVP does not write results) |
 | `quiz_answers` | Legacy individual quiz answers (retained; translation-input MVP does not write answers) |
+| `notifications` | System/admin notifications (Realtime-enabled) |
+| `user_notification_reads` | Tracks which user has read which notification |
 
 ## Routing
 **Public:** `/` (full branded homepage with feature/workflow/product-preview sections), `/login`, `/register`, `/forgot-password`, `/onboarding`
@@ -112,10 +114,13 @@ Quiz demo sessions scope vocabulary by deck through `getDemoVocabularyForDeck()`
 - Translation-input quiz sessions freeze generated questions and persist versioned progress (`index`, `score`, revealed/completed question IDs, and active session key) in `sessionStorage`, so reloads preserve order and reveal penalties without storing the draft input. Results currently show score only and do not write quiz statistics or update SRS. The legacy true/false generator and quiz database tables remain for compatibility, but are not exposed by the current quiz UI.
 
 ### Service abstraction
-All Supabase calls wrapped in service objects (`authService`, `vocabularyService`, `deckService`, `studyService`, `quizService`, `statisticsService`, `maintenanceService`). Never call Supabase client directly from components.
+All Supabase calls wrapped in service objects (`authService`, `vocabularyService`, `deckService`, `studyService`, `quizService`, `statisticsService`, `maintenanceService`, `notificationService`). Never call Supabase client directly from components.
 
 ### Maintenance mode
 Admin can toggle maintenance mode from `/app/admin/features`. When enabled, `MaintenanceGuard` (inside `providers.tsx`, wrapping `AuthBootstrap` children) blocks all non-admin users with a full-screen `MaintenancePage`. Config is stored in `app_settings` key `maintenance_mode` (JSON: `{ enabled, message, estimated_end }`). The `anon` RLS policy allows unauthenticated users to read this key so the maintenance page displays before login. `maintenanceService.getStatus()` checks the setting every 30 seconds via React Query. Admin users bypass the guard and retain full app access.
+
+### Notification system
+Admin sends notifications from `/app/admin/notifications`. `NotificationBootstrap` in `AppLayout` loads active notifications on mount and subscribes to Supabase Realtime (postgres_changes on `notifications` table). New notifications trigger toast alerts via `showToast()` from `components/ui/toast.tsx`; toasts are suppressed during study/quiz sessions (`/session/` routes). `useNotificationStore` (Zustand) manages notification list, read IDs, and optimistic mark-as-read. Header bell icon shows real unread count badge and scrollable dropdown. Notifications have type (announcement/maintenance/update/alert), priority (low/normal/high/urgent), target (all/admins), and optional expiry.
 
 ### ConfirmModal (reusable confirmation dialog)
 Use `ConfirmModal` from `@/components/ui/confirm-modal` instead of `window.confirm()`. Pattern: store pending action in state (e.g. `pendingDeleteIds`), render `<ConfirmModal open={...} onConfirm={...} onCancel={...} />`, execute action on confirm. Never use browser default dialogs.
