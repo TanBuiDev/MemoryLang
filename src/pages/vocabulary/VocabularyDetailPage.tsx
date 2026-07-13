@@ -284,6 +284,28 @@ export function VocabularyDetailPage() {
     }
   }
 
+  const handleSaveMeanings = async () => {
+    const cleaned = tempMeanings
+      .filter((m) => m.text?.trim() || m.translation?.trim() || m.part_of_speech?.trim())
+      .map((m) => {
+        const txt = m.text?.trim()
+        const trans = m.translation ? cleanTranslationValue(m.translation) : undefined
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { examples, ...rest } = m
+        return {
+          ...rest,
+          translation: trans || undefined,
+          text: txt !== undefined ? txt : (trans || ''),
+          part_of_speech: m.part_of_speech?.trim() || undefined
+        }
+      })
+    await handleSaveField({
+      meanings: cleaned,
+      translation: cleaned.length > 0 ? cleaned.map((m) => m.translation || m.text).filter(Boolean).join('; ') : null,
+    })
+    setIsEditingMeanings(false)
+  }
+
   const currentImageUrl = item?.image_url ?? null
   if (currentImageUrl !== prevImageUrl) {
     setPrevImageUrl(currentImageUrl)
@@ -1510,27 +1532,7 @@ export function VocabularyDetailPage() {
                   <div className="flex gap-2 pt-1 border-t border-border">
                     <Button
                       type="button"
-                      onClick={() => {
-                        const cleaned = tempMeanings
-                          .filter((m) => m.text?.trim() || m.translation?.trim() || m.part_of_speech?.trim())
-                          .map((m) => {
-                            const txt = m.text?.trim()
-                            const trans = m.translation ? cleanTranslationValue(m.translation) : undefined
-                            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                            const { examples, ...rest } = m
-                            return {
-                              ...rest,
-                              translation: trans || undefined,
-                              text: txt !== undefined ? txt : (trans || ''),
-                              part_of_speech: m.part_of_speech?.trim() || undefined
-                            }
-                          })
-                        handleSaveField({
-                          meanings: cleaned,
-                          translation: cleaned.length > 0 ? cleaned.map((m) => m.translation || m.text).filter(Boolean).join('; ') : null,
-                        })
-                        setIsEditingMeanings(false)
-                      }}
+                      onClick={handleSaveMeanings}
                     >
                       {t('actions.save')}
                     </Button>
@@ -2048,14 +2050,17 @@ export function VocabularyDetailPage() {
         open={showCancelConfirm}
         title={t('vocabulary.discardChangesTitle')}
         description={t('vocabulary.discardChangesDescription')}
-        confirmLabel={t('actions.confirm')}
-        cancelLabel={t('actions.cancel')}
-        variant="danger"
-        onConfirm={() => {
+        confirmLabel={t('vocabulary.saveAndExit')}
+        cancelLabel={t('vocabulary.discardAndExit')}
+        variant="primary"
+        onConfirm={async () => {
+          setShowCancelConfirm(false)
+          await handleSaveMeanings()
+        }}
+        onCancel={() => {
           setShowCancelConfirm(false)
           setIsEditingMeanings(false)
         }}
-        onCancel={() => setShowCancelConfirm(false)}
       />
     </div>
   )
