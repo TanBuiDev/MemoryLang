@@ -3,6 +3,8 @@ import { Bell, Plus, Send, ToggleLeft, Trash2 } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
 import { notificationService } from '@/services/supabase/notification.service'
 import type { Notification, NotificationType, NotificationPriority, NotificationTarget } from '@/types/notification.types'
+import { Select } from '@/components/ui/select'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 
 const typeOptions: { value: NotificationType; label: string }[] = [
   { value: 'announcement', label: '📢 Thông báo chung' },
@@ -28,6 +30,7 @@ export default function AdminNotificationsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   // Form state
   const [title, setTitle] = useState('')
@@ -112,13 +115,14 @@ export default function AdminNotificationsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Xóa thông báo này? Hành động này không thể hoàn tác.')) return
     try {
       setError(null)
       await notificationService.remove(id)
       setNotifications((prev) => prev.filter((n) => n.id !== id))
     } catch (err: any) {
       setError(err.message || 'Lỗi khi xóa thông báo')
+    } finally {
+      setPendingDeleteId(null)
     }
   }
 
@@ -163,45 +167,33 @@ export default function AdminNotificationsPage() {
               <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">
                 Loại
               </label>
-              <select
+              <Select
                 value={type}
-                onChange={(e) => setType(e.target.value as NotificationType)}
-                className="w-full p-2.5 text-sm font-semibold border-2 border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {typeOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+                onChange={(val) => setType(val as NotificationType)}
+                options={typeOptions}
+              />
             </div>
 
             <div>
               <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">
                 Độ ưu tiên
               </label>
-              <select
+              <Select
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as NotificationPriority)}
-                className="w-full p-2.5 text-sm font-semibold border-2 border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {priorityOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+                onChange={(val) => setPriority(val as NotificationPriority)}
+                options={priorityOptions}
+              />
             </div>
 
             <div>
               <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">
                 Đối tượng
               </label>
-              <select
+              <Select
                 value={target}
-                onChange={(e) => setTarget(e.target.value as NotificationTarget)}
-                className="w-full p-2.5 text-sm font-semibold border-2 border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {targetOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+                onChange={(val) => setTarget(val as NotificationTarget)}
+                options={targetOptions}
+              />
             </div>
           </div>
         </div>
@@ -311,7 +303,7 @@ export default function AdminNotificationsPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDelete(notif.id)}
+                      onClick={() => setPendingDeleteId(notif.id)}
                       className="neo-button min-h-0 p-1.5 rounded border-2 border-border bg-card shadow-[2px_2px_0_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none hover:bg-rose-50 transition-all"
                       title="Xóa thông báo"
                     >
@@ -324,6 +316,17 @@ export default function AdminNotificationsPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        open={!!pendingDeleteId}
+        onConfirm={() => pendingDeleteId && handleDelete(pendingDeleteId)}
+        onCancel={() => setPendingDeleteId(null)}
+        title="Xóa thông báo?"
+        description="Xóa thông báo này? Hành động này không thể hoàn tác."
+        confirmLabel="Xóa"
+        cancelLabel="Hủy"
+        variant="danger"
+      />
     </div>
   )
 }
