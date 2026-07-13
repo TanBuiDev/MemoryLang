@@ -56,3 +56,4 @@ scripts/*.sql
 scripts/*.json
 docs/
 scripts/
+scratch/
