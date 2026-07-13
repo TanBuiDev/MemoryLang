@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Bell, Plus, Send, ToggleLeft, Trash2 } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
 import { notificationService } from '@/services/supabase/notification.service'
-import { DateTimePicker } from '@/components/ui/date-time-picker'
 import type { Notification, NotificationType, NotificationPriority, NotificationTarget } from '@/types/notification.types'
 import { Select } from '@/components/ui/select'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -217,9 +216,11 @@ export default function AdminNotificationsPage() {
             <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">
               Hết hạn (tùy chọn)
             </label>
-            <DateTimePicker
+            <input
+              type="datetime-local"
               value={expiresAt}
-              onChange={setExpiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              className="w-full p-2.5 text-sm font-semibold border-2 border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Eye, Code, PlugZap, Wrench, Plus, Save, Construction, AlertTriangle } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
-import { DateTimePicker } from '@/components/ui/date-time-picker'
 import type { AppSetting, FeatureFlag } from '@/types/admin.types'
 
 function SmoothToggle({ on, size = 48 }: { on: boolean; size?: number }) {
@@ -293,9 +292,11 @@ export default function AdminFeaturesPage() {
               <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">
                 Thời gian hoàn thành dự kiến
               </label>
-              <DateTimePicker
+              <input
+                type="datetime-local"
                 value={maintenanceEstimatedEnd}
-                onChange={setMaintenanceEstimatedEnd}
+                onChange={(e) => setMaintenanceEstimatedEnd(e.target.value)}
+                className="w-full max-w-xs p-2.5 text-sm font-semibold border-2 border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
