@@ -22,7 +22,11 @@ vi.mock('@/services/supabase/vocabulary.service', () => ({
   vocabularyService: { list: vi.fn(), create: vi.fn(), update: vi.fn(), removeMany: vi.fn() },
 }))
 vi.mock('@/services/supabase/deck.service', () => ({
-  deckService: { list: vi.fn(), createLessonBatch: vi.fn() },
+  deckService: {
+    list: vi.fn(),
+    createLessonBatch: vi.fn(),
+    getDeckPath: vi.fn((deckId, decks) => decks?.find((d: any) => d.id === deckId)?.name || ''),
+  },
 }))
 vi.mock('@/services/local/studyLocalDb', () => ({
   studyLocalDb: {

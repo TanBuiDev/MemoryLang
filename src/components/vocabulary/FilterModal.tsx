@@ -3,6 +3,7 @@ import { X, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
 import { useI18n } from '@/i18n'
+import { Select } from '@/components/ui/select'
 import type { VocabularyItemType, VocabularyStatus } from '@/types/vocabulary.types'
 
 const STATUS_OPTIONS: VocabularyStatus[] = ['new', 'learning', 'familiar', 'memorized', 'difficult', 'need_review']
@@ -213,16 +214,15 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
               <legend className="text-xs uppercase font-black text-muted-foreground mb-2.5">
                 {t('decks.title')}
               </legend>
-              <select
+              <Select
                 value={filters.deckId ?? ''}
-                onChange={(e) => onChange({ ...filters, deckId: e.target.value || null })}
-                className="w-full h-10 rounded-md border-2 border-border bg-card px-3 text-sm font-bold shadow-[2px_2px_0_var(--border)] outline-none focus:translate-x-[0.5px] focus:translate-y-[0.5px] focus:shadow-[1px_1px_0_var(--border)]"
-              >
-                <option value="">{t('vocabulary.allDecks')}</option>
-                {decks.map((deck) => (
-                  <option key={deck.id} value={deck.id}>{deck.name}</option>
-                ))}
-              </select>
+                onChange={(val) => onChange({ ...filters, deckId: val || null })}
+                options={[
+                  { value: '', label: t('vocabulary.allDecks') },
+                  ...decks.map((deck) => ({ value: deck.id, label: deck.name }))
+                ]}
+                placeholder={t('vocabulary.allDecks')}
+              />
             </fieldset>
           )}
         </div>

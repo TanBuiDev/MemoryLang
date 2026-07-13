@@ -591,7 +591,7 @@ export function VocabularyListPage() {
                     sentence: 'vocabulary.sentence',
                   }[it])),
                   filters.noDeck ? t('vocabulary.filterNoDeck') : null,
-                  filters.deckId ? (decksQuery.data ?? []).find((d) => d.id === filters.deckId)?.name : null,
+                  filters.deckId ? deckService.getDeckPath(filters.deckId, decksQuery.data ?? []) : null,
                 ].filter(Boolean).join(' · ')}
               </span>
             </div>
@@ -729,7 +729,7 @@ export function VocabularyListPage() {
         onClose={() => setFilterOpen(false)}
         filters={filters}
         onChange={setFilters}
-        decks={(decksQuery.data ?? []).map((d) => ({ id: d.id, name: d.name }))}
+        decks={(decksQuery.data ?? []).map((d) => ({ id: d.id, name: deckService.getDeckPath(d.id, decksQuery.data ?? []) }))}
       />
       {profile?.is_admin && <AddVocabularyModal open={addModalOpen} onClose={() => setAddModalOpen(false)} />}
       <QuickAddVocabularyModal

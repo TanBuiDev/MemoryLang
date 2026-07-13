@@ -20,6 +20,7 @@ vi.mock('@/services/supabase/deck.service', () => ({
   deckService: {
     list: vi.fn(),
     listTerms: vi.fn(),
+    getDeckPath: vi.fn((deckId, decks) => decks?.find((d: any) => d.id === deckId)?.name || ''),
   },
 }))
 

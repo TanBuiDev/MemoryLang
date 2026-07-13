@@ -54,8 +54,23 @@ function collectDescendantIds(parentId: string, allDecks: Pick<Deck, 'id' | 'par
   return children.flatMap((child) => [child.id, ...collectDescendantIds(child.id, allDecks)])
 }
 
+function getDeckPath(deckId: string, allDecks: Pick<Deck, 'id' | 'name' | 'parent_id'>[]): string {
+  const deck = allDecks.find((d) => d.id === deckId)
+  if (!deck) return ''
+  const path = [deck.name]
+  let current = deck
+  while (current.parent_id) {
+    const parent = allDecks.find((d) => d.id === current.parent_id)
+    if (!parent) break
+    path.unshift(parent.name)
+    current = parent
+  }
+  return path.join(' › ')
+}
+
 export const deckService = {
   collectDescendantIds,
+  getDeckPath,
   async list(userId: string): Promise<Deck[]> {
     const { data, error } = await supabase
       .from('decks')

@@ -5,7 +5,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { Label, Select } from '@/components/ui/input'
+import { Label } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { demoDecks, getDemoVocabularyForDeck } from '@/features/demo/demoData'
 import { abandonActiveQuizSession, buildQuizSessionStorageKey, clearStoredQuizSession, findActiveQuizSession, writeActiveQuizSessionStorageKey } from '@/features/quiz/sessionPersistence'
 import { hasTranslation } from '@/features/quiz/translationInputQuiz'
@@ -212,17 +213,29 @@ export function QuizSetupPage() {
               {decksQuery.error ? <Card className="font-black text-danger">{decksQuery.error.message}</Card> : null}
               <div>
                 <Label>{t('quiz.deck')}</Label>
-                <Select value={selectedDeckId ?? ''} onChange={(event) => setSelectedDeckId(event.target.value || null)}>
-                  <option value="">{t('quiz.allVocabulary')}</option>
-                  {decks.map((deck) => <option key={deck.id} value={deck.id}>{deck.name}</option>)}
-                </Select>
+                <Select
+                  value={selectedDeckId ?? ''}
+                  onChange={(val) => setSelectedDeckId(val || null)}
+                  options={[
+                    { value: '', label: t('quiz.allVocabulary') },
+                    ...decks.map((deck) => ({
+                      value: deck.id,
+                      label: deckService.getDeckPath(deck.id, decks),
+                    })),
+                  ]}
+                  placeholder={t('quiz.allVocabulary')}
+                />
               </div>
               <div>
                 <Label>{t('quiz.type')}</Label>
-                <Select value={quizType} onChange={(event) => setQuizType(event.target.value as 'translation_input' | 'multiple_choice')}>
-                  <option value="translation_input">{t('quiz.translationInput')}</option>
-                  <option value="multiple_choice">{t('quiz.multipleChoice')}</option>
-                </Select>
+                <Select
+                  value={quizType}
+                  onChange={(val) => setQuizType(val as 'translation_input' | 'multiple_choice')}
+                  options={[
+                    { value: 'translation_input', label: t('quiz.translationInput') },
+                    { value: 'multiple_choice', label: t('quiz.multipleChoice') },
+                  ]}
+                />
               </div>
               <div>
                 <Label>{t('quiz.questionCount')}</Label>
@@ -322,7 +335,7 @@ export function QuizSetupPage() {
             <div className="mt-5 grid gap-4">
               <div className="rounded-md border-2 border-border bg-background p-3 shadow-[2px_2px_0_var(--border)]">
                 <p className="text-xs font-black uppercase text-muted-foreground">{t('quiz.previewDeck')}</p>
-                <p className="mt-1 text-sm font-black">{selectedDeckId ? (decks.find((d) => d.id === selectedDeckId)?.name ?? '—') : t('quiz.allVocabulary')}</p>
+                <p className="mt-1 text-sm font-black">{selectedDeckId ? (deckService.getDeckPath(selectedDeckId, decks) || '—') : t('quiz.allVocabulary')}</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-md border-2 border-border bg-background p-3 shadow-[2px_2px_0_var(--border)]">

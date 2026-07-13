@@ -14,6 +14,7 @@ interface SelectProps {
   placeholder?: string
   className?: string
   disabled?: boolean
+  id?: string
 }
 
 export function Select({
@@ -22,7 +23,8 @@ export function Select({
   options,
   placeholder = 'Chọn một tùy chọn...',
   className,
-  disabled = false
+  disabled = false,
+  id
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -52,6 +54,22 @@ export function Select({
       ref={containerRef} 
       className={cn("relative w-full select-none", className)}
     >
+      {/* Hidden native select for accessibility and testing */}
+      <select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className="sr-only"
+        tabIndex={-1}
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+
       {/* Trigger Button */}
       <button
         type="button"

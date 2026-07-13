@@ -4,7 +4,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { Label, Select } from '@/components/ui/input'
+import { Label } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { demoDecks, demoVocabulary, getDemoVocabularyForDeck } from '@/features/demo/demoData'
 import { hasTranslation } from '@/features/quiz/translationInputQuiz'
 import { buildStudySessionStorageKey, clearStoredStudySession, hasActiveStudySession, writeActiveStudySessionStorageKey } from '@/features/study/sessionPersistence'
@@ -194,13 +195,43 @@ export function StudySetupPage() {
             {decksQuery.error ? <Card className="font-black text-danger md:col-span-2">{decksQuery.error.message}</Card> : null}
             <div className="md:col-span-2">
               <Label>{t('study.deck')}</Label>
-              <Select value={selectedDeckId ?? ''} onChange={(event) => setSelectedDeckId(event.target.value || null)}>
-                <option value="">{t('study.allVocabulary')}</option>
-                {decks.map((deck) => <option key={deck.id} value={deck.id}>{deck.name}</option>)}
-              </Select>
+              <Select
+                value={selectedDeckId ?? ''}
+                onChange={(val) => setSelectedDeckId(val || null)}
+                options={[
+                  { value: '', label: t('study.allVocabulary') },
+                  ...decks.map((deck) => ({
+                    value: deck.id,
+                    label: deckService.getDeckPath(deck.id, decks),
+                  })),
+                ]}
+                placeholder={t('study.allVocabulary')}
+              />
             </div>
-            <div><Label>{t('study.mode')}</Label><Select value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}>{mvpStudyModes.map((item) => <option key={item} value={item}>{t(item === 'two_side' ? 'study.twoSide' : 'study.oneSide')}</option>)}</Select></div>
-            <div><Label>{t('study.cards')}</Label><Select value={cardLimit} onChange={(event) => setCardLimit(event.target.value === 'all' ? 'all' : Number(event.target.value))}><option value={10}>{t('study.cardCount', { count: 10 })}</option><option value={20}>{t('study.cardCount', { count: 20 })}</option><option value={50}>{t('study.cardCount', { count: 50 })}</option><option value="all">{t('study.allCards')}</option></Select></div>
+            <div>
+              <Label>{t('study.mode')}</Label>
+              <Select
+                value={mode}
+                onChange={(val) => setMode(val as typeof mode)}
+                options={mvpStudyModes.map((item) => ({
+                  value: item,
+                  label: t(item === 'two_side' ? 'study.twoSide' : 'study.oneSide'),
+                }))}
+              />
+            </div>
+            <div>
+              <Label>{t('study.cards')}</Label>
+              <Select
+                value={String(cardLimit)}
+                onChange={(val) => setCardLimit(val === 'all' ? 'all' : Number(val))}
+                options={[
+                  { value: '10', label: t('study.cardCount', { count: 10 }) },
+                  { value: '20', label: t('study.cardCount', { count: 20 }) },
+                  { value: '50', label: t('study.cardCount', { count: 50 }) },
+                  { value: 'all', label: t('study.allCards') },
+                ]}
+              />
+            </div>
             <label className="flex items-center gap-3 text-sm font-black md:col-span-2"><input checked={shuffle} onChange={(event) => setShuffle(event.target.checked)} type="checkbox" /> {t('study.shuffleCards')}</label>
             <label className="flex items-center gap-3 text-sm font-black md:col-span-2">
               <input
@@ -215,14 +246,13 @@ export function StudySetupPage() {
                 <Label htmlFor="remember-confirmation-seconds">{t('study.rememberConfirmationSeconds')}</Label>
                 <Select
                   id="remember-confirmation-seconds"
-                  aria-label={t('study.rememberConfirmationSeconds')}
-                  value={rememberConfirmationSeconds}
-                  onChange={(event) => setRememberConfirmationSeconds(Number(event.target.value) as RememberConfirmationSeconds)}
-                >
-                  {rememberConfirmationOptions.map((seconds) => (
-                    <option key={seconds} value={seconds}>{t('study.seconds', { count: seconds })}</option>
-                  ))}
-                </Select>
+                  value={String(rememberConfirmationSeconds)}
+                  onChange={(val) => setRememberConfirmationSeconds(Number(val) as RememberConfirmationSeconds)}
+                  options={rememberConfirmationOptions.map((seconds) => ({
+                    value: String(seconds),
+                    label: t('study.seconds', { count: seconds }),
+                  }))}
+                />
               </div>
             ) : null}
             <Button className="md:col-span-2" disabled={shouldUseRemoteData && decksQuery.isLoading} onClick={startSession}>{t('study.startSession')}</Button>
