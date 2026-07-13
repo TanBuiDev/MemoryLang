@@ -2,6 +2,35 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function() {
+        function reloadWithLimit() {
+          var lastReload = sessionStorage.getItem('last_asset_reload');
+          var now = Date.now();
+          if (!lastReload || now - parseInt(lastReload) > 15000) {
+            sessionStorage.setItem('last_asset_reload', now.toString());
+            window.location.reload();
+          }
+        }
+        window.addEventListener('error', function(e) {
+          var target = e.target;
+          if (target && (target.tagName === 'LINK' || target.tagName === 'SCRIPT')) {
+            var url = target.src || target.href;
+            if (url && url.indexOf('/assets/') !== -1) {
+              reloadWithLimit();
+            }
+          }
+        }, true);
+        window.addEventListener('unhandledrejection', function(e) {
+          if (e.reason && (
+            e.reason.name === 'ChunkLoadError' || 
+            (e.reason.message && e.reason.message.indexOf('Failed to fetch dynamically imported module') !== -1)
+          )) {
+            reloadWithLimit();
+          }
+        });
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#FDC800" />
