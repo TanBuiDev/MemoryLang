@@ -131,11 +131,11 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 h-16 border-b-2 border-border bg-background/95 backdrop-blur">
       <div className="flex items-center justify-between px-4 py-2.5">
-        <div className="flex items-center gap-1.5 flex-1">
+        <div className="flex items-center gap-1.5 flex-1 shrink-0">
           <button
             type="button"
             onClick={() => { setMobileMenuOpen(!mobileMenuOpen); setProfileOpen(false); setNotifOpen(false); setMoreOpen(false) }}
-            className="lg:hidden p-2 rounded-md border-2 border-transparent hover:border-border hover:bg-muted transition flex items-center justify-center"
+            className="xl:hidden p-2 rounded-md border-2 border-transparent hover:border-border hover:bg-muted transition flex items-center justify-center shrink-0"
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -145,14 +145,14 @@ export function Header() {
           </NavLink>
         </div>
 
-        <nav className="hidden lg:flex items-center gap-0.5">
+        <nav className="hidden xl:flex items-center gap-0.5 xl:gap-1 shrink-0">
           {mainNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
                 className={({ isActive }) =>
                   cn(
-                    'px-3 py-2 rounded-md text-sm font-bold transition border-2 border-transparent whitespace-nowrap flex items-center gap-1.5',
+                    'px-2 py-1.5 xl:px-3 xl:py-2 rounded-md text-xs xl:text-sm font-bold transition border-2 border-transparent whitespace-nowrap flex items-center gap-1 xl:gap-1.5',
                     isActive
                       ? 'bg-primary text-primary-foreground border-border shadow-[2px_2px_0_var(--border)]'
                       : 'hover:bg-muted hover:border-border',
@@ -169,7 +169,7 @@ export function Header() {
               type="button"
               onClick={() => { setMoreOpen(!moreOpen); setProfileOpen(false); setNotifOpen(false) }}
               className={cn(
-                'px-3 py-2 rounded-md text-sm font-bold transition border-2 border-transparent hover:bg-muted hover:border-border flex items-center gap-1',
+                'px-2 py-1.5 xl:px-3 xl:py-2 rounded-md text-xs xl:text-sm font-bold transition border-2 border-transparent hover:bg-muted hover:border-border flex items-center gap-1',
                 moreOpen && 'bg-muted border-border',
               )}
             >
@@ -197,7 +197,7 @@ export function Header() {
           </div>
         </nav>
 
-        <div className="flex items-center gap-1 flex-1 justify-end">
+        <div className="flex items-center gap-1 flex-1 justify-end shrink-0">
           <button
             type="button"
             className="hidden sm:inline-flex items-center gap-1.5 neo-button min-h-0 px-3 py-1.5 rounded-md border-2 border-border text-sm font-black bg-secondary text-secondary-foreground hover:bg-[#321fb0] active:neo-button-active transition whitespace-nowrap"
@@ -376,7 +376,7 @@ export function Header() {
 
       {/* Mobile Navigation Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-x-0 top-16 z-20 bg-background/95 backdrop-blur border-b-2 border-border max-h-[calc(100vh-4rem)] overflow-y-auto animate-in slide-in-from-top duration-200">
+        <div className="xl:hidden fixed inset-x-0 top-16 z-20 bg-background/95 backdrop-blur border-b-2 border-border max-h-[calc(100vh-4rem)] overflow-y-auto animate-in slide-in-from-top duration-200">
           <div className="p-4 flex flex-col gap-4">
             {/* Học tập Section */}
             <div className="flex flex-col gap-1">
