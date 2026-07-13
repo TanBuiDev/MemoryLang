@@ -49,6 +49,7 @@ const AdminFunctionsPage = React.lazy(() => import('@/pages/admin/AdminFunctions
 const AdminI18nPage = React.lazy(() => import('@/pages/admin/AdminI18nPage'))
 const AdminAuditPage = React.lazy(() => import('@/pages/admin/AdminAuditPage'))
 const AdminAnalyticsPage = React.lazy(() => import('@/pages/admin/AdminAnalyticsPage'))
+const AdminNotificationsPage = React.lazy(() => import('@/pages/admin/AdminNotificationsPage'))
 const GrammarLessonPage = React.lazy(() => import('@/pages/grammar/GrammarLessonPage'))
 const AdminGrammarLessonEditPage = React.lazy(() => import('@/pages/admin/AdminGrammarLessonEditPage'))
 
@@ -140,6 +141,7 @@ export const router = createBrowserRouter([
                   { path: 'i18n', element: <AdminI18nPage /> },
                   { path: 'audit', element: <AdminAuditPage /> },
                   { path: 'analytics', element: <AdminAnalyticsPage /> },
+                  { path: 'notifications', element: <AdminNotificationsPage /> },
                 ],
               },
             ],

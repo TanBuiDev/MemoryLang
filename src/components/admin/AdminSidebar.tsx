@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   BarChart3,
+  Bell,
   BookOpen,
   Database,
   Headphones,
@@ -27,6 +28,7 @@ interface SidebarItem {
 const sidebarItems: SidebarItem[] = [
   { name: 'Dashboard', to: '/app/admin', icon: LayoutDashboard, phase: 1, isReady: true },
   { name: 'Người dùng', to: '/app/admin/users', icon: Users, phase: 1, isReady: true },
+  { name: 'Thông báo', to: '/app/admin/notifications', icon: Bell, phase: 1, isReady: true },
   { name: 'Cấu hình TTS', to: '/app/admin/tts', icon: Volume2, phase: 2, isReady: true },
   { name: 'API Keys & Secrets', to: '/app/admin/secrets', icon: KeyRound, phase: 2, isReady: true },
   { name: 'Cấu hình & Tính năng', to: '/app/admin/features', icon: ToggleLeft, phase: 2, isReady: true },

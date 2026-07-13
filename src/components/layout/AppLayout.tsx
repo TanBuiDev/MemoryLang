@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
+import { NotificationBootstrap } from '@/app/NotificationBootstrap'
 import { Header } from '@/components/layout/Header'
 import { MascotRadialFab } from '@/components/layout/MascotRadialFab'
 import { supabase } from '@/services/supabase/client'
@@ -45,6 +46,7 @@ export function AppLayout() {
 
   return (
     <div className="brand-grid-bg min-h-screen bg-background text-foreground">
+      <NotificationBootstrap />
       <Header />
       <main className="w-full max-w-7xl mx-auto px-4 py-6">
         <Outlet />

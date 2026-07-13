@@ -34,9 +34,27 @@ import { BrandLogo } from '@/components/common/BrandLogo'
 import { useI18n } from '@/i18n'
 import { authService } from '@/services/supabase/auth.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useNotificationStore, useUnreadCount } from '@/stores/useNotificationStore'
 import { useThemeStore } from '@/stores/useThemeStore'
 import { useUiLanguageStore } from '@/stores/useUiLanguageStore'
 import { cn } from '@/utils/cn'
+
+/**
+ * Format thời gian tương đối (VD: "5 phút trước", "2 giờ trước")
+ */
+function formatRelativeTime(dateStr: string): string {
+  const now = Date.now()
+  const date = new Date(dateStr).getTime()
+  const diffSec = Math.floor((now - date) / 1000)
+  if (diffSec < 60) return 'Vừa xong'
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return `${diffMin} phút trước`
+  const diffHour = Math.floor(diffMin / 60)
+  if (diffHour < 24) return `${diffHour} giờ trước`
+  const diffDay = Math.floor(diffHour / 24)
+  if (diffDay < 7) return `${diffDay} ngày trước`
+  return new Date(dateStr).toLocaleDateString()
+}
 
 const mainNavItems = [
   { labelKey: 'header.grammar', to: '/app/grammar', icon: ScrollText },
@@ -68,6 +86,13 @@ export function Header() {
   const { theme, toggleTheme } = useThemeStore()
   const { uiLanguage, setUiLanguage } = useUiLanguageStore()
   const effectiveUiLanguage = uiLanguage ?? profile?.ui_language ?? 'vi'
+
+  // Notification store
+  const notifications = useNotificationStore((s) => s.notifications)
+  const readIds = useNotificationStore((s) => s.readIds)
+  const markAsRead = useNotificationStore((s) => s.markAsRead)
+  const markAllAsRead = useNotificationStore((s) => s.markAllAsRead)
+  const unreadCount = useUnreadCount()
 
   const [moreOpen, setMoreOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -208,13 +233,84 @@ export function Header() {
               aria-label={t('header.notifications')}
             >
               <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-danger rounded-full border border-border" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-danger text-white text-[10px] font-black rounded-full border-2 border-background">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
 
             {notifOpen && (
-              <div className="absolute top-full right-0 mt-2 w-72 neo-card p-4 z-40">
-                <p className="text-sm font-black">{t('header.notifications')}</p>
-                <p className="text-xs text-muted-foreground mt-2">{t('header.noNotifications')}</p>
+              <div className="absolute top-full right-0 mt-2 w-80 neo-card p-0 z-40 max-h-[420px] flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b-2 border-border">
+                  <p className="text-sm font-black">{t('header.notifications')}</p>
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => { if (user) void markAllAsRead(user.id) }}
+                      className="text-[10px] font-black text-secondary hover:underline"
+                    >
+                      {t('notifications.markAllRead')}
+                    </button>
+                  )}
+                </div>
+
+                {/* List */}
+                <div className="overflow-y-auto flex-1">
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-8 text-center">
+                      <Bell size={24} className="mx-auto text-muted-foreground/40 mb-2" />
+                      <p className="text-xs text-muted-foreground font-bold">{t('header.noNotifications')}</p>
+                    </div>
+                  ) : (
+                    notifications.map((notif) => {
+                      const isRead = readIds.has(notif.id)
+                      return (
+                        <button
+                          key={notif.id}
+                          type="button"
+                          onClick={() => { if (user && !isRead) void markAsRead(user.id, notif.id) }}
+                          className={cn(
+                            'w-full text-left px-4 py-3 flex gap-3 items-start hover:bg-muted/50 transition border-b border-border/50 last:border-b-0',
+                            !isRead && 'bg-primary/5',
+                          )}
+                        >
+                          {/* Unread dot */}
+                          <div className="pt-1.5 shrink-0">
+                            <div className={cn(
+                              'w-2 h-2 rounded-full',
+                              !isRead ? 'bg-secondary' : 'bg-transparent',
+                            )} />
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <p className={cn(
+                              'text-xs leading-tight',
+                              !isRead ? 'font-black text-foreground' : 'font-bold text-muted-foreground',
+                            )}>
+                              {notif.title}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground font-semibold mt-0.5 line-clamp-2 leading-snug">
+                              {notif.message}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground/60 font-bold mt-1">
+                              {formatRelativeTime(notif.created_at)}
+                            </p>
+                          </div>
+
+                          {/* Priority indicator */}
+                          {(notif.priority === 'high' || notif.priority === 'urgent') && (
+                            <div className={cn(
+                              'shrink-0 w-1.5 h-full rounded-full self-stretch',
+                              notif.priority === 'urgent' ? 'bg-danger' : 'bg-amber-400',
+                            )} />
+                          )}
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
               </div>
             )}
           </div>
