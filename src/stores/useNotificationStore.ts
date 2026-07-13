@@ -49,6 +49,18 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
           notifications: state.notifications.filter((n) => n.id !== notification.id),
         }
       }
+      
+      const exists = state.notifications.some((n) => n.id === notification.id)
+      if (!exists) {
+        // Nếu thông báo hoạt động trở lại nhưng chưa có trong danh sách hiển thị
+        const updatedList = [notification, ...state.notifications]
+        return {
+          notifications: updatedList.sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          ),
+        }
+      }
+
       return {
         notifications: state.notifications.map((n) =>
           n.id === notification.id ? notification : n,
