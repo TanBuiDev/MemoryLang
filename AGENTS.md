@@ -32,6 +32,43 @@
 - After committing, report the commit hash, commit message, and included files to the user.
 - Do not push automatically after creating commits. The user will review and push the code.
 
+## Quy tắc UI/UX & Vibecoding (Bắt buộc tuyệt đối)
+
+Để đảm bảo tính nhất quán của thiết kế Neobrutalist và trải nghiệm người dùng, AI PHẢI tuân thủ các quy tắc sau khi sinh code giao diện:
+
+### 1. Quy tắc Xác nhận hành động (Confirmation Dialogs)
+- **TUYỆT ĐỐI KHÔNG** sử dụng `window.confirm()`, `window.alert()`, `window.prompt()` hoặc bất kỳ dialog mặc định nào của trình duyệt.
+- **BẮT BUỘC** sử dụng component `ConfirmModal` từ `@/components/ui/confirm-modal` cho MỌI hành động cần xác nhận (xóa từ vựng, hủy session, rời trang, reset dữ liệu).
+- **Pattern bắt buộc:** 
+  1. Tạo state để lưu hành động chờ (ví dụ: `const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)`).
+  2. Render component: `<ConfirmModal open={!!pendingDeleteId} onConfirm={() => handleDelete(pendingDeleteId)} onCancel={() => setPendingDeleteId(null)} title="..." description="..." />`.
+  3. Trigger bằng cách set state: `onClick={() => setPendingDeleteId(item.id)}`.
+
+### 2. Quy tắc Dropdown & Form Controls
+- **TUYỆT ĐỐI KHÔNG** sử dụng thẻ `<select>` và `<option>` mặc định của HTML. Chúng phá vỡ hoàn toàn phong cách Neobrutalist của dự án.
+- **BẮT BUỘC** sử dụng component `Select` của dự án từ `@/components/ui/select`.
+- **Cách sử dụng:** Component này nhận một prop `options` dạng mảng các đối tượng `{ value: string, label: string }`. **TUYỆT ĐỐI KHÔNG** sử dụng cấu trúc phân cấp kiểu shadcn (`SelectTrigger`, `SelectValue`, `SelectContent`, `SelectItem`) vì component `Select` hiện tại trong dự án được thiết kế dưới dạng một component đóng gói duy nhất nhận prop `options`.
+  Ví dụ sử dụng đúng:
+  ```tsx
+  import { Select } from '@/components/ui/select';
+  
+  // Trong component:
+  <Select 
+    value={value} 
+    onChange={setValue} 
+    options={[
+      { value: 'option1', label: 'Tùy chọn 1' },
+      { value: 'option2', label: 'Tùy chọn 2' }
+    ]} 
+    placeholder="Chọn một tùy chọn..."
+  />
+  ```
+
+### 3. Quy tắc Tái sử dụng Component (DRY UI)
+- Trước khi tạo một button, input, card, hoặc badge mới, PHẢI kiểm tra thư mục `src/components/ui/` và `src/components/common/`.
+- Luôn ưu tiên sử dụng các class utility có sẵn như `neo-card`, `neo-button`, `neo-button-active` thay vì tự viết CSS inline hoặc Tailwind class từ con số 0.
+- Nếu phát hiện code cũ đang dùng `<select>` hoặc `window.confirm`, nhiệm vụ đầu tiên của AI là refactor (tái cấu trúc) chúng sang custom component ngay lập tức.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
