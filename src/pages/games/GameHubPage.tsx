@@ -91,7 +91,27 @@ export default function GameHubPage() {
             .eq('key', 'game_hub_config')
             .maybeSingle(),
         ])
-        setDecks(decksList)
+        // Calculate term count recursively including sub-decks
+        const mapped = (decksList ?? []).map((d: any) => ({
+          ...d,
+          directCount: d.term_count ?? 0,
+        }))
+
+        const getCount = (deckId: string): number => {
+          const current = mapped.find((d) => d.id === deckId)
+          if (!current) return 0
+          const direct = current.directCount
+          const children = mapped.filter((d) => d.parent_id === deckId)
+          const childrenSum = children.reduce((sum, child) => sum + getCount(child.id), 0)
+          return direct + childrenSum
+        }
+
+        const updatedDecks = mapped.map((d) => ({
+          ...d,
+          term_count: getCount(d.id),
+        }))
+
+        setDecks(updatedDecks)
         setAllTermsCount(termsList.length)
 
         if (settingData?.data?.value) {
