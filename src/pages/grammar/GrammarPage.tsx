@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { AppLoading } from '@/components/common/AppLoading'
 import { PageHeader } from '@/components/common/PageHeader'
 import { EmptyState } from '@/components/common/EmptyState'
+import { ContentLockOverlay } from '@/components/subscription/ContentLockOverlay'
+import { ContentLockModal } from '@/components/subscription/ContentLockModal'
 
 const levelColors: Record<string, string> = {
   beginner: 'bg-green-100 text-green-800',
@@ -26,6 +28,7 @@ export function GrammarPage() {
   const { t } = useI18n()
   const { user } = useAuthStore()
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [lockedTopic, setLockedTopic] = useState<{ title: string; teaserConfig: any } | null>(null)
 
   const shouldFetch = isSupabaseConfigured && Boolean(user)
 
@@ -98,24 +101,39 @@ export function GrammarPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredTopics.map((topic) => (
-            <Link
+            <ContentLockOverlay
               key={topic.id}
-              to={`/app/grammar/${topic.id}`}
-              className="neo-card p-5 hover:shadow-[6px_6px_0_var(--border)] transition-shadow cursor-pointer"
+              accessTier={topic.access_tier || 'free'}
+              onLockedClick={() => setLockedTopic({ title: topic.title, teaserConfig: topic.teaser_config })}
             >
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <Badge className="bg-purple-100 text-purple-800">{topic.category}</Badge>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border-2 border-(--border) ${levelColors[topic.level] ?? 'bg-gray-100'}`}>
-                  {levelLabels[topic.level] ?? topic.level}
-                </span>
-                <span className="text-xs text-gray-400 ml-auto">
-                  {topic.view_count ?? 0}
-                </span>
-              </div>
-              <h3 className="text-lg font-bold">{topic.title}</h3>
-            </Link>
+              <Link
+                to={`/app/grammar/${topic.id}`}
+                className="neo-card p-5 hover:shadow-[6px_6px_0_var(--border)] transition-shadow cursor-pointer block h-full"
+              >
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <Badge className="bg-purple-100 text-purple-800">{topic.category}</Badge>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full border-2 border-(--border) ${levelColors[topic.level] ?? 'bg-gray-100'}`}>
+                    {levelLabels[topic.level] ?? topic.level}
+                  </span>
+                  <span className="text-xs text-gray-400 ml-auto">
+                    {topic.view_count ?? 0}
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold">{topic.title}</h3>
+              </Link>
+            </ContentLockOverlay>
           ))}
         </div>
+      )}
+
+      {lockedTopic && (
+        <ContentLockModal
+          open={!!lockedTopic}
+          title={lockedTopic.title}
+          contentType="grammar"
+          teaserConfig={lockedTopic.teaserConfig}
+          onClose={() => setLockedTopic(null)}
+        />
       )}
     </div>
   )

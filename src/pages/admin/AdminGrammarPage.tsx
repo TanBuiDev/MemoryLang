@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { Plus, Trash2, Edit3, Eye, CheckCircle2, ChevronRight, BookOpen, AlertCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { adminService } from '@/services/supabase/admin.service'
+import { subscriptionService } from '@/services/supabase/subscription.service'
+import { AccessTierBadge } from '@/components/admin/AccessTierBadge'
+import { BulkActionBar } from '@/components/admin/BulkActionBar'
+import type { AccessTier } from '@/types/subscription.types'
 import type { GrammarTopic, GrammarExercise } from '@/types/admin.types'
 
 export default function AdminGrammarPage() {
@@ -18,6 +22,9 @@ export default function AdminGrammarPage() {
   const [editingTopic, setEditingTopic] = useState<string | null>(null)
   const [topicForm, setTopicForm] = useState<Partial<GrammarTopic>>({})
   const [showTopicForm, setShowTopicForm] = useState(false)
+
+  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([])
+  const [bulkUpdating, setBulkUpdating] = useState(false)
 
   const [editingExercise, setEditingExercise] = useState<string | null>(null)
   const [exerciseForm, setExerciseForm] = useState<Partial<GrammarExercise>>({
@@ -70,13 +77,19 @@ export default function AdminGrammarPage() {
       explanation: '',
       examples: [{ sentence: '', translation: '' }],
       is_published: false,
+      access_tier: 'free',
+      teaser_config: { enabled: true, type: 'theory_only' },
     })
     setShowTopicForm(true)
   }
 
   const handleEditTopic = (topic: GrammarTopic) => {
     setEditingTopic(topic.id)
-    setTopicForm({ ...topic })
+    setTopicForm({
+      ...topic,
+      access_tier: topic.access_tier || 'free',
+      teaser_config: topic.teaser_config || { enabled: true, type: 'theory_only' },
+    })
     setShowTopicForm(true)
   }
 
@@ -107,12 +120,14 @@ export default function AdminGrammarPage() {
       const examples = (topicForm.examples ?? []).filter(ex => ex.sentence.trim() !== '')
 
       const payload = {
-        title: topicForm.title,
-        category: topicForm.category,
+        title: topicForm.title!,
+        category: topicForm.category!,
         level: topicForm.level || 'intermediate',
-        explanation: topicForm.explanation,
+        explanation: topicForm.explanation!,
         examples,
         is_published: !!topicForm.is_published,
+        access_tier: topicForm.access_tier || 'free',
+        teaser_config: topicForm.teaser_config || { enabled: true, type: 'theory_only' },
       }
 
       if (editingTopic) {
@@ -129,6 +144,35 @@ export default function AdminGrammarPage() {
     } catch (err: any) {
       console.error(err)
       setError(err.message || 'Lỗi khi lưu chủ đề ngữ pháp')
+    }
+  }
+
+  const handleToggleAccessTier = async (topicId: string, currentTier: AccessTier) => {
+    const newTier: AccessTier = currentTier === 'pro' ? 'free' : 'pro'
+    try {
+      setTopics(prev => prev.map(t => t.id === topicId ? { ...t, access_tier: newTier } : t))
+      if (selectedTopic?.id === topicId) setSelectedTopic(prev => prev ? { ...prev, access_tier: newTier } : null)
+      await adminService.updateGrammarTopic(topicId, { access_tier: newTier })
+    } catch (err: any) {
+      setTopics(prev => prev.map(t => t.id === topicId ? { ...t, access_tier: currentTier } : t))
+      if (selectedTopic?.id === topicId) setSelectedTopic(prev => prev ? { ...prev, access_tier: currentTier } : null)
+      alert('Không thể thay đổi phân quyền truy cập: ' + err.message)
+    }
+  }
+
+  const handleBulkUpdateAccessTier = async (tier: AccessTier) => {
+    try {
+      setBulkUpdating(true)
+      await subscriptionService.bulkUpdateAccessTier('grammar_topics', selectedTopicIds, tier)
+      setTopics(prev => prev.map(t => selectedTopicIds.includes(t.id) ? { ...t, access_tier: tier } : t))
+      if (selectedTopic && selectedTopicIds.includes(selectedTopic.id)) {
+        setSelectedTopic(prev => prev ? { ...prev, access_tier: tier } : null)
+      }
+      setSelectedTopicIds([])
+    } catch (err: any) {
+      alert('Lỗi thao tác hàng loạt: ' + err.message)
+    } finally {
+      setBulkUpdating(false)
     }
   }
 
@@ -253,9 +297,27 @@ export default function AdminGrammarPage() {
                   }`}
                   onClick={() => handleSelectTopic(topic)}
                 >
+                  <div className="flex items-center gap-2 shrink-0 self-start mt-0.5" onClick={e => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedTopicIds.includes(topic.id)}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setSelectedTopicIds(prev => [...prev, topic.id])
+                        } else {
+                          setSelectedTopicIds(prev => prev.filter(id => id !== topic.id))
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-2 border-[#1c293c] text-primary cursor-pointer focus:ring-0"
+                    />
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-black text-sm text-foreground truncate">{topic.title}</h3>
+                      <AccessTierBadge
+                        tier={topic.access_tier || 'free'}
+                        onChange={() => handleToggleAccessTier(topic.id, topic.access_tier || 'free')}
+                      />
                       {topic.is_published ? (
                         <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-800 border border-green-300 text-[10px] font-black uppercase">
                           PUBLISHED
@@ -464,6 +526,64 @@ export default function AdminGrammarPage() {
                   Phát hành công khai cho học viên (Publish)
                 </label>
               </div>
+
+              <div className="border-t border-border/40 my-1 pt-3 flex flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-black text-foreground">Phân quyền truy cập (Access Tier)</label>
+                  <select
+                    value={topicForm.access_tier || 'free'}
+                    onChange={e => setTopicForm(prev => ({ ...prev, access_tier: e.target.value as 'free' | 'pro' }))}
+                    className="px-3 py-1.5 border-2 border-border rounded bg-muted text-xs font-bold focus:outline-none focus:border-primary"
+                  >
+                    <option value="free">Free (Miễn phí)</option>
+                    <option value="pro">Pro (Trả phí)</option>
+                  </select>
+                </div>
+
+                {topicForm.access_tier === 'pro' && (
+                  <div className="flex flex-col gap-2 p-3 bg-slate-50 border border-border rounded">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="teaser_enabled"
+                        checked={topicForm.teaser_config?.enabled !== false}
+                        onChange={e => setTopicForm(prev => ({
+                          ...prev,
+                          teaser_config: {
+                            enabled: e.target.checked,
+                            type: prev.teaser_config?.type || 'theory_only'
+                          }
+                        }))}
+                        className="w-4 h-4 rounded border-2 border-border text-primary cursor-pointer focus:ring-0"
+                      />
+                      <label htmlFor="teaser_enabled" className="text-xs font-black text-[#1c293c] cursor-pointer select-none">
+                        Cho phép xem trước (Teaser Mode)
+                      </label>
+                    </div>
+
+                    {topicForm.teaser_config?.enabled !== false && (
+                      <div className="flex flex-col gap-1 mt-1">
+                        <label className="text-[11px] font-bold text-muted-foreground">Chế độ hiển thị khi bị khóa</label>
+                        <select
+                          value={topicForm.teaser_config?.type || 'theory_only'}
+                          onChange={e => setTopicForm(prev => ({
+                            ...prev,
+                            teaser_config: {
+                              enabled: prev.teaser_config?.enabled !== false,
+                              type: e.target.value
+                            }
+                          }))}
+                          className="px-2 py-1.5 border-2 border-border rounded bg-white text-xs font-bold focus:outline-none"
+                        >
+                          <option value="title_only">Chỉ hiện tiêu đề</option>
+                          <option value="theory_only">Hiển thị lý thuyết, khóa bài tập</option>
+                          <option value="partial_exercise">Cho làm 2 câu hỏi đầu tiên</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 border-t-2 border-border pt-4 mt-2">
@@ -565,6 +685,13 @@ export default function AdminGrammarPage() {
           </div>
         </div>
       )}
+
+      <BulkActionBar
+        selectedCount={selectedTopicIds.length}
+        onUpdateTier={handleBulkUpdateAccessTier}
+        onClearSelection={() => setSelectedTopicIds([])}
+        isLoading={bulkUpdating}
+      />
     </div>
   )
 }

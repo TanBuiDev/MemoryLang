@@ -52,6 +52,8 @@ export interface GrammarTopic {
   examples: { sentence: string; translation?: string }[]
   is_published: boolean
   view_count?: number
+  access_tier?: 'free' | 'pro'
+  teaser_config?: { enabled: boolean; type: string }
   created_at: string
 }
 

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useI18n } from '@/i18n'
 import { demoTopic } from '@/features/listening/demoData'
 import { useListeningStore } from '@/stores/useListeningStore'
@@ -7,6 +8,8 @@ import { Card, CardTitle } from '@/components/ui/card'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { listeningService } from '@/services/supabase/listening.service'
+import { ContentLockOverlay } from '@/components/subscription/ContentLockOverlay'
+import { ContentLockModal } from '@/components/subscription/ContentLockModal'
 
 export function TopicSelectionPage() {
   const { t } = useI18n()
@@ -14,6 +17,8 @@ export function TopicSelectionPage() {
   const setTopic = useListeningStore((s) => s.setTopic)
   const user = useAuthStore((s) => s.user)
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
+
+  const [lockedTopic, setLockedTopic] = useState<{ title: string; teaserConfig: any } | null>(null)
 
   const { data: topics = [], isLoading } = useQuery({
     queryKey: ['listening-topics', user?.id],
@@ -50,12 +55,28 @@ export function TopicSelectionPage() {
       <h1 className="text-2xl font-black mb-4">{t('listening.selectTopic')}</h1>
       <div className="grid gap-3">
         {topics.map((topic) => (
-          <Card key={topic.id} className="hover:bg-muted cursor-pointer transition" onClick={() => handleSelect(topic.id)}>
-            <CardTitle>{topic.title}</CardTitle>
-            {topic.description && <p className="text-sm text-muted-foreground mt-1">{topic.description}</p>}
-          </Card>
+          <ContentLockOverlay
+            key={topic.id}
+            accessTier={topic.access_tier || 'free'}
+            onLockedClick={() => setLockedTopic({ title: topic.title, teaserConfig: topic.teaser_config })}
+          >
+            <Card className="hover:bg-muted cursor-pointer transition" onClick={() => handleSelect(topic.id)}>
+              <CardTitle>{topic.title}</CardTitle>
+              {topic.description && <p className="text-sm text-muted-foreground mt-1">{topic.description}</p>}
+            </Card>
+          </ContentLockOverlay>
         ))}
       </div>
+
+      {lockedTopic && (
+        <ContentLockModal
+          open={!!lockedTopic}
+          title={lockedTopic.title}
+          contentType="listening"
+          teaserConfig={lockedTopic.teaserConfig}
+          onClose={() => setLockedTopic(null)}
+        />
+      )}
     </div>
   )
 }

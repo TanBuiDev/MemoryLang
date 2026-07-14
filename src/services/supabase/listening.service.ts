@@ -5,7 +5,9 @@ const mapDbTopic = (dbTopic: any): ListeningTopic => ({
   id: dbTopic.id,
   title: dbTopic.title,
   description: dbTopic.description || undefined,
-  order: dbTopic.order || 0
+  order: dbTopic.order || 0,
+  access_tier: dbTopic.access_tier || 'free',
+  teaser_config: dbTopic.teaser_config || { enabled: true, type: 'title_only' }
 })
 
 const mapDbTest = (dbTest: any): ListeningTest => ({

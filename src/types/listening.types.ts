@@ -3,6 +3,8 @@ export interface ListeningTopic {
   title: string
   description?: string
   order: number
+  access_tier?: 'free' | 'pro'
+  teaser_config?: { enabled: boolean; type: string }
 }
 
 export interface ListeningTest {

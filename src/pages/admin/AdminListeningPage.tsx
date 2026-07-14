@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Plus, Headphones, Award, FileAudio } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
+import { subscriptionService } from '@/services/supabase/subscription.service'
+import { AccessTierBadge } from '@/components/admin/AccessTierBadge'
+import { BulkActionBar } from '@/components/admin/BulkActionBar'
+import type { AccessTier } from '@/types/subscription.types'
 
 export default function AdminListeningPage() {
   const [topics, setTopics] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([])
+  const [bulkUpdating, setBulkUpdating] = useState(false)
 
   // Trạng thái điều hướng phân cấp
   const [selectedTopic, setSelectedTopic] = useState<any | null>(null)
@@ -95,13 +102,19 @@ export default function AdminListeningPage() {
       image_url: '',
       order: 1,
       is_published: false,
+      access_tier: 'free',
+      teaser_config: { enabled: true, type: 'title_only' }
     })
     setShowTopicForm(true)
   }
 
   const handleEditTopic = (topic: any) => {
     setEditingTopic(topic.id)
-    setTopicForm({ ...topic })
+    setTopicForm({
+      ...topic,
+      access_tier: topic.access_tier || 'free',
+      teaser_config: topic.teaser_config || { enabled: true, type: 'title_only' }
+    })
     setShowTopicForm(true)
   }
 
@@ -119,6 +132,35 @@ export default function AdminListeningPage() {
       setShowTopicForm(false)
     } catch (err: any) {
       alert(err.message || 'Lỗi khi lưu chủ đề')
+    }
+  }
+
+  const handleToggleAccessTier = async (topicId: string, currentTier: AccessTier) => {
+    const newTier: AccessTier = currentTier === 'pro' ? 'free' : 'pro'
+    try {
+      setTopics(prev => prev.map(t => t.id === topicId ? { ...t, access_tier: newTier } : t))
+      if (selectedTopic?.id === topicId) setSelectedTopic((prev: any) => prev ? { ...prev, access_tier: newTier } : null)
+      await adminService.updateListeningTopic(topicId, { access_tier: newTier })
+    } catch (err: any) {
+      setTopics(prev => prev.map(t => t.id === topicId ? { ...t, access_tier: currentTier } : t))
+      if (selectedTopic?.id === topicId) setSelectedTopic((prev: any) => prev ? { ...prev, access_tier: currentTier } : null)
+      alert('Không thể thay đổi phân quyền truy cập: ' + err.message)
+    }
+  }
+
+  const handleBulkUpdateAccessTier = async (tier: AccessTier) => {
+    try {
+      setBulkUpdating(true)
+      await subscriptionService.bulkUpdateAccessTier('listening_topics', selectedTopicIds, tier)
+      setTopics(prev => prev.map(t => selectedTopicIds.includes(t.id) ? { ...t, access_tier: tier } : t))
+      if (selectedTopic && selectedTopicIds.includes(selectedTopic.id)) {
+        setSelectedTopic((prev: any) => prev ? { ...prev, access_tier: tier } : null)
+      }
+      setSelectedTopicIds([])
+    } catch (err: any) {
+      alert('Lỗi thao tác hàng loạt: ' + err.message)
+    } finally {
+      setBulkUpdating(false)
     }
   }
 
@@ -305,8 +347,26 @@ export default function AdminListeningPage() {
                     selectedTopic?.id === t.id ? 'bg-muted border-primary translate-x-1 font-black' : 'bg-card'
                   }`}
                 >
-                  <span className="font-bold truncate">{t.title}</span>
-                  <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center gap-2 min-w-0" onClick={e => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedTopicIds.includes(t.id)}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setSelectedTopicIds(prev => [...prev, t.id])
+                        } else {
+                          setSelectedTopicIds(prev => prev.filter(id => id !== t.id))
+                        }
+                      }}
+                      className="w-3.5 h-3.5 rounded border-2 border-[#1c293c] text-primary cursor-pointer focus:ring-0"
+                    />
+                    <span className="font-bold truncate">{t.title}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                    <AccessTierBadge
+                      tier={t.access_tier || 'free'}
+                      onChange={() => handleToggleAccessTier(t.id, t.access_tier || 'free')}
+                    />
                     <button onClick={() => handleEditTopic(t)} className="p-1 rounded hover:bg-muted text-[10px] border border-border">Sửa</button>
                     <button onClick={() => handleDeleteTopic(t.id)} className="p-1 rounded hover:bg-rose-100 text-rose-800 text-[10px] border border-border">Xóa</button>
                   </div>
@@ -459,6 +519,64 @@ export default function AdminListeningPage() {
                 <label htmlFor="topic_is_published" className="text-xs font-black text-foreground cursor-pointer select-none">
                   Phát hành công khai cho học viên (Publish)
                 </label>
+              </div>
+
+              <div className="border-t border-border/40 my-1 pt-3 flex flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-black text-foreground">Phân quyền truy cập (Access Tier)</label>
+                  <select
+                    value={topicForm.access_tier || 'free'}
+                    onChange={e => setTopicForm((prev: any) => ({ ...prev, access_tier: e.target.value }))}
+                    className="px-3 py-1.5 border-2 border-border rounded bg-muted text-xs font-bold focus:outline-none focus:border-primary"
+                  >
+                    <option value="free">Free (Miễn phí)</option>
+                    <option value="pro">Pro (Trả phí)</option>
+                  </select>
+                </div>
+
+                {topicForm.access_tier === 'pro' && (
+                  <div className="flex flex-col gap-2 p-3 bg-slate-50 border border-border rounded">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="teaser_enabled"
+                        checked={topicForm.teaser_config?.enabled !== false}
+                        onChange={e => setTopicForm((prev: any) => ({
+                          ...prev,
+                          teaser_config: {
+                            ...prev.teaser_config,
+                            enabled: e.target.checked
+                          }
+                        }))}
+                        className="w-4 h-4 rounded border-2 border-border text-primary cursor-pointer focus:ring-0"
+                      />
+                      <label htmlFor="teaser_enabled" className="text-xs font-black text-[#1c293c] cursor-pointer select-none">
+                        Cho phép xem trước (Teaser Mode)
+                      </label>
+                    </div>
+
+                    {topicForm.teaser_config?.enabled !== false && (
+                      <div className="flex flex-col gap-1 mt-1">
+                        <label className="text-[11px] font-bold text-muted-foreground">Chế độ hiển thị khi bị khóa</label>
+                        <select
+                          value={topicForm.teaser_config?.type || 'title_only'}
+                          onChange={e => setTopicForm((prev: any) => ({
+                            ...prev,
+                            teaser_config: {
+                              ...prev.teaser_config,
+                              type: e.target.value
+                            }
+                          }))}
+                          className="px-2 py-1.5 border-2 border-border rounded bg-white text-xs font-bold focus:outline-none"
+                        >
+                          <option value="title_only">Chỉ hiện tiêu đề & mô tả</option>
+                          <option value="audio_preview">Nghe thử 30 giây đầu</option>
+                          <option value="transcript_preview">Hiển thị transcript đoạn đầu</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex justify-end gap-2 border-t-2 border-border pt-4">
@@ -677,6 +795,13 @@ export default function AdminListeningPage() {
           </div>
         </div>
       )}
+
+      <BulkActionBar
+        selectedCount={selectedTopicIds.length}
+        onUpdateTier={handleBulkUpdateAccessTier}
+        onClearSelection={() => setSelectedTopicIds([])}
+        isLoading={bulkUpdating}
+      />
     </div>
   )
 }
