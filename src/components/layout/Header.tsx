@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   Crown,
   FileText,
+  Gamepad2,
   Gauge,
   Globe,
   Headphones,
@@ -64,7 +65,7 @@ const mainNavItems = [
   { labelKey: 'header.speaking', to: '/app/speaking', icon: Mic },
   { labelKey: 'header.reading', to: '/app/reading', icon: FileText },
   { labelKey: 'header.writing', to: '/app/writing', icon: PenLine },
-  { labelKey: 'header.roadmap', to: '/app/roadmap', icon: Map },
+  { labelKey: 'header.games', to: '/app/games', icon: Gamepad2 },
 ] as const
 
 const moreDropdownItems = [
@@ -73,6 +74,7 @@ const moreDropdownItems = [
   { labelKey: 'nav.study', to: '/app/study', icon: Brain },
   { labelKey: 'nav.quiz', to: '/app/quiz', icon: ClipboardCheck },
   { labelKey: 'nav.review', to: '/app/review', icon: Gauge },
+  { labelKey: 'header.roadmap', to: '/app/roadmap', icon: Map },
   { labelKey: 'header.exams', to: '/app/exams', icon: ClipboardCheck },
   { labelKey: 'header.videos', to: '/app/videos', icon: Video },
   { labelKey: 'header.blog', to: '/app/blog', icon: Rss },
