@@ -225,7 +225,7 @@ export default function AdminGamesPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full">
       {/* Header */}
       <div className="neo-card p-6 bg-[#432dd7] text-white border-4 border-[#1c293c] shadow-[6px_6px_0px_0px_#1c293c] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-3">
@@ -272,30 +272,30 @@ export default function AdminGamesPage() {
             1. Cấu hình Quyền truy cập Trò chơi
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {(Object.keys(config.games) as Array<keyof typeof config.games>).map((gameKey) => {
               const gameTier = config.games[gameKey].accessTier
               return (
                 <div
                   key={gameKey}
-                  className="p-4 border-2 border-[#1c293c] rounded-md bg-muted/20 flex items-center justify-between gap-4"
+                  className="p-4 border-2 border-[#1c293c] rounded-md bg-muted/20 flex flex-col justify-between gap-3 h-full"
                 >
-                  <span className="font-black text-sm">{getGameLabel(gameKey)}</span>
+                  <span className="font-black text-sm block">{getGameLabel(gameKey)}</span>
 
-                  <div className="flex border-2 border-[#1c293c] rounded-md overflow-hidden shrink-0">
+                  <div className="flex border-2 border-[#1c293c] rounded-md overflow-hidden w-full shrink-0">
                     <button
                       onClick={() => handleGameTierChange(gameKey, 'free')}
-                      className={`px-3 py-1 text-xs font-black transition-colors ${
+                      className={`flex-1 py-1.5 text-xs font-black transition-colors text-center border-r-2 border-[#1c293c] ${
                         gameTier === 'free'
-                          ? 'bg-[#dcfce7] text-[#166534] border-r-2 border-[#1c293c]'
-                          : 'bg-background hover:bg-muted border-r-2 border-[#1c293c]'
+                          ? 'bg-[#dcfce7] text-[#166534]'
+                          : 'bg-background hover:bg-muted'
                       }`}
                     >
                       Free
                     </button>
                     <button
                       onClick={() => handleGameTierChange(gameKey, 'pro')}
-                      className={`px-3 py-1 text-xs font-black transition-colors ${
+                      className={`flex-1 py-1.5 text-xs font-black transition-colors text-center ${
                         gameTier === 'pro'
                           ? 'bg-amber-100 text-amber-900'
                           : 'bg-background hover:bg-muted'
@@ -316,12 +316,12 @@ export default function AdminGamesPage() {
             <CheckSquare className="w-5 h-5 text-primary" />
             2. Danh sách Bộ từ vựng cho phép chơi game
           </h2>
-          <p className="text-xs text-muted-foreground font-semibold leading-relaxed">
+          <p className="text-xs text-muted-foreground font-semibold leading-relaxed mb-2">
             Tích chọn để hiển thị bộ từ vựng tương ứng trên màn hình chọn trước khi bắt đầu chơi. Điều chỉnh bộ từ vựng chỉ Pro mới được phép sử dụng.
           </p>
 
-          <div className="space-y-3">
-            {/* Special row for "Tất cả từ vựng của bạn" */}
+          <div className="space-y-4">
+            {/* Special row for "Tất cả từ vựng của bạn" - Full width at top */}
             {(() => {
               const allDeckConfig = getDeckConfig('all')
               return (
@@ -375,62 +375,66 @@ export default function AdminGamesPage() {
               )
             })()}
 
-            {/* Public Decks List */}
-            {publicDecks.map((deck) => {
-              const deckConfig = getDeckConfig(deck.id)
-              return (
-                <div
-                  key={deck.id}
-                  className="p-4 border-2 border-[#1c293c] rounded-md bg-muted/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-                >
+            {/* Public Decks List - Grid layout for 2-4 columns on larger screens */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {publicDecks.map((deck) => {
+                const deckConfig = getDeckConfig(deck.id)
+                return (
                   <div
-                    className="flex items-center gap-3 cursor-pointer select-none"
-                    onClick={() => handleDeckAllowedToggle(deck.id)}
+                    key={deck.id}
+                    className="p-4 border-2 border-[#1c293c] rounded-md bg-muted/20 flex flex-col justify-between gap-3 h-full"
                   >
-                    {deckConfig.allowed ? (
-                      <CheckSquare className="w-5 h-5 text-primary shrink-0" />
-                    ) : (
-                      <Square className="w-5 h-5 text-muted-foreground shrink-0" />
-                    )}
-                    <div>
-                      <span className="font-black text-sm block">{deck.name}</span>
-                      <span className="text-[10px] text-muted-foreground font-bold">
-                        Số lượng: {deck.term_count} từ
-                      </span>
+                    <div
+                      className="flex items-start gap-3 cursor-pointer select-none"
+                      onClick={() => handleDeckAllowedToggle(deck.id)}
+                    >
+                      {deckConfig.allowed ? (
+                        <CheckSquare className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                      ) : (
+                        <Square className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+                      )}
+                      <div>
+                        <span className="font-black text-sm block line-clamp-2" title={deck.name}>
+                          {deck.name}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-bold">
+                          Số lượng: {deck.term_count} từ
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex border-2 border-[#1c293c] rounded-md overflow-hidden w-full shrink-0">
+                      <button
+                        onClick={() => handleDeckTierChange(deck.id, 'free')}
+                        disabled={!deckConfig.allowed}
+                        className={`flex-1 py-1.5 text-xs font-black transition-colors text-center border-r-2 border-[#1c293c] ${
+                          !deckConfig.allowed
+                            ? 'opacity-40 cursor-not-allowed bg-muted text-muted-foreground'
+                            : deckConfig.accessTier === 'free'
+                            ? 'bg-[#dcfce7] text-[#166534]'
+                            : 'bg-background hover:bg-muted'
+                        }`}
+                      >
+                        Free
+                      </button>
+                      <button
+                        onClick={() => handleDeckTierChange(deck.id, 'pro')}
+                        disabled={!deckConfig.allowed}
+                        className={`flex-1 py-1.5 text-xs font-black transition-colors text-center ${
+                          !deckConfig.allowed
+                            ? 'opacity-40 cursor-not-allowed bg-muted text-muted-foreground'
+                            : deckConfig.accessTier === 'pro'
+                            ? 'bg-amber-100 text-amber-900'
+                            : 'bg-background hover:bg-muted'
+                        }`}
+                      >
+                        Pro 👑
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex border-2 border-[#1c293c] rounded-md overflow-hidden shrink-0">
-                    <button
-                      onClick={() => handleDeckTierChange(deck.id, 'free')}
-                      disabled={!deckConfig.allowed}
-                      className={`px-3 py-1 text-xs font-black transition-colors ${
-                        !deckConfig.allowed
-                          ? 'opacity-40 cursor-not-allowed bg-muted text-muted-foreground border-r-2 border-[#1c293c]'
-                          : deckConfig.accessTier === 'free'
-                          ? 'bg-[#dcfce7] text-[#166534] border-r-2 border-[#1c293c]'
-                          : 'bg-background hover:bg-muted border-r-2 border-[#1c293c]'
-                      }`}
-                    >
-                      Free
-                    </button>
-                    <button
-                      onClick={() => handleDeckTierChange(deck.id, 'pro')}
-                      disabled={!deckConfig.allowed}
-                      className={`px-3 py-1 text-xs font-black transition-colors ${
-                        !deckConfig.allowed
-                          ? 'opacity-40 cursor-not-allowed bg-muted text-muted-foreground'
-                          : deckConfig.accessTier === 'pro'
-                          ? 'bg-amber-100 text-amber-900'
-                          : 'bg-background hover:bg-muted'
-                      }`}
-                    >
-                      Pro 👑
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
 
             {publicDecks.length === 0 && (
               <div className="text-center py-6 text-xs text-muted-foreground font-bold">
