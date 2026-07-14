@@ -17,7 +17,23 @@ export function derivePartOfSpeech(meanings: Meaning[]): string | null {
 }
 
 export function deriveTranslation(meanings: Meaning[]): string | null {
-  return meanings[0]?.translation ?? null
+  const activeMeanings = meanings.filter((m) => m.translation?.trim())
+  if (activeMeanings.length === 0) return null
+
+  const distinctPOS = [...new Set(activeMeanings.map((m) => m.part_of_speech).filter(Boolean) as string[])]
+  const hasMultiplePOS = distinctPOS.length > 1
+
+  const translations = activeMeanings
+    .map((m) => {
+      const transText = m.translation!.trim()
+      if (hasMultiplePOS && m.part_of_speech) {
+        return `(${m.part_of_speech}) ${transText}`
+      }
+      return transText
+    })
+    .filter(Boolean) as string[]
+
+  return translations.length > 0 ? translations.join('; ') : null
 }
 
 export function deriveExamples(meanings: Meaning[]): ExampleSentence[] {
