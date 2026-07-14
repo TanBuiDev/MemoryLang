@@ -106,10 +106,9 @@ describe('MatchingGamePage', () => {
     const checkBtn = screen.getByRole('button', { name: /Kiểm tra kết quả/i })
     expect(checkBtn).toBeDisabled()
 
-    // Match each card: Left index i with Right index i
     for (let i = 0; i < 5; i++) {
       fireEvent.click(screen.getByText(testItems[i].source_text))
-      fireEvent.click(screen.getByText(testItems[i].translation))
+      fireEvent.click(screen.getByText(testItems[i].translation!))
     }
 
     expect(checkBtn).toBeEnabled()

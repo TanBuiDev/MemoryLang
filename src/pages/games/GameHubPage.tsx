@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import { deckService } from '@/services/supabase/deck.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
+import { supabase } from '@/services/supabase/client'
 import type { Deck } from '@/types/deck.types'
 import {
   Gamepad2,
@@ -22,6 +23,36 @@ import {
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { cn } from '@/utils/cn'
 
+interface GameAccessConfig {
+  accessTier: 'free' | 'pro'
+}
+
+interface AllowedDeckConfig {
+  deckId: string
+  allowed: boolean
+  accessTier: 'free' | 'pro'
+}
+
+interface GameHubConfig {
+  games: {
+    matching: GameAccessConfig
+    speed: GameAccessConfig
+    puzzle: GameAccessConfig
+    listening: GameAccessConfig
+  }
+  allowedDecks: AllowedDeckConfig[]
+}
+
+const DEFAULT_CONFIG: GameHubConfig = {
+  games: {
+    matching: { accessTier: 'free' },
+    speed: { accessTier: 'pro' },
+    puzzle: { accessTier: 'pro' },
+    listening: { accessTier: 'pro' },
+  },
+  allowedDecks: [{ deckId: 'all', allowed: true, accessTier: 'free' }],
+}
+
 export default function GameHubPage() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
@@ -31,6 +62,7 @@ export default function GameHubPage() {
   const [decks, setDecks] = useState<Deck[]>([])
   const [allTermsCount, setAllTermsCount] = useState<number>(0)
   const [loading, setLoading] = useState(true)
+  const [hubConfig, setHubConfig] = useState<GameHubConfig>(DEFAULT_CONFIG)
 
   // UI state
   const [isConfigOpen, setIsConfigOpen] = useState(false)
@@ -50,12 +82,28 @@ export default function GameHubPage() {
       if (!user) return
       try {
         setLoading(true)
-        const [decksList, termsList] = await Promise.all([
+        const [decksList, termsList, settingData] = await Promise.all([
           deckService.list(user.id),
           vocabularyService.list(user.id),
+          supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'game_hub_config')
+            .maybeSingle(),
         ])
         setDecks(decksList)
         setAllTermsCount(termsList.length)
+
+        if (settingData?.data?.value) {
+          const parsed = settingData.data.value as GameHubConfig
+          setHubConfig({
+            games: {
+              ...DEFAULT_CONFIG.games,
+              ...parsed.games,
+            },
+            allowedDecks: parsed.allowedDecks || DEFAULT_CONFIG.allowedDecks,
+          })
+        }
       } catch (err) {
         console.error('Failed to load Game Hub data:', err)
       } finally {
@@ -128,6 +176,12 @@ export default function GameHubPage() {
     }
   }
 
+  // Helper check deck config in loaded hubConfig
+  const getDeckConfig = (deckId: string) => {
+    const found = hubConfig.allowedDecks.find((d) => d.deckId === deckId)
+    return found || { deckId, allowed: false, accessTier: 'free' as const }
+  }
+
   const games = [
     {
       id: 'matching',
@@ -171,6 +225,14 @@ export default function GameHubPage() {
     },
   ]
 
+  // Filter allowed decks
+  const allowedDecksToShow = decks.filter((deck) => {
+    const deckConf = getDeckConfig(deck.id)
+    return deckConf.allowed
+  })
+
+  const isAllVocabularyAllowed = getDeckConfig('all').allowed
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -192,6 +254,10 @@ export default function GameHubPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {games.map((game) => {
           const Icon = game.icon
+          const gameConf = hubConfig.games[game.id as keyof typeof hubConfig.games] || { accessTier: 'free' }
+          const isGameProGated = gameConf.accessTier === 'pro'
+          const hasAccess = !isGameProGated || isPro
+
           return (
             <div
               key={game.id}
@@ -209,7 +275,12 @@ export default function GameHubPage() {
                 </div>
 
                 {/* Title */}
-                <h3 className="text-xl font-black text-center mb-2">{game.name}</h3>
+                <h3 className="text-xl font-black text-center mb-2 flex items-center justify-center gap-1">
+                  {game.name}
+                  {isGameProGated && (
+                    <Crown size={16} className="text-amber-500 shrink-0" />
+                  )}
+                </h3>
 
                 {/* Description */}
                 <p className="text-xs text-muted-foreground font-semibold text-center mb-4 leading-relaxed">
@@ -232,9 +303,16 @@ export default function GameHubPage() {
               {/* Button */}
               {game.isAvailable ? (
                 <button
-                  onClick={() => {
-                    setIsConfigOpen(true)
-                    setValidationError(null)
+                  onClick={(e) => {
+                    handleProOptionClick(
+                      e,
+                      hasAccess,
+                      () => {
+                        setIsConfigOpen(true)
+                        setValidationError(null)
+                      },
+                      'để chơi trò chơi này'
+                    )
                   }}
                   className="neo-button w-full bg-yellow-400 hover:bg-yellow-300 py-3 font-black text-navy border-2 border-border"
                 >
@@ -249,12 +327,16 @@ export default function GameHubPage() {
                 </button>
               )}
 
-              {/* Coming Soon badge */}
-              {!game.isAvailable && (
+              {/* Pro / Coming Soon badge */}
+              {!game.isAvailable ? (
                 <div className="absolute -top-2 -right-2 bg-purple-600 text-white px-2 py-0.5 text-[9px] font-black rotate-12 border-2 border-[#1c293c] shadow-[2px_2px_0px_0px_#1c293c] uppercase">
                   Sớm ra mắt
                 </div>
-              )}
+              ) : isGameProGated ? (
+                <div className="absolute -top-2 -right-2 bg-amber-500 text-white px-2 py-0.5 text-[9px] font-black rotate-12 border-2 border-[#1c293c] shadow-[2px_2px_0px_0px_#1c293c] uppercase flex items-center gap-0.5">
+                  <Crown size={10} /> Pro
+                </div>
+              ) : null}
             </div>
           )
         })}
@@ -296,58 +378,118 @@ export default function GameHubPage() {
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Option: All vocabulary */}
-                  <label
-                    className={cn(
-                      'flex items-center gap-3 p-3 border-2 border-[#1c293c] rounded-md cursor-pointer transition-all hover:bg-muted/40',
-                      selectedSource === 'all'
-                        ? 'bg-yellow-100 border-yellow-500 shadow-[3px_3px_0px_0px_#eab308]'
-                        : 'bg-background'
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="source"
-                      value="all"
-                      checked={selectedSource === 'all'}
-                      onChange={() => setSelectedSource('all')}
-                      className="w-4.5 h-4.5 accent-primary shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <p className="font-black text-sm truncate">Tất cả từ vựng của bạn</p>
-                      <p className="text-[10px] text-muted-foreground font-bold">
-                        Tổng số: {loading ? '...' : `${allTermsCount} từ`}
-                      </p>
-                    </div>
-                  </label>
+                  {isAllVocabularyAllowed && (() => {
+                    const allConf = getDeckConfig('all')
+                    const isAllPro = allConf.accessTier === 'pro'
+                    const hasAllAccess = !isAllPro || isPro
+
+                    return (
+                      <label
+                        onClick={(e) => {
+                          if (!hasAllAccess) {
+                            e.preventDefault()
+                            triggerProPrompt('để sử dụng bộ từ vựng này')
+                          } else {
+                            setSelectedSource('all')
+                          }
+                        }}
+                        className={cn(
+                          'flex items-center gap-3 p-3 border-2 border-[#1c293c] rounded-md cursor-pointer transition-all hover:bg-muted/40 relative',
+                          selectedSource === 'all'
+                            ? 'bg-yellow-100 border-yellow-500 shadow-[3px_3px_0px_0px_#eab308]'
+                            : 'bg-background'
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name="source"
+                          value="all"
+                          checked={selectedSource === 'all'}
+                          disabled={!hasAllAccess}
+                          onChange={() => setSelectedSource('all')}
+                          className="w-4.5 h-4.5 accent-primary shrink-0 cursor-pointer"
+                        />
+                        <div className="min-w-0 pr-6">
+                          <p className="font-black text-sm truncate flex items-center gap-1">
+                            Tất cả từ vựng của bạn
+                            {isAllPro && (
+                              <Crown size={14} className="text-amber-500 shrink-0" />
+                            )}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground font-bold">
+                            Tổng số: {loading ? '...' : `${allTermsCount} từ`}
+                          </p>
+                        </div>
+
+                        {isAllPro && !isPro && (
+                          <span className="absolute top-2 right-2 text-amber-600 bg-amber-50 px-1 border border-amber-300 rounded flex items-center gap-0.5 text-[8px] font-black uppercase">
+                            Pro
+                          </span>
+                        )}
+                      </label>
+                    )
+                  })()}
 
                   {/* Decks option */}
-                  {decks.map((deck) => (
-                    <label
-                      key={deck.id}
-                      className={cn(
-                        'flex items-center gap-3 p-3 border-2 border-[#1c293c] rounded-md cursor-pointer transition-all hover:bg-muted/40',
-                        selectedSource === deck.id
-                          ? 'bg-yellow-100 border-yellow-500 shadow-[3px_3px_0px_0px_#eab308]'
-                          : 'bg-background'
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name="source"
-                        value={deck.id}
-                        checked={selectedSource === deck.id}
-                        onChange={() => setSelectedSource(deck.id)}
-                        className="w-4.5 h-4.5 accent-primary shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <p className="font-black text-sm truncate">{deck.name}</p>
-                        <p className="text-[10px] text-muted-foreground font-bold">
-                          Số từ: {deck.term_count ?? 0} từ
-                        </p>
-                      </div>
-                    </label>
-                  ))}
+                  {allowedDecksToShow.map((deck) => {
+                    const deckConf = getDeckConfig(deck.id)
+                    const isDeckPro = deckConf.accessTier === 'pro'
+                    const hasDeckAccess = !isDeckPro || isPro
+
+                    return (
+                      <label
+                        key={deck.id}
+                        onClick={(e) => {
+                          if (!hasDeckAccess) {
+                            e.preventDefault()
+                            triggerProPrompt('để sử dụng bộ thẻ này')
+                          } else {
+                            setSelectedSource(deck.id)
+                          }
+                        }}
+                        className={cn(
+                          'flex items-center gap-3 p-3 border-2 border-[#1c293c] rounded-md cursor-pointer transition-all hover:bg-muted/40 relative',
+                          selectedSource === deck.id
+                            ? 'bg-yellow-100 border-yellow-500 shadow-[3px_3px_0px_0px_#eab308]'
+                            : 'bg-background'
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name="source"
+                          value={deck.id}
+                          checked={selectedSource === deck.id}
+                          disabled={!hasDeckAccess}
+                          onChange={() => setSelectedSource(deck.id)}
+                          className="w-4.5 h-4.5 accent-primary shrink-0 cursor-pointer"
+                        />
+                        <div className="min-w-0 pr-6">
+                          <p className="font-black text-sm truncate flex items-center gap-1">
+                            {deck.name}
+                            {isDeckPro && (
+                              <Crown size={14} className="text-amber-500 shrink-0" />
+                            )}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground font-bold">
+                            Số từ: {deck.term_count ?? 0} từ
+                          </p>
+                        </div>
+
+                        {isDeckPro && !isPro && (
+                          <span className="absolute top-2 right-2 text-amber-600 bg-amber-50 px-1 border border-amber-300 rounded flex items-center gap-0.5 text-[8px] font-black uppercase">
+                            Pro
+                          </span>
+                        )}
+                      </label>
+                    )
+                  })}
                 </div>
+
+                {allowedDecksToShow.length === 0 && !isAllVocabularyAllowed && (
+                  <div className="p-4 border-2 border-dashed border-[#1c293c]/20 text-center text-xs text-muted-foreground font-bold rounded-md">
+                    Không có bộ thẻ nào được phép chơi. Vui lòng liên hệ Admin cấu hình.
+                  </div>
+                )}
               </section>
 
               {/* Section 2: Question Count */}
