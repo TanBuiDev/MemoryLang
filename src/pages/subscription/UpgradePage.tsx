@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { PricingCard } from '@/components/subscription/PricingCard'
 import { PaymentQRModal } from '@/components/subscription/PaymentQRModal'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
+import { Crown } from 'lucide-react'
 import {
   PRICING_PLANS,
   type PricingPlan,
@@ -131,7 +132,9 @@ export function UpgradePage() {
                 <th className="text-left py-2 pr-4 font-bold">Tính năng</th>
                 <th className="text-center py-2 px-4 font-bold">Free</th>
                 <th className="text-center py-2 px-4 font-bold text-[#fdc800]">
-                  Pro 👑
+                  <span className="inline-flex items-center gap-1 justify-center">
+                    Pro <Crown size={14} className="fill-[#fdc800] text-[#fdc800]" />
+                  </span>
                 </th>
               </tr>
             </thead>
@@ -145,16 +148,22 @@ export function UpgradePage() {
                 ['Listening', 'Cơ bản', 'Đầy đủ'],
                 ['Grammar', 'Cơ bản', 'Đầy đủ'],
                 ['Xuất dữ liệu', '✗', '✓'],
-                ['Badge Profile', '✗', '👑 Pro'],
+                [
+                  'Badge Profile',
+                  '✗',
+                  <span className="inline-flex items-center gap-1 justify-center">
+                    <Crown size={12} className="fill-[#fdc800] text-[#fdc800]" /> Pro
+                  </span>
+                ],
                 ['Ưu tiên hỗ trợ', '✗', '✓'],
-              ].map(([feature, free, pro]) => (
-                <tr key={feature}>
-                  <td className="py-2 pr-4">{feature}</td>
+              ].map(([feature, free, pro], index) => (
+                <tr key={index}>
+                  <td className="py-2 pr-4">{feature as any}</td>
                   <td className="text-center py-2 px-4 text-[#64748b]">
-                    {free}
+                    {free as any}
                   </td>
                   <td className="text-center py-2 px-4 font-semibold">
-                    {pro}
+                    {pro as any}
                   </td>
                 </tr>
               ))}

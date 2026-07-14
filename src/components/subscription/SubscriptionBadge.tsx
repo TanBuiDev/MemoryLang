@@ -1,4 +1,5 @@
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
+import { Crown } from 'lucide-react'
 
 /**
  * Badge hiển thị subscription status trên Header.
@@ -14,7 +15,8 @@ export function SubscriptionBadge() {
           rounded border-2 border-[#1c293c] bg-[#fdc800] text-[#1c293c]
           shadow-[2px_2px_0_#1c293c]"
       >
-        👑 Pro
+        <Crown size={12} />
+        Pro
       </span>
     )
   }

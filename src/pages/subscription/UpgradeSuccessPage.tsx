@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
+import { Crown, Sparkles } from 'lucide-react'
 
 export function UpgradeSuccessPage() {
   const subscription = useSubscriptionStore((s) => s.subscription)
@@ -18,69 +19,77 @@ export function UpgradeSuccessPage() {
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight
 
-    const colors = ['#fdc800', '#432dd7', '#22c55e', '#f43f5e', '#3b82f6']
-    const particles: Array<{
-      x: number
-      y: number
-      vx: number
-      vy: number
-      color: string
-      size: number
-      life: number
-    }> = []
+    const colors = ['#fdc800', '#432dd7', '#22c55e', '#ef4444', '#3b82f6']
+    const particles = Array.from({ length: 150 }).map(() => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height - canvas.height,
+      r: Math.random() * 6 + 4,
+      d: Math.random() * canvas.height,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      tilt: Math.random() * 10 - 5,
+      tiltAngleIncremental: Math.random() * 0.07 + 0.02,
+      tiltAngle: 0,
+    }))
 
-    // Tạo confetti
-    for (let i = 0; i < 150; i++) {
-      particles.push({
-        x: Math.random() * canvas.width,
-        y: -10 - Math.random() * canvas.height * 0.5,
-        vx: (Math.random() - 0.5) * 4,
-        vy: Math.random() * 3 + 2,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        size: Math.random() * 6 + 2,
-        life: 1,
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      particles.forEach((p) => {
+        ctx.beginPath()
+        ctx.lineWidth = p.r / 2
+        ctx.strokeStyle = p.color
+        ctx.moveTo(p.x + p.tilt + p.r / 2, p.y)
+        ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2)
+        ctx.stroke()
+      })
+
+      update()
+    }
+
+    const update = () => {
+      particles.forEach((p, idx) => {
+        p.tiltAngle += p.tiltAngleIncremental
+        p.y += (Math.cos(p.d) + 3 + p.r / 2) / 2
+        p.x += Math.sin(p.tiltAngle)
+        if (p.y > canvas.height) {
+          particles[idx] = {
+            x: Math.random() * canvas.width,
+            y: -20,
+            r: p.r,
+            d: p.d,
+            color: p.color,
+            tilt: Math.random() * 10 - 5,
+            tiltAngleIncremental: p.tiltAngleIncremental,
+            tiltAngle: p.tiltAngle,
+          }
+        }
       })
     }
 
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-      let alive = 0
-      for (const p of particles) {
-        if (p.life <= 0) continue
-        alive++
-
-        p.x += p.vx
-        p.y += p.vy
-        p.vy += 0.05 // gravity
-        p.vx *= 0.99
-        p.life -= 0.003
-
-        ctx.globalAlpha = p.life
-        ctx.fillStyle = p.color
-        ctx.fillRect(p.x, p.y, p.size, p.size * 1.5)
-      }
-
-      ctx.globalAlpha = 1
-
-      if (alive > 0) {
-        animationId = requestAnimationFrame(animate)
-      }
+    const animLoop = () => {
+      draw()
+      animationId = requestAnimationFrame(animLoop)
     }
 
-    animate()
+    animLoop()
+
+    const handleResize = () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+    window.addEventListener('resize', handleResize)
 
     return () => {
       cancelAnimationFrame(animationId)
+      window.removeEventListener('resize', handleResize)
     }
   }, [])
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-12 text-center relative">
-      {/* Confetti canvas */}
+    <div className="relative min-h-[80vh] flex items-center justify-center p-4 text-center overflow-hidden">
+      {/* Canvas background for confetti */}
       <canvas
         ref={canvasRef}
-        className="fixed inset-0 pointer-events-none z-10"
+        className="absolute inset-0 w-full h-full pointer-events-none z-10"
       />
 
       {/* Content */}
@@ -89,9 +98,9 @@ export function UpgradeSuccessPage() {
         <div
           className="inline-flex items-center justify-center w-24 h-24 mb-6
             rounded-full bg-[#FFF9E5] border-[4px] border-[#1c293c]
-            shadow-[6px_6px_0_#1c293c] text-5xl"
+            shadow-[6px_6px_0_#1c293c]"
         >
-          🎉
+          <Sparkles size={40} className="text-[#fdc800] fill-[#fdc800]" />
         </div>
 
         <h1 className="text-3xl font-bold text-[#1c293c] mb-2">
@@ -100,7 +109,9 @@ export function UpgradeSuccessPage() {
 
         <p className="text-lg text-[#64748b] mb-2">
           Bạn đã là thành viên{' '}
-          <span className="font-bold text-[#fdc800]">MemoryLang Pro</span> 👑
+          <span className="font-bold text-[#fdc800] inline-flex items-center gap-1">
+            MemoryLang Pro <Crown size={16} className="fill-[#fdc800] text-[#fdc800]" />
+          </span>
         </p>
 
         {subscription?.current_period_end && (

@@ -1,4 +1,5 @@
 import type { AccessTier } from '@/types/subscription.types'
+import { Crown, Unlock } from 'lucide-react'
 
 interface BulkActionBarProps {
   selectedCount: number
@@ -34,16 +35,18 @@ export function BulkActionBar({
         <button
           onClick={() => onUpdateTier('pro')}
           disabled={isLoading}
-          className="neo-button min-h-0 px-3 py-1.5 rounded bg-[#fdc800] text-[#1c293c] text-xs font-black border-2 border-[#1c293c] shadow-[2px_2px_0_#1c293c] active:neo-button-active disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+          className="neo-button min-h-0 px-3 py-1.5 rounded bg-[#fdc800] text-[#1c293c] text-xs font-black border-2 border-[#1c293c] shadow-[2px_2px_0_#1c293c] active:neo-button-active disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
         >
-          👑 Chuyển Pro
+          <Crown size={14} />
+          Chuyển Pro
         </button>
         <button
           onClick={() => onUpdateTier('free')}
           disabled={isLoading}
-          className="neo-button min-h-0 px-3 py-1.5 rounded bg-[#dcfce7] text-[#166534] text-xs font-black border-2 border-[#1c293c] shadow-[2px_2px_0_#1c293c] active:neo-button-active disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+          className="neo-button min-h-0 px-3 py-1.5 rounded bg-[#dcfce7] text-[#166534] text-xs font-black border-2 border-[#1c293c] shadow-[2px_2px_0_#1c293c] active:neo-button-active disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
         >
-          🔓 Chuyển Free
+          <Unlock size={14} />
+          Chuyển Free
         </button>
         <button
           onClick={onClearSelection}

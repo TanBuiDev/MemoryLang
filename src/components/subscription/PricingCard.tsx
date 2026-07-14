@@ -1,4 +1,5 @@
 import { useI18n } from '@/i18n'
+import { Crown, Star } from 'lucide-react'
 import type { PricingPlan, BillingCycle } from '@/types/subscription.types'
 
 interface PricingCardProps {
@@ -45,9 +46,10 @@ export function PricingCard({
         <div
           className="absolute -top-3 -right-3 bg-[#432dd7] text-white text-xs font-bold
             px-3 py-1 rounded-md border-2 border-[#1c293c] rotate-[5deg]
-            shadow-[2px_2px_0_#1c293c]"
+            shadow-[2px_2px_0_#1c293c] flex items-center gap-1"
         >
-          ⭐ Phổ biến
+          <Star size={12} className="fill-[#fdc800] text-[#fdc800]" />
+          <span>Phổ biến</span>
         </div>
       )}
 
@@ -148,7 +150,10 @@ export function PricingCard({
             }
           `}
         >
-          {t('subscription.upgradeNow') || 'Nâng cấp ngay'} 👑
+          <span className="flex items-center justify-center gap-1.5">
+            {t('subscription.upgradeNow') || 'Nâng cấp ngay'}
+            <Crown size={14} />
+          </span>
         </button>
       )}
     </div>

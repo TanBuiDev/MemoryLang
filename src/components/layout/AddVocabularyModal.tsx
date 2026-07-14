@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Plus, X, Loader2, Save } from 'lucide-react'
+import { Plus, X, Loader2, Save, Crown, Lock } from 'lucide-react'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useLanguageStore } from '@/stores/useLanguageStore'
@@ -144,8 +144,8 @@ export function AddVocabularyModal({ isOpen, onClose, initialWord, onSuccess }: 
           className="relative w-full max-w-md bg-white border-[3px] border-[#1c293c] shadow-[8px_8px_0_#1c293c] rounded-lg p-6 flex flex-col gap-4 animate-in zoom-in duration-200 z-10 text-left"
         >
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#FFF9E5] border-2 border-[#1c293c] text-2xl mb-3 shadow-[2px_2px_0_#1c293c]">
-              🔒
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#FFF9E5] border-2 border-[#1c293c] mb-3 shadow-[2px_2px_0_#1c293c]">
+              <Lock className="w-6 h-6 text-[#1c293c]" />
             </div>
             <h3 className="text-lg font-black text-[#1c293c]">Giới hạn từ vựng đã đạt</h3>
             <p className="text-xs text-[#64748b] mt-1">
@@ -158,9 +158,10 @@ export function AddVocabularyModal({ isOpen, onClose, initialWord, onSuccess }: 
                 onClose()
                 navigate('/app/upgrade')
               }}
-              className="neo-button neo-button-active justify-center font-bold bg-[#fdc800] hover:bg-[#e6b800] text-[#1c293c] py-2 border-2 border-[#1c293c]"
+              className="neo-button neo-button-active justify-center font-bold bg-[#fdc800] hover:bg-[#e6b800] text-[#1c293c] py-2 border-2 border-[#1c293c] flex items-center gap-1.5"
             >
-              Nâng cấp Pro — 49k/tháng 👑
+              <span>Nâng cấp Pro — 49k/tháng</span>
+              <Crown className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}

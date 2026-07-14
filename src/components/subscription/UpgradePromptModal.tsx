@@ -30,12 +30,12 @@ export function UpgradePromptModal({
 
   const config = {
     terms: {
-      title: '🔒 Giới hạn từ vựng đã đạt',
+      title: 'Giới hạn từ vựng đã đạt',
       description: `Bạn đã dùng hết ${termCount}/${FREE_LIMITS.maxTerms} từ vựng.\nNâng cấp Pro để thêm không giới hạn!`,
       confirmText: 'Nâng cấp ngay — 49k/tháng',
     },
     decks: {
-      title: '🔒 Giới hạn bộ thẻ đã đạt',
+      title: 'Giới hạn bộ thẻ đã đạt',
       description: `Bạn đã dùng hết ${deckCount}/${FREE_LIMITS.maxDecks} bộ thẻ.\nNâng cấp Pro để tạo không giới hạn!`,
       confirmText: 'Nâng cấp ngay — 49k/tháng',
     },
