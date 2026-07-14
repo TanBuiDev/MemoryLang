@@ -38,7 +38,6 @@ import { useNotificationStore, useUnreadCount } from '@/stores/useNotificationSt
 import { useThemeStore } from '@/stores/useThemeStore'
 import { useUiLanguageStore } from '@/stores/useUiLanguageStore'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
-import { SubscriptionBadge } from '@/components/subscription/SubscriptionBadge'
 import { cn } from '@/utils/cn'
 
 /**
@@ -201,19 +200,26 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-1 flex-1 justify-end shrink-0 min-w-max">
-          {!isPro && (
-            <Link
-              to="/app/upgrade"
-              className="hidden sm:inline-flex items-center gap-1.5 neo-button min-h-0 px-3 py-1.5 rounded-md border-2 border-border text-sm font-black bg-[#fdc800] text-[#1c293c] hover:bg-[#e6b800] active:neo-button-active transition whitespace-nowrap"
-            >
-              <Crown size={16} />
-              <span className="hidden md:inline">{t('header.upgrade')}</span>
-            </Link>
-          )}
-
-          <div className="hidden sm:block shrink-0">
-            <SubscriptionBadge />
-          </div>
+          <Link
+            to="/app/upgrade"
+            className={cn(
+              "hidden sm:inline-flex items-center gap-1.5 neo-button min-h-0 px-3 py-1.5 rounded-md border-2 border-border text-sm font-black transition whitespace-nowrap active:neo-button-active",
+              isPro
+                ? "bg-[#dcfce7] text-[#166534] hover:bg-[#bbf7d0]"
+                : "bg-[#fdc800] text-[#1c293c] hover:bg-[#e6b800]"
+            )}
+          >
+            {isPro ? (
+              <>
+                <span>Pro 👑</span>
+              </>
+            ) : (
+              <>
+                <Crown size={16} />
+                <span className="hidden md:inline">{t('header.upgrade')}</span>
+              </>
+            )}
+          </Link>
 
           <div ref={notifRef} className="relative">
             <button
@@ -412,7 +418,15 @@ export function Header() {
                 </NavLink>
               ))}
               
-              {!isPro && (
+              {isPro ? (
+                <NavLink
+                  to="/app/upgrade"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2.5 mt-2 rounded-md text-sm font-black border-2 border-border bg-[#dcfce7] text-[#166534] shadow-[2px_2px_0_var(--border)] active:translate-y-[2px] active:shadow-none transition-all"
+                >
+                  👑 Gói Pro hoạt động
+                </NavLink>
+              ) : (
                 <NavLink
                   to="/app/upgrade"
                   onClick={() => setMobileMenuOpen(false)}
