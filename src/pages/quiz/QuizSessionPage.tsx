@@ -31,6 +31,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useQuizStore } from '@/stores/useQuizStore'
 import { speak } from '@/utils/audio'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
+import { Select } from '@/components/ui/select'
 
 function appendUnique(ids: string[], id: string) {
   return ids.includes(id) ? ids : [...ids, id]
@@ -78,6 +79,7 @@ export function QuizSessionPage() {
   const [answerFeedback, setAnswerFeedback] = useState<AnswerFeedback>({ type: 'none' })
   const [answerShakeIteration, setAnswerShakeIteration] = useState(0)
   const [isEndQuizModalOpen, setIsEndQuizModalOpen] = useState(false)
+  const [isAudioSettingsExpanded, setIsAudioSettingsExpanded] = useState(false)
   const [flaggedTermIds, setFlaggedTermIds] = useState<Set<string>>(new Set())
   const [mcSelectedIndex, setMcSelectedIndex] = useState<number | null>(null)
   const [mcFeedbackState, setMcFeedbackState] = useState<'none' | 'correct' | 'wrong'>('none')
@@ -912,7 +914,7 @@ export function QuizSessionPage() {
                 <ArrowLeft size={20} />
               </button>
 
-              <Card className="relative p-8 w-full">
+              <Card className="relative p-4 sm:p-6 md:p-8 w-full">
                 <button
                   type="button"
                   className="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-md border-2 border-border bg-secondary text-secondary-foreground shadow-[2px_2px_0_var(--border)] hover:bg-[#321fb0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)]"
@@ -948,7 +950,7 @@ export function QuizSessionPage() {
                   <Flag size={16} fill={flaggedTermIds.has(question.userTermId) ? 'currentColor' : 'none'} />
                 </button>
                 <p className="text-center text-sm font-black uppercase text-muted-foreground">{t('quiz.question', { number: session.index + 1 })}</p>
-                <CardTitle className="mt-6 text-center text-4xl">
+                <CardTitle className="mt-4 sm:mt-6 text-center text-2xl sm:text-3xl md:text-4xl">
                   {question.sourceText}
                 </CardTitle>
                 <div className="mt-3 flex flex-wrap justify-center gap-2 text-sm font-black text-muted-foreground">
@@ -957,23 +959,23 @@ export function QuizSessionPage() {
                 </div>
                 {isMcQuestion ? (
                   <>
-                  <div className="mt-8 grid gap-3">
+                  <div className="mt-6 sm:mt-8 grid gap-2 sm:gap-3">
                     {question.options.map((option, index) => {
                       const label = String.fromCharCode(65 + index)
                       const isSelected = mcSelectedIndex === index
                       const isCorrectOption = index === question.correctIndex
                       const isHighlighted = highlightedMcIndex === index
-                      let btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-card text-foreground hover:bg-muted active:neo-button-active select-none'
+                      let btnClass = 'neo-button inline-flex min-h-10 sm:min-h-12 w-full items-center gap-2.5 sm:gap-3 px-3.5 py-2.5 sm:px-4 sm:py-3 text-left text-sm font-black bg-card text-foreground hover:bg-muted active:neo-button-active select-none'
                       if (mcFeedbackState === 'correct' && isSelected) {
-                        btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-success/20 border-success text-success select-none'
+                        btnClass = 'neo-button inline-flex min-h-10 sm:min-h-12 w-full items-center gap-2.5 sm:gap-3 px-3.5 py-2.5 sm:px-4 sm:py-3 text-left text-sm font-black bg-success/20 border-success text-success select-none'
                       } else if (mcFeedbackState === 'wrong') {
                         if (isSelected) {
-                          btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-danger/20 border-danger text-danger select-none'
+                          btnClass = 'neo-button inline-flex min-h-10 sm:min-h-12 w-full items-center gap-2.5 sm:gap-3 px-3.5 py-2.5 sm:px-4 sm:py-3 text-left text-sm font-black bg-danger/20 border-danger text-danger select-none'
                         } else if (isCorrectOption) {
-                          btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-success/20 border-success text-success select-none'
+                          btnClass = 'neo-button inline-flex min-h-10 sm:min-h-12 w-full items-center gap-2.5 sm:gap-3 px-3.5 py-2.5 sm:px-4 sm:py-3 text-left text-sm font-black bg-success/20 border-success text-success select-none'
                         }
                       } else if (isHighlighted && mcSelectedIndex === null) {
-                        btnClass = 'neo-button inline-flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-black bg-muted border-secondary shadow-[3px_3px_0_var(--secondary)] text-foreground select-none'
+                        btnClass = 'neo-button inline-flex min-h-10 sm:min-h-12 w-full items-center gap-2.5 sm:gap-3 px-3.5 py-2.5 sm:px-4 sm:py-3 text-left text-sm font-black bg-muted border-secondary shadow-[3px_3px_0_var(--secondary)] text-foreground select-none'
                       }
                       return (
                         <button
@@ -1013,7 +1015,7 @@ export function QuizSessionPage() {
                   </div>
                   </>
                 ) : (
-                <form className="mt-8 grid gap-4" onSubmit={submitAnswer}>
+                <form className="mt-6 sm:mt-8 grid gap-3 sm:gap-4" onSubmit={submitAnswer}>
                   <div>
                     <Label htmlFor="translation-answer">{t('quiz.answerLabel')}</Label>
                     <Input
@@ -1088,45 +1090,56 @@ export function QuizSessionPage() {
           </div>
         </div>
         <aside className="w-full lg:w-72 shrink-0 lg:sticky lg:top-8 space-y-3 rounded-xl border-2 border-border bg-background/95 p-4 shadow-[3px_3px_0_var(--border)]">
-          <p className="text-xs font-black uppercase text-muted-foreground">{t('quiz.audioSettings')}</p>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <input
-                id="auto-play-audio"
-                type="checkbox"
-                checked={autoPlayAudio}
-                onChange={(event) => setAutoPlayAudio(event.target.checked)}
-                className="h-4 w-4 accent-secondary"
-              />
-              <label htmlFor="auto-play-audio" className="text-xs font-black cursor-pointer select-none">{t('quiz.autoPlayAudio')}</label>
-            </div>
-            <div>
-              <label htmlFor="audio-rate" className="mb-1 block text-xs font-black text-muted-foreground">{t('quiz.audioRate')}</label>
-              <select
-                id="audio-rate"
-                value={audioRate}
-                onChange={(event) => setAudioRate(Number.parseFloat(event.target.value))}
-                className="h-9 w-full rounded-md border-2 border-border bg-card px-2 text-xs font-semibold shadow-[2px_2px_0_var(--border)] focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value={0.5}>0.5x</option>
-                <option value={0.75}>{t('quiz.audioRateSlow')}</option>
-                <option value={1}>{t('quiz.audioRateNormal')}</option>
-                <option value={1.25}>{t('quiz.audioRateFast')}</option>
-                <option value={1.5}>1.5x</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="audio-repeat" className="mb-1 block text-xs font-black text-muted-foreground">{t('quiz.audioRepeat')}</label>
-              <select
-                id="audio-repeat"
-                value={audioRepeat}
-                onChange={(event) => setAudioRepeat(Number.parseInt(event.target.value, 10))}
-                className="h-9 w-full rounded-md border-2 border-border bg-card px-2 text-xs font-semibold shadow-[2px_2px_0_var(--border)] focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value={1}>{t('quiz.audioRepeatSingle')}</option>
-                <option value={2}>{t('quiz.audioRepeatDouble')}</option>
-                <option value={3}>{t('quiz.audioRepeatTriple')}</option>
-              </select>
+          <div className="rounded-xl border-2 border-border bg-card p-3 shadow-[2px_2px_0_var(--border)] lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
+            <button
+              type="button"
+              onClick={() => setIsAudioSettingsExpanded(!isAudioSettingsExpanded)}
+              className="flex w-full items-center justify-between text-left text-xs font-black uppercase text-muted-foreground lg:pointer-events-none lg:select-none"
+            >
+              <span>{t('quiz.audioSettings')}</span>
+              <span className="lg:hidden text-primary text-[10px] font-bold border-2 border-border rounded px-1.5 py-0.5 bg-background shadow-[1px_1px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none transition-all">
+                {isAudioSettingsExpanded ? (language === 'vi' ? 'Thu gọn' : 'Collapse') : (language === 'vi' ? 'Mở rộng' : 'Expand')}
+              </span>
+            </button>
+            <div className={`mt-3 space-y-3 ${isAudioSettingsExpanded ? 'block' : 'hidden lg:block'}`}>
+              <div className="flex items-center gap-2">
+                <input
+                  id="auto-play-audio"
+                  type="checkbox"
+                  checked={autoPlayAudio}
+                  onChange={(event) => setAutoPlayAudio(event.target.checked)}
+                  className="h-4 w-4 accent-secondary"
+                />
+                <label htmlFor="auto-play-audio" className="text-xs font-black cursor-pointer select-none">{t('quiz.autoPlayAudio')}</label>
+              </div>
+              <div>
+                <label htmlFor="audio-rate" className="mb-1.5 block text-xs font-black text-muted-foreground">{t('quiz.audioRate')}</label>
+                <Select
+                  id="audio-rate"
+                  value={String(audioRate)}
+                  onChange={(val) => setAudioRate(Number.parseFloat(val))}
+                  options={[
+                    { value: '0.5', label: '0.5x' },
+                    { value: '0.75', label: t('quiz.audioRateSlow') },
+                    { value: '1', label: t('quiz.audioRateNormal') },
+                    { value: '1.25', label: t('quiz.audioRateFast') },
+                    { value: '1.5', label: '1.5x' },
+                  ]}
+                />
+              </div>
+              <div>
+                <label htmlFor="audio-repeat" className="mb-1.5 block text-xs font-black text-muted-foreground">{t('quiz.audioRepeat')}</label>
+                <Select
+                  id="audio-repeat"
+                  value={String(audioRepeat)}
+                  onChange={(val) => setAudioRepeat(Number.parseInt(val, 10))}
+                  options={[
+                    { value: '1', label: t('quiz.audioRepeatSingle') },
+                    { value: '2', label: t('quiz.audioRepeatDouble') },
+                    { value: '3', label: t('quiz.audioRepeatTriple') },
+                  ]}
+                />
+              </div>
             </div>
           </div>
           <hr className="border-border" />
