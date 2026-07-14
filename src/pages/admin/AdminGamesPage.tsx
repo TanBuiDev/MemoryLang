@@ -67,7 +67,6 @@ export default function AdminGamesPage() {
         const { data: decksData, error: decksError } = await supabase
           .from('decks')
           .select('*, deck_terms(count)')
-          .eq('visibility', 'public')
           .order('created_at', { ascending: false })
 
         if (decksError) throw decksError
