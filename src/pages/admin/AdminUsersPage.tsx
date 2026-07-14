@@ -1,14 +1,32 @@
 import { useEffect, useState } from 'react'
-import { Shield, ShieldAlert, User, UserX } from 'lucide-react'
+import { Shield, ShieldAlert, User, UserX, Crown } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
 import { DataTable } from '@/components/admin/DataTable'
 import type { Profile } from '@/types/auth.types'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
+
+interface AdminUserProfile extends Profile {
+  subscriptions?: {
+    plan_type: 'free' | 'pro'
+    status: string
+  } | null
+}
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<Profile[]>([])
+  const [users, setUsers] = useState<AdminUserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+
+  // Custom ConfirmModal state
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean
+    title: string
+    description: string
+    confirmLabel?: string
+    cancelLabel?: string
+    onConfirm: () => void
+  } | null>(null)
 
   const loadUsers = async () => {
     try {
@@ -27,27 +45,73 @@ export default function AdminUsersPage() {
     void loadUsers()
   }, [])
 
-  const handleToggleAdmin = async (userId: string, currentAdminStatus: boolean) => {
+  const handleToggleAdmin = (userId: string, currentAdminStatus: boolean) => {
     if (actionLoading) return
-    const message = currentAdminStatus
-      ? 'Bạn có chắc chắn muốn gỡ quyền Admin của người dùng này không?'
-      : 'Bạn có chắc chắn muốn cấp quyền Admin cho người dùng này không?'
-    
-    if (!window.confirm(message)) return
 
-    try {
-      setActionLoading(userId)
-      await adminService.updateUserAdminStatus(userId, !currentAdminStatus)
-      // Cập nhật state local
-      setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, is_admin: !currentAdminStatus } : u))
-      )
-    } catch (err: any) {
-      console.error(err)
-      alert(err.message || 'Không thể thay đổi quyền quản trị')
-    } finally {
-      setActionLoading(null)
-    }
+    setConfirmModal({
+      open: true,
+      title: currentAdminStatus ? 'Gỡ quyền Admin' : 'Cấp quyền Admin',
+      description: currentAdminStatus
+        ? 'Bạn có chắc chắn muốn gỡ quyền Admin của người dùng này không?'
+        : 'Bạn có chắc chắn muốn cấp quyền Admin cho người dùng này không?',
+      confirmLabel: 'Xác nhận',
+      cancelLabel: 'Hủy',
+      onConfirm: async () => {
+        setConfirmModal(null)
+        try {
+          setActionLoading(userId)
+          await adminService.updateUserAdminStatus(userId, !currentAdminStatus)
+          setUsers((prev) =>
+            prev.map((u) => (u.id === userId ? { ...u, is_admin: !currentAdminStatus } : u))
+          )
+        } catch (err: any) {
+          console.error(err)
+          setError(err.message || 'Không thể thay đổi quyền quản trị')
+        } finally {
+          setActionLoading(null)
+        }
+      },
+    })
+  }
+
+  const handleToggleSubscription = (userId: string, isProNow: boolean) => {
+    if (actionLoading) return
+
+    setConfirmModal({
+      open: true,
+      title: isProNow ? 'Hạ cấp xuống gói Free' : 'Nâng cấp lên gói Pro',
+      description: isProNow
+        ? 'Bạn có chắc chắn muốn hạ cấp người dùng này xuống gói Free không?'
+        : 'Bạn có chắc chắn muốn nâng cấp người dùng này lên gói Pro không?',
+      confirmLabel: 'Xác nhận',
+      cancelLabel: 'Hủy',
+      onConfirm: async () => {
+        setConfirmModal(null)
+        try {
+          setActionLoading(userId)
+          const newPlan = isProNow ? 'free' : 'pro'
+          await adminService.updateUserSubscription(userId, newPlan)
+          setUsers((prev) =>
+            prev.map((u) =>
+              u.id === userId
+                ? {
+                    ...u,
+                    subscriptions: {
+                      plan_type: newPlan,
+                      status: 'active',
+                    },
+                  }
+                : u
+            )
+          )
+        } catch (err: any) {
+          console.error(err)
+          setError(err.message || 'Không thể thay đổi gói dịch vụ')
+        } finally {
+          setActionLoading(null)
+        }
+      },
+    })
   }
 
   // Định nghĩa các cột hiển thị
@@ -55,7 +119,7 @@ export default function AdminUsersPage() {
     {
       header: 'Người dùng',
       className: 'w-[30%]',
-      accessor: (row: Profile) => (
+      accessor: (row: AdminUserProfile) => (
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-md bg-muted border-2 border-border flex items-center justify-center text-muted-foreground font-black">
             {row.display_name ? row.display_name[0].toUpperCase() : 'U'}
@@ -68,9 +132,26 @@ export default function AdminUsersPage() {
       ),
     },
     {
+      header: 'Gói dịch vụ',
+      className: 'w-[15%]',
+      accessor: (row: AdminUserProfile) => {
+        const plan = row.subscriptions?.plan_type ?? 'free'
+        return plan === 'pro' ? (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-amber-100 text-amber-800 border border-amber-300 text-xs font-black uppercase">
+            <Crown size={12} className="text-amber-600 shrink-0" />
+            Pro
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 text-slate-800 border border-slate-300 text-xs font-black uppercase">
+            Free
+          </span>
+        )
+      },
+    },
+    {
       header: 'Ngôn ngữ học',
       className: 'w-[20%]',
-      accessor: (row: Profile) => (
+      accessor: (row: AdminUserProfile) => (
         <div className="flex items-center gap-1.5 text-xs font-black">
           <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-900 border border-blue-300 uppercase">
             {row.native_language}
@@ -85,7 +166,7 @@ export default function AdminUsersPage() {
     {
       header: 'Vai trò',
       className: 'w-[15%]',
-      accessor: (row: Profile) => {
+      accessor: (row: AdminUserProfile) => {
         return row.is_admin ? (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-rose-100 text-rose-800 border border-rose-300 text-xs font-black uppercase">
             <ShieldAlert size={12} />
@@ -102,7 +183,7 @@ export default function AdminUsersPage() {
     {
       header: 'Ngày tham gia',
       className: 'w-[15%]',
-      accessor: (row: Profile) => {
+      accessor: (row: AdminUserProfile) => {
         const date = new Date(row.created_at)
         return <span className="text-xs font-bold text-muted-foreground">{date.toLocaleDateString('vi-VN')}</span>
       },
@@ -110,38 +191,67 @@ export default function AdminUsersPage() {
     {
       header: 'Thao tác',
       className: 'text-center w-[20%]',
-      accessor: (row: Profile) => (
-        <div className="flex justify-center gap-2">
-          <button
-            onClick={() => handleToggleAdmin(row.id, Boolean(row.is_admin))}
-            disabled={actionLoading === row.id}
-            className={`neo-button min-h-0 px-2.5 py-1.5 rounded-md border-2 border-border text-xs font-black flex items-center gap-1.5 transition-all ${
-              row.is_admin
-                ? 'bg-rose-100 text-rose-800 hover:bg-rose-200'
-                : 'bg-[#fdc800] text-foreground hover:bg-[#e0b000]'
-            }`}
-          >
-            {actionLoading === row.id ? (
-              <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : row.is_admin ? (
-              <>
-                <UserX size={14} />
-                Gỡ Admin
-              </>
-            ) : (
-              <>
-                <Shield size={14} />
-                Cấp Admin
-              </>
-            )}
-          </button>
-        </div>
-      ),
+      accessor: (row: AdminUserProfile) => {
+        const isPro = row.subscriptions?.plan_type === 'pro'
+        return (
+          <div className="flex justify-center gap-2">
+            {/* Toggle Pro Button */}
+            <button
+              onClick={() => handleToggleSubscription(row.id, isPro)}
+              disabled={actionLoading === row.id}
+              className={`neo-button min-h-0 px-2.5 py-1.5 rounded-md border-2 border-border text-xs font-black flex items-center gap-1.5 transition-all ${
+                isPro
+                  ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                  : 'bg-yellow-400 hover:bg-yellow-300 text-navy'
+              }`}
+            >
+              {actionLoading === row.id ? (
+                <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : isPro ? (
+                <>
+                  <Crown size={14} />
+                  Gỡ PRO
+                </>
+              ) : (
+                <>
+                  <Crown size={14} />
+                  Cấp PRO
+                </>
+              )}
+            </button>
+
+            {/* Toggle Admin Button */}
+            <button
+              onClick={() => handleToggleAdmin(row.id, Boolean(row.is_admin))}
+              disabled={actionLoading === row.id}
+              className={`neo-button min-h-0 px-2.5 py-1.5 rounded-md border-2 border-border text-xs font-black flex items-center gap-1.5 transition-all ${
+                row.is_admin
+                  ? 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+                  : 'bg-[#432dd7] text-white hover:bg-[#523ceb]'
+              }`}
+            >
+              {actionLoading === row.id ? (
+                <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : row.is_admin ? (
+                <>
+                  <UserX size={14} />
+                  Gỡ Admin
+                </>
+              ) : (
+                <>
+                  <Shield size={14} />
+                  Cấp Admin
+                </>
+              )}
+            </button>
+          </div>
+        )
+      },
     },
   ]
 
   // Hàm filter tìm kiếm
-  const searchFilter = (row: Profile, query: string) => {
+  const searchFilter = (row: AdminUserProfile, query: string) => {
     const term = query.toLowerCase()
     const nameMatch = row.display_name ? row.display_name.toLowerCase().includes(term) : false
     const emailMatch = row.email ? row.email.toLowerCase().includes(term) : false
@@ -170,6 +280,20 @@ export default function AdminUsersPage() {
         searchFilter={searchFilter}
         isLoading={loading}
       />
+
+      {/* Custom ConfirmModal */}
+      {confirmModal && (
+        <ConfirmModal
+          open={confirmModal.open}
+          title={confirmModal.title}
+          description={confirmModal.description}
+          confirmLabel={confirmModal.confirmLabel}
+          cancelLabel={confirmModal.cancelLabel}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+          variant="primary"
+        />
+      )}
     </div>
   )
 }

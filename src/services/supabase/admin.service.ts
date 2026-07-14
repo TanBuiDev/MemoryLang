@@ -97,13 +97,41 @@ export const adminService = {
   },
 
   // 2. Users Management
-  async listUsers(): Promise<Profile[]> {
+  async listUsers(): Promise<any[]> {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*, subscriptions(plan_type, status)')
       .order('created_at', { ascending: false })
     if (error) throw error
-    return data as Profile[]
+    return data
+  },
+
+  async updateUserSubscription(userId: string, planType: 'free' | 'pro'): Promise<any> {
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .upsert(
+        {
+          user_id: userId,
+          plan_type: planType,
+          status: 'active',
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'user_id',
+        }
+      )
+      .select('*')
+      .single()
+
+    if (error) throw error
+
+    await this.logAction(
+      planType === 'pro' ? 'grant_pro' : 'revoke_pro',
+      'subscription',
+      userId,
+      { plan_type: planType }
+    )
+    return data
   },
 
   async updateUserAdminStatus(userId: string, isAdmin: boolean): Promise<Profile> {
