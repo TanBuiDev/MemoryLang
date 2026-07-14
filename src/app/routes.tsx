@@ -54,6 +54,9 @@ const AdminAnalyticsPage = React.lazy(() => import('@/pages/admin/AdminAnalytics
 const AdminNotificationsPage = React.lazy(() => import('@/pages/admin/AdminNotificationsPage'))
 const GrammarLessonPage = React.lazy(() => import('@/pages/grammar/GrammarLessonPage'))
 const AdminGrammarLessonEditPage = React.lazy(() => import('@/pages/admin/AdminGrammarLessonEditPage'))
+const GameHubPage = React.lazy(() => import('@/pages/games/GameHubPage'))
+const MatchingGamePage = React.lazy(() => import('@/pages/games/MatchingGamePage'))
+const AdminGamesPage = React.lazy(() => import('@/pages/admin/AdminGamesPage'))
 
 export const router = createBrowserRouter([
   {
@@ -106,6 +109,22 @@ export const router = createBrowserRouter([
               },
               { path: 'upgrade', element: <UpgradePage /> },
               { path: 'upgrade/success', element: <UpgradeSuccessPage /> },
+              {
+                path: 'games',
+                element: (
+                  <React.Suspense fallback={<AppLoading />}>
+                    <GameHubPage />
+                  </React.Suspense>
+                ),
+              },
+              {
+                path: 'games/matching',
+                element: (
+                  <React.Suspense fallback={<AppLoading />}>
+                    <MatchingGamePage />
+                  </React.Suspense>
+                ),
+              },
               { path: 'statistics', element: <Navigate to="/app/dashboard" replace /> },
               { path: 'settings', element: <SettingsPage /> },
               { path: '*', element: <ComingSoonPage /> },
@@ -127,7 +146,15 @@ export const router = createBrowserRouter([
                   { path: 'users', element: <AdminUsersPage /> },
                   { path: 'tts', element: <AdminTtsPage /> },
                   { path: 'secrets', element: <AdminSecretsPage /> },
-                  { path: 'features', element: <AdminFeaturesPage /> },
+                   { path: 'features', element: <AdminFeaturesPage /> },
+                  {
+                    path: 'games',
+                    element: (
+                      <React.Suspense fallback={<AppLoading />}>
+                        <AdminGamesPage />
+                      </React.Suspense>
+                    ),
+                  },
                   // Phase 3 & 4 routes mapping to real pages
                   { path: 'vocabulary', element: <AdminVocabularyPage /> },
                   { path: 'grammar', element: <AdminGrammarPage /> },
