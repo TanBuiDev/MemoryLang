@@ -16,6 +16,7 @@ import { quizService } from '@/services/supabase/quiz.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useStudyStore } from '@/stores/useStudyStore'
 import { useQuizStore } from '@/stores/useQuizStore'
+import { ProFeatureGate } from '@/components/common/ProFeatureGate'
 import type { Deck } from '@/types/deck.types'
 
 export function DeckListPage() {
@@ -194,7 +195,17 @@ export function DeckListPage() {
 
   return (
     <>
-      <PageHeader title={t('decks.title')} description={t('decks.description')} actions={<Button disabled={!canCreate} onClick={() => createMutation.mutate()}>{createMutation.isPending ? t('actions.saving') : t('decks.create')}</Button>} />
+      <PageHeader
+        title={t('decks.title')}
+        description={t('decks.description')}
+        actions={
+          <ProFeatureGate feature="decks">
+            <Button disabled={!canCreate} onClick={() => createMutation.mutate()}>
+              {createMutation.isPending ? t('actions.saving') : t('decks.create')}
+            </Button>
+          </ProFeatureGate>
+        }
+      />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {decksQuery.isLoading ? <Card className="font-black">{t('decks.loading')}</Card> : null}
         {decksQuery.error ? <Card className="font-black text-danger">{decksQuery.error.message}</Card> : null}

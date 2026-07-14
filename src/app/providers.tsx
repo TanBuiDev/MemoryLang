@@ -6,6 +6,7 @@ import { studySyncService } from '@/services/local/studySync.service'
 import { authService } from '@/services/supabase/auth.service'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import type { Profile } from '@/types/auth.types'
 
 const demoProfile: Profile = {
@@ -57,8 +58,10 @@ function AuthBootstrap({ children }: { children: ReactNode }) {
         setSession(data.session)
         if (data.session?.user) {
           await loadProfile(data.session.user.id)
+          void useSubscriptionStore.getState().loadSubscription()
         } else {
           setProfile(null)
+          useSubscriptionStore.getState().reset()
         }
       })
       .catch((error) => {
@@ -76,6 +79,7 @@ function AuthBootstrap({ children }: { children: ReactNode }) {
       setSession(session)
       if (!session?.user) {
         setProfile(null)
+        useSubscriptionStore.getState().reset()
         return
       }
 
@@ -87,14 +91,19 @@ function AuthBootstrap({ children }: { children: ReactNode }) {
 
       if (isSameUser && hasProfile) {
         void loadProfile(session.user.id)
+        void useSubscriptionStore.getState().loadSubscription()
         return
       }
 
       setLoading(true)
       window.setTimeout(() => {
-        void loadProfile(session.user.id).finally(() => {
-          if (isActive) setLoading(false)
-        })
+        void loadProfile(session.user.id)
+          .then(() => {
+            void useSubscriptionStore.getState().loadSubscription()
+          })
+          .finally(() => {
+            if (isActive) setLoading(false)
+          })
       }, 0)
     })
 

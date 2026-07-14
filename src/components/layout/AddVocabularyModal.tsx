@@ -6,6 +6,8 @@ import { useLanguageStore } from '@/stores/useLanguageStore'
 import { cn } from '@/utils/cn'
 import { supabase } from '@/services/supabase/client'
 import { Select } from '@/components/ui/select'
+import { useNavigate } from 'react-router-dom'
+import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 
 interface AddVocabularyModalProps {
   isOpen: boolean
@@ -15,6 +17,9 @@ interface AddVocabularyModalProps {
 }
 
 export function AddVocabularyModal({ isOpen, onClose, initialWord, onSuccess }: AddVocabularyModalProps) {
+  const navigate = useNavigate()
+  const canAddTerm = useSubscriptionStore((s) => s.canAddTerm)
+  const termCount = useSubscriptionStore((s) => s.termCount)
   const user = useAuthStore((s) => s.user)
   const userId = user?.id || 'demo-user'
 
@@ -126,6 +131,48 @@ export function AddVocabularyModal({ isOpen, onClose, initialWord, onSuccess }: 
   }
 
   if (!isOpen) return null
+
+  if (!canAddTerm) {
+    return (
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <div 
+          onClick={onClose}
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200" 
+        />
+        <div
+          className="relative w-full max-w-md bg-white border-[3px] border-[#1c293c] shadow-[8px_8px_0_#1c293c] rounded-lg p-6 flex flex-col gap-4 animate-in zoom-in duration-200 z-10 text-left"
+        >
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#FFF9E5] border-2 border-[#1c293c] text-2xl mb-3 shadow-[2px_2px_0_#1c293c]">
+              🔒
+            </div>
+            <h3 className="text-lg font-black text-[#1c293c]">Giới hạn từ vựng đã đạt</h3>
+            <p className="text-xs text-[#64748b] mt-1">
+              Bạn đã dùng hết {termCount}/100 từ vựng miễn phí. Nâng cấp Pro để thêm không giới hạn!
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 mt-2">
+            <button
+              onClick={() => {
+                onClose()
+                navigate('/app/upgrade')
+              }}
+              className="neo-button neo-button-active justify-center font-bold bg-[#fdc800] hover:bg-[#e6b800] text-[#1c293c] py-2 border-2 border-[#1c293c]"
+            >
+              Nâng cấp Pro — 49k/tháng 👑
+            </button>
+            <button
+              onClick={onClose}
+              className="neo-button justify-center py-2 border-2 border-[#1c293c]"
+            >
+              Hủy
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">

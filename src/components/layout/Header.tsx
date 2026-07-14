@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
 import {
   Bell,
   BookOpen,
@@ -37,6 +37,8 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useNotificationStore, useUnreadCount } from '@/stores/useNotificationStore'
 import { useThemeStore } from '@/stores/useThemeStore'
 import { useUiLanguageStore } from '@/stores/useUiLanguageStore'
+import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
+import { SubscriptionBadge } from '@/components/subscription/SubscriptionBadge'
 import { cn } from '@/utils/cn'
 
 /**
@@ -83,6 +85,7 @@ export function Header() {
   const { t } = useI18n()
   const profile = useAuthStore((s) => s.profile)
   const user = useAuthStore((s) => s.user)
+  const isPro = useSubscriptionStore((s) => s.isPro)
   const { theme, toggleTheme } = useThemeStore()
   const { uiLanguage, setUiLanguage } = useUiLanguageStore()
   const effectiveUiLanguage = uiLanguage ?? profile?.ui_language ?? 'vi'
@@ -198,13 +201,19 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-1 flex-1 justify-end shrink-0 min-w-max">
-          <button
-            type="button"
-            className="hidden sm:inline-flex items-center gap-1.5 neo-button min-h-0 px-3 py-1.5 rounded-md border-2 border-border text-sm font-black bg-secondary text-secondary-foreground hover:bg-[#321fb0] active:neo-button-active transition whitespace-nowrap"
-          >
-            <Crown size={16} />
-            <span className="hidden md:inline">{t('header.upgrade')}</span>
-          </button>
+          {!isPro && (
+            <Link
+              to="/app/upgrade"
+              className="hidden sm:inline-flex items-center gap-1.5 neo-button min-h-0 px-3 py-1.5 rounded-md border-2 border-border text-sm font-black bg-[#fdc800] text-[#1c293c] hover:bg-[#e6b800] active:neo-button-active transition whitespace-nowrap"
+            >
+              <Crown size={16} />
+              <span className="hidden md:inline">{t('header.upgrade')}</span>
+            </Link>
+          )}
+
+          <div className="hidden sm:block shrink-0">
+            <SubscriptionBadge />
+          </div>
 
           <div ref={notifRef} className="relative">
             <button
@@ -402,6 +411,17 @@ export function Header() {
                   {t(item.labelKey)}
                 </NavLink>
               ))}
+              
+              {!isPro && (
+                <NavLink
+                  to="/app/upgrade"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2.5 mt-2 rounded-md text-sm font-black border-2 border-border bg-[#fdc800] text-[#1c293c] shadow-[2px_2px_0_var(--border)] active:translate-y-[2px] active:shadow-none transition-all"
+                >
+                  <Crown size={18} />
+                  Nâng cấp Pro 👑
+                </NavLink>
+              )}
             </div>
 
             <hr className="border-border border-dashed" />

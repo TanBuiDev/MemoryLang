@@ -33,6 +33,8 @@ import { ListeningResultPage } from '@/pages/listening/ListeningResultPage'
 import { GrammarPage } from '@/pages/grammar/GrammarPage'
 import { ErrorPage } from '@/pages/public/ErrorPage'
 import { ComingSoonPage } from '@/pages/public/ComingSoonPage'
+import { UpgradePage } from '@/pages/subscription/UpgradePage'
+import { UpgradeSuccessPage } from '@/pages/subscription/UpgradeSuccessPage'
 
 // Lazy-load Admin Layout & Pages
 const LazyAdminLayout = React.lazy(() => import('@/components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })))
@@ -102,6 +104,8 @@ export const router = createBrowserRouter([
                   </React.Suspense>
                 ),
               },
+              { path: 'upgrade', element: <UpgradePage /> },
+              { path: 'upgrade/success', element: <UpgradeSuccessPage /> },
               { path: 'statistics', element: <Navigate to="/app/dashboard" replace /> },
               { path: 'settings', element: <SettingsPage /> },
               { path: '*', element: <ComingSoonPage /> },
