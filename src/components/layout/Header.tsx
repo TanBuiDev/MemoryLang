@@ -206,25 +206,6 @@ export function Header() {
             <span className="hidden md:inline">{t('header.upgrade')}</span>
           </button>
 
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="p-2 rounded-md border-2 border-transparent hover:border-border hover:bg-muted transition"
-            aria-label={t('header.toggleTheme')}
-          >
-            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleLanguageToggle}
-            className="neo-button min-h-0 px-2.5 py-1.5 rounded-md border-2 border-border bg-card text-sm font-black active:neo-button-active transition hover:bg-muted shadow-[2px_2px_0_var(--border)]"
-            aria-label={t('header.switchLanguage')}
-          >
-            <Globe size={16} className="sm:hidden" />
-            <span className="hidden sm:inline">{effectiveUiLanguage === 'vi' ? 'EN' : 'VI'}</span>
-          </button>
-
           <div ref={notifRef} className="relative">
             <button
               type="button"
@@ -359,6 +340,28 @@ export function Header() {
                     Quản trị hệ thống
                   </NavLink>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileOpen(false)
+                    toggleTheme()
+                  }}
+                  className={cn(dropdownLinkClass, 'w-full text-left')}
+                >
+                  {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+                  {theme === 'dark' ? t('theme.light') : t('theme.dark')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileOpen(false)
+                    handleLanguageToggle()
+                  }}
+                  className={cn(dropdownLinkClass, 'w-full text-left')}
+                >
+                  <Globe size={14} />
+                  {effectiveUiLanguage === 'vi' ? 'English (EN)' : 'Tiếng Việt (VI)'}
+                </button>
                 <hr className="border-border" />
                 <button
                   type="button"
