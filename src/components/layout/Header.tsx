@@ -63,9 +63,7 @@ const mainNavItems = [
   { labelKey: 'header.speaking', to: '/app/speaking', icon: Mic },
   { labelKey: 'header.reading', to: '/app/reading', icon: FileText },
   { labelKey: 'header.writing', to: '/app/writing', icon: PenLine },
-  { labelKey: 'header.exams', to: '/app/exams', icon: ClipboardCheck },
   { labelKey: 'header.roadmap', to: '/app/roadmap', icon: Map },
-  { labelKey: 'header.videos', to: '/app/videos', icon: Video },
 ] as const
 
 const moreDropdownItems = [
@@ -74,6 +72,8 @@ const moreDropdownItems = [
   { labelKey: 'nav.study', to: '/app/study', icon: Brain },
   { labelKey: 'nav.quiz', to: '/app/quiz', icon: ClipboardCheck },
   { labelKey: 'nav.review', to: '/app/review', icon: Gauge },
+  { labelKey: 'header.exams', to: '/app/exams', icon: ClipboardCheck },
+  { labelKey: 'header.videos', to: '/app/videos', icon: Video },
   { labelKey: 'header.blog', to: '/app/blog', icon: Rss },
   { labelKey: 'header.community', to: '/app/community', icon: MessageSquare },
   { labelKey: 'header.contact', to: '/app/contact', icon: Mail },
