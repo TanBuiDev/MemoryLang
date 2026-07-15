@@ -86,6 +86,15 @@ export const deckService = {
     return data as Deck | null
   },
   async listTerms(deckId: string): Promise<VocabularyItem[]> {
+    // 1. Get all decks to collect child IDs
+    const { data: allDecks, error: decksError } = await supabase
+      .from('decks')
+      .select('id, parent_id')
+    if (decksError) throw decksError
+
+    const deckIds = [deckId, ...collectDescendantIds(deckId, allDecks || [])]
+
+    // 2. Fetch all terms for these deck IDs
     const { data, error } = await supabase
       .from('deck_terms')
       .select(`
@@ -107,15 +116,25 @@ export const deckService = {
           tags
         )
       `)
-      .eq('deck_id', deckId)
+      .in('deck_id', deckIds)
       .order('created_at', { ascending: true })
+
     if (error) throw error
-    return (data ?? []).map((entry) => {
+
+    // 3. Flatten and deduplicate terms
+    const termsMap = new Map<string, VocabularyItem>()
+
+    for (const entry of (data ?? [])) {
       const gt = entry.global_terms as any
-      if (!gt || (Array.isArray(gt) && gt.length === 0)) return null
+      if (!gt || (Array.isArray(gt) && gt.length === 0)) continue
       const term = Array.isArray(gt) ? gt[0] : gt
-      return flattenVocabularyItem({ global_terms: term, id: term.id, global_term_id: term.id, status: 'new' })
-    }).filter(Boolean) as VocabularyItem[]
+      const vocabularyItem = flattenVocabularyItem({ global_terms: term, id: term.id, global_term_id: term.id, status: 'new' })
+      if (vocabularyItem) {
+        termsMap.set(vocabularyItem.id, vocabularyItem)
+      }
+    }
+
+    return Array.from(termsMap.values())
   },
   async create(input: DeckInput): Promise<Deck> {
     const { data, error } = await supabase.from('decks').insert(input).select('*').single()
