@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BarChart3, GitCompare, List, Play, Save, Volume2 } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
 import { generateAudio } from '@/services/api/generateAudio.api'
 import { supabase } from '@/services/supabase/client'
+import { useTtsBatchStore } from '@/stores/useTtsBatchStore'
 import type { TtsVoiceConfig } from '@/types/admin.types'
 
 type TabKey = 'list' | 'stats' | 'compare'
@@ -68,11 +69,14 @@ export default function AdminTtsPage() {
   const [stats, setStats] = useState<{ cached: number; uncached: number; total: number; avgChars: number }>({ cached: 0, uncached: 0, total: 0, avgChars: 0 })
   const [statsLoading, setStatsLoading] = useState(false)
 
-  // Batch audio generation state
-  const [batchRunning, setBatchRunning] = useState(false)
-  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, successes: 0, failures: 0 })
-  const [batchError, setBatchError] = useState<string | null>(null)
-  const stopRef = useRef(false)
+  // Batch audio generation state from store
+  const {
+    batchRunning,
+    batchProgress,
+    batchError,
+    startBatchGenerate,
+    stopBatchGenerate
+  } = useTtsBatchStore()
 
   // Voice comparison
   const [compareText, setCompareText] = useState('Welcome to MemoryLang! Let\'s learn some vocabulary.')
@@ -123,81 +127,6 @@ export default function AdminTtsPage() {
     }
   }
 
-  const startBatchGenerate = async () => {
-    stopRef.current = false
-    try {
-      setBatchRunning(true)
-      setBatchError(null)
-      setBatchProgress({ current: 0, total: 0, successes: 0, failures: 0 })
-
-      // Fetch uncached global terms
-      const { data, error: fetchErr } = await supabase
-        .from('global_terms')
-        .select('id, source_text, source_language')
-        .is('audio_url', null)
-        .is('deleted_at', null)
-
-      if (fetchErr) throw fetchErr
-
-      const uncachedTerms = data ?? []
-      if (uncachedTerms.length === 0) {
-        alert('Tất cả các từ vựng đã có file âm thanh!')
-        setBatchRunning(false)
-        return
-      }
-
-      setBatchProgress(prev => ({ ...prev, total: uncachedTerms.length }))
-
-      let successes = 0
-      let failures = 0
-
-      for (let i = 0; i < uncachedTerms.length; i++) {
-        if (stopRef.current) {
-          break
-        }
-
-        const term = uncachedTerms[i]
-        setBatchProgress(prev => ({ ...prev, current: i + 1 }))
-
-        try {
-          const config = configs.find(c => c.language_code === term.source_language)
-          const voiceName = config?.voice_name
-
-          const res = await generateAudio(term.source_text, term.source_language, voiceName, term.id)
-          if (res.audioUrl) {
-            successes++
-          } else {
-            failures++
-          }
-        } catch (err) {
-          console.error(`Failed to generate audio for term: ${term.source_text}`, err)
-          failures++
-        }
-
-        setBatchProgress(prev => ({ ...prev, successes, failures }))
-        await new Promise(resolve => setTimeout(resolve, 400))
-      }
-
-      void loadStats()
-      
-      if (stopRef.current) {
-        alert(`Đã dừng quá trình sinh audio. Hoàn thành: ${successes} thành công, ${failures} thất bại.`)
-      } else {
-        alert(`Đã hoàn thành sinh audio hàng loạt! Thành công: ${successes}, Thất bại: ${failures}`)
-      }
-
-    } catch (err: any) {
-      console.error(err)
-      setBatchError(err.message || 'Lỗi xảy ra trong quá trình sinh audio hàng loạt')
-    } finally {
-      setBatchRunning(false)
-    }
-  }
-
-  const stopBatchGenerate = () => {
-    stopRef.current = true
-  }
-
   useEffect(() => {
     void loadConfigs()
   }, [])
@@ -205,6 +134,12 @@ export default function AdminTtsPage() {
   useEffect(() => {
     if (activeTab === 'stats') void loadStats()
   }, [activeTab])
+
+  useEffect(() => {
+    if (!batchRunning && activeTab === 'stats') {
+      void loadStats()
+    }
+  }, [batchRunning, activeTab])
 
   useEffect(() => {
     const config = configs.find(c => c.language_code === testLang)
@@ -689,7 +624,7 @@ export default function AdminTtsPage() {
             ) : (
               <div className="flex items-center gap-3">
                 <button
-                  onClick={startBatchGenerate}
+                  onClick={() => startBatchGenerate(configs)}
                   disabled={statsLoading || stats.uncached === 0}
                   className="neo-button bg-[#fdc800] hover:bg-[#e0b000] text-foreground font-black text-xs px-6 py-3 border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition disabled:opacity-50"
                 >
