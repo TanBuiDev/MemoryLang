@@ -1,4 +1,4 @@
-import { useEffect, useState, Fragment } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { deckService } from '@/services/supabase/deck.service'
@@ -441,14 +441,13 @@ export default function MatchingGamePage() {
             Nghĩa tiếng Việt
           </div>
 
-          {/* Render cards interlaid to align in rows */}
-          {leftItems.map((leftItem, index) => {
+          {/* Render cards flat to preserve DOM nodes and enable Framer Motion layout animation */}
+          {leftItems.flatMap((leftItem, index) => {
             const rightItem = rightItems[index]
-            if (!rightItem) return null // safety check
+            if (!rightItem) return []
 
             // Render Left Card
-            const renderLeftCard = () => {
-              const item = leftItem
+            const renderLeftCard = (item: VocabularyItem, index: number) => {
               const isSelected = selectedLeftIndex === index
               const isMatched = matchedSlots.has(index)
               const pairColor = PAIR_COLORS[index % PAIR_COLORS.length]
@@ -472,7 +471,7 @@ export default function MatchingGamePage() {
                 <motion.div
                   whileHover={!isSelected && phase === 'matching' ? { scale: 1.015, x: 4 } : {}}
                   whileTap={!isSelected && phase === 'matching' ? { scale: 0.985 } : {}}
-                  key={`left-${item.id}-${index}`}
+                  key={`left-${item.id}`}
                   onClick={() => handleLeftClick(index)}
                   className={cn(
                     'border-2 rounded-md transition-colors duration-200 cursor-pointer relative min-h-[72px] flex flex-col justify-between shadow-[3px_3px_0px_0px_#1c293c] h-full overflow-hidden',
@@ -520,8 +519,7 @@ export default function MatchingGamePage() {
             }
 
             // Render Right Card
-            const renderRightCard = () => {
-              const item = rightItem
+            const renderRightCard = (item: VocabularyItem, index: number) => {
               const isSelected = selectedRightIndex === index
               const isMatched = matchedSlots.has(index)
               const pairColor = PAIR_COLORS[index % PAIR_COLORS.length]
@@ -574,12 +572,10 @@ export default function MatchingGamePage() {
               )
             }
 
-            return (
-              <Fragment key={`row-${index}`}>
-                {renderLeftCard()}
-                {renderRightCard()}
-              </Fragment>
-            )
+            return [
+              renderLeftCard(leftItem, index),
+              renderRightCard(rightItem, index)
+            ]
           })}
         </div>
 
