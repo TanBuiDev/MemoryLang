@@ -145,6 +145,14 @@ export default function MatchingGamePage() {
   // Handle card selections
   const handleLeftClick = (index: number) => {
     if (phase !== 'matching') return
+
+    // If the clicked card is already matched, unmatch it first
+    if (matchedSlots.has(index)) {
+      const newMatched = new Set(matchedSlots)
+      newMatched.delete(index)
+      setMatchedSlots(newMatched)
+    }
+
     if (selectedLeftIndex === index) {
       setSelectedLeftIndex(null)
     } else {
@@ -158,6 +166,14 @@ export default function MatchingGamePage() {
 
   const handleRightClick = (index: number) => {
     if (phase !== 'matching') return
+
+    // If the clicked card is already matched, unmatch it first
+    if (matchedSlots.has(index)) {
+      const newMatched = new Set(matchedSlots)
+      newMatched.delete(index)
+      setMatchedSlots(newMatched)
+    }
+
     if (selectedRightIndex === index) {
       setSelectedRightIndex(null)
     } else {
@@ -454,8 +470,8 @@ export default function MatchingGamePage() {
 
               return (
                 <motion.div
-                  whileHover={!isMatched && !isSelected && phase === 'matching' ? { scale: 1.015, x: 4 } : {}}
-                  whileTap={!isMatched && !isSelected && phase === 'matching' ? { scale: 0.985 } : {}}
+                  whileHover={!isSelected && phase === 'matching' ? { scale: 1.015, x: 4 } : {}}
+                  whileTap={!isSelected && phase === 'matching' ? { scale: 0.985 } : {}}
                   key={`left-${item.id}-${index}`}
                   onClick={() => handleLeftClick(index)}
                   className={cn(
@@ -528,8 +544,8 @@ export default function MatchingGamePage() {
               return (
                 <motion.div
                   layout
-                  whileHover={!isMatched && !isSelected && phase === 'matching' ? { scale: 1.015, x: -4 } : {}}
-                  whileTap={!isMatched && !isSelected && phase === 'matching' ? { scale: 0.985 } : {}}
+                  whileHover={!isSelected && phase === 'matching' ? { scale: 1.015, x: -4 } : {}}
+                  whileTap={!isSelected && phase === 'matching' ? { scale: 0.985 } : {}}
                   transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                   key={`right-${item.id}`}
                   onClick={() => handleRightClick(index)}
