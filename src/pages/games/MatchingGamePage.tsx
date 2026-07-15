@@ -457,7 +457,7 @@ export default function MatchingGamePage() {
                   key={`left-${item.id}-${index}`}
                   onClick={() => handleLeftClick(index)}
                   className={cn(
-                    'border-2 rounded-md transition-colors duration-200 cursor-pointer relative min-h-[72px] flex items-stretch shadow-[3px_3px_0px_0px_#1c293c] h-full overflow-hidden',
+                    'border-2 rounded-md transition-colors duration-200 cursor-pointer relative min-h-[72px] flex flex-col justify-between shadow-[3px_3px_0px_0px_#1c293c] h-full overflow-hidden',
                     stateClasses
                   )}
                 >
@@ -471,10 +471,8 @@ export default function MatchingGamePage() {
                   </div>
 
                   {item.part_of_speech && (
-                    <div className="border-l-2 border-[#1c293c]/15 px-2 flex items-center justify-center bg-indigo-50/20 text-indigo-900/85 uppercase text-[8px] md:text-[9px] select-none">
-                      <span className="[writing-mode:vertical-rl] tracking-widest py-1 text-center font-medium">
-                        {item.part_of_speech.split(',').map((s) => s.trim()).join(' / ')}
-                      </span>
+                    <div className="border-t-2 border-dashed border-[#1c293c]/15 px-4 py-1.5 bg-indigo-50/15 text-indigo-900/85 uppercase text-[8px] md:text-[9px] font-medium tracking-wider select-none">
+                      {item.part_of_speech.split(',').map((s) => s.trim()).join(' / ')}
                     </div>
                   )}
                 </motion.div>
