@@ -152,8 +152,14 @@ export default function GameHubPage() {
     }
 
     // Determine final question count
-    let finalCount: number
-    if (questionCountType === 'custom') {
+    let finalCount: string | number
+    if (questionCountType === 'all') {
+      finalCount = 'all'
+      if (count > 20 && !isPro) {
+        setValidationError('Số lượng câu hỏi lớn hơn 20 yêu cầu gói Pro. Vui lòng nâng cấp Pro!')
+        return
+      }
+    } else if (questionCountType === 'custom') {
       finalCount = Number(customQuestionCount)
       if (isNaN(finalCount) || finalCount < 5) {
         setValidationError('Số lượng câu hỏi tối thiểu là 5.')
@@ -518,34 +524,71 @@ export default function GameHubPage() {
                   <Hash className="w-4 h-4" />
                   📊 Số lượng câu hỏi
                 </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    { value: '5', label: '5 câu', time: '~1 phút' },
-                    { value: '10', label: '10 câu', time: '~2 phút' },
-                    { value: '20', label: '20 câu', time: '~5 phút' },
-                    { value: 'custom', label: 'Tùy chỉnh', time: 'Nhập số câu' },
-                  ].map((opt) => (
-                    <label
-                      key={opt.value}
-                      className={cn(
-                        'p-3 border-2 border-[#1c293c] rounded-md text-center cursor-pointer transition-all hover:translate-y-[-2px] block relative',
-                        questionCountType === opt.value
-                          ? 'bg-yellow-100 border-yellow-500 shadow-[3px_3px_0px_0px_#eab308]'
-                          : 'bg-background'
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name="questionCount"
-                        value={opt.value}
-                        checked={questionCountType === opt.value}
-                        onChange={() => setQuestionCountType(opt.value)}
-                        className="sr-only"
-                      />
-                      <div className="font-black text-sm">{opt.label}</div>
-                      <div className="text-[10px] text-muted-foreground font-bold">{opt.time}</div>
-                    </label>
-                  ))}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                  {(() => {
+                    const getCount = () => {
+                      if (selectedSource === 'all') return allTermsCount
+                      const selectedDeck = decks.find((d) => d.id === selectedSource)
+                      return selectedDeck?.term_count ?? 0
+                    }
+                    const sourceCount = getCount()
+
+                    return [
+                      { value: '5', label: '5 câu', time: '~1 phút' },
+                      { value: '10', label: '10 câu', time: '~2 phút' },
+                      { value: '20', label: '20 câu', time: '~5 phút' },
+                      { value: 'all', label: 'Toàn bộ', time: `Tất cả (${sourceCount} câu)` },
+                      { value: 'custom', label: 'Tùy chỉnh', time: 'Nhập số câu' },
+                    ].map((opt) => {
+                      const isAll = opt.value === 'all'
+                      const allRequiresPro = isAll && sourceCount > 20
+                      const hasAccess = !allRequiresPro || isPro
+
+                      return (
+                        <label
+                          key={opt.value}
+                          onClick={(e) => {
+                            if (!hasAccess) {
+                              e.preventDefault()
+                              triggerProPrompt('để chơi chế độ Toàn bộ với bộ thẻ lớn hơn 20 từ')
+                            } else {
+                              setQuestionCountType(opt.value)
+                            }
+                          }}
+                          className={cn(
+                            'p-3 border-2 border-[#1c293c] rounded-md text-center cursor-pointer transition-all hover:translate-y-[-2px] block relative',
+                            questionCountType === opt.value
+                              ? 'bg-yellow-100 border-yellow-500 shadow-[3px_3px_0px_0px_#eab308]'
+                              : 'bg-background',
+                            !hasAccess && 'opacity-85'
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name="questionCount"
+                            value={opt.value}
+                            checked={questionCountType === opt.value}
+                            disabled={!hasAccess}
+                            onChange={() => setQuestionCountType(opt.value)}
+                            className="sr-only"
+                          />
+                          <div className="font-black text-sm flex items-center justify-center gap-1">
+                            {opt.label}
+                            {allRequiresPro && (
+                              <Crown size={12} className="text-amber-500 shrink-0" />
+                            )}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground font-bold">{opt.time}</div>
+
+                          {allRequiresPro && !isPro && (
+                            <span className="absolute top-1 right-1 text-amber-600 bg-amber-50 px-1 border border-amber-300 rounded flex items-center gap-0.5 text-[8px] font-black uppercase">
+                              Pro
+                            </span>
+                          )}
+                        </label>
+                      )
+                    })
+                  })()}
                 </div>
 
                 {/* Custom questions input (Pro Gated) */}

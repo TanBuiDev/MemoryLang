@@ -16,6 +16,7 @@ import {
   Check,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 
 interface GameStats {
   accuracy: number
@@ -32,9 +33,13 @@ export default function MatchingGamePage() {
 
   // Query parameters
   const deckId = searchParams.get('source') || 'all'
-  const totalQuestions = Number(searchParams.get('count') || '10')
+  const countParam = searchParams.get('count') || '10'
+  const totalQuestions = countParam === 'all' ? Infinity : Number(countParam)
   const repeatWrong = searchParams.get('repeatWrong') !== 'false' // default true
   const shuffleMode = searchParams.get('shuffle') === 'true' // default false
+
+  // Confirm modal state
+  const [isConfirmExitOpen, setIsConfirmExitOpen] = useState(false)
 
   // Game data queue states
   const [allPoolTerms, setAllPoolTerms] = useState<VocabularyItem[]>([])
@@ -356,11 +361,7 @@ export default function MatchingGamePage() {
       {/* Top Navigation */}
       <div className="flex justify-between items-center">
         <button
-          onClick={() => {
-            if (window.confirm('Bạn có chắc chắn muốn rời khỏi trò chơi hiện tại?')) {
-              navigate('/app/games')
-            }
-          }}
+          onClick={() => setIsConfirmExitOpen(true)}
           className="neo-button py-2 px-3 flex items-center gap-1.5 text-xs font-black border-2 border-border"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -549,6 +550,17 @@ export default function MatchingGamePage() {
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        open={isConfirmExitOpen}
+        title="Rời trò chơi"
+        description="Bạn có chắc chắn muốn rời khỏi trò chơi hiện tại? Tiến trình chơi sẽ không được lưu."
+        confirmLabel="Rời đi"
+        cancelLabel="Ở lại"
+        onConfirm={() => navigate('/app/games')}
+        onCancel={() => setIsConfirmExitOpen(false)}
+        variant="danger"
+      />
     </div>
   )
 }
