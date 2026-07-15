@@ -30,12 +30,13 @@ export const useTtsBatchStore = create<TtsBatchState>((set, get) => {
       })
 
       try {
-        // Fetch uncached global terms
+        // Fetch uncached global terms (audio_url is null or empty, limit up to 10,000 terms)
         const { data, error: fetchErr } = await supabase
           .from('global_terms')
           .select('id, source_text, source_language')
-          .is('audio_url', null)
           .is('deleted_at', null)
+          .or('audio_url.is.null,audio_url.eq.""')
+          .limit(10000)
 
         if (fetchErr) throw fetchErr
 

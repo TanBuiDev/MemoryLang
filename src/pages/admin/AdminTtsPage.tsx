@@ -105,23 +105,45 @@ export default function AdminTtsPage() {
   const loadStats = async () => {
     try {
       setStatsLoading(true)
-      const { data, error: statsErr } = await supabase
+
+      // 1. Get total count
+      const { count: total, error: totalErr } = await supabase
         .from('global_terms')
-        .select('audio_url, normalized_text')
+        .select('*', { count: 'exact', head: true })
         .is('deleted_at', null)
-      if (statsErr) throw statsErr
-      const terms = data ?? []
-      const cached = terms.filter(t => t.audio_url).length
-      const total = terms.length
-      const totalChars = terms.reduce((sum, t) => sum + (t.normalized_text?.length ?? 0), 0)
+      if (totalErr) throw totalErr
+
+      // 2. Get cached count (non-null and non-empty)
+      const { count: cached, error: cachedErr } = await supabase
+        .from('global_terms')
+        .select('*', { count: 'exact', head: true })
+        .is('deleted_at', null)
+        .not('audio_url', 'is', null)
+        .neq('audio_url', '')
+      if (cachedErr) throw cachedErr
+
+      // 3. Get representative sample for average word length
+      const { data: sampleData } = await supabase
+        .from('global_terms')
+        .select('normalized_text')
+        .is('deleted_at', null)
+        .limit(100)
+
+      const totalCount = total ?? 0
+      const cachedCount = cached ?? 0
+
+      const sample = sampleData ?? []
+      const totalSampleChars = sample.reduce((sum, t) => sum + (t.normalized_text?.length ?? 0), 0)
+      const avgChars = sample.length > 0 ? Math.round(totalSampleChars / sample.length) : 11
+
       setStats({
-        cached,
-        uncached: total - cached,
-        total,
-        avgChars: total > 0 ? Math.round(totalChars / total) : 5,
+        cached: cachedCount,
+        uncached: totalCount - cachedCount,
+        total: totalCount,
+        avgChars,
       })
-    } catch {
-      // stats are non-critical
+    } catch (err) {
+      console.error('Failed to load stats:', err)
     } finally {
       setStatsLoading(false)
     }
