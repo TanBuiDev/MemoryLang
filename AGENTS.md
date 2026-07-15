@@ -69,6 +69,14 @@
 - Luôn ưu tiên sử dụng các class utility có sẵn như `neo-card`, `neo-button`, `neo-button-active` thay vì tự viết CSS inline hoặc Tailwind class từ con số 0.
 - Nếu phát hiện code cũ đang dùng `<select>` hoặc `window.confirm`, nhiệm vụ đầu tiên của AI là refactor (tái cấu trúc) chúng sang custom component ngay lập tức.
 
+## Quy tắc tích hợp Supabase / PostgREST (Bắt buộc tuyệt đối)
+
+- **Giới hạn kết quả (1000-row PostgREST limit):**
+  - Cơ chế mặc định của PostgREST/Supabase giới hạn kết quả trả về của các truy vấn `select` tối đa là **1000 dòng**.
+  - **KHÔNG ĐƯỢC** tải toàn bộ dữ liệu về Client bằng cách gọi truy vấn `select` chung rồi tính toán `length` trên mảng kết quả nếu tổng số dòng trong DB có thể lớn hơn 1000.
+  - **BẮT BUỘC** sử dụng truy vấn đếm dòng (`{ count: 'exact', head: true }`) của Supabase khi cần lấy số lượng dòng (total/count) của một bảng.
+  - Khi cần tải danh sách dữ liệu có khả năng vượt quá 1000 dòng để xử lý (ví dụ: tác vụ chạy hàng loạt), phải đặt rõ giới hạn `.limit(...)` (ví dụ: `.limit(10000)`) hoặc thực hiện phân trang (pagination) phù hợp.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
