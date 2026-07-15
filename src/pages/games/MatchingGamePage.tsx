@@ -471,9 +471,9 @@ export default function MatchingGamePage() {
                   </div>
 
                   {item.part_of_speech && (
-                    <div className="border-l-2 border-[#1c293c]/15 px-2 flex items-center justify-center bg-indigo-50/20 text-indigo-900/80 font-black uppercase text-[8px] md:text-[9px] select-none">
-                      <span className="[writing-mode:vertical-rl] tracking-wider py-1 text-center font-extrabold">
-                        {item.part_of_speech}
+                    <div className="border-l-2 border-[#1c293c]/15 px-2 flex items-center justify-center bg-indigo-50/20 text-indigo-900/85 uppercase text-[8px] md:text-[9px] select-none">
+                      <span className="[writing-mode:vertical-rl] tracking-widest py-1 text-center font-medium">
+                        {item.part_of_speech.split(',').map((s) => s.trim()).join(' / ')}
                       </span>
                     </div>
                   )}
