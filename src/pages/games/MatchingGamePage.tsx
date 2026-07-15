@@ -5,6 +5,7 @@ import { deckService } from '@/services/supabase/deck.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import type { VocabularyItem } from '@/types/vocabulary.types'
 import { speak } from '@/utils/audio'
+import { shuffle } from '@/utils/shuffle'
 import { motion } from 'framer-motion'
 import {
   Gamepad2,
@@ -46,7 +47,7 @@ export default function MatchingGamePage() {
   const countParam = searchParams.get('count') || '10'
   const totalQuestions = countParam === 'all' ? Infinity : Number(countParam)
   const repeatWrong = searchParams.get('repeatWrong') !== 'false' // default true
-  const shuffleMode = searchParams.get('shuffle') === 'true' // default false
+  const shuffleMode = searchParams.get('shuffle') !== 'false' // default true
 
   // Confirm modal state
   const [isConfirmExitOpen, setIsConfirmExitOpen] = useState(false)
@@ -98,7 +99,7 @@ export default function MatchingGamePage() {
         // Shuffle initial pool if requested
         let pool = [...validTerms]
         if (shuffleMode || deckId === 'all') {
-          pool.sort(() => Math.random() - 0.5)
+          pool = shuffle(pool)
         }
 
         // Limit the pool to the totalQuestions size
@@ -127,7 +128,7 @@ export default function MatchingGamePage() {
     setLeftItems(roundTerms)
 
     // Right column items are shuffled translation equivalents
-    const rightShuffled = [...roundTerms].sort(() => Math.random() - 0.5)
+    const rightShuffled = shuffle([...roundTerms])
     setRightItems(rightShuffled)
 
     setMatchedSlots(new Set())
