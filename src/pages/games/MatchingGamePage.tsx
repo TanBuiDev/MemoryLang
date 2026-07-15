@@ -457,26 +457,26 @@ export default function MatchingGamePage() {
                   key={`left-${item.id}-${index}`}
                   onClick={() => handleLeftClick(index)}
                   className={cn(
-                    'p-4 border-2 rounded-md transition-colors duration-200 cursor-pointer relative min-h-[72px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#1c293c] h-full',
+                    'border-2 rounded-md transition-colors duration-200 cursor-pointer relative min-h-[72px] flex items-stretch shadow-[3px_3px_0px_0px_#1c293c] h-full overflow-hidden',
                     stateClasses
                   )}
                 >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="font-black text-sm block md:text-base">{item.source_text}</span>
-                      {item.ipa && (
-                        <span className="text-[10px] text-muted-foreground font-mono mt-0.5 block">
-                          {item.ipa}
-                        </span>
-                      )}
-                    </div>
-
-                    {item.part_of_speech && (
-                      <span className="text-[8px] md:text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300">
-                        {item.part_of_speech}
+                  <div className="flex-1 p-4 flex flex-col justify-center">
+                    <span className="font-black text-sm block md:text-base">{item.source_text}</span>
+                    {item.ipa && (
+                      <span className="text-[10px] text-muted-foreground font-mono mt-0.5 block">
+                        {item.ipa}
                       </span>
                     )}
                   </div>
+
+                  {item.part_of_speech && (
+                    <div className="border-l-2 border-[#1c293c]/15 px-2 flex items-center justify-center bg-indigo-50/20 text-indigo-900/80 font-black uppercase text-[8px] md:text-[9px] select-none">
+                      <span className="[writing-mode:vertical-rl] tracking-wider py-1 text-center font-extrabold">
+                        {item.part_of_speech}
+                      </span>
+                    </div>
+                  )}
                 </motion.div>
               )
             }
