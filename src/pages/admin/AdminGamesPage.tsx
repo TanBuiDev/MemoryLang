@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/services/supabase/client'
 import { adminService } from '@/services/supabase/admin.service'
+import { deckService } from '@/services/supabase/deck.service'
 import {
   Gamepad2,
   Save,
@@ -31,7 +32,7 @@ interface GameHubConfig {
 interface SimpleDeckInfo {
   id: string
   name: string
-  parent_id?: string | null
+  parent_id: string | null
   term_count: number
 }
 
@@ -87,6 +88,13 @@ export default function AdminGamesPage() {
           parent_id: d.parent_id,
           term_count: getCount(d.id),
         }))
+
+        // Sort decks by their hierarchical path to group child decks under their parent decks
+        mappedDecks.sort((a, b) => {
+          const pathA = deckService.getDeckPath(a.id, mappedDecks)
+          const pathB = deckService.getDeckPath(b.id, mappedDecks)
+          return pathA.localeCompare(pathB, 'vi', { sensitivity: 'base' })
+        })
 
         setPublicDecks(mappedDecks)
 
@@ -394,8 +402,8 @@ export default function AdminGamesPage() {
                         <Square className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
                       )}
                       <div>
-                        <span className="font-black text-sm block line-clamp-2" title={deck.name}>
-                          {deck.name}
+                        <span className="font-black text-sm block line-clamp-2" title={deckService.getDeckPath(deck.id, publicDecks)}>
+                          {deckService.getDeckPath(deck.id, publicDecks)}
                         </span>
                         <span className="text-[10px] text-muted-foreground font-bold">
                           Số lượng: {deck.term_count} từ
