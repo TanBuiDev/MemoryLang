@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { deckService } from '@/services/supabase/deck.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import type { VocabularyItem } from '@/types/vocabulary.types'
+import { speak } from '@/utils/audio'
 import { motion } from 'framer-motion'
 import {
   Gamepad2,
@@ -14,6 +15,7 @@ import {
   Sparkles,
   BookOpen,
   Check,
+  Volume2,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -470,11 +472,30 @@ export default function MatchingGamePage() {
                     )}
                   </div>
 
-                  {item.part_of_speech && (
-                    <div className="border-t-2 border-dashed border-[#1c293c]/15 px-4 py-1.5 bg-indigo-50/15 text-indigo-900/85 uppercase text-[8px] md:text-[9px] font-medium tracking-wider select-none">
-                      {item.part_of_speech.split(',').map((s) => s.trim()).join(' / ')}
+                  {/* Row 2: Part of speech & Audio play */}
+                  <div className="border-t-2 border-dashed border-[#1c293c]/15 bg-indigo-50/15 flex items-stretch justify-between select-none">
+                    {/* Left: Part of Speech */}
+                    <div className="px-4 py-1.5 text-indigo-900/85 uppercase text-[8px] md:text-[9px] font-medium tracking-wider flex items-center">
+                      {item.part_of_speech
+                        ? item.part_of_speech.split(',').map((s) => s.trim()).join(' / ')
+                        : 'Vocabulary'}
                     </div>
-                  )}
+
+                    {/* Right: Speak button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation() // Prevent triggering the card select click
+                        speak(item.source_text, {
+                          audioUrl: item.audio_url,
+                          globalTermId: item.id,
+                        })
+                      }}
+                      className="border-l-2 border-dashed border-[#1c293c]/15 px-3 py-1.5 hover:bg-indigo-100/50 active:bg-indigo-100 transition-colors flex items-center justify-center cursor-pointer text-indigo-900/70 hover:text-indigo-900"
+                      title="Phát âm"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </motion.div>
               )
             }
