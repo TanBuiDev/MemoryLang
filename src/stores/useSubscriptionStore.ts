@@ -77,7 +77,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => {
           deckCount = dc ?? 0
         }
 
-        const sub = await subscriptionService.getMySubscription()
+        const sub = userId ? await subscriptionService.getMySubscription(userId) : null
         set({
           subscription: sub,
           termCount,

@@ -11,10 +11,19 @@ export const subscriptionService = {
    * Lấy subscription hiện tại của user đang đăng nhập.
    * Trả về null nếu chưa có (user cũ chưa backfill).
    */
-  async getMySubscription(): Promise<Subscription | null> {
+  async getMySubscription(userId?: string): Promise<Subscription | null> {
+    let targetUserId = userId
+    if (!targetUserId) {
+      const { data: { session } } = await supabase.auth.getSession()
+      targetUserId = session?.user?.id
+    }
+
+    if (!targetUserId) return null
+
     const { data, error } = await supabase
       .from('subscriptions')
       .select('*')
+      .eq('user_id', targetUserId)
       .maybeSingle()
 
     if (error) throw error
