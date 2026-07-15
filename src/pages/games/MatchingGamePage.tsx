@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Fragment } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { deckService } from '@/services/supabase/deck.service'
@@ -414,18 +414,27 @@ export default function MatchingGamePage() {
         </div>
 
         {/* Game Matching Layout Container */}
-        <div className="grid grid-cols-2 gap-4 relative md:px-4">
-          {/* Column Left: English words */}
-          <div className="space-y-4">
-            <h3 className="text-center text-xs font-black uppercase text-muted-foreground tracking-wider mb-2">
-              Từ tiếng Anh
-            </h3>
-            {leftItems.map((item, index) => {
+        <div className="grid grid-cols-2 gap-x-4 gap-y-4 relative md:px-4">
+          {/* Header row for columns */}
+          <div className="text-center text-xs font-black uppercase text-muted-foreground tracking-wider mb-2 col-span-1">
+            Từ tiếng Anh
+          </div>
+          <div className="text-center text-xs font-black uppercase text-muted-foreground tracking-wider mb-2 col-span-1">
+            Nghĩa tiếng Việt
+          </div>
+
+          {/* Render cards interlaid to align in rows */}
+          {leftItems.map((leftItem, index) => {
+            const rightItem = rightItems[index]
+            if (!rightItem) return null // safety check
+
+            // Render Left Card
+            const renderLeftCard = () => {
+              const item = leftItem
               const isSelected = selectedLeftIndex === index
               const isMatched = matchedSlots.has(index)
               const pairColor = PAIR_COLORS[index % PAIR_COLORS.length]
 
-              // State classes for background & border
               let stateClasses = ''
               if (phase === 'reviewing') {
                 if (roundIncorrectIds.has(item.id)) {
@@ -448,7 +457,7 @@ export default function MatchingGamePage() {
                   key={`left-${item.id}-${index}`}
                   onClick={() => handleLeftClick(index)}
                   className={cn(
-                    'p-4 border-2 rounded-md transition-colors duration-200 cursor-pointer relative min-h-[72px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#1c293c]',
+                    'p-4 border-2 rounded-md transition-colors duration-200 cursor-pointer relative min-h-[72px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#1c293c] h-full',
                     stateClasses
                   )}
                 >
@@ -468,23 +477,17 @@ export default function MatchingGamePage() {
                       </span>
                     )}
                   </div>
-
                 </motion.div>
               )
-            })}
-          </div>
+            }
 
-          {/* Column Right: Vietnamese translations */}
-          <div className="space-y-4">
-            <h3 className="text-center text-xs font-black uppercase text-muted-foreground tracking-wider mb-2">
-              Nghĩa tiếng Việt
-            </h3>
-            {rightItems.map((item, index) => {
+            // Render Right Card
+            const renderRightCard = () => {
+              const item = rightItem
               const isSelected = selectedRightIndex === index
               const isMatched = matchedSlots.has(index)
               const pairColor = PAIR_COLORS[index % PAIR_COLORS.length]
 
-              // State classes for background & border
               let stateClasses = ''
               if (phase === 'reviewing') {
                 if (roundIncorrectIds.has(item.id)) {
@@ -509,7 +512,7 @@ export default function MatchingGamePage() {
                   key={`right-${item.id}`}
                   onClick={() => handleRightClick(index)}
                   className={cn(
-                    'p-4 border-2 rounded-md transition-colors duration-200 cursor-pointer relative min-h-[72px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#1c293c]',
+                    'p-4 border-2 rounded-md transition-colors duration-200 cursor-pointer relative min-h-[72px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#1c293c] h-full',
                     stateClasses
                   )}
                 >
@@ -531,8 +534,15 @@ export default function MatchingGamePage() {
                   </div>
                 </motion.div>
               )
-            })}
-          </div>
+            }
+
+            return (
+              <Fragment key={`row-${index}`}>
+                {renderLeftCard()}
+                {renderRightCard()}
+              </Fragment>
+            )
+          })}
         </div>
 
         {/* Match Check Actions */}
