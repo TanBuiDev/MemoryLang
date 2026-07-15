@@ -98,7 +98,7 @@ export default function MatchingGamePage() {
 
         // Shuffle initial pool if requested
         let pool = [...validTerms]
-        if (shuffleMode || deckId === 'all') {
+        if (shuffleMode) {
           pool = shuffle(pool)
         }
 
