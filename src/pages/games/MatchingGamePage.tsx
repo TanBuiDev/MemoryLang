@@ -74,17 +74,44 @@ export default function MatchingGamePage() {
   // Stats
   const [correctCount, setCorrectCount] = useState(0)
   const [wrongCount, setWrongCount] = useState(0)
-  const [startTime] = useState<number>(() => Date.now())
+  const [startTime, setStartTime] = useState<number>(() => Date.now())
   const [finalStats, setFinalStats] = useState<GameStats | null>(null)
 
-  // Load vocabulary
+  const sessionKey = `matching_game_session_${deckId}_${countParam}_${repeatWrong}`
+
+  // Load vocabulary or restore session
   useEffect(() => {
-    async function loadVocabulary() {
+    async function loadVocabularyOrRestore() {
       if (!user) return
       try {
         setPhase('loading')
-        let terms: VocabularyItem[] = []
 
+        // 1. Try to restore session first
+        const savedSessionStr = sessionStorage.getItem(sessionKey)
+        if (savedSessionStr) {
+          try {
+            const saved = JSON.parse(savedSessionStr)
+            setAllPoolTerms(saved.allPoolTerms || [])
+            setLeftItems(saved.leftItems || [])
+            setRightItems(saved.rightItems || [])
+            setMatchedSlots(new Set(saved.matchedSlots || []))
+            setRoundIncorrectIds(new Set(saved.roundIncorrectIds || []))
+            setCurrentQueue(saved.currentQueue || [])
+            setFailedQueue(saved.failedQueue || [])
+            setReviewedTerms(new Set(saved.reviewedTerms || []))
+            setCorrectCount(saved.correctCount || 0)
+            setWrongCount(saved.wrongCount || 0)
+            setStartTime(saved.startTime || Date.now())
+            setPhase(saved.phase || 'matching')
+            return // Successfully restored!
+          } catch (e) {
+            console.error('Failed to parse saved matching game session:', e)
+            sessionStorage.removeItem(sessionKey) // Clear corrupted session
+          }
+        }
+
+        // 2. Fetch new game if no session restored
+        let terms: VocabularyItem[] = []
         if (deckId === 'all') {
           terms = await vocabularyService.list(user.id)
         } else {
@@ -113,8 +140,49 @@ export default function MatchingGamePage() {
         navigate('/app/games')
       }
     }
-    void loadVocabulary()
+    void loadVocabularyOrRestore()
   }, [user, deckId, totalQuestions])
+
+  // Save state to sessionStorage
+  useEffect(() => {
+    if (phase === 'loading') return
+
+    if (phase === 'finished') {
+      sessionStorage.removeItem(sessionKey)
+      return
+    }
+
+    const stateToSave = {
+      allPoolTerms,
+      leftItems,
+      rightItems,
+      matchedSlots: Array.from(matchedSlots),
+      roundIncorrectIds: Array.from(roundIncorrectIds),
+      currentQueue,
+      failedQueue,
+      reviewedTerms: Array.from(reviewedTerms),
+      correctCount,
+      wrongCount,
+      phase,
+      startTime,
+    }
+
+    sessionStorage.setItem(sessionKey, JSON.stringify(stateToSave))
+  }, [
+    phase,
+    allPoolTerms,
+    leftItems,
+    rightItems,
+    matchedSlots,
+    roundIncorrectIds,
+    currentQueue,
+    failedQueue,
+    reviewedTerms,
+    correctCount,
+    wrongCount,
+    startTime,
+    sessionKey,
+  ])
 
   const startFirstRound = (pool: VocabularyItem[]) => {
     const firstFive = pool.slice(0, 5)
@@ -620,7 +688,10 @@ export default function MatchingGamePage() {
         description="Bạn có chắc chắn muốn rời khỏi trò chơi hiện tại? Tiến trình chơi sẽ không được lưu."
         confirmLabel="Rời đi"
         cancelLabel="Ở lại"
-        onConfirm={() => navigate('/app/games')}
+        onConfirm={() => {
+          sessionStorage.removeItem(sessionKey)
+          navigate('/app/games')
+        }}
         onCancel={() => setIsConfirmExitOpen(false)}
         variant="danger"
       />
