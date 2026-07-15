@@ -419,12 +419,14 @@ export default function MatchingGamePage() {
               }
 
               return (
-                <div
+                <motion.div
+                  whileHover={!isMatched && !isSelected && phase === 'matching' ? { scale: 1.015, x: 4 } : {}}
+                  whileTap={!isMatched && !isSelected && phase === 'matching' ? { scale: 0.985 } : {}}
                   key={`left-${item.id}-${index}`}
                   onClick={() => handleLeftClick(index)}
                   className={cn(
-                    'p-4 border-2 rounded-md transition-all cursor-pointer relative min-h-[72px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#1c293c]',
-                    isSelected && 'bg-yellow-50 border-yellow-500 translate-x-[2px] translate-y-[2px] shadow-none',
+                    'p-4 border-2 rounded-md transition-colors duration-200 cursor-pointer relative min-h-[72px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#1c293c]',
+                    isSelected && 'bg-yellow-300 border-[#1c293c] translate-x-[2px] translate-y-[2px] shadow-none font-black ring-2 ring-primary/30',
                     isMatched && !isSelected && 'bg-indigo-50/30 border-indigo-400',
                     reviewBorder,
                     reviewBg
@@ -453,7 +455,7 @@ export default function MatchingGamePage() {
                       ✓ Đúng: {item.translation}
                     </div>
                   )}
-                </div>
+                </motion.div>
               )
             })}
           </div>
@@ -484,12 +486,14 @@ export default function MatchingGamePage() {
               return (
                 <motion.div
                   layout
+                  whileHover={!isMatched && !isSelected && phase === 'matching' ? { scale: 1.015, x: -4 } : {}}
+                  whileTap={!isMatched && !isSelected && phase === 'matching' ? { scale: 0.985 } : {}}
                   transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                   key={`right-${item.id}`}
                   onClick={() => handleRightClick(index)}
                   className={cn(
-                    'p-4 border-2 rounded-md transition-all cursor-pointer relative min-h-[72px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#1c293c]',
-                    isSelected && 'bg-yellow-50 border-yellow-500 translate-x-[2px] translate-y-[2px] shadow-none',
+                    'p-4 border-2 rounded-md transition-colors duration-200 cursor-pointer relative min-h-[72px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#1c293c]',
+                    isSelected && 'bg-yellow-300 border-[#1c293c] translate-x-[2px] translate-y-[2px] shadow-none font-black ring-2 ring-primary/30',
                     isMatched && !isSelected && 'bg-indigo-50/30 border-indigo-400',
                     reviewBorder,
                     reviewBg
