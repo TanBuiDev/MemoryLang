@@ -226,6 +226,16 @@ export default function MatchingGamePage() {
       setSelectedLeftIndex(null)
     } else {
       setSelectedLeftIndex(index)
+      
+      // Auto play pronunciation of the selected English card
+      const item = leftItems[index]
+      if (item) {
+        speak(item.source_text, {
+          audioUrl: item.audio_url,
+          globalTermId: item.id,
+        })
+      }
+
       // If right was already selected, execute the swap/match
       if (selectedRightIndex !== null) {
         executeSwap(index, selectedRightIndex)
