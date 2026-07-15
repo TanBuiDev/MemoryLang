@@ -463,7 +463,7 @@ export default function MatchingGamePage() {
                     stateClasses
                   )}
                 >
-                  <div className="flex-1 p-4 flex flex-col justify-center">
+                  <div className="flex-1 p-2 flex flex-col justify-center">
                     <span className="font-black text-sm block md:text-base">{item.source_text}</span>
                     {item.ipa && (
                       <span className="text-[10px] text-muted-foreground font-mono mt-0.5 block">
@@ -475,7 +475,7 @@ export default function MatchingGamePage() {
                   {/* Row 2: Part of speech & Audio play */}
                   <div className="border-t-2 border-dashed border-[#1c293c]/15 bg-indigo-50/15 flex items-stretch justify-between select-none">
                     {/* Left: Part of Speech */}
-                    <div className="px-4 py-1.5 text-indigo-900/85 uppercase text-[8px] md:text-[9px] font-medium tracking-wider flex items-center">
+                    <div className="px-2.5 py-1 text-indigo-900/85 uppercase text-[8px] md:text-[9px] font-medium tracking-wider flex items-center">
                       {item.part_of_speech
                         ? item.part_of_speech.split(',').map((s) => s.trim()).join(' / ')
                         : 'Vocabulary'}
@@ -490,7 +490,7 @@ export default function MatchingGamePage() {
                           globalTermId: item.id,
                         })
                       }}
-                      className="border-l-2 border-dashed border-[#1c293c]/15 px-3 py-1.5 hover:bg-indigo-100/50 active:bg-indigo-100 transition-colors flex items-center justify-center cursor-pointer text-indigo-900/70 hover:text-indigo-900"
+                      className="border-l-2 border-dashed border-[#1c293c]/15 px-2.5 py-1 hover:bg-indigo-100/50 active:bg-indigo-100 transition-colors flex items-center justify-center cursor-pointer text-indigo-900/70 hover:text-indigo-900"
                       title="Phát âm"
                     >
                       <Volume2 className="w-3.5 h-3.5" />
@@ -531,7 +531,7 @@ export default function MatchingGamePage() {
                   key={`right-${item.id}`}
                   onClick={() => handleRightClick(index)}
                   className={cn(
-                    'p-4 border-2 rounded-md transition-colors duration-200 cursor-pointer relative min-h-[72px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#1c293c] h-full',
+                    'p-2 border-2 rounded-md transition-colors duration-200 cursor-pointer relative min-h-[72px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#1c293c] h-full',
                     stateClasses
                   )}
                 >
