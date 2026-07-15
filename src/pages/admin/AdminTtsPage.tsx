@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BarChart3, GitCompare, List, Play, Save, Volume2 } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
 import { generateAudio } from '@/services/api/generateAudio.api'
@@ -68,6 +68,12 @@ export default function AdminTtsPage() {
   const [stats, setStats] = useState<{ cached: number; uncached: number; total: number; avgChars: number }>({ cached: 0, uncached: 0, total: 0, avgChars: 0 })
   const [statsLoading, setStatsLoading] = useState(false)
 
+  // Batch audio generation state
+  const [batchRunning, setBatchRunning] = useState(false)
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, successes: 0, failures: 0 })
+  const [batchError, setBatchError] = useState<string | null>(null)
+  const stopRef = useRef(false)
+
   // Voice comparison
   const [compareText, setCompareText] = useState('Welcome to MemoryLang! Let\'s learn some vocabulary.')
   const [compareSlots, setCompareSlots] = useState<CompareSlot[]>([
@@ -115,6 +121,81 @@ export default function AdminTtsPage() {
     } finally {
       setStatsLoading(false)
     }
+  }
+
+  const startBatchGenerate = async () => {
+    stopRef.current = false
+    try {
+      setBatchRunning(true)
+      setBatchError(null)
+      setBatchProgress({ current: 0, total: 0, successes: 0, failures: 0 })
+
+      // Fetch uncached global terms
+      const { data, error: fetchErr } = await supabase
+        .from('global_terms')
+        .select('id, source_text, source_language')
+        .is('audio_url', null)
+        .is('deleted_at', null)
+
+      if (fetchErr) throw fetchErr
+
+      const uncachedTerms = data ?? []
+      if (uncachedTerms.length === 0) {
+        alert('Tất cả các từ vựng đã có file âm thanh!')
+        setBatchRunning(false)
+        return
+      }
+
+      setBatchProgress(prev => ({ ...prev, total: uncachedTerms.length }))
+
+      let successes = 0
+      let failures = 0
+
+      for (let i = 0; i < uncachedTerms.length; i++) {
+        if (stopRef.current) {
+          break
+        }
+
+        const term = uncachedTerms[i]
+        setBatchProgress(prev => ({ ...prev, current: i + 1 }))
+
+        try {
+          const config = configs.find(c => c.language_code === term.source_language)
+          const voiceName = config?.voice_name
+
+          const res = await generateAudio(term.source_text, term.source_language, voiceName, term.id)
+          if (res.audioUrl) {
+            successes++
+          } else {
+            failures++
+          }
+        } catch (err) {
+          console.error(`Failed to generate audio for term: ${term.source_text}`, err)
+          failures++
+        }
+
+        setBatchProgress(prev => ({ ...prev, successes, failures }))
+        await new Promise(resolve => setTimeout(resolve, 400))
+      }
+
+      void loadStats()
+      
+      if (stopRef.current) {
+        alert(`Đã dừng quá trình sinh audio. Hoàn thành: ${successes} thành công, ${failures} thất bại.`)
+      } else {
+        alert(`Đã hoàn thành sinh audio hàng loạt! Thành công: ${successes}, Thất bại: ${failures}`)
+      }
+
+    } catch (err: any) {
+      console.error(err)
+      setBatchError(err.message || 'Lỗi xảy ra trong quá trình sinh audio hàng loạt')
+    } finally {
+      setBatchRunning(false)
+    }
+  }
+
+  const stopBatchGenerate = () => {
+    stopRef.current = true
   }
 
   useEffect(() => {
@@ -454,111 +535,172 @@ export default function AdminTtsPage() {
 
       {/* TAB: Thống kê */}
       {activeTab === 'stats' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card: Cache Hit Rate */}
-          <div className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex flex-col gap-2">
-            <span className="text-xs font-black text-muted-foreground uppercase">Tỉ lệ cache</span>
-            {statsLoading ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                <span className="text-3xl font-black text-foreground">
-                  {stats.total > 0 ? Math.round((stats.cached / stats.total) * 100) : 0}%
-                </span>
-                <span className="text-xs font-bold text-muted-foreground">
-                  {stats.cached}/{stats.total} từ đã có audio
-                </span>
-              </>
-            )}
-            <div className="w-full h-2 bg-muted rounded-full overflow-hidden mt-1">
-              <div
-                className="h-full bg-emerald-500 rounded-full transition-all"
-                style={{ width: `${stats.total > 0 ? (stats.cached / stats.total) * 100 : 0}%` }}
-              />
+        <div className="flex flex-col gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card: Cache Hit Rate */}
+            <div className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex flex-col gap-2">
+              <span className="text-xs font-black text-muted-foreground uppercase">Tỉ lệ cache</span>
+              {statsLoading ? (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <span className="text-3xl font-black text-foreground">
+                    {stats.total > 0 ? Math.round((stats.cached / stats.total) * 100) : 0}%
+                  </span>
+                  <span className="text-xs font-bold text-muted-foreground">
+                    {stats.cached}/{stats.total} từ đã có audio
+                  </span>
+                </>
+              )}
+              <div className="w-full h-2 bg-muted rounded-full overflow-hidden mt-1">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all"
+                  style={{ width: `${stats.total > 0 ? (stats.cached / stats.total) * 100 : 0}%` }}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Card: Voice Distribution */}
-          <div className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex flex-col gap-2">
-            <span className="text-xs font-black text-muted-foreground uppercase">Phân bố giọng</span>
-            <div className="flex flex-col gap-1 mt-1">
-              {(() => {
-                const dist: Record<string, number> = {}
-                configs.forEach(c => {
-                  const t = getVoiceTypeInfo(c.voice_name).type
-                  dist[t] = (dist[t] ?? 0) + 1
-                })
-                return Object.entries(dist).map(([type, count]) => (
-                  <div key={type} className="flex justify-between items-center">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${type === 'Neural2' ? 'bg-violet-100 text-violet-800 border-violet-300' : type === 'WaveNet' ? 'bg-blue-100 text-blue-800 border-blue-300' : type === 'Standard' ? 'bg-slate-100 text-slate-800 border-slate-300' : 'bg-slate-100 text-slate-800 border-slate-300'}`}>
-                      {type}
-                    </span>
-                    <span className="text-xs font-bold text-muted-foreground">{count} ngôn ngữ</span>
-                  </div>
-                ))
+            {/* Card: Voice Distribution */}
+            <div className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex flex-col gap-2">
+              <span className="text-xs font-black text-muted-foreground uppercase">Phân bố giọng</span>
+              <div className="flex flex-col gap-1 mt-1">
+                {(() => {
+                  const dist: Record<string, number> = {}
+                  configs.forEach(c => {
+                    const t = getVoiceTypeInfo(c.voice_name).type
+                    dist[t] = (dist[t] ?? 0) + 1
+                  })
+                  return Object.entries(dist).map(([type, count]) => (
+                    <div key={type} className="flex justify-between items-center">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${type === 'Neural2' ? 'bg-violet-100 text-violet-800 border-violet-300' : type === 'WaveNet' ? 'bg-blue-100 text-blue-800 border-blue-300' : type === 'Standard' ? 'bg-slate-100 text-slate-800 border-slate-300' : 'bg-slate-100 text-slate-800 border-slate-300'}`}>
+                        {type}
+                      </span>
+                      <span className="text-xs font-bold text-muted-foreground">{count} ngôn ngữ</span>
+                    </div>
+                  ))
+                })()}
+              </div>
+            </div>
+
+            {/* Card: Estimated Cost */}
+            <div className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex flex-col gap-2">
+              <span className="text-xs font-black text-muted-foreground uppercase">Chi phí ước tính</span>
+              {statsLoading ? (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (() => {
+                const totalChars = stats.total * stats.avgChars
+                const costStandard = ((totalChars / 1_000_000) * 4).toFixed(2)
+                const costWaveNet = ((totalChars / 1_000_000) * 16).toFixed(2)
+                return (
+                  <>
+                    <span className="text-3xl font-black text-foreground">~${costWaveNet}</span>
+                    <div className="text-xs font-bold text-muted-foreground space-y-0.5">
+                      <div className="flex justify-between">
+                        <span>Standard:</span>
+                        <span>${costStandard}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>WaveNet / Neural2:</span>
+                        <span>${costWaveNet}</span>
+                      </div>
+                      <div className="flex justify-between mt-1 pt-1 border-t border-border/30">
+                        <span>Tổng ký tự:</span>
+                        <span>{(totalChars / 1000).toFixed(1)}K</span>
+                      </div>
+                    </div>
+                    <div className="mt-1 p-1.5 bg-emerald-50 border border-emerald-200 rounded text-xs font-bold text-emerald-800">
+                      ✅ Free tier: 100K chars/tháng (WaveNet)
+                    </div>
+                  </>
+                )
               })()}
             </div>
-          </div>
 
-          {/* Card: Estimated Cost */}
-          <div className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex flex-col gap-2">
-            <span className="text-xs font-black text-muted-foreground uppercase">Chi phí ước tính</span>
-            {statsLoading ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : (() => {
-              const totalChars = stats.total * stats.avgChars
-              const costStandard = ((totalChars / 1_000_000) * 4).toFixed(2)
-              const costWaveNet = ((totalChars / 1_000_000) * 16).toFixed(2)
-              return (
+            {/* Card: Generation Status */}
+            <div className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex flex-col gap-2">
+              <span className="text-xs font-black text-muted-foreground uppercase">Trạng thái sinh audio</span>
+              {statsLoading ? (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
                 <>
-                  <span className="text-3xl font-black text-foreground">~${costWaveNet}</span>
-                  <div className="text-xs font-bold text-muted-foreground space-y-0.5">
-                    <div className="flex justify-between">
-                      <span>Standard:</span>
-                      <span>${costStandard}</span>
+                  <div className="flex gap-3 mt-1">
+                    <div className="flex-1 text-center">
+                      <div className="text-2xl font-black text-emerald-600">{stats.cached}</div>
+                      <div className="text-xs font-bold text-muted-foreground">Đã cache</div>
                     </div>
-                    <div className="flex justify-between">
-                      <span>WaveNet / Neural2:</span>
-                      <span>${costWaveNet}</span>
+                    <div className="flex-1 text-center">
+                      <div className="text-2xl font-black text-amber-600">{stats.uncached}</div>
+                      <div className="text-xs font-bold text-muted-foreground">Chưa cache</div>
                     </div>
-                    <div className="flex justify-between mt-1 pt-1 border-t border-border/30">
-                      <span>Tổng ký tự:</span>
-                      <span>{(totalChars / 1000).toFixed(1)}K</span>
+                    <div className="flex-1 text-center">
+                      <div className="text-2xl font-black text-foreground">{stats.total}</div>
+                      <div className="text-xs font-bold text-muted-foreground">Tổng</div>
                     </div>
                   </div>
-                  <div className="mt-1 p-1.5 bg-emerald-50 border border-emerald-200 rounded text-xs font-bold text-emerald-800">
-                    ✅ Free tier: 100K chars/tháng (WaveNet) — đủ cho {(100000 / stats.avgChars).toFixed(0)} từ/tháng
-                  </div>
+                  <span className="text-xs font-bold text-muted-foreground mt-1">
+                    TB {stats.avgChars} ký tự/từ
+                  </span>
                 </>
-              )
-            })()}
+              )}
+            </div>
           </div>
 
-          {/* Card: Generation Status */}
-          <div className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex flex-col gap-2">
-            <span className="text-xs font-black text-muted-foreground uppercase">Trạng thái sinh audio</span>
-            {statsLoading ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                <div className="flex gap-3 mt-1">
-                  <div className="flex-1 text-center">
-                    <div className="text-2xl font-black text-emerald-600">{stats.cached}</div>
-                    <div className="text-xs font-bold text-muted-foreground">Đã cache</div>
-                  </div>
-                  <div className="flex-1 text-center">
-                    <div className="text-2xl font-black text-amber-600">{stats.uncached}</div>
-                    <div className="text-xs font-bold text-muted-foreground">Chưa cache</div>
-                  </div>
-                  <div className="flex-1 text-center">
-                    <div className="text-2xl font-black text-foreground">{stats.total}</div>
-                    <div className="text-xs font-bold text-muted-foreground">Tổng</div>
-                  </div>
+          {/* Batch Generator Card */}
+          <div className="neo-card p-6 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex flex-col gap-4">
+            <h3 className="text-md font-black border-b-2 border-border pb-2 text-foreground flex items-center gap-2">
+              <Volume2 className="h-5 w-5 text-primary" />
+              SINH AUDIO HÀNG LOẠT (BATCH GENERATOR)
+            </h3>
+            <p className="text-xs font-semibold text-muted-foreground leading-relaxed">
+              Tính năng này quét toàn bộ cơ sở dữ liệu từ vựng toàn cục (`global_terms`), tìm các từ chưa có file âm thanh (`audio_url` là null) và tự động gọi Google Cloud TTS để tạo giọng đọc WaveNet/Neural2 chuẩn rồi tải lên Cloudflare R2 cache.
+            </p>
+
+            {batchError && (
+              <div className="p-3 bg-rose-100 border border-rose-400 text-rose-900 rounded font-bold text-xs">
+                {batchError}
+              </div>
+            )}
+
+            {batchRunning ? (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center text-xs font-black">
+                  <span>
+                    Đang sinh audio: {batchProgress.current} / {batchProgress.total} từ (
+                    {Math.round((batchProgress.current / batchProgress.total) * 100)}%)
+                  </span>
+                  <button
+                    onClick={stopBatchGenerate}
+                    className="px-3 py-1 bg-rose-600 text-white rounded text-[10px] font-black hover:bg-rose-700 transition"
+                  >
+                    Dừng lại (Stop)
+                  </button>
                 </div>
-                <span className="text-xs font-bold text-muted-foreground mt-1">
-                  TB {stats.avgChars} ký tự/từ — 1 lần generate duy nhất
-                </span>
-              </>
+                <div className="w-full h-3 bg-muted rounded-full overflow-hidden border">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-300"
+                    style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                  />
+                </div>
+                <div className="flex gap-4 text-xs font-bold text-muted-foreground justify-center">
+                  <span className="text-emerald-600">Thành công: {batchProgress.successes}</span>
+                  <span className="text-rose-600">Thất bại: {batchProgress.failures}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={startBatchGenerate}
+                  disabled={statsLoading || stats.uncached === 0}
+                  className="neo-button bg-[#fdc800] hover:bg-[#e0b000] text-foreground font-black text-xs px-6 py-3 border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition disabled:opacity-50"
+                >
+                  ▶ Bắt đầu sinh {stats.uncached} audio còn thiếu
+                </button>
+                {stats.uncached === 0 && (
+                  <span className="text-xs font-bold text-emerald-600">
+                    🎉 Tất cả từ vựng đều đã có file âm thanh!
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>
