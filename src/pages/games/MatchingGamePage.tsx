@@ -59,6 +59,7 @@ export default function MatchingGamePage() {
   const [leftItems, setLeftItems] = useState<VocabularyItem[]>([])
   const [rightItems, setRightItems] = useState<VocabularyItem[]>([]) // Matched row-by-row on right
   const [matchedSlots, setMatchedSlots] = useState<Set<number>>(new Set())
+  const [roundIncorrectIds, setRoundIncorrectIds] = useState<Set<string>>(new Set())
 
   // Selections
   const [selectedLeftIndex, setSelectedLeftIndex] = useState<number | null>(null)
@@ -130,6 +131,7 @@ export default function MatchingGamePage() {
     setMatchedSlots(new Set())
     setSelectedLeftIndex(null)
     setSelectedRightIndex(null)
+    setRoundIncorrectIds(new Set())
     setPhase('matching')
 
     // Add to reviewed terms list
@@ -184,11 +186,10 @@ export default function MatchingGamePage() {
   }
 
   const handleCheckResults = () => {
-    setPhase('reviewing')
-
     let roundCorrect = 0
     let roundWrong = 0
     const roundFailed: VocabularyItem[] = []
+    const roundIncorrectSet = new Set<string>()
 
     leftItems.forEach((item, index) => {
       const match = rightItems[index]
@@ -197,6 +198,7 @@ export default function MatchingGamePage() {
       } else {
         roundWrong++
         roundFailed.push(item)
+        roundIncorrectSet.add(item.id)
       }
     })
 
@@ -206,6 +208,16 @@ export default function MatchingGamePage() {
     if (repeatWrong) {
       setFailedQueue((prev) => [...prev, ...roundFailed])
     }
+
+    setRoundIncorrectIds(roundIncorrectSet)
+
+    // Reorder rightItems to match leftItems correctly
+    const correctedRight = leftItems.map((leftItem) => {
+      return rightItems.find((r) => r.id === leftItem.id) || rightItems[0]
+    })
+    setRightItems(correctedRight)
+
+    setPhase('reviewing')
   }
 
   const handleNextRound = () => {
@@ -411,16 +423,15 @@ export default function MatchingGamePage() {
             {leftItems.map((item, index) => {
               const isSelected = selectedLeftIndex === index
               const isMatched = matchedSlots.has(index)
-              const matchRightItem = rightItems[index]
               const pairColor = PAIR_COLORS[index % PAIR_COLORS.length]
 
               // State classes for background & border
               let stateClasses = ''
               if (phase === 'reviewing') {
-                if (item.id === matchRightItem.id) {
-                  stateClasses = 'bg-green-50/50 border-green-500'
+                if (roundIncorrectIds.has(item.id)) {
+                  stateClasses = 'bg-rose-50/55 border-rose-500'
                 } else {
-                  stateClasses = 'bg-rose-50/50 border-rose-500'
+                  stateClasses = 'bg-green-50/55 border-green-500'
                 }
               } else if (isSelected) {
                 stateClasses = 'bg-yellow-300 border-[#1c293c] translate-x-[2px] translate-y-[2px] shadow-none font-black ring-2 ring-primary/30'
@@ -459,9 +470,9 @@ export default function MatchingGamePage() {
                   </div>
 
                   {/* Correct translation helper on review */}
-                  {phase === 'reviewing' && item.id !== matchRightItem.id && (
-                    <div className="mt-2 text-[10px] font-black text-emerald-600 border-t border-dashed border-[#1c293c]/10 pt-1">
-                      ✓ Đúng: {item.translation}
+                  {phase === 'reviewing' && roundIncorrectIds.has(item.id) && (
+                    <div className="mt-2 text-[10px] font-black text-rose-600 border-t border-dashed border-rose-200 pt-1">
+                      Đã tự động sắp xếp lại đúng
                     </div>
                   )}
                 </motion.div>
@@ -477,16 +488,15 @@ export default function MatchingGamePage() {
             {rightItems.map((item, index) => {
               const isSelected = selectedRightIndex === index
               const isMatched = matchedSlots.has(index)
-              const matchLeftItem = leftItems[index]
               const pairColor = PAIR_COLORS[index % PAIR_COLORS.length]
 
               // State classes for background & border
               let stateClasses = ''
               if (phase === 'reviewing') {
-                if (item.id === matchLeftItem.id) {
-                  stateClasses = 'bg-green-50/50 border-green-500'
+                if (roundIncorrectIds.has(item.id)) {
+                  stateClasses = 'bg-rose-50/55 border-rose-500'
                 } else {
-                  stateClasses = 'bg-rose-50/50 border-rose-500'
+                  stateClasses = 'bg-green-50/55 border-green-500'
                 }
               } else if (isSelected) {
                 stateClasses = 'bg-yellow-300 border-[#1c293c] translate-x-[2px] translate-y-[2px] shadow-none font-black ring-2 ring-primary/30'
@@ -517,10 +527,10 @@ export default function MatchingGamePage() {
                     {/* Correct/Incorrect Icons */}
                     {phase === 'reviewing' && (
                       <span className="shrink-0 ml-1.5">
-                        {item.id === matchLeftItem.id ? (
-                          <Check className="w-5 h-5 text-emerald-500 shrink-0" />
-                        ) : (
+                        {roundIncorrectIds.has(item.id) ? (
                           <XCircle className="w-5 h-5 text-rose-500 shrink-0" />
+                        ) : (
+                          <Check className="w-5 h-5 text-emerald-500 shrink-0" />
                         )}
                       </span>
                     )}
