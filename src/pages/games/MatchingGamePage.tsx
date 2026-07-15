@@ -482,7 +482,10 @@ export default function MatchingGamePage() {
                     </div>
 
                     {/* Right: Speak button */}
-                    <button
+                    <motion.button
+                      whileTap={{ scale: 0.9 }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation() // Prevent triggering the card select click
                         speak(item.source_text, {
@@ -494,7 +497,7 @@ export default function MatchingGamePage() {
                       title="Phát âm"
                     >
                       <Volume2 className="w-3.5 h-3.5" />
-                    </button>
+                    </motion.button>
                   </div>
                 </motion.div>
               )
