@@ -469,12 +469,6 @@ export default function MatchingGamePage() {
                     )}
                   </div>
 
-                  {/* Correct translation helper on review */}
-                  {phase === 'reviewing' && roundIncorrectIds.has(item.id) && (
-                    <div className="mt-2 text-[10px] font-black text-rose-600 border-t border-dashed border-rose-200 pt-1">
-                      Đã tự động sắp xếp lại đúng
-                    </div>
-                  )}
                 </motion.div>
               )
             })}
