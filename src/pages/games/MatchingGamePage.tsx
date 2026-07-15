@@ -26,6 +26,14 @@ interface GameStats {
   totalWrong: number
 }
 
+const PAIR_COLORS = [
+  { bg: 'bg-[#e2fbeb]', border: 'border-emerald-400' }, // Emerald
+  { bg: 'bg-[#f5eefd]', border: 'border-purple-400' },   // Purple
+  { bg: 'bg-[#fffbeb]', border: 'border-amber-400' },     // Amber
+  { bg: 'bg-[#fff5f6]', border: 'border-rose-400' },       // Rose
+  { bg: 'bg-[#f0f7ff]', border: 'border-blue-400' },       // Blue
+]
+
 export default function MatchingGamePage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -404,18 +412,22 @@ export default function MatchingGamePage() {
               const isSelected = selectedLeftIndex === index
               const isMatched = matchedSlots.has(index)
               const matchRightItem = rightItems[index]
+              const pairColor = PAIR_COLORS[index % PAIR_COLORS.length]
 
-              // Review borders
-              let reviewBorder = 'border-[#1c293c]'
-              let reviewBg = 'bg-background'
+              // State classes for background & border
+              let stateClasses = ''
               if (phase === 'reviewing') {
                 if (item.id === matchRightItem.id) {
-                  reviewBorder = 'border-green-500'
-                  reviewBg = 'bg-green-50/50'
+                  stateClasses = 'bg-green-50/50 border-green-500'
                 } else {
-                  reviewBorder = 'border-rose-500'
-                  reviewBg = 'bg-rose-50/50'
+                  stateClasses = 'bg-rose-50/50 border-rose-500'
                 }
+              } else if (isSelected) {
+                stateClasses = 'bg-yellow-300 border-[#1c293c] translate-x-[2px] translate-y-[2px] shadow-none font-black ring-2 ring-primary/30'
+              } else if (isMatched) {
+                stateClasses = `${pairColor.bg} ${pairColor.border}`
+              } else {
+                stateClasses = 'bg-background border-[#1c293c]'
               }
 
               return (
@@ -426,10 +438,7 @@ export default function MatchingGamePage() {
                   onClick={() => handleLeftClick(index)}
                   className={cn(
                     'p-4 border-2 rounded-md transition-colors duration-200 cursor-pointer relative min-h-[72px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#1c293c]',
-                    isSelected && 'bg-yellow-300 border-[#1c293c] translate-x-[2px] translate-y-[2px] shadow-none font-black ring-2 ring-primary/30',
-                    isMatched && !isSelected && 'bg-indigo-50/30 border-indigo-400',
-                    reviewBorder,
-                    reviewBg
+                    stateClasses
                   )}
                 >
                   <div className="flex justify-between items-start">
@@ -469,18 +478,22 @@ export default function MatchingGamePage() {
               const isSelected = selectedRightIndex === index
               const isMatched = matchedSlots.has(index)
               const matchLeftItem = leftItems[index]
+              const pairColor = PAIR_COLORS[index % PAIR_COLORS.length]
 
-              // Review borders
-              let reviewBorder = 'border-[#1c293c]'
-              let reviewBg = 'bg-background'
+              // State classes for background & border
+              let stateClasses = ''
               if (phase === 'reviewing') {
                 if (item.id === matchLeftItem.id) {
-                  reviewBorder = 'border-green-500'
-                  reviewBg = 'bg-green-50/50'
+                  stateClasses = 'bg-green-50/50 border-green-500'
                 } else {
-                  reviewBorder = 'border-rose-500'
-                  reviewBg = 'bg-rose-50/50'
+                  stateClasses = 'bg-rose-50/50 border-rose-500'
                 }
+              } else if (isSelected) {
+                stateClasses = 'bg-yellow-300 border-[#1c293c] translate-x-[2px] translate-y-[2px] shadow-none font-black ring-2 ring-primary/30'
+              } else if (isMatched) {
+                stateClasses = `${pairColor.bg} ${pairColor.border}`
+              } else {
+                stateClasses = 'bg-background border-[#1c293c]'
               }
 
               return (
@@ -493,10 +506,7 @@ export default function MatchingGamePage() {
                   onClick={() => handleRightClick(index)}
                   className={cn(
                     'p-4 border-2 rounded-md transition-colors duration-200 cursor-pointer relative min-h-[72px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#1c293c]',
-                    isSelected && 'bg-yellow-300 border-[#1c293c] translate-x-[2px] translate-y-[2px] shadow-none font-black ring-2 ring-primary/30',
-                    isMatched && !isSelected && 'bg-indigo-50/30 border-indigo-400',
-                    reviewBorder,
-                    reviewBg
+                    stateClasses
                   )}
                 >
                   <div className="flex justify-between items-center">
