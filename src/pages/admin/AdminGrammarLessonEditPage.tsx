@@ -5,6 +5,7 @@ import type { LessonBlock, BlockType } from '@/types/grammar.types'
 import { BLOCK_TYPE_LABELS } from '@/types/grammar.types'
 import { AppLoading } from '@/components/common/AppLoading'
 import { Badge } from '@/components/ui/badge'
+import { Select } from '@/components/ui/select'
 
 const INITIAL_CONTENT: Record<BlockType, Record<string, unknown>> = {
   heading: { text: '', level: 2, icon: '' },
@@ -149,16 +150,19 @@ export default function AdminGrammarLessonEditPage() {
 
       {/* Add block dropdown */}
       <div className="flex gap-3 items-center">
-        <select
+        <Select
           value={addingType ?? ''}
-          onChange={(e) => setAddingType((e.target.value || null) as BlockType | null)}
-          className="border-2 border-(--border) rounded-lg px-3 py-2 text-sm font-semibold bg-white"
-        >
-          <option value="">+ Thêm block...</option>
-          {(Object.entries(BLOCK_TYPE_LABELS) as [BlockType, string][]).map(([type, label]) => (
-            <option key={type} value={type}>{label}</option>
-          ))}
-        </select>
+          onChange={(value) => setAddingType((value || null) as BlockType | null)}
+          options={[
+            { value: '', label: '+ Thêm block...' },
+            ...(Object.entries(BLOCK_TYPE_LABELS) as [BlockType, string][]).map(([type, label]) => ({
+              value: type,
+              label,
+            })),
+          ]}
+          placeholder="+ Thêm block..."
+          className="max-w-xs"
+        />
         {addingType && (
           <button
             onClick={handleAdd}

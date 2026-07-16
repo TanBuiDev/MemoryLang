@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2, Edit3, Eye, CheckCircle2, ChevronRight, BookOpen, AlertCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { Select } from '@/components/ui/select'
+import { showToast } from '@/components/ui/toast'
 import { adminService } from '@/services/supabase/admin.service'
 import { subscriptionService } from '@/services/supabase/subscription.service'
 import { AccessTierBadge } from '@/components/admin/AccessTierBadge'
@@ -25,12 +28,16 @@ export default function AdminGrammarPage() {
 
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([])
   const [bulkUpdating, setBulkUpdating] = useState(false)
+  const [pendingDeleteTopicId, setPendingDeleteTopicId] = useState<string | null>(null)
+  const [topicFormError, setTopicFormError] = useState<string | null>(null)
 
   const [editingExercise, setEditingExercise] = useState<string | null>(null)
   const [exerciseForm, setExerciseForm] = useState<Partial<GrammarExercise>>({
     options: ['', '', '', ''],
   })
   const [showExerciseForm, setShowExerciseForm] = useState(false)
+  const [pendingDeleteExerciseId, setPendingDeleteExerciseId] = useState<string | null>(null)
+  const [exerciseFormError, setExerciseFormError] = useState<string | null>(null)
 
   const loadTopics = async () => {
     try {
@@ -52,7 +59,7 @@ export default function AdminGrammarPage() {
       setExercises(data)
     } catch (err: any) {
       console.error(err)
-      alert('Không thể tải danh sách bài tập')
+      setError(err.message || 'Không thể tải danh sách bài tập')
     } finally {
       setExercisesLoading(false)
     }
@@ -80,6 +87,7 @@ export default function AdminGrammarPage() {
       access_tier: 'free',
       teaser_config: { enabled: true, type: 'theory_only' },
     })
+    setTopicFormError(null)
     setShowTopicForm(true)
   }
 
@@ -90,11 +98,11 @@ export default function AdminGrammarPage() {
       access_tier: topic.access_tier || 'free',
       teaser_config: topic.teaser_config || { enabled: true, type: 'theory_only' },
     })
+    setTopicFormError(null)
     setShowTopicForm(true)
   }
 
   const handleDeleteTopic = async (id: string) => {
-    if (!window.confirm('Xóa chủ đề ngữ pháp này sẽ xóa toàn bộ bài tập liên quan. Bạn có chắc chắn?')) return
     try {
       setError(null)
       await adminService.deleteGrammarTopic(id)
@@ -106,17 +114,20 @@ export default function AdminGrammarPage() {
     } catch (err: any) {
       console.error(err)
       setError(err.message || 'Lỗi khi xóa chủ đề ngữ pháp')
+    } finally {
+      setPendingDeleteTopicId(null)
     }
   }
 
   const handleSaveTopic = async () => {
     if (!topicForm.title || !topicForm.category || !topicForm.explanation) {
-      alert('Vui lòng điền đầy đủ thông tin bắt buộc')
+      setTopicFormError('Vui lòng điền đầy đủ thông tin bắt buộc.')
       return
     }
 
     try {
       setError(null)
+      setTopicFormError(null)
       const examples = (topicForm.examples ?? []).filter(ex => ex.sentence.trim() !== '')
 
       const payload = {
@@ -156,7 +167,11 @@ export default function AdminGrammarPage() {
     } catch (err: any) {
       setTopics(prev => prev.map(t => t.id === topicId ? { ...t, access_tier: currentTier } : t))
       if (selectedTopic?.id === topicId) setSelectedTopic(prev => prev ? { ...prev, access_tier: currentTier } : null)
-      alert('Không thể thay đổi phân quyền truy cập: ' + err.message)
+      showToast({
+        type: 'error',
+        title: 'Không thể thay đổi phân quyền',
+        message: err.message,
+      })
     }
   }
 
@@ -170,7 +185,11 @@ export default function AdminGrammarPage() {
       }
       setSelectedTopicIds([])
     } catch (err: any) {
-      alert('Lỗi thao tác hàng loạt: ' + err.message)
+      showToast({
+        type: 'error',
+        title: 'Lỗi thao tác hàng loạt',
+        message: err.message,
+      })
     } finally {
       setBulkUpdating(false)
     }
@@ -187,7 +206,7 @@ export default function AdminGrammarPage() {
       }
     } catch (err: any) {
       console.error(err)
-      alert('Không thể thay đổi trạng thái phát hành')
+      setError(err.message || 'Không thể thay đổi trạng thái phát hành')
     }
   }
 
@@ -202,33 +221,37 @@ export default function AdminGrammarPage() {
       answer: '',
       explanation: '',
     })
+    setExerciseFormError(null)
     setShowExerciseForm(true)
   }
 
   const handleEditExercise = (exercise: GrammarExercise) => {
     setEditingExercise(exercise.id)
     setExerciseForm({ ...exercise })
+    setExerciseFormError(null)
     setShowExerciseForm(true)
   }
 
   const handleDeleteExercise = async (id: string) => {
-    if (!window.confirm('Bạn có chắc muốn xóa bài tập này?')) return
     try {
       await adminService.deleteGrammarExercise(id)
       setExercises(prev => prev.filter(e => e.id !== id))
     } catch (err: any) {
       console.error(err)
-      alert('Không thể xóa bài tập')
+      setError(err.message || 'Không thể xóa bài tập')
+    } finally {
+      setPendingDeleteExerciseId(null)
     }
   }
 
   const handleSaveExercise = async () => {
     if (!exerciseForm.question || !exerciseForm.answer) {
-      alert('Vui lòng nhập câu hỏi và câu trả lời chính xác')
+      setExerciseFormError('Vui lòng nhập câu hỏi và câu trả lời chính xác.')
       return
     }
 
     try {
+      setExerciseFormError(null)
       const payload = {
         topic_id: selectedTopic!.id,
         question: exerciseForm.question,
@@ -247,7 +270,7 @@ export default function AdminGrammarPage() {
       setShowExerciseForm(false)
     } catch (err: any) {
       console.error(err)
-      alert('Lỗi khi lưu bài tập')
+      setError(err.message || 'Lỗi khi lưu bài tập')
     }
   }
 
@@ -354,7 +377,7 @@ export default function AdminGrammarPage() {
                       <Edit3 size={12} />
                     </button>
                     <button
-                      onClick={() => handleDeleteTopic(topic.id)}
+                      onClick={() => setPendingDeleteTopicId(topic.id)}
                       className="p-1.5 rounded border border-border bg-rose-50 text-rose-800 hover:bg-rose-100 transition-all"
                       title="Xóa chủ đề"
                     >
@@ -415,7 +438,7 @@ export default function AdminGrammarPage() {
                         <Edit3 size={12} />
                       </button>
                       <button
-                        onClick={() => handleDeleteExercise(ex.id)}
+                        onClick={() => setPendingDeleteExerciseId(ex.id)}
                         className="p-1 rounded border border-border bg-rose-50 text-rose-800 hover:bg-rose-100 transition-all"
                       >
                         <Trash2 size={12} />
@@ -461,6 +484,12 @@ export default function AdminGrammarPage() {
             </h2>
 
             <div className="flex flex-col gap-3">
+              {topicFormError && (
+                <div className="p-3 bg-rose-100 border-2 border-rose-400 text-rose-900 rounded-md font-bold text-xs">
+                  {topicFormError}
+                </div>
+              )}
+
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-black text-foreground">Tiêu đề (Title) *</label>
                 <input
@@ -475,30 +504,30 @@ export default function AdminGrammarPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-black text-foreground">Phân loại (Category) *</label>
-                  <select
+                  <Select
                     value={topicForm.category || 'Verb Patterns'}
-                    onChange={e => setTopicForm(prev => ({ ...prev, category: e.target.value }))}
-                    className="px-3 py-2 border-2 border-border rounded bg-muted text-xs font-bold focus:outline-none focus:border-primary focus:bg-card transition-all"
-                  >
-                    <option value="Verb Patterns">Verb Patterns</option>
-                    <option value="Connectors">Connectors</option>
-                    <option value="Sentence Structure">Sentence Structure</option>
-                    <option value="Prepositions">Prepositions</option>
-                    <option value="Adjective Phrases">Adjective Phrases</option>
-                    <option value="Adverbs">Adverbs</option>
-                  </select>
+                    onChange={category => setTopicForm(prev => ({ ...prev, category }))}
+                    options={[
+                      { value: 'Verb Patterns', label: 'Verb Patterns' },
+                      { value: 'Connectors', label: 'Connectors' },
+                      { value: 'Sentence Structure', label: 'Sentence Structure' },
+                      { value: 'Prepositions', label: 'Prepositions' },
+                      { value: 'Adjective Phrases', label: 'Adjective Phrases' },
+                      { value: 'Adverbs', label: 'Adverbs' },
+                    ]}
+                  />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-black text-foreground">Cấp độ (Level)</label>
-                  <select
+                  <Select
                     value={topicForm.level || 'intermediate'}
-                    onChange={e => setTopicForm(prev => ({ ...prev, level: e.target.value }))}
-                    className="px-3 py-2 border-2 border-border rounded bg-muted text-xs font-bold focus:outline-none focus:border-primary focus:bg-card transition-all"
-                  >
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                  </select>
+                    onChange={level => setTopicForm(prev => ({ ...prev, level }))}
+                    options={[
+                      { value: 'beginner', label: 'Beginner' },
+                      { value: 'intermediate', label: 'Intermediate' },
+                      { value: 'advanced', label: 'Advanced' },
+                    ]}
+                  />
                 </div>
               </div>
 
@@ -530,14 +559,14 @@ export default function AdminGrammarPage() {
               <div className="border-t border-border/40 my-1 pt-3 flex flex-col gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-black text-foreground">Phân quyền truy cập (Access Tier)</label>
-                  <select
+                  <Select
                     value={topicForm.access_tier || 'free'}
-                    onChange={e => setTopicForm(prev => ({ ...prev, access_tier: e.target.value as 'free' | 'pro' }))}
-                    className="px-3 py-1.5 border-2 border-border rounded bg-muted text-xs font-bold focus:outline-none focus:border-primary"
-                  >
-                    <option value="free">Free (Miễn phí)</option>
-                    <option value="pro">Pro (Trả phí)</option>
-                  </select>
+                    onChange={access_tier => setTopicForm(prev => ({ ...prev, access_tier: access_tier as 'free' | 'pro' }))}
+                    options={[
+                      { value: 'free', label: 'Free (Miễn phí)' },
+                      { value: 'pro', label: 'Pro (Trả phí)' },
+                    ]}
+                  />
                 </div>
 
                 {topicForm.access_tier === 'pro' && (
@@ -564,21 +593,21 @@ export default function AdminGrammarPage() {
                     {topicForm.teaser_config?.enabled !== false && (
                       <div className="flex flex-col gap-1 mt-1">
                         <label className="text-[11px] font-bold text-muted-foreground">Chế độ hiển thị khi bị khóa</label>
-                        <select
+                        <Select
                           value={topicForm.teaser_config?.type || 'theory_only'}
-                          onChange={e => setTopicForm(prev => ({
+                          onChange={type => setTopicForm(prev => ({
                             ...prev,
                             teaser_config: {
                               enabled: prev.teaser_config?.enabled !== false,
-                              type: e.target.value
+                              type
                             }
                           }))}
-                          className="px-2 py-1.5 border-2 border-border rounded bg-white text-xs font-bold focus:outline-none"
-                        >
-                          <option value="title_only">Chỉ hiện tiêu đề</option>
-                          <option value="theory_only">Hiển thị lý thuyết, khóa bài tập</option>
-                          <option value="partial_exercise">Cho làm 2 câu hỏi đầu tiên</option>
-                        </select>
+                          options={[
+                            { value: 'title_only', label: 'Chỉ hiện tiêu đề' },
+                            { value: 'theory_only', label: 'Hiển thị lý thuyết, khóa bài tập' },
+                            { value: 'partial_exercise', label: 'Cho làm 2 câu hỏi đầu tiên' },
+                          ]}
+                        />
                       </div>
                     )}
                   </div>
@@ -613,6 +642,12 @@ export default function AdminGrammarPage() {
             </h2>
 
             <div className="flex flex-col gap-3">
+              {exerciseFormError && (
+                <div className="p-3 bg-rose-100 border-2 border-rose-400 text-rose-900 rounded-md font-bold text-xs">
+                  {exerciseFormError}
+                </div>
+              )}
+
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-black text-foreground">Đề bài (Question) *</label>
                 <input
@@ -691,6 +726,28 @@ export default function AdminGrammarPage() {
         onUpdateTier={handleBulkUpdateAccessTier}
         onClearSelection={() => setSelectedTopicIds([])}
         isLoading={bulkUpdating}
+      />
+
+      <ConfirmModal
+        open={!!pendingDeleteTopicId}
+        title="Xóa chủ đề ngữ pháp?"
+        description="Chủ đề này và toàn bộ bài tập liên quan sẽ bị xóa. Hành động này không thể hoàn tác."
+        confirmLabel="Xóa chủ đề"
+        cancelLabel="Hủy"
+        variant="danger"
+        onConfirm={() => pendingDeleteTopicId && handleDeleteTopic(pendingDeleteTopicId)}
+        onCancel={() => setPendingDeleteTopicId(null)}
+      />
+
+      <ConfirmModal
+        open={!!pendingDeleteExerciseId}
+        title="Xóa bài tập?"
+        description="Bài tập này sẽ bị xóa khỏi chủ đề hiện tại."
+        confirmLabel="Xóa bài tập"
+        cancelLabel="Hủy"
+        variant="danger"
+        onConfirm={() => pendingDeleteExerciseId && handleDeleteExercise(pendingDeleteExerciseId)}
+        onCancel={() => setPendingDeleteExerciseId(null)}
       />
     </div>
   )
