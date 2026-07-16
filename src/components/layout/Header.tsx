@@ -3,6 +3,7 @@ import { NavLink, Link } from 'react-router-dom'
 import {
   Bell,
   BookOpen,
+  Bot,
   Brain,
   ChevronDown,
   ClipboardCheck,
@@ -74,6 +75,7 @@ const moreDropdownItems = [
   { labelKey: 'nav.study', to: '/app/study', icon: Brain },
   { labelKey: 'nav.quiz', to: '/app/quiz', icon: ClipboardCheck },
   { labelKey: 'nav.review', to: '/app/review', icon: Gauge },
+  { labelKey: 'nav.aiTutor', to: '/app/chat', icon: Bot },
   { labelKey: 'header.roadmap', to: '/app/roadmap', icon: Map },
   { labelKey: 'header.exams', to: '/app/exams', icon: ClipboardCheck },
   { labelKey: 'header.videos', to: '/app/videos', icon: Video },

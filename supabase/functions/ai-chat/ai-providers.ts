@@ -1,0 +1,142 @@
+export type AiProviderName = 'gemini' | 'openai'
+
+export interface AiChatInput {
+  systemPrompt: string
+  history: Array<{ role: 'user' | 'assistant'; content: string }>
+  message: string
+  userId: string
+}
+
+export interface AiChatOutput {
+  text: string
+  model: string
+  inputTokens: number
+  outputTokens: number
+  provider: AiProviderName
+}
+
+export interface AiProvider {
+  name: AiProviderName
+  generate(input: AiChatInput): Promise<AiChatOutput>
+}
+
+const PROVIDER_TIMEOUT_MS = 20_000
+
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS)
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+function readText(parts: unknown): string {
+  if (!Array.isArray(parts)) return ''
+  return parts
+    .map((part) => typeof part === 'object' && part !== null && typeof (part as { text?: unknown }).text === 'string'
+      ? (part as { text: string }).text
+      : '')
+    .join('')
+    .trim()
+}
+
+export function createGeminiProvider(): AiProvider {
+  const apiKey = Deno.env.get('GEMINI_API_KEY')
+  const model = Deno.env.get('GEMINI_CHAT_MODEL')
+  if (!apiKey || !model) throw new Error('Gemini AI provider is not configured')
+
+  return {
+    name: 'gemini',
+    async generate(input) {
+      const response = await fetchWithTimeout(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: input.systemPrompt }] },
+            contents: [
+              ...input.history.map((item) => ({
+                role: item.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: item.content }],
+              })),
+              { role: 'user', parts: [{ text: input.message }] },
+            ],
+            generationConfig: { maxOutputTokens: 500, temperature: 0.7 },
+          }),
+        },
+      )
+
+      const payload = await response.json().catch(() => null) as {
+        candidates?: Array<{ content?: { parts?: unknown } }>
+        usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number }
+        error?: { message?: string }
+      } | null
+      if (!response.ok) throw new Error(payload?.error?.message ?? `Gemini request failed (${response.status})`)
+
+      const text = readText(payload?.candidates?.[0]?.content?.parts)
+      if (!text) throw new Error('Gemini returned no assistant message')
+      return {
+        provider: 'gemini',
+        model,
+        text,
+        inputTokens: payload?.usageMetadata?.promptTokenCount ?? 0,
+        outputTokens: payload?.usageMetadata?.candidatesTokenCount ?? 0,
+      }
+    },
+  }
+}
+
+export function createOpenAiProvider(): AiProvider {
+  const apiKey = Deno.env.get('OPENAI_API_KEY')
+  const model = Deno.env.get('OPENAI_CHAT_MODEL')
+  if (!apiKey || !model) throw new Error('OpenAI provider is not configured')
+
+  return {
+    name: 'openai',
+    async generate(input) {
+      const response = await fetchWithTimeout('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          instructions: input.systemPrompt,
+          input: [
+            ...input.history.map((item) => ({
+              role: item.role,
+              content: [{ type: 'input_text', text: item.content }],
+            })),
+            { role: 'user', content: [{ type: 'input_text', text: input.message }] },
+          ],
+          max_output_tokens: 500,
+          safety_identifier: input.userId,
+        }),
+      })
+      const payload = await response.json().catch(() => null) as {
+        output?: Array<{ type?: string; content?: unknown }>
+        usage?: { input_tokens?: number; output_tokens?: number }
+        error?: { message?: string }
+      } | null
+      if (!response.ok) throw new Error(payload?.error?.message ?? `OpenAI request failed (${response.status})`)
+
+      const message = payload?.output?.find((item) => item.type === 'message')
+      const text = readText(message?.content)
+      if (!text) throw new Error('OpenAI returned no assistant message')
+      return {
+        provider: 'openai',
+        model,
+        text,
+        inputTokens: payload?.usage?.input_tokens ?? 0,
+        outputTokens: payload?.usage?.output_tokens ?? 0,
+      }
+    },
+  }
+}
+
+export function getAiProvider(): AiProvider {
+  return (Deno.env.get('AI_PROVIDER') ?? 'gemini').toLowerCase() === 'openai'
+    ? createOpenAiProvider()
+    : createGeminiProvider()
+}

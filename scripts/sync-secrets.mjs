@@ -9,7 +9,7 @@ const content = readFileSync(envPath, 'utf-8')
 
 const keys = content
   .split('\n')
-  .filter((line) => /^(UNSPLASH_ACCESS_KEY|PEXELS_API_KEY|PIXABAY_API_KEY|DEEPL_API_KEY|GOOGLE_TTS_CREDENTIALS_B64|R2_ACCOUNT_ID|R2_ACCESS_KEY_ID|R2_SECRET_ACCESS_KEY|R2_BUCKET_NAME|R2_PUBLIC_DOMAIN)=/.test(line))
+  .filter((line) => /^(UNSPLASH_ACCESS_KEY|PEXELS_API_KEY|PIXABAY_API_KEY|DEEPL_API_KEY|GOOGLE_TTS_CREDENTIALS_B64|R2_ACCOUNT_ID|R2_ACCESS_KEY_ID|R2_SECRET_ACCESS_KEY|R2_BUCKET_NAME|R2_PUBLIC_DOMAIN|AI_PROVIDER|GEMINI_API_KEY|GEMINI_CHAT_MODEL|OPENAI_API_KEY|OPENAI_CHAT_MODEL)=/.test(line))
   .map((line) => {
     const [name, ...rest] = line.split('=')
     return { name: name.trim(), value: rest.join('=').trim() }

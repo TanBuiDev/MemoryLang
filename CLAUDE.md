@@ -61,7 +61,7 @@ src/
   test/             # Vitest setup
 ```
 
-## Database (13 tables, all RLS-enabled)
+## Database (16 tables after applying pending migrations, all RLS-enabled)
 | Table | Purpose |
 |---|---|
 | `profiles` | User profile (linked to auth.users) |
@@ -77,6 +77,9 @@ src/
 | `quiz_answers` | Legacy individual quiz answers; translation-input sessions currently do not write per-question answers |
 | `notifications` | System/admin notifications (Realtime-enabled) |
 | `user_notification_reads` | Tracks which user has read which notification |
+| `chat_sessions` | Per-user AI Tutor conversation sessions |
+| `chat_messages` | User and assistant messages; users can read only their own messages |
+| `chat_usage_events` | Server-written provider/model/token audit events used for daily AI quota enforcement |
 
 ## Routing
 **Public:** `/` (full branded homepage with feature/workflow/product-preview sections), `/login`, `/register`, `/forgot-password`, `/onboarding`
@@ -196,11 +199,12 @@ The authenticated `nav.study` sidebar link resumes an active stored flashcard se
 - **CRITICAL:** When deploying new code that relies on database schema changes (such as new columns, tables, or policies), you must ensure that all corresponding SQL migrations under `supabase/migrations/` have been successfully run/applied to the remote production Supabase database. Otherwise, the live app will hit 400 Bad Request errors (`column table.column does not exist`). Use the Supabase MCP server or Supabase Dashboard to run DDL migrations.
 - Deploy edge functions: `npx supabase functions deploy <name> --project-ref brwvbpkgimhamivmaflu`
 - Edge functions source: `supabase/functions/<name>/index.ts`
-- **Edge Functions (4):**
+- **Edge Functions (5 source directories; `ai-chat` deployment pending):**
   - `enrich-vocabulary` — dictionary lookup + machine translation
   - `search-images` — proxies Unsplash (primary), Pexels, and Pixabay APIs for vocabulary illustrations. All images are downloaded and re-uploaded to `vocabulary-images` bucket. API keys stored in `.env` and synced to Edge Function secrets via `pnpm sync:secrets`.
   - `generate-audio` — Google Cloud Text-to-Speech (WaveNet voices) with audio caching in Cloudflare R2. Accepts `text`, `language` (BCP-47), and optional `voice` name. Returns `audioUrl` + `cached` flag.
   - `process-payment` — PayOS checkout, payment status/cancel actions, subscription cancellation, and unauthenticated PayOS webhook processing. Deployed with `--no-verify-jwt` so PayOS webhooks can reach the function; app actions still validate the Supabase auth header inside the function.
+  - `ai-chat` — authenticated AI Tutor chat with Gemini/OpenAI provider selection, server-side vocabulary context, daily tier quota, and persisted session history. Requires the AI chat migration plus `AI_PROVIDER`, provider API key, and model secrets before deployment.
 - Dashboard: https://supabase.com/dashboard/project/brwvbpkgimhamivmaflu
 
 ## Frontend Deployment & Chunk Cache
@@ -217,7 +221,7 @@ See `AGENTS.md` for commit workflow. Conventional commits: `feat:`, `fix:`, `doc
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **MemoryLang** (5105 symbols, 8757 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **MemoryLang** (5140 symbols, 8806 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

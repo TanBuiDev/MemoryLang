@@ -55,6 +55,7 @@ const AdminAuditPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminAu
 const AdminAnalyticsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminAnalyticsPage'))
 const AdminNotificationsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminNotificationsPage'))
 const GrammarLessonPage = lazyWithChunkRecovery(() => import('@/pages/grammar/GrammarLessonPage'))
+const ChatPage = lazyWithChunkRecovery(() => import('@/pages/chat/ChatPage').then(m => ({ default: m.ChatPage })))
 const AdminGrammarLessonEditPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminGrammarLessonEditPage'))
 const GameHubPage = lazyWithChunkRecovery(() => import('@/pages/games/GameHubPage'))
 const MatchingGamePage = lazyWithChunkRecovery(() => import('@/pages/games/MatchingGamePage'))
@@ -101,6 +102,14 @@ export const router = createBrowserRouter([
               { path: 'listening/session/:partId/:mode', element: <ListeningSessionPage /> },
               { path: 'listening/result/:partId', element: <ListeningResultPage /> },
               { path: 'grammar', element: <GrammarPage /> },
+              {
+                path: 'chat',
+                element: (
+                  <React.Suspense fallback={<AppLoading />}>
+                    <ChatPage />
+                  </React.Suspense>
+                ),
+              },
               {
                 path: 'grammar/:topicId',
                 element: (
