@@ -12,6 +12,21 @@ interface TtsBatchState {
   stopBatchGenerate: () => void
 }
 
+const FULL_LANGUAGE_CODES: Record<string, string> = {
+  en: 'en-US',
+  vi: 'vi-VN',
+  ja: 'ja-JP',
+  ko: 'ko-KR',
+  zh: 'zh-CN',
+  fr: 'fr-FR',
+  de: 'de-DE',
+}
+
+function getFullLanguageCode(lang: string) {
+  const normalizedLang = lang.trim()
+  return FULL_LANGUAGE_CODES[normalizedLang.toLowerCase()] ?? normalizedLang
+}
+
 export const useTtsBatchStore = create<TtsBatchState>((set, get) => {
   return {
     batchRunning: false,
@@ -66,10 +81,11 @@ export const useTtsBatchStore = create<TtsBatchState>((set, get) => {
           }))
 
           try {
-            const config = configs.find(c => c.language_code === term.source_language)
+            const languageCode = getFullLanguageCode(term.source_language)
+            const config = configs.find(c => c.language_code === languageCode)
             const voiceName = config?.voice_name
 
-            const res = await generateAudio(term.source_text, term.source_language, voiceName, term.id)
+            const res = await generateAudio(term.source_text, languageCode, voiceName, term.id)
             if (res.audioUrl) {
               successes++
             } else {
