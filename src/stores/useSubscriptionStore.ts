@@ -4,6 +4,7 @@ import type { Subscription } from '@/types/subscription.types'
 import { FREE_LIMITS } from '@/types/subscription.types'
 import { supabase } from '@/services/supabase/client'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { isSubscriptionPro } from '@/utils/subscription'
 
 interface SubscriptionState {
   subscription: Subscription | null
@@ -29,7 +30,7 @@ const computeState = (
   termCount: number,
   deckCount: number
 ) => {
-  const isPro = sub?.plan_type === 'pro' && (sub.status === 'active' || sub.status === 'trialing')
+  const isPro = isSubscriptionPro(sub)
   return {
     isPro,
     isFree: !isPro,
