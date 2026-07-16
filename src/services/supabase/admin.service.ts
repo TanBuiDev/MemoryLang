@@ -2,7 +2,15 @@ import { supabase } from '@/services/supabase/client'
 import type { AppSetting, TtsVoiceConfig, FeatureFlag, AdminAuditLog, AdminUserStats, GrammarTopic, GrammarExercise } from '@/types/admin.types'
 import type { LessonBlock } from '@/types/grammar.types'
 import type { Profile } from '@/types/auth.types'
-import type { AdminSubscriptionPlanUpdateInput, SubscriptionPlanPrice } from '@/types/subscription.types'
+import type {
+  AdminSubscriptionAdjustmentInput,
+  AdminSubscriptionFilters,
+  AdminSubscriptionPlanUpdateInput,
+  AdminSubscriptionUser,
+  PaymentLog,
+  Subscription,
+  SubscriptionPlanPrice,
+} from '@/types/subscription.types'
 
 export const adminService = {
   // Helper lấy thông tin user hiện tại đang login
@@ -180,6 +188,123 @@ export const adminService = {
     })
 
     return data as SubscriptionPlanPrice
+  },
+
+  async listSubscriptionUsers(filters: AdminSubscriptionFilters = {}): Promise<AdminSubscriptionUser[]> {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(`
+        id,
+        email,
+        display_name,
+        is_admin,
+        created_at,
+        subscriptions(*)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(100)
+
+    if (error) throw error
+
+    const rows = data ?? []
+    const paymentCountByUser = new Map<string, { count: number; lastPaymentAt: string | null }>()
+
+    for (const row of rows as any[]) {
+      const { count, error: countError } = await supabase
+        .from('payment_logs')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', row.id)
+
+      if (countError) throw countError
+
+      const { data: latestPayments, error: latestPaymentError } = await supabase
+        .from('payment_logs')
+        .select('created_at')
+        .eq('user_id', row.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (latestPaymentError) throw latestPaymentError
+
+      paymentCountByUser.set(row.id, {
+        count: count ?? 0,
+        lastPaymentAt: latestPayments?.[0]?.created_at ?? null,
+      })
+    }
+
+    const queryText = filters.query?.trim().toLowerCase()
+
+    return (rows as any[])
+      .map((row): AdminSubscriptionUser => {
+        const subscription = Array.isArray(row.subscriptions) ? row.subscriptions[0] ?? null : row.subscriptions ?? null
+        const paymentStats = paymentCountByUser.get(row.id) ?? { count: 0, lastPaymentAt: null }
+
+        return {
+          id: row.id,
+          email: row.email,
+          display_name: row.display_name,
+          is_admin: row.is_admin,
+          created_at: row.created_at,
+          subscription,
+          payment_count: paymentStats.count,
+          last_payment_at: paymentStats.lastPaymentAt,
+        }
+      })
+      .filter((row) => filters.plan && filters.plan !== 'all'
+        ? row.subscription?.plan_type === filters.plan
+        : true)
+      .filter((row) => filters.status && filters.status !== 'all'
+        ? row.subscription?.status === filters.status
+        : true)
+      .filter((row) => queryText
+        ? `${row.email ?? ''} ${row.display_name ?? ''}`.toLowerCase().includes(queryText)
+        : true)
+  },
+
+  async getUserPaymentLogs(userId: string): Promise<PaymentLog[]> {
+    const { data, error } = await supabase
+      .from('payment_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+
+    if (error) throw error
+    return (data ?? []) as PaymentLog[]
+  },
+
+  async setUserSubscription(input: AdminSubscriptionAdjustmentInput): Promise<Subscription> {
+    if (!input.reason.trim()) {
+      throw new Error('Vui lòng nhập lý do thao tác để ghi audit log.')
+    }
+
+    const now = new Date().toISOString()
+    const payload = {
+      user_id: input.userId,
+      plan_type: input.planType,
+      status: input.status,
+      billing_cycle: input.billingCycle,
+      current_period_start: input.planType === 'pro' ? now : null,
+      current_period_end: input.currentPeriodEnd,
+      cancel_at_period_end: input.cancelAtPeriodEnd,
+      canceled_at: input.cancelAtPeriodEnd || input.planType === 'free' ? now : null,
+      updated_at: now,
+    }
+
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .upsert(payload, { onConflict: 'user_id' })
+      .select('*')
+      .single()
+
+    if (error) throw error
+
+    await this.logAction('admin_set_subscription', 'subscription', input.userId, {
+      ...payload,
+      reason: input.reason,
+    })
+
+    return data as Subscription
   },
 
   async updateUserAdminStatus(userId: string, isAdmin: boolean): Promise<Profile> {

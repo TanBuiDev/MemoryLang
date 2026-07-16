@@ -68,6 +68,33 @@ export interface AdminSubscriptionPlanUpdateInput {
   reason: string
 }
 
+export interface AdminSubscriptionUser {
+  id: string
+  email: string | null
+  display_name: string | null
+  is_admin: boolean
+  created_at: string
+  subscription: Subscription | null
+  payment_count: number
+  last_payment_at: string | null
+}
+
+export interface AdminSubscriptionFilters {
+  plan?: 'all' | PlanType
+  status?: 'all' | SubscriptionStatus
+  query?: string
+}
+
+export interface AdminSubscriptionAdjustmentInput {
+  userId: string
+  planType: PlanType
+  status: SubscriptionStatus
+  billingCycle: BillingCycle | null
+  currentPeriodEnd: string | null
+  cancelAtPeriodEnd: boolean
+  reason: string
+}
+
 // ========================================
 // Content Access Tier
 // ========================================
