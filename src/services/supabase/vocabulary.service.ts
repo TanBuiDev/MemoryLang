@@ -2,7 +2,10 @@ import { supabase } from '@/services/supabase/client'
 import type { VocabularyFormValues, VocabularyUpdateFormValues } from '@/features/vocabulary/vocabulary.schema'
 import type { VocabularyItem } from '@/types/vocabulary.types'
 import { derivePartOfSpeech, deriveTranslation, deriveExamples } from '@/types/vocabulary.types'
+import { FREE_LIMITS } from '@/types/subscription.types'
 import { normalizeText } from '@/utils/normalizeText'
+import { subscriptionService } from '@/services/supabase/subscription.service'
+import { SubscriptionLimitError } from '@/services/supabase/subscription.errors'
 
 // Hàm trợ giúp làm phẳng đối tượng sau khi JOIN bảng
 export function flattenVocabularyItem(row: any): VocabularyItem {
@@ -44,6 +47,13 @@ export function flattenVocabularyItem(row: any): VocabularyItem {
 function cleanMeanings(meanings: any[] | undefined) {
   if (!meanings) return []
   return meanings.map(({ examples, ...m }) => m)
+}
+
+async function assertCanAddTerm(userId: string) {
+  const canAdd = await subscriptionService.canAddTerm(userId)
+  if (!canAdd) {
+    throw new SubscriptionLimitError('terms', FREE_LIMITS.maxTerms)
+  }
 }
 
 export const vocabularyService = {
@@ -155,6 +165,8 @@ export const vocabularyService = {
   },
 
   async create(userId: string, values: VocabularyFormValues): Promise<VocabularyItem> {
+    await assertCanAddTerm(userId)
+
     const { deck_ids } = values
     const normalized = normalizeText(values.source_text)
     
@@ -295,6 +307,7 @@ export const vocabularyService = {
     if (isNewUserTerm) {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User session is required to initialize user vocabulary progress')
+      await assertCanAddTerm(user.id)
 
       const { data: newUserTerm, error: insertError } = await supabase
         .from('user_terms')
@@ -377,6 +390,7 @@ export const vocabularyService = {
     } else {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User session is required to flag term')
+      await assertCanAddTerm(user.id)
       const { error } = await supabase.from('user_terms').insert({
         user_id: user.id,
         global_term_id: id,
@@ -400,6 +414,7 @@ export const vocabularyService = {
     } else {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User session is required to unflag term')
+      await assertCanAddTerm(user.id)
       const { error } = await supabase.from('user_terms').insert({
         user_id: user.id,
         global_term_id: id,
