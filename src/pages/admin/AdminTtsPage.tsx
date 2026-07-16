@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BarChart3, GitCompare, List, Play, Save, Volume2 } from 'lucide-react'
+import { Select } from '@/components/ui/select'
+import { showToast } from '@/components/ui/toast'
 import { adminService } from '@/services/supabase/admin.service'
 import { generateAudio } from '@/services/api/generateAudio.api'
 import { supabase } from '@/services/supabase/client'
@@ -191,7 +193,11 @@ export default function AdminTtsPage() {
       setConfigs(prev => prev.map(c => c.language_code === editingLang ? updated : c))
       setEditingLang(null)
       setEditForm({})
-      alert('Đã cập nhật cấu hình giọng đọc thành công!')
+      showToast({
+        type: 'success',
+        title: 'Đã cập nhật giọng đọc',
+        message: 'Cấu hình giọng đọc đã được lưu thành công.',
+      })
     } catch (err: any) {
       console.error(err)
       setError(err.message || 'Lỗi khi cập nhật cấu hình giọng đọc')
@@ -421,17 +427,12 @@ export default function AdminTtsPage() {
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-black text-foreground">Chọn ngôn ngữ</label>
-                  <select
+                  <Select
                     value={testLang}
-                    onChange={e => setTestLang(e.target.value)}
-                    className="px-3 py-1.5 border-2 border-border rounded bg-card text-xs font-bold focus:outline-none focus:border-primary"
-                  >
-                    {configs.map(c => (
-                      <option key={c.language_code} value={c.language_code}>
-                        {c.language_code}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setTestLang}
+                    options={configs.map(c => ({ value: c.language_code, label: c.language_code }))}
+                    placeholder="Chọn ngôn ngữ"
+                  />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-black text-foreground">Giọng đọc</label>
@@ -442,15 +443,13 @@ export default function AdminTtsPage() {
                       onChange={e => setTestVoice(e.target.value)}
                       className="flex-1 px-3 py-1.5 border-2 border-border rounded bg-card text-xs font-mono font-bold focus:outline-none focus:border-primary"
                     />
-                    <select
+                    <Select
                       value={testVoice}
-                      onChange={e => setTestVoice(e.target.value)}
-                      className="px-2 py-1.5 border-2 border-border rounded bg-card text-xs font-mono font-bold focus:outline-none focus:border-primary"
-                    >
-                      {(VOICE_POPULAR[testLang] ?? []).map(v => (
-                        <option key={v} value={v}>{v}</option>
-                      ))}
-                    </select>
+                      onChange={setTestVoice}
+                      options={(VOICE_POPULAR[testLang] ?? []).map(v => ({ value: v, label: v }))}
+                      placeholder="Chọn giọng đọc"
+                      className="min-w-52"
+                    />
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -687,10 +686,9 @@ export default function AdminTtsPage() {
                 <div key={i} className="flex flex-col gap-2 p-3 bg-muted/30 border border-border rounded">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-black text-muted-foreground w-16">Giọng {i + 1}</span>
-                    <select
+                    <Select
                       value={slot.lang}
-                      onChange={e => {
-                        const newLang = e.target.value
+                      onChange={(newLang) => {
                         setCompareSlots(prev => prev.map((s, idx) => idx === i ? {
                           ...s,
                           lang: newLang,
@@ -699,21 +697,17 @@ export default function AdminTtsPage() {
                           played: false,
                         } : s))
                       }}
-                      className="px-2 py-1 border-2 border-border rounded bg-card text-xs font-bold focus:outline-none focus:border-primary w-20"
-                    >
-                      {configs.map(c => (
-                        <option key={c.language_code} value={c.language_code}>{c.language_code}</option>
-                      ))}
-                    </select>
-                    <select
+                      options={configs.map(c => ({ value: c.language_code, label: c.language_code }))}
+                      placeholder="Ngôn ngữ"
+                      className="w-24"
+                    />
+                    <Select
                       value={slot.voice}
-                      onChange={e => setCompareSlots(prev => prev.map((s, idx) => idx === i ? { ...s, voice: e.target.value, audioUrl: null, played: false } : s))}
-                      className="flex-1 px-2 py-1 border-2 border-border rounded bg-card text-xs font-mono font-bold focus:outline-none focus:border-primary"
-                    >
-                      {(VOICE_POPULAR[slot.lang] ?? [slot.voice]).map(v => (
-                        <option key={v} value={v}>{v}</option>
-                      ))}
-                    </select>
+                      onChange={(voice) => setCompareSlots(prev => prev.map((s, idx) => idx === i ? { ...s, voice, audioUrl: null, played: false } : s))}
+                      options={(VOICE_POPULAR[slot.lang] ?? [slot.voice]).map(v => ({ value: v, label: v }))}
+                      placeholder="Giọng đọc"
+                      className="flex-1 min-w-0"
+                    />
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-black border ${getVoiceTypeInfo(slot.voice).color}`}>
                       {getVoiceTypeInfo(slot.voice).type}
                     </span>

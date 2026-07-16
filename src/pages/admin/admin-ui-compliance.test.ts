@@ -42,7 +42,7 @@ describe('admin UI compliance', () => {
     const violations = files.flatMap((file) => {
       const source = stripComments(readFileSync(file, 'utf8'))
       const matches = [
-        ...source.matchAll(/<\s*\/?\s*(select|option)\b/gi),
+        ...source.matchAll(/<\s*\/?\s*(select|option)\b/g),
       ]
       return matches.map((match) => `${relative(adminDir, file)} uses <${match[1].toLowerCase()}>`)
     })

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Eye, Code, PlugZap, Wrench, Plus, Save, Construction, AlertTriangle } from 'lucide-react'
+import { showToast } from '@/components/ui/toast'
 import { adminService } from '@/services/supabase/admin.service'
 import type { AppSetting, FeatureFlag } from '@/types/admin.types'
 
@@ -46,6 +47,7 @@ export default function AdminFeaturesPage() {
   // Form inputs for adding a new POS option
   const [newPosLabel, setNewPosLabel] = useState('')
   const [newPosValue, setNewPosValue] = useState('')
+  const [posFormError, setPosFormError] = useState<string | null>(null)
 
   // Mascot FAB device config (loaded from app_settings, persisted immediately on toggle)
   const [fabDevice, setFabDevice] = useState({ desktop: true, mobile: true })
@@ -179,7 +181,11 @@ export default function AdminFeaturesPage() {
       setError(null)
       const updated = await adminService.updateSetting(key, parsedVal)
       setSettings((prev) => prev.map((s) => (s.key === key ? updated : s)))
-      alert(`Đã lưu cấu hình "${key}" thành công!`)
+      showToast({
+        type: 'success',
+        title: 'Đã lưu cấu hình',
+        message: `Cấu hình "${key}" đã được cập nhật.`,
+      })
     } catch (err: any) {
       console.error(err)
       setError(err.message || 'Lỗi khi lưu cấu hình cài đặt')
@@ -203,20 +209,21 @@ export default function AdminFeaturesPage() {
     const label = newPosLabel.trim()
     const val = newPosValue.trim().toLowerCase().replace(/\s+/g, '_')
     if (!label || !val) {
-      alert('Vui lòng điền đầy đủ Tên hiển thị và Mã từ loại.')
+      setPosFormError('Vui lòng điền đầy đủ Tên hiển thị và Mã từ loại.')
       return
     }
     let currentList: Array<{ value: string; label: string }> = []
     try {
       currentList = JSON.parse(settingsForm['vocabulary_pos_options'] || '[]')
     } catch {
-      alert('Dữ liệu JSON từ loại bị lỗi. Vui lòng chuyển sang Chế độ chuyên gia để sửa.')
+      setPosFormError('Dữ liệu JSON từ loại bị lỗi. Vui lòng chuyển sang Chế độ chuyên gia để sửa.')
       return
     }
     if (currentList.some(item => item.value === val)) {
-      alert('Mã từ loại này đã tồn tại.')
+      setPosFormError('Mã từ loại này đã tồn tại.')
       return
     }
+    setPosFormError(null)
     const updated = [...currentList, { value: val, label }]
     setSettingsForm(prev => ({ ...prev, vocabulary_pos_options: JSON.stringify(updated) }))
     setNewPosLabel('')
@@ -504,6 +511,11 @@ export default function AdminFeaturesPage() {
                               </div>
 
                               {/* Form to add a new POS */}
+                              {posFormError && (
+                                <div className="p-3 border-2 border-rose-400 bg-rose-50 text-rose-900 text-xs font-bold rounded">
+                                  {posFormError}
+                                </div>
+                              )}
                               <div className="flex flex-wrap gap-2 items-center">
                                 <input
                                   type="text"
