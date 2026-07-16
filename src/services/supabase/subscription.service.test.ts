@@ -12,6 +12,7 @@ vi.mock('@/services/supabase/client', () => ({
 }))
 
 const rpc = vi.mocked(supabase.rpc)
+const from = vi.mocked(supabase.from)
 
 describe('subscriptionService quota RPCs', () => {
   beforeEach(() => {
@@ -42,6 +43,89 @@ describe('subscriptionService quota RPCs', () => {
     expect(rpc).toHaveBeenCalledWith('can_user_create_decks', {
       p_user_id: 'user-1',
       p_new_deck_count: 3,
+    })
+  })
+})
+
+describe('subscriptionService pricing plans', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('loads active pricing plans from subscription_plans', async () => {
+    const query = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn(),
+    }
+    query.order
+      .mockReturnValueOnce(query)
+      .mockResolvedValueOnce({
+        data: [
+          {
+            plan_type: 'free',
+            billing_cycle: 'monthly',
+            display_name: 'Free',
+            amount: 0,
+            features: ['100 từ vựng'],
+          },
+          {
+            plan_type: 'free',
+            billing_cycle: 'yearly',
+            display_name: 'Free',
+            amount: 0,
+            features: ['100 từ vựng'],
+          },
+          {
+            plan_type: 'pro',
+            billing_cycle: 'monthly',
+            display_name: 'Pro',
+            amount: 59000,
+            features: ['Không giới hạn'],
+          },
+          {
+            plan_type: 'pro',
+            billing_cycle: 'yearly',
+            display_name: 'Pro',
+            amount: 590000,
+            features: ['Không giới hạn'],
+          },
+        ],
+        error: null,
+      })
+    from.mockReturnValueOnce(query as never)
+
+    const plans = await subscriptionService.listPricingPlans()
+
+    expect(from).toHaveBeenCalledWith('subscription_plans')
+    expect(query.select).toHaveBeenCalledWith('*')
+    expect(query.eq).toHaveBeenCalledWith('is_active', true)
+    expect(plans.find((plan) => plan.type === 'pro')).toMatchObject({
+      monthlyPrice: 59000,
+      yearlyPrice: 590000,
+      features: ['Không giới hạn'],
+    })
+  })
+
+  it('falls back to safe static pricing when pricing load fails', async () => {
+    const query = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn(),
+    }
+    query.order
+      .mockReturnValueOnce(query)
+      .mockResolvedValueOnce({
+        data: null,
+        error: new Error('missing table'),
+      })
+    from.mockReturnValueOnce(query as never)
+
+    const plans = await subscriptionService.listPricingPlans()
+
+    expect(plans.find((plan) => plan.type === 'pro')).toMatchObject({
+      monthlyPrice: 49000,
+      yearlyPrice: 430000,
     })
   })
 })

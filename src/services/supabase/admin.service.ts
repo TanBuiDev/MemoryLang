@@ -2,6 +2,7 @@ import { supabase } from '@/services/supabase/client'
 import type { AppSetting, TtsVoiceConfig, FeatureFlag, AdminAuditLog, AdminUserStats, GrammarTopic, GrammarExercise } from '@/types/admin.types'
 import type { LessonBlock } from '@/types/grammar.types'
 import type { Profile } from '@/types/auth.types'
+import type { AdminSubscriptionPlanUpdateInput, SubscriptionPlanPrice } from '@/types/subscription.types'
 
 export const adminService = {
   // Helper lấy thông tin user hiện tại đang login
@@ -132,6 +133,53 @@ export const adminService = {
       { plan_type: planType }
     )
     return data
+  },
+
+  async listSubscriptionPlans(): Promise<SubscriptionPlanPrice[]> {
+    const { data, error } = await supabase
+      .from('subscription_plans')
+      .select('*')
+      .order('plan_type', { ascending: true })
+      .order('billing_cycle', { ascending: true })
+
+    if (error) throw error
+    return (data ?? []) as SubscriptionPlanPrice[]
+  },
+
+  async updateSubscriptionPlanPrice(input: AdminSubscriptionPlanUpdateInput): Promise<SubscriptionPlanPrice> {
+    if (!Number.isFinite(input.amount) || input.amount <= 0) {
+      throw new Error('Giá gói phải lớn hơn 0.')
+    }
+
+    if (!input.reason.trim()) {
+      throw new Error('Vui lòng nhập lý do thay đổi giá gói.')
+    }
+
+    const { data, error } = await supabase
+      .from('subscription_plans')
+      .update({
+        amount: input.amount,
+        currency: input.currency,
+        is_active: input.isActive,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('plan_type', input.planType)
+      .eq('billing_cycle', input.billingCycle)
+      .select('*')
+      .single()
+
+    if (error) throw error
+
+    await this.logAction('admin_update_subscription_price', 'subscription_plan', data.id, {
+      plan_type: input.planType,
+      billing_cycle: input.billingCycle,
+      amount: input.amount,
+      currency: input.currency,
+      is_active: input.isActive,
+      reason: input.reason,
+    })
+
+    return data as SubscriptionPlanPrice
   },
 
   async updateUserAdminStatus(userId: string, isAdmin: boolean): Promise<Profile> {

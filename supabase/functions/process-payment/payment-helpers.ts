@@ -2,13 +2,6 @@ export type BillingCycle = 'monthly' | 'yearly'
 export type PaymentRequestKind = 'app-action' | 'payos-webhook' | 'invalid'
 export type PaymentStatus = 'pending' | 'succeeded' | 'failed' | 'cancelled'
 
-export const PRICING = {
-  pro: {
-    monthly: 49_000,
-    yearly: 430_000,
-  },
-} as const
-
 export function classifyPaymentRequest(body: unknown): PaymentRequestKind {
   if (!body || typeof body !== 'object') return 'invalid'
   const value = body as Record<string, unknown>
@@ -23,10 +16,8 @@ export function classifyPaymentRequest(body: unknown): PaymentRequestKind {
   return 'invalid'
 }
 
-export function getExpectedAmount(cycle: unknown): number | null {
-  if (cycle === 'monthly') return PRICING.pro.monthly
-  if (cycle === 'yearly') return PRICING.pro.yearly
-  return null
+export function isSupportedBillingCycle(cycle: unknown): cycle is BillingCycle {
+  return cycle === 'monthly' || cycle === 'yearly'
 }
 
 export function buildPayOSSignaturePayload(data: Record<string, unknown>): string {

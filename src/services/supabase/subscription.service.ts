@@ -1,12 +1,63 @@
 import { supabase } from '@/services/supabase/client'
+import { FALLBACK_PRICING_PLANS } from '@/types/subscription.types'
 import type {
   Subscription,
   PaymentLog,
   BillingCycle,
   PlanType,
+  PricingPlan,
+  SubscriptionPlanPrice,
 } from '@/types/subscription.types'
 
 export const subscriptionService = {
+  async listPricingPlans(): Promise<PricingPlan[]> {
+    const { data, error } = await supabase
+      .from('subscription_plans')
+      .select('*')
+      .eq('is_active', true)
+      .order('plan_type', { ascending: true })
+      .order('billing_cycle', { ascending: true })
+
+    if (error) return FALLBACK_PRICING_PLANS
+
+    const rows = (data ?? []) as SubscriptionPlanPrice[]
+    const byPlan = new Map<PlanType, SubscriptionPlanPrice[]>()
+
+    for (const row of rows) {
+      byPlan.set(row.plan_type, [...(byPlan.get(row.plan_type) ?? []), row])
+    }
+
+    const freeRows = byPlan.get('free') ?? []
+    const proRows = byPlan.get('pro') ?? []
+    const freeMonthly = freeRows.find((row) => row.billing_cycle === 'monthly')
+    const freeYearly = freeRows.find((row) => row.billing_cycle === 'yearly')
+    const proMonthly = proRows.find((row) => row.billing_cycle === 'monthly')
+    const proYearly = proRows.find((row) => row.billing_cycle === 'yearly')
+
+    if (!freeMonthly || !freeYearly || !proMonthly || !proYearly) {
+      return FALLBACK_PRICING_PLANS
+    }
+
+    return [
+      {
+        type: 'free',
+        name: freeMonthly.display_name,
+        monthlyPrice: freeMonthly.amount,
+        yearlyPrice: freeYearly.amount,
+        features: freeMonthly.features,
+      },
+      {
+        type: 'pro',
+        name: proMonthly.display_name,
+        monthlyPrice: proMonthly.amount,
+        yearlyPrice: proYearly.amount,
+        features: proMonthly.features,
+        isPopular: true,
+      },
+      FALLBACK_PRICING_PLANS.find((plan) => plan.type === 'team')!,
+    ]
+  },
+
   /**
    * Lấy subscription hiện tại của user đang đăng nhập.
    * Trả về null nếu chưa có (user cũ chưa backfill).

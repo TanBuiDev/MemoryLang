@@ -1,12 +1,13 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { PricingCard } from '@/components/subscription/PricingCard'
 import { PaymentQRModal } from '@/components/subscription/PaymentQRModal'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
+import { subscriptionService } from '@/services/supabase/subscription.service'
 import { Crown } from 'lucide-react'
 import {
-  PRICING_PLANS,
+  FALLBACK_PRICING_PLANS,
   type PricingPlan,
   type BillingCycle,
 } from '@/types/subscription.types'
@@ -21,6 +22,28 @@ export function UpgradePage() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly')
   const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null)
   const [showPayment, setShowPayment] = useState(false)
+  const [pricingPlans, setPricingPlans] = useState<PricingPlan[]>(FALLBACK_PRICING_PLANS)
+  const [pricingLoading, setPricingLoading] = useState(true)
+  const [pricingError, setPricingError] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadPricing() {
+      setPricingLoading(true)
+      const plans = await subscriptionService.listPricingPlans()
+      if (!isMounted) return
+      setPricingPlans(plans)
+      setPricingError(plans === FALLBACK_PRICING_PLANS)
+      setPricingLoading(false)
+    }
+
+    void loadPricing()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const handleSelectPlan = useCallback((plan: PricingPlan) => {
     setSelectedPlan(plan)
@@ -106,7 +129,17 @@ export function UpgradePage() {
 
       {/* Pricing cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        {PRICING_PLANS.map((plan) => (
+        {pricingError && (
+          <div className="md:col-span-3 rounded-lg border-2 border-[#ef4444] bg-[#fef2f2] px-4 py-3 text-sm font-semibold text-[#991b1b]">
+            Không tải được giá mới nhất. Đang hiển thị bảng giá dự phòng.
+          </div>
+        )}
+        {pricingLoading && (
+          <div className="md:col-span-3 text-center text-sm font-semibold text-[#64748b]">
+            Đang tải bảng giá...
+          </div>
+        )}
+        {pricingPlans.map((plan) => (
           <PricingCard
             key={plan.type}
             plan={plan}

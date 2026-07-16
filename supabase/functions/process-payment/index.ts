@@ -5,8 +5,8 @@ import {
   classifyPaymentRequest,
   createPayOSSignature,
   generateOrderCode,
-  getExpectedAmount,
   getPaymentStatusFromWebhook,
+  isSupportedBillingCycle,
   isAlreadySucceeded,
   mergePaymentMetadata,
   verifyPayOSSignature,
@@ -85,7 +85,7 @@ async function handleCreate(
   }
 
   const { plan, cycle } = body
-  const amount = getExpectedAmount(cycle)
+  const amount = await getExpectedAmountFromDb(supabaseAdmin, cycle)
   if (plan !== 'pro' || amount === null) {
     return jsonResponse({ error: 'Invalid plan or cycle' }, 400)
   }
@@ -214,12 +214,14 @@ async function handleWebhook(
   const paymentStatus = getPaymentStatusFromWebhook(body)
   const metadata = paymentLog.metadata as Record<string, unknown> | null
   const cycle = metadata?.cycle
-  const expectedAmount = getExpectedAmount(cycle)
+  const expectedAmount = Number(paymentLog.amount)
+  const billingCycle = isSupportedBillingCycle(cycle) ? cycle : null
 
-  if (expectedAmount === null || Number(body.data.amount) !== expectedAmount) {
+  if (!billingCycle || !Number.isFinite(expectedAmount) || Number(body.data.amount) !== expectedAmount) {
     console.error('PayOS webhook amount mismatch:', {
       orderCode,
       expectedAmount,
+      cycle,
       receivedAmount: body.data.amount,
     })
     return jsonResponse({ error: 'Invalid payment amount' }, 400)
@@ -230,7 +232,7 @@ async function handleWebhook(
     webhook_received_at: new Date().toISOString(),
   })
 
-  const periodMonths = cycle === 'yearly' ? 12 : 1
+  const periodMonths = billingCycle === 'yearly' ? 12 : 1
   const now = new Date()
   const periodEnd = new Date(now)
   periodEnd.setMonth(periodEnd.getMonth() + periodMonths)
@@ -241,7 +243,7 @@ async function handleWebhook(
       p_order_code: orderCode,
       p_payment_status: paymentStatus,
       p_expected_amount: expectedAmount,
-      p_cycle: cycle,
+      p_cycle: billingCycle,
       p_metadata: nextMetadata,
       p_period_start: now.toISOString(),
       p_period_end: periodEnd.toISOString(),
@@ -378,6 +380,28 @@ async function handleCancelSubscription(
     .eq('status', 'active')
 
   return jsonResponse({ success: true })
+}
+
+async function getExpectedAmountFromDb(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  cycle: unknown,
+): Promise<number | null> {
+  if (!isSupportedBillingCycle(cycle)) return null
+
+  const { data, error } = await supabaseAdmin
+    .from('subscription_plans')
+    .select('amount')
+    .eq('plan_type', 'pro')
+    .eq('billing_cycle', cycle)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (error) {
+    console.error('Failed to load subscription plan pricing:', error.message)
+    return null
+  }
+
+  return typeof data?.amount === 'number' ? data.amount : null
 }
 
 async function getAuthenticatedUser(authHeader: string | null) {

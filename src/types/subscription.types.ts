@@ -45,6 +45,29 @@ export interface PaymentLog {
   created_at: string
 }
 
+export interface SubscriptionPlanPrice {
+  id: string
+  plan_type: PlanType
+  billing_cycle: BillingCycle
+  display_name: string
+  amount: number
+  currency: string
+  features: string[]
+  is_active: boolean
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AdminSubscriptionPlanUpdateInput {
+  planType: PlanType
+  billingCycle: BillingCycle
+  amount: number
+  currency: string
+  isActive: boolean
+  reason: string
+}
+
 // ========================================
 // Content Access Tier
 // ========================================
@@ -74,7 +97,7 @@ export interface PricingPlan {
   isComingSoon?: boolean
 }
 
-export const PRICING_PLANS: PricingPlan[] = [
+export const FALLBACK_PRICING_PLANS: PricingPlan[] = [
   {
     type: 'free',
     name: 'Free',
@@ -117,6 +140,8 @@ export const PRICING_PLANS: PricingPlan[] = [
     isComingSoon: true,
   },
 ]
+
+export const PRICING_PLANS = FALLBACK_PRICING_PLANS
 
 /** Free tier limits */
 export const FREE_LIMITS = {

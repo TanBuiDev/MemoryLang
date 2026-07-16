@@ -5,8 +5,8 @@ import {
   classifyPaymentRequest,
   createPayOSSignature,
   generateOrderCode,
-  getExpectedAmount,
   getPaymentStatusFromWebhook,
+  isSupportedBillingCycle,
   isAlreadySucceeded,
   mergePaymentMetadata,
   verifyPayOSSignature,
@@ -47,10 +47,10 @@ describe('process-payment helpers', () => {
     })).toBe('amount=49000&description=ML-PRO-M-abc&orderCode=123')
   })
 
-  it('computes server-side subscription amounts', () => {
-    expect(getExpectedAmount('monthly')).toBe(49000)
-    expect(getExpectedAmount('yearly')).toBe(430000)
-    expect(getExpectedAmount('weekly')).toBeNull()
+  it('validates supported billing cycles without hardcoding plan amounts', () => {
+    expect(isSupportedBillingCycle('monthly')).toBe(true)
+    expect(isSupportedBillingCycle('yearly')).toBe(true)
+    expect(isSupportedBillingCycle('weekly')).toBe(false)
   })
 
   it('maps PayOS webhook status using top-level and data-level success fields', () => {
