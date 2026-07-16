@@ -11,7 +11,10 @@ import { useQuery } from '@tanstack/react-query'
 import { getDemoPartById, getDemoQuestionsByPartId } from '@/features/listening/demoData'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import { listeningService } from '@/services/supabase/listening.service'
+import { ContentLockState } from '@/components/subscription/ContentLockState'
+import { canAccessContent } from '@/utils/contentAccess'
 
 export function ListeningSessionPage() {
   const { partId, mode } = useParams<{ partId: string; mode: 'test' | 'dictation' }>()
@@ -20,13 +23,22 @@ export function ListeningSessionPage() {
   const isTest = mode === 'test'
   const isDictation = mode === 'dictation'
   const user = useAuthStore((s) => s.user)
+  const isPro = useSubscriptionStore((s) => s.isPro)
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
+  const isDemoPart = Boolean(partId?.startsWith('ets2026') || !partId?.includes('-'))
 
-  const { data, isLoading } = useQuery({
+  const { data: topicAccess, isLoading: isTopicLoading } = useQuery({
+    queryKey: ['listening-part-topic-access', partId, user?.id],
+    queryFn: () => listeningService.getTopicByPartId(partId!),
+    enabled: shouldUseRemoteData && Boolean(partId) && !isDemoPart,
+  })
+
+  const hasAccess = !shouldUseRemoteData || isDemoPart || canAccessContent(topicAccess?.access_tier, isPro)
+
+  const { data, isLoading: isPartLoading } = useQuery({
     queryKey: ['listening-part', partId, user?.id],
     queryFn: async () => {
       if (!partId) return null
-      const isDemoPart = partId.startsWith('ets2026') || !partId.includes('-')
       if (!shouldUseRemoteData || isDemoPart) {
         const demoP = getDemoPartById(partId)
         const demoQ = getDemoQuestionsByPartId(partId)
@@ -46,7 +58,7 @@ export function ListeningSessionPage() {
         return demoP ? { part: demoP, questions: demoQ } : null
       }
     },
-    enabled: Boolean(partId)
+    enabled: Boolean(partId) && (!shouldUseRemoteData || isDemoPart || Boolean(topicAccess && hasAccess))
   })
 
   const part = data?.part
@@ -86,11 +98,31 @@ export function ListeningSessionPage() {
     navigate(-1)
   }
 
-  if (isLoading) {
+  if (isTopicLoading || isPartLoading) {
     return (
       <div className="text-center py-12">
         <p className="text-lg font-black">{t('common.loading') || 'Loading...'}</p>
       </div>
+    )
+  }
+
+  if (shouldUseRemoteData && !isDemoPart && !topicAccess) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-lg font-black">Không tìm thấy nội dung</p>
+        <Button onClick={handleBack} className="mt-4">{t('listening.backToList')}</Button>
+      </div>
+    )
+  }
+
+  if (!hasAccess && topicAccess) {
+    return (
+      <ContentLockState
+        title={topicAccess.title}
+        contentType="listening"
+        teaserConfig={topicAccess.teaser_config}
+        backTo="/app/listening"
+      />
     )
   }
 

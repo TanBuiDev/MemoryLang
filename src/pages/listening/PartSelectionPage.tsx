@@ -5,11 +5,14 @@ import { demoParts } from '@/features/listening/demoData'
 import { useListeningStore } from '@/stores/useListeningStore'
 import { Card, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { ContentLockState } from '@/components/subscription/ContentLockState'
 import { cn } from '@/utils/cn'
 import type { ListeningMode } from '@/types/listening.types'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import { listeningService } from '@/services/supabase/listening.service'
+import { canAccessContent } from '@/utils/contentAccess'
 
 const partLabels: Record<number, string> = {
   1: 'listening.part1',
@@ -24,13 +27,22 @@ export function PartSelectionPage() {
   const navigate = useNavigate()
   const { mode, setPart, setMode } = useListeningStore()
   const user = useAuthStore((s) => s.user)
+  const isPro = useSubscriptionStore((s) => s.isPro)
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
+  const isDemoTest = testId === 'ets2026-test1'
 
-  const { data: parts = [], isLoading } = useQuery({
+  const { data: topicAccess, isLoading: isTopicLoading } = useQuery({
+    queryKey: ['listening-test-topic-access', testId, user?.id],
+    queryFn: () => listeningService.getTopicByTestId(testId!),
+    enabled: shouldUseRemoteData && Boolean(testId) && !isDemoTest,
+  })
+
+  const hasAccess = !shouldUseRemoteData || isDemoTest || canAccessContent(topicAccess?.access_tier, isPro)
+
+  const { data: parts = [], isLoading: isPartsLoading } = useQuery({
     queryKey: ['listening-parts', testId, user?.id],
     queryFn: async () => {
       if (!shouldUseRemoteData || !testId) return demoParts
-      const isDemoTest = testId === 'ets2026-test1'
       if (isDemoTest) return demoParts
 
       try {
@@ -41,7 +53,7 @@ export function PartSelectionPage() {
         return demoParts
       }
     },
-    enabled: Boolean(testId)
+    enabled: Boolean(testId) && (!shouldUseRemoteData || isDemoTest || Boolean(topicAccess && hasAccess))
   })
 
   const handleStart = (partId: string) => {
@@ -49,7 +61,7 @@ export function PartSelectionPage() {
     navigate(`/app/listening/session/${partId}/${mode}`)
   }
 
-  if (isLoading) {
+  if (isTopicLoading || isPartsLoading) {
     return (
       <div>
         <h1 className="text-2xl font-black mb-4">{t('listening.selectPart')}</h1>
@@ -58,6 +70,26 @@ export function PartSelectionPage() {
           <div className="h-24 bg-muted rounded-lg" />
         </div>
       </div>
+    )
+  }
+
+  if (shouldUseRemoteData && !isDemoTest && !topicAccess) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-lg font-black">Không tìm thấy nội dung</p>
+        <Button onClick={() => navigate('/app/listening')} className="mt-4">{t('listening.backToList')}</Button>
+      </div>
+    )
+  }
+
+  if (!hasAccess && topicAccess) {
+    return (
+      <ContentLockState
+        title={topicAccess.title}
+        contentType="listening"
+        teaserConfig={topicAccess.teaser_config}
+        backTo="/app/listening"
+      />
     )
   }
 
