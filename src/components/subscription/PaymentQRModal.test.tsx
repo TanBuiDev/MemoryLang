@@ -47,4 +47,23 @@ describe('PaymentQRModal', () => {
     expect(qrImage).toHaveAttribute('src', expect.stringMatching(/^data:image\//))
     expect(qrImage).not.toHaveAttribute('src', expect.stringMatching(/^000201/))
   })
+
+  it('uses the shared button styling for the cancel action', async () => {
+    render(
+      <PaymentQRModal
+        open
+        plan="pro"
+        cycle="monthly"
+        onClose={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    )
+
+    const cancelButton = await screen.findByRole('button', { name: 'Hủy' })
+
+    expect(cancelButton).toHaveClass('neo-button')
+    expect(cancelButton).toHaveClass('min-h-10')
+    expect(cancelButton).toHaveClass('font-black')
+    expect(cancelButton).toHaveClass('bg-card')
+  })
 })

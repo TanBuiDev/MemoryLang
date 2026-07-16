@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Button } from '@/components/ui/button'
 import { subscriptionService } from '@/services/supabase/subscription.service'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import type { BillingCycle, PlanType } from '@/types/subscription.types'
@@ -233,12 +234,13 @@ export function PaymentQRModal({
 
           {/* Cancel button */}
           {status !== 'succeeded' && (
-            <button
+            <Button
+              variant="ghost"
               onClick={handleCancel}
-              className="neo-button w-full justify-center text-sm mt-2"
+              className="mt-2 w-full"
             >
               Hủy
-            </button>
+            </Button>
           )}
         </div>
       </div>
