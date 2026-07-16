@@ -12,6 +12,7 @@ Xây dựng một microservice Java Spring Boot độc lập cung cấp API phâ
 - Recommendation algorithm (content-based filtering)
 - JWT authentication (verify Supabase tokens; RS256/JWKS when project uses asymmetric signing)
 - Docker deployment
+- Google Cloud Run deployment (scale to zero, free-trial friendly)
 - Testing (JUnit 5, Mockito, MockMvc, Testcontainers)
 - API documentation (OpenAPI/Swagger)
 
@@ -43,6 +44,7 @@ Xây dựng một microservice Java Spring Boot độc lập cung cấp API phâ
 | Testing | JUnit 5, Mockito, MockMvc, Testcontainers |
 | Docs | springdoc-openapi (Swagger UI) |
 | Container | Docker + docker-compose |
+| Optional cloud demo | Google Cloud Run, Artifact Registry, Secret Manager |
 
 ---
 
@@ -51,7 +53,7 @@ Xây dựng một microservice Java Spring Boot độc lập cung cấp API phâ
 ```
 [MemoryLang React Frontend]
     ↓ HTTP (JWT in Authorization header)
-[Spring Boot API: localhost:8080/api/v1]
+[Spring Boot API: localhost:8080/api/v1 or Cloud Run URL]
     ├── Auth filter (verify Supabase JWT via JWKS)
     ├── Statistics endpoints (read-only analytics)
     ├── Recommendation endpoints (algorithm-based suggestions)
@@ -67,6 +69,7 @@ Xây dựng một microservice Java Spring Boot độc lập cung cấp API phâ
 - **Schema snapshot first**: Trước khi viết entity, tạo snapshot schema từ remote/local Supabase hiện hành vì migrations cũ và code hiện tại đã lệch ở `deck_terms`, `user_terms`, `global_terms`.
 - **Separate repo**: Project nằm ngoài MemoryLang repo (`memorylang-stats-api/`), là microservice độc lập.
 - **Integration optional**: Frontend integration là phase sau; Java API standalone vẫn đủ cho CV nếu có test và Swagger rõ.
+- **Cost-controlled Google Cloud demo**: Nếu tận dụng Google Cloud free trial, deploy bằng Cloud Run với `min instances = 0`, `max instances = 1-2`, không dùng VM/GKE/Cloud SQL. Service có thể tắt sau demo/interview.
 
 ---
 
@@ -77,6 +80,7 @@ memorylang-stats-api/
 ├── pom.xml
 ├── Dockerfile
 ├── docker-compose.yml
+├── cloudbuild.yaml
 ├── .env.example
 ├── README.md
 ├── src/main/java/com/memorylang/stats/
@@ -547,6 +551,75 @@ services:
 
 ---
 
+## Google Cloud Run Demo Deployment
+
+Use this only as a portfolio/demo deployment while the Google Cloud free trial is active. Local Docker remains the zero-cost baseline.
+
+### Cost guardrails
+
+- Create a Google Cloud budget alert before deploying.
+- Use Cloud Run, not Compute Engine VM, GKE, or Cloud SQL.
+- Set Cloud Run `min-instances=0` so idle cost is zero.
+- Set `max-instances=1` for demo or `2` for light testing.
+- Keep CPU allocated only during request.
+- Store DB credentials in Secret Manager, not environment variables committed to Git.
+- Delete or disable the Cloud Run service after demo/interview if not needed.
+
+### `cloudbuild.yaml`
+
+```yaml
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/memorylang/stats-api:$SHORT_SHA
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/memorylang/stats-api:$SHORT_SHA
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/memorylang/stats-api:$SHORT_SHA
+substitutions:
+  _REGION: asia-southeast1
+```
+
+### Cloud Run commands
+
+```bash
+gcloud services enable run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com
+
+gcloud artifacts repositories create memorylang \
+  --repository-format=docker \
+  --location=asia-southeast1
+
+gcloud builds submit --config cloudbuild.yaml --substitutions=_REGION=asia-southeast1
+
+gcloud run deploy memorylang-stats-api \
+  --image=asia-southeast1-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT/memorylang/stats-api:COMMIT_SHA \
+  --region=asia-southeast1 \
+  --platform=managed \
+  --allow-unauthenticated \
+  --min-instances=0 \
+  --max-instances=1 \
+  --memory=512Mi \
+  --cpu=1 \
+  --set-env-vars=SUPABASE_URL=https://brwvbpkgimhamivmaflu.supabase.co
+```
+
+For a real deploy, replace `COMMIT_SHA` with the image tag emitted by Cloud Build and mount `STATS_DB_USER`, `STATS_DB_PASSWORD`, and JWT settings from Secret Manager.
+
+### Cloud Run verification
+
+- Open `/actuator/health` and Swagger UI on the Cloud Run URL.
+- Call one protected endpoint with a valid Supabase JWT.
+- Confirm unauthenticated requests return 401.
+- Confirm Cloud Run scales to zero after idle time.
+- Confirm billing dashboard shows only small Cloud Run/Artifact Registry/egress usage under free-trial credits.
+
+---
+
 ## Entity Mappings
 
 | Entity | Table | Key columns mapped |
@@ -605,8 +678,9 @@ services:
 | 8 | Recommendation engine: review/at-risk/almost-memorized/neglected/weak-deck/next-terms with language filters | 1.5 ngày |
 | 9 | GlobalExceptionHandler, OpenAPI docs, Swagger UI, error handling polish | 0.5 ngày |
 | 10 | Integration/security tests (Testcontainers), Docker build + verify | 1 ngày |
+| 11 | Optional Google Cloud Run demo deploy with budget guardrails, Secret Manager, and scale-to-zero verification | 0.5 ngày |
 
-**Tổng: ~9 ngày**
+**Tổng: ~9 ngày local/portfolio, ~9.5 ngày nếu thêm Cloud Run demo**
 
 ---
 
@@ -630,6 +704,16 @@ services:
 
 ---
 
+## Cost Strategy
+
+- **Zero-cost baseline**: run locally with Docker Compose and Testcontainers; no public hosting required for CV.
+- **Free-trial demo**: deploy to Google Cloud Run only when needed, with `min-instances=0` and `max-instances=1`.
+- **Avoid fixed costs**: do not add Cloud SQL, VM, GKE, or always-on instances.
+- **Supabase impact**: analytics responses are small; watch database egress, but initial demo traffic should stay inside existing free quotas.
+- **Shutdown plan**: after demo/interview, either delete the Cloud Run service or set ingress/internal access to prevent unexpected traffic.
+
+---
+
 ## Frontend Integration (optional, future)
 
 After the Java API is built and verified, the MemoryLang React frontend can optionally consume it:
@@ -648,6 +732,7 @@ This step is optional for the CV — the Java API standalone already demonstrate
 - Designed and built a REST analytics microservice with Spring Boot 3 and Java 21 (virtual threads), providing 18+ endpoints for learning analytics and personalized recommendations
 - Implemented content-based recommendation engine using SQL window functions, CTEs, and FILTER clauses to suggest vocabulary based on user mastery patterns
 - Integrated stateless Supabase JWT authentication with project-specific algorithm verification and cached public-key lookup when asymmetric signing is enabled
+- Deployed the containerized service to Google Cloud Run with scale-to-zero cost controls and Secret Manager configuration
 - Built comprehensive SQL analytics for streaks, activity heatmaps, SRS health forecasting, deck engagement, and quiz performance — surfacing insights the frontend could not compute
-- Containerized with Docker, tested with JUnit 5 + Mockito + Testcontainers, documented with OpenAPI/Swagger
+- Packaged with Docker, tested with JUnit 5 + Mockito + Testcontainers, and documented with OpenAPI/Swagger
 - Applied Java 21 features: virtual threads for non-blocking I/O, records for immutable DTOs, sealed classes for entity hierarchies, pattern matching for type-safe error handling
