@@ -54,6 +54,5 @@ docs/superpowers/plans/
 # Temporary SQL scripts and generated JSON cache
 scripts/*.sql
 scripts/*.json
-docs/
 scripts/
 scratch/
