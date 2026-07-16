@@ -1,38 +1,21 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { createHmac } from 'https://deno.land/std@0.168.0/crypto/mod.ts'
+import {
+  buildPaymentUrls,
+  classifyPaymentRequest,
+  createPayOSSignature,
+  generateOrderCode,
+  getExpectedAmount,
+  getPaymentStatusFromWebhook,
+  isAlreadySucceeded,
+  mergePaymentMetadata,
+  verifyPayOSSignature,
+} from './payment-helpers.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type',
-}
-
-// Pricing config (VND)
-const PRICING = {
-  pro: {
-    monthly: 49_000,
-    yearly: 430_000,
-  },
-} as const
-
-/**
- * Verify PayOS webhook checksum
- */
-function verifyPayOSChecksum(
-  data: Record<string, unknown>,
-  checksumKey: string,
-  receivedChecksum: string
-): boolean {
-  // PayOS sắp xếp data theo alphabet, nối key=value, HMAC SHA256
-  const sortedKeys = Object.keys(data).sort()
-  const dataStr = sortedKeys.map((k) => `${k}=${data[k]}`).join('&')
-  const hmac = createHmac('sha256', checksumKey)
-  hmac.update(new TextEncoder().encode(dataStr))
-  const computed = Array.from(new Uint8Array(hmac.digest()))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-  return computed === receivedChecksum
 }
 
 serve(async (req) => {
@@ -43,7 +26,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json()
-    const { action } = body
+    const requestKind = classifyPaymentRequest(body)
 
     // Supabase client với service_role (bypass RLS)
     const supabaseAdmin = createClient(
@@ -51,14 +34,20 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Supabase client với user token (để lấy user context)
-    const authHeader = req.headers.get('Authorization')
+    if (requestKind === 'payos-webhook') {
+      return await handleWebhook(body, supabaseAdmin)
+    }
 
-    switch (action) {
+    if (requestKind !== 'app-action') {
+      return jsonResponse({ error: 'Invalid payment request' }, 400)
+    }
+
+    const authHeader = req.headers.get('Authorization')
+    const origin = req.headers.get('origin')
+
+    switch (body.action) {
       case 'create':
-        return await handleCreate(body, supabaseAdmin, authHeader)
-      case 'webhook':
-        return await handleWebhook(body, supabaseAdmin)
+        return await handleCreate(body, supabaseAdmin, authHeader, origin)
       case 'check-status':
         return await handleCheckStatus(body, supabaseAdmin, authHeader)
       case 'cancel':
@@ -66,10 +55,7 @@ serve(async (req) => {
       case 'cancel-subscription':
         return await handleCancelSubscription(supabaseAdmin, authHeader)
       default:
-        return new Response(
-          JSON.stringify({ error: `Unknown action: ${action}` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return jsonResponse({ error: `Unknown action: ${body.action}` }, 400)
     }
   } catch (err) {
     console.error('process-payment error:', err)
@@ -86,7 +72,8 @@ serve(async (req) => {
 async function handleCreate(
   body: { plan: string; cycle: string },
   supabaseAdmin: ReturnType<typeof createClient>,
-  authHeader: string | null
+  authHeader: string | null,
+  origin: string | null,
 ) {
   if (!authHeader) {
     return jsonResponse({ error: 'Unauthorized' }, 401)
@@ -104,13 +91,14 @@ async function handleCreate(
   }
 
   const { plan, cycle } = body
-  if (plan !== 'pro' || !['monthly', 'yearly'].includes(cycle)) {
+  const amount = getExpectedAmount(cycle)
+  if (plan !== 'pro' || amount === null) {
     return jsonResponse({ error: 'Invalid plan or cycle' }, 400)
   }
 
-  const amount = cycle === 'monthly' ? PRICING.pro.monthly : PRICING.pro.yearly
-  const orderCode = Date.now() // PayOS yêu cầu orderCode dạng số
-  const description = `ML-PRO-${cycle === 'monthly' ? 'M' : 'Y'}-${user.id.slice(0, 8)}`
+  const orderCode = generateOrderCode()
+  const description = `MLP${String(orderCode).slice(-6)}`
+  const { returnUrl, cancelUrl } = buildPaymentUrls(origin, Deno.env.get('SITE_URL'))
 
   // Gọi PayOS API tạo payment link
   const payosClientId = Deno.env.get('PAYOS_CLIENT_ID')
@@ -124,20 +112,12 @@ async function handleCreate(
   // Tạo checksum cho request
   const checksumData = {
     amount,
-    cancelUrl: `${req.headers.get('origin') || ''}/app/upgrade?cancelled=true`,
+    cancelUrl,
     description,
     orderCode,
-    returnUrl: `${req.headers.get('origin') || ''}/app/upgrade/success`,
+    returnUrl,
   }
-  const sortedKeys = Object.keys(checksumData).sort()
-  const dataStr = sortedKeys
-    .map((k) => `${k}=${checksumData[k as keyof typeof checksumData]}`)
-    .join('&')
-  const hmac = createHmac('sha256', payosChecksumKey)
-  hmac.update(new TextEncoder().encode(dataStr))
-  const signature = Array.from(new Uint8Array(hmac.digest()))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
+  const signature = await createPayOSSignature(checksumData, payosChecksumKey)
 
   const payosResponse = await fetch('https://api-merchant.payos.vn/v2/payment-requests', {
     method: 'POST',
@@ -163,15 +143,28 @@ async function handleCreate(
     return jsonResponse({ error: 'Failed to create payment' }, 500)
   }
 
+  const paymentLinkId = payosData.data?.paymentLinkId ?? null
+
   // Lưu payment log (pending)
-  await supabaseAdmin.from('payment_logs').insert({
+  const { error: insertError } = await supabaseAdmin.from('payment_logs').insert({
     user_id: user.id,
     amount,
     payment_method: 'payos',
     payos_order_code: String(orderCode),
     status: 'pending',
-    metadata: { plan, cycle, description },
+    metadata: {
+      plan,
+      cycle,
+      description,
+      paymentLinkId,
+      checkoutUrl: payosData.data?.checkoutUrl ?? null,
+    },
   })
+
+  if (insertError) {
+    console.error('Failed to insert payment log:', insertError.message)
+    return jsonResponse({ error: 'Failed to create payment record' }, 500)
+  }
 
   return jsonResponse({
     checkoutUrl: payosData.data.checkoutUrl,
@@ -194,7 +187,7 @@ async function handleWebhook(
   }
 
   // Verify checksum
-  if (!verifyPayOSChecksum(body.data, checksumKey, body.signature)) {
+  if (!await verifyPayOSSignature(body.data, checksumKey, body.signature)) {
     console.error('Invalid webhook checksum')
     return jsonResponse({ error: 'Invalid signature' }, 400)
   }
