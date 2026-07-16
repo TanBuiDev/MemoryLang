@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Download, Search } from 'lucide-react'
+import { Select } from '@/components/ui/select'
 
 interface TranslationKey {
   key: string
@@ -104,18 +105,19 @@ export default function AdminI18nPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
         </div>
         
-        <select
+        <Select
           value={filterSection}
-          onChange={e => setFilterSection(e.target.value)}
-          className="px-3 py-2 border-2 border-border rounded-md bg-card text-xs font-black focus:outline-none focus:border-primary shadow-[2px_2px_0_var(--border)] transition-all"
-        >
-          <option value="all">Tất cả phân mục</option>
-          <option value="navigation">Navigation (Điều hướng)</option>
-          <option value="actions">Actions (Hành động)</option>
-          <option value="study">Study (Học thẻ)</option>
-          <option value="quiz">Quiz (Kiểm tra)</option>
-          <option value="settings">Settings (Cài đặt)</option>
-        </select>
+          onChange={setFilterSection}
+          options={[
+            { value: 'all', label: 'Tất cả phân mục' },
+            { value: 'navigation', label: 'Navigation (Điều hướng)' },
+            { value: 'actions', label: 'Actions (Hành động)' },
+            { value: 'study', label: 'Study (Học thẻ)' },
+            { value: 'quiz', label: 'Quiz (Kiểm tra)' },
+            { value: 'settings', label: 'Settings (Cài đặt)' },
+          ]}
+          className="sm:w-64"
+        />
       </div>
 
       {/* Translations Table */}
