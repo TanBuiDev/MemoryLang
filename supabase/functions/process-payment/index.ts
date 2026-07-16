@@ -79,14 +79,8 @@ async function handleCreate(
     return jsonResponse({ error: 'Unauthorized' }, 401)
   }
 
-  // Lấy user từ token
-  const userClient = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    { global: { headers: { Authorization: authHeader } } }
-  )
-  const { data: { user }, error: authError } = await userClient.auth.getUser()
-  if (authError || !user) {
+  const user = await getAuthenticatedUser(authHeader)
+  if (!user) {
     return jsonResponse({ error: 'Unauthorized' }, 401)
   }
 
@@ -178,7 +172,12 @@ async function handleCreate(
  * Nhận webhook từ PayOS khi thanh toán thành công
  */
 async function handleWebhook(
-  body: { data: Record<string, unknown>; signature: string },
+  body: {
+    code?: unknown
+    success?: unknown
+    data: Record<string, unknown>
+    signature: string
+  },
   supabaseAdmin: ReturnType<typeof createClient>
 ) {
   const checksumKey = Deno.env.get('PAYOS_CHECKSUM_KEY')
@@ -193,61 +192,72 @@ async function handleWebhook(
   }
 
   const orderCode = String(body.data.orderCode)
-  const paymentStatus = body.data.code === '00' ? 'succeeded' : 'failed'
-
-  // Cập nhật payment log
-  await supabaseAdmin
+  const { data: paymentLog, error: paymentLogError } = await supabaseAdmin
     .from('payment_logs')
-    .update({ status: paymentStatus })
+    .select('id, user_id, subscription_id, amount, status, metadata')
     .eq('payos_order_code', orderCode)
+    .maybeSingle()
 
-  if (paymentStatus === 'succeeded') {
-    // Tìm payment log để lấy user_id và metadata
-    const { data: paymentLog } = await supabaseAdmin
-      .from('payment_logs')
-      .select('user_id, metadata')
-      .eq('payos_order_code', orderCode)
-      .single()
-
-    if (paymentLog) {
-      const cycle = (paymentLog.metadata as Record<string, string>)?.cycle || 'monthly'
-      const periodMonths = cycle === 'yearly' ? 12 : 1
-      const periodEnd = new Date()
-      periodEnd.setMonth(periodEnd.getMonth() + periodMonths)
-
-      // Upsert subscription
-      await supabaseAdmin.from('subscriptions').upsert(
-        {
-          user_id: paymentLog.user_id,
-          plan_type: 'pro',
-          status: 'active',
-          billing_cycle: cycle,
-          payos_order_code: orderCode,
-          current_period_start: new Date().toISOString(),
-          current_period_end: periodEnd.toISOString(),
-          cancel_at_period_end: false,
-          canceled_at: null,
-        },
-        { onConflict: 'user_id' }
-      )
-
-      // Cập nhật subscription_id trong payment_log
-      const { data: sub } = await supabaseAdmin
-        .from('subscriptions')
-        .select('id')
-        .eq('user_id', paymentLog.user_id)
-        .single()
-
-      if (sub) {
-        await supabaseAdmin
-          .from('payment_logs')
-          .update({ subscription_id: sub.id })
-          .eq('payos_order_code', orderCode)
-      }
-    }
+  if (paymentLogError) {
+    console.error('Failed to load payment log:', paymentLogError.message)
+    return jsonResponse({ error: 'Failed to load payment' }, 500)
   }
 
-  return jsonResponse({ success: true })
+  if (!paymentLog) {
+    return jsonResponse({ success: true, ignored: true, reason: 'unknown_order' })
+  }
+
+  if (isAlreadySucceeded(paymentLog.status)) {
+    return jsonResponse({ success: true, idempotent: true })
+  }
+
+  const paymentStatus = getPaymentStatusFromWebhook(body)
+  const metadata = paymentLog.metadata as Record<string, unknown> | null
+  const cycle = metadata?.cycle
+  const expectedAmount = getExpectedAmount(cycle)
+
+  if (expectedAmount === null || Number(body.data.amount) !== expectedAmount) {
+    console.error('PayOS webhook amount mismatch:', {
+      orderCode,
+      expectedAmount,
+      receivedAmount: body.data.amount,
+    })
+    return jsonResponse({ error: 'Invalid payment amount' }, 400)
+  }
+
+  const nextMetadata = mergePaymentMetadata(paymentLog.metadata, {
+    webhook: body,
+    webhook_received_at: new Date().toISOString(),
+  })
+
+  const periodMonths = cycle === 'yearly' ? 12 : 1
+  const now = new Date()
+  const periodEnd = new Date(now)
+  periodEnd.setMonth(periodEnd.getMonth() + periodMonths)
+
+  const { data: processResult, error: processError } = await supabaseAdmin.rpc(
+    'process_payos_webhook_payment',
+    {
+      p_order_code: orderCode,
+      p_payment_status: paymentStatus,
+      p_expected_amount: expectedAmount,
+      p_cycle: cycle,
+      p_metadata: nextMetadata,
+      p_period_start: now.toISOString(),
+      p_period_end: periodEnd.toISOString(),
+    },
+  )
+
+  if (processError) {
+    console.error('Failed to process PayOS webhook:', processError.message)
+    return jsonResponse({ error: 'Failed to process webhook' }, 500)
+  }
+
+  if (processResult?.reason === 'amount_mismatch') {
+    return jsonResponse({ error: 'Invalid payment amount' }, 400)
+  }
+
+  return jsonResponse({ success: true, result: processResult })
 }
 
 /**
@@ -258,18 +268,28 @@ async function handleCheckStatus(
   supabaseAdmin: ReturnType<typeof createClient>,
   authHeader: string | null
 ) {
-  if (!authHeader) {
+  const user = await getAuthenticatedUser(authHeader)
+  if (!user) {
     return jsonResponse({ error: 'Unauthorized' }, 401)
   }
 
-  const { data: paymentLog } = await supabaseAdmin
+  const { data: paymentLog, error: paymentLogError } = await supabaseAdmin
     .from('payment_logs')
     .select('status, user_id')
     .eq('payos_order_code', body.orderCode)
-    .single()
+    .maybeSingle()
+
+  if (paymentLogError) {
+    console.error('Failed to check payment status:', paymentLogError.message)
+    return jsonResponse({ error: 'Failed to check payment status' }, 500)
+  }
 
   if (!paymentLog) {
     return jsonResponse({ error: 'Payment not found' }, 404)
+  }
+
+  if (paymentLog.user_id !== user.id) {
+    return jsonResponse({ error: 'Forbidden' }, 403)
   }
 
   let subscription = null
@@ -293,14 +313,44 @@ async function handleCancel(
   supabaseAdmin: ReturnType<typeof createClient>,
   authHeader: string | null
 ) {
-  if (!authHeader) {
+  const user = await getAuthenticatedUser(authHeader)
+  if (!user) {
     return jsonResponse({ error: 'Unauthorized' }, 401)
+  }
+
+  const { data: paymentLog, error: paymentLogError } = await supabaseAdmin
+    .from('payment_logs')
+    .select('id, user_id, status, metadata')
+    .eq('payos_order_code', body.orderCode)
+    .maybeSingle()
+
+  if (paymentLogError) {
+    console.error('Failed to load payment for cancellation:', paymentLogError.message)
+    return jsonResponse({ error: 'Failed to load payment' }, 500)
+  }
+
+  if (!paymentLog) {
+    return jsonResponse({ error: 'Payment not found' }, 404)
+  }
+
+  if (paymentLog.user_id !== user.id) {
+    return jsonResponse({ error: 'Forbidden' }, 403)
+  }
+
+  if (paymentLog.status !== 'pending') {
+    return jsonResponse({ success: true, status: paymentLog.status })
+  }
+
+  try {
+    await cancelPayOSPayment(paymentLog.metadata, body.orderCode)
+  } catch (err) {
+    console.warn('PayOS cancel failed; marking local payment cancelled only:', (err as Error).message)
   }
 
   await supabaseAdmin
     .from('payment_logs')
     .update({ status: 'cancelled' })
-    .eq('payos_order_code', body.orderCode)
+    .eq('id', paymentLog.id)
     .eq('status', 'pending')
 
   return jsonResponse({ success: true })
@@ -313,17 +363,7 @@ async function handleCancelSubscription(
   supabaseAdmin: ReturnType<typeof createClient>,
   authHeader: string | null
 ) {
-  if (!authHeader) {
-    return jsonResponse({ error: 'Unauthorized' }, 401)
-  }
-
-  // Lấy user từ token
-  const userClient = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    { global: { headers: { Authorization: authHeader! } } }
-  )
-  const { data: { user } } = await userClient.auth.getUser()
+  const user = await getAuthenticatedUser(authHeader)
   if (!user) {
     return jsonResponse({ error: 'Unauthorized' }, 401)
   }
@@ -338,6 +378,59 @@ async function handleCancelSubscription(
     .eq('status', 'active')
 
   return jsonResponse({ success: true })
+}
+
+async function getAuthenticatedUser(authHeader: string | null) {
+  if (!authHeader) return null
+
+  const userClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    { global: { headers: { Authorization: authHeader } } }
+  )
+  const { data: { user }, error } = await userClient.auth.getUser()
+  if (error || !user) return null
+  return user
+}
+
+async function cancelPayOSPayment(metadata: unknown, orderCode: string) {
+  const payosClientId = Deno.env.get('PAYOS_CLIENT_ID')
+  const payosApiKey = Deno.env.get('PAYOS_API_KEY')
+  if (!payosClientId || !payosApiKey) return
+
+  const targetId =
+    metadata &&
+    typeof metadata === 'object' &&
+    typeof (metadata as Record<string, unknown>).paymentLinkId === 'string'
+      ? (metadata as Record<string, string>).paymentLinkId
+      : orderCode
+
+  const response = await fetch(`https://api-merchant.payos.vn/v2/payment-requests/${targetId}/cancel`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-client-id': payosClientId,
+      'x-api-key': payosApiKey,
+    },
+    body: JSON.stringify({
+      cancellationReason: 'User requested cancellation',
+    }),
+  })
+
+  let payload: { code?: string; desc?: string } | null = null
+  try {
+    payload = await response.json()
+  } catch {
+    payload = null
+  }
+
+  if (!response.ok || (payload?.code && payload.code !== '00')) {
+    console.warn('PayOS cancel response was not successful:', {
+      status: response.status,
+      code: payload?.code,
+      desc: payload?.desc,
+    })
+  }
 }
 
 function jsonResponse(data: unknown, status = 200) {
