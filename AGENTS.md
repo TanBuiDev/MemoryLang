@@ -77,6 +77,12 @@
   - **BẮT BUỘC** sử dụng truy vấn đếm dòng (`{ count: 'exact', head: true }`) của Supabase khi cần lấy số lượng dòng (total/count) của một bảng.
   - Khi cần tải danh sách dữ liệu có khả năng vượt quá 1000 dòng để xử lý (ví dụ: tác vụ chạy hàng loạt), phải đặt rõ giới hạn `.limit(...)` (ví dụ: `.limit(10000)`) hoặc thực hiện phân trang (pagination) phù hợp.
 
+## Quy tắc Frontend Deployment / Dynamic Import (Bắt buộc)
+
+- Khi thêm route hoặc page dùng `React.lazy`, PHẢI dùng `lazyWithChunkRecovery()` từ `src/utils/chunkLoadRecovery.ts`, không gọi `React.lazy(() => import(...))` trực tiếp cho route lazy-load.
+- Nếu production báo `Failed to fetch dynamically imported module: .../assets/*.js`, trước tiên phải xem đây là lỗi stale SPA/chunk sau deploy: kiểm tra URL chunk, `Content-Type`, `Cache-Control`, và hash `index-*.js` hiện tại trên custom domain.
+- KHÔNG cấu hình cache `immutable` dài hạn cho JavaScript/CSS chunks trong `public/_headers`. JS/CSS phải `max-age=0, must-revalidate`; missing assets phải trả 404 thật qua `public/404.html`, không được fallback thành `index.html`.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 

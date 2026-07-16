@@ -35,29 +35,30 @@ import { ErrorPage } from '@/pages/public/ErrorPage'
 import { ComingSoonPage } from '@/pages/public/ComingSoonPage'
 import { UpgradePage } from '@/pages/subscription/UpgradePage'
 import { UpgradeSuccessPage } from '@/pages/subscription/UpgradeSuccessPage'
+import { lazyWithChunkRecovery } from '@/utils/chunkLoadRecovery'
 
 // Lazy-load Admin Layout & Pages
-const LazyAdminLayout = React.lazy(() => import('@/components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })))
-const AdminDashboardPage = React.lazy(() => import('@/pages/admin/AdminDashboardPage'))
-const AdminUsersPage = React.lazy(() => import('@/pages/admin/AdminUsersPage'))
-const AdminSubscriptionsPage = React.lazy(() => import('@/pages/admin/AdminSubscriptionsPage'))
-const AdminTtsPage = React.lazy(() => import('@/pages/admin/AdminTtsPage'))
-const AdminSecretsPage = React.lazy(() => import('@/pages/admin/AdminSecretsPage'))
-const AdminFeaturesPage = React.lazy(() => import('@/pages/admin/AdminFeaturesPage'))
-const AdminVocabularyPage = React.lazy(() => import('@/pages/admin/AdminVocabularyPage'))
-const AdminGrammarPage = React.lazy(() => import('@/pages/admin/AdminGrammarPage'))
-const AdminListeningPage = React.lazy(() => import('@/pages/admin/AdminListeningPage'))
-const AdminStoragePage = React.lazy(() => import('@/pages/admin/AdminStoragePage'))
-const AdminFunctionsPage = React.lazy(() => import('@/pages/admin/AdminFunctionsPage'))
-const AdminI18nPage = React.lazy(() => import('@/pages/admin/AdminI18nPage'))
-const AdminAuditPage = React.lazy(() => import('@/pages/admin/AdminAuditPage'))
-const AdminAnalyticsPage = React.lazy(() => import('@/pages/admin/AdminAnalyticsPage'))
-const AdminNotificationsPage = React.lazy(() => import('@/pages/admin/AdminNotificationsPage'))
-const GrammarLessonPage = React.lazy(() => import('@/pages/grammar/GrammarLessonPage'))
-const AdminGrammarLessonEditPage = React.lazy(() => import('@/pages/admin/AdminGrammarLessonEditPage'))
-const GameHubPage = React.lazy(() => import('@/pages/games/GameHubPage'))
-const MatchingGamePage = React.lazy(() => import('@/pages/games/MatchingGamePage'))
-const AdminGamesPage = React.lazy(() => import('@/pages/admin/AdminGamesPage'))
+const LazyAdminLayout = lazyWithChunkRecovery(() => import('@/components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })))
+const AdminDashboardPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminDashboardPage'))
+const AdminUsersPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminUsersPage'))
+const AdminSubscriptionsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminSubscriptionsPage'))
+const AdminTtsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminTtsPage'))
+const AdminSecretsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminSecretsPage'))
+const AdminFeaturesPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminFeaturesPage'))
+const AdminVocabularyPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminVocabularyPage'))
+const AdminGrammarPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminGrammarPage'))
+const AdminListeningPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminListeningPage'))
+const AdminStoragePage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminStoragePage'))
+const AdminFunctionsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminFunctionsPage'))
+const AdminI18nPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminI18nPage'))
+const AdminAuditPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminAuditPage'))
+const AdminAnalyticsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminAnalyticsPage'))
+const AdminNotificationsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminNotificationsPage'))
+const GrammarLessonPage = lazyWithChunkRecovery(() => import('@/pages/grammar/GrammarLessonPage'))
+const AdminGrammarLessonEditPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminGrammarLessonEditPage'))
+const GameHubPage = lazyWithChunkRecovery(() => import('@/pages/games/GameHubPage'))
+const MatchingGamePage = lazyWithChunkRecovery(() => import('@/pages/games/MatchingGamePage'))
+const AdminGamesPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminGamesPage'))
 
 export const router = createBrowserRouter([
   {
