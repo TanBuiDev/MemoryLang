@@ -7,10 +7,15 @@ import { Badge } from '@/components/ui/badge'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { AppLoading } from '@/components/common/AppLoading'
+import { ContentLockState } from '@/components/subscription/ContentLockState'
+import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
+import { canAccessContent } from '@/utils/contentAccess'
+import type { TeaserConfig } from '@/types/subscription.types'
 
 export default function GrammarLessonPage() {
   const { topicId } = useParams<{ topicId: string }>()
   const { user } = useAuthStore()
+  const isPro = useSubscriptionStore((s) => s.isPro)
   const viewedRef = useRef(false)
 
   const shouldFetch = isSupabaseConfigured && Boolean(user)
@@ -24,15 +29,15 @@ export default function GrammarLessonPage() {
   const { data: blocks, isLoading: blocksLoading } = useQuery({
     queryKey: ['lesson-blocks', topicId],
     queryFn: () => grammarService.getBlocks(topicId!),
-    enabled: shouldFetch && Boolean(topicId),
+    enabled: shouldFetch && Boolean(topicId) && Boolean(topic) && canAccessContent(topic?.access_tier, isPro),
   })
 
   useEffect(() => {
-    if (topic && !viewedRef.current && shouldFetch) {
+    if (topic && canAccessContent(topic.access_tier, isPro) && !viewedRef.current && shouldFetch) {
       viewedRef.current = true
       grammarService.incrementViewCount(topic.id).catch(() => {})
     }
-  }, [topic, shouldFetch])
+  }, [topic, shouldFetch, isPro])
 
   const levelColors: Record<string, string> = {
     beginner: 'bg-green-100 text-green-800',
@@ -54,6 +59,19 @@ export default function GrammarLessonPage() {
 
   if (topicLoading || blocksLoading) return <AppLoading />
   if (!topic) return null
+
+  const hasAccess = canAccessContent(topic.access_tier, isPro)
+
+  if (!hasAccess) {
+    return (
+      <ContentLockState
+        title={topic.title}
+        contentType="grammar"
+        teaserConfig={topic.teaser_config as TeaserConfig | undefined}
+        backTo="/app/grammar"
+      />
+    )
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
