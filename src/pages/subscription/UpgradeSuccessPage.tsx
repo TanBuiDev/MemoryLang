@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
-import { Crown, Sparkles } from 'lucide-react'
+import { ArrowRight, Crown, LayoutDashboard, Sparkles } from 'lucide-react'
 
 export function UpgradeSuccessPage() {
   const subscription = useSubscriptionStore((s) => s.subscription)
@@ -158,21 +159,20 @@ export function UpgradeSuccessPage() {
         </div>
 
         {/* Action buttons */}
-        <div className="space-y-3">
-          <Link
-            to="/app/dashboard"
-            className="neo-button neo-button-active w-full justify-center font-bold
-              bg-[#fdc800] hover:bg-[#e6b800] text-[#1c293c]"
-          >
-            Quay về Dashboard
-          </Link>
+        <div className="flex flex-col justify-center gap-3 sm:flex-row">
+          <Button asChild className="w-full sm:w-auto">
+            <Link to="/app/dashboard">
+              <LayoutDashboard className="h-4 w-4" />
+              Quay về Dashboard
+            </Link>
+          </Button>
 
-          <Link
-            to="/app/vocabulary"
-            className="neo-button w-full justify-center text-sm"
-          >
-            Thêm từ vựng mới →
-          </Link>
+          <Button asChild variant="ghost" className="w-full sm:w-auto">
+            <Link to="/app/vocabulary">
+              Thêm từ vựng mới
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
         </div>
       </div>
     </div>
