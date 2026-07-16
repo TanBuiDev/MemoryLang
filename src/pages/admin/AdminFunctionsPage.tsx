@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Terminal, RefreshCw, Cpu } from 'lucide-react'
+import { showToast } from '@/components/ui/toast'
 
 interface EdgeFunction {
   name: string
@@ -66,7 +67,11 @@ export default function AdminFunctionsPage() {
         `[INFO] [${new Date().toISOString().replace('T', ' ').substring(0, 19)}] CLI: Redeployed edge function "${funcName}" successfully via CLI API.`,
         ...prev,
       ])
-      alert(`Đã deploy lại Edge Function "${funcName}" thành công!`)
+      showToast({
+        type: 'success',
+        title: 'Deploy thành công',
+        message: `Edge Function "${funcName}" đã được deploy lại.`,
+      })
     }, 2000)
   }
 

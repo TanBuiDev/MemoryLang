@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Database, HardDrive, ShieldAlert, Trash2 } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { showToast } from '@/components/ui/toast'
 
 export default function AdminStoragePage() {
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [clearing, setClearing] = useState(false)
+  const [confirmCleanupOpen, setConfirmCleanupOpen] = useState(false)
 
   const loadStats = async () => {
     try {
@@ -26,18 +29,22 @@ export default function AdminStoragePage() {
   }, [])
 
   const handleCleanupOrphan = async () => {
-    if (!window.confirm('Bạn có chắc chắn muốn dọn dẹp các tệp tin không còn được tham chiếu trong DB? Thao tác này sẽ quét toàn bộ bucket và giải phóng bộ nhớ.')) return
-    
     try {
       setClearing(true)
       // Giả lập dọn dẹp trong 1.5s
       await new Promise(resolve => setTimeout(resolve, 1500))
-      alert('Đã dọn dẹp thành công! Không phát hiện tệp tin mồ côi nào.')
+      showToast({
+        type: 'success',
+        title: 'Đã dọn dẹp storage',
+        message: 'Không phát hiện tệp tin mồ côi nào.',
+      })
       void loadStats()
     } catch (err: any) {
-      alert('Lỗi khi dọn dẹp bộ nhớ')
+      const message = err?.message || 'Lỗi khi dọn dẹp bộ nhớ'
+      showToast({ type: 'error', title: 'Không thể dọn dẹp storage', message })
     } finally {
       setClearing(false)
+      setConfirmCleanupOpen(false)
     }
   }
 
@@ -152,7 +159,7 @@ export default function AdminStoragePage() {
           </div>
         </div>
         <button
-          onClick={handleCleanupOrphan}
+          onClick={() => setConfirmCleanupOpen(true)}
           disabled={clearing || loading}
           className="neo-button min-h-0 px-4 py-2.5 rounded-md border-2 border-border bg-rose-100 text-rose-800 text-xs font-black flex items-center gap-1.5 hover:bg-rose-200 active:neo-button-active transition-all disabled:opacity-50 shrink-0"
         >
@@ -166,6 +173,17 @@ export default function AdminStoragePage() {
           )}
         </button>
       </div>
+
+      <ConfirmModal
+        open={confirmCleanupOpen}
+        title="Dọn dẹp storage?"
+        description="Thao tác này sẽ quét toàn bộ bucket để tìm tệp không còn được tham chiếu trong DB."
+        confirmLabel="Dọn dẹp"
+        cancelLabel="Hủy"
+        variant="danger"
+        onConfirm={() => void handleCleanupOrphan()}
+        onCancel={() => setConfirmCleanupOpen(false)}
+      />
     </div>
   )
 }

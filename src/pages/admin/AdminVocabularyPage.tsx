@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react'
 import { FileDown, FileSpreadsheet, RefreshCw, Trash2 } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
 import { DataTable } from '@/components/admin/DataTable'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { showToast } from '@/components/ui/toast'
 
 export default function AdminVocabularyPage() {
   const [terms, setTerms] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   const loadTerms = async () => {
     try {
@@ -27,14 +30,22 @@ export default function AdminVocabularyPage() {
   }, [])
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa từ vựng này khỏi thư viện hệ thống?')) return
     try {
       setError(null)
       await adminService.deleteGlobalTerm(id)
       setTerms(prev => prev.filter(t => t.id !== id))
+      showToast({
+        type: 'success',
+        title: 'Đã xóa từ vựng',
+        message: 'Từ vựng đã được xóa khỏi thư viện hệ thống.',
+      })
     } catch (err: any) {
       console.error(err)
-      setError(err.message || 'Lỗi khi xóa từ vựng')
+      const message = err.message || 'Lỗi khi xóa từ vựng'
+      setError(message)
+      showToast({ type: 'error', title: 'Không thể xóa từ vựng', message })
+    } finally {
+      setPendingDeleteId(null)
     }
   }
 
@@ -71,7 +82,11 @@ export default function AdminVocabularyPage() {
         }))
 
         const count = await adminService.bulkImportVocabulary(formatted)
-        alert(`Đã import thành công ${count} từ vựng mới vào hệ thống!`)
+        showToast({
+          type: 'success',
+          title: 'Import thành công',
+          message: `Đã import ${count} từ vựng mới vào hệ thống.`,
+        })
         void loadTerms()
       } catch (err: any) {
         console.error(err)
@@ -155,7 +170,7 @@ export default function AdminVocabularyPage() {
       className: 'text-center w-[10%]',
       accessor: (row: any) => (
         <button
-          onClick={() => handleDelete(row.id)}
+          onClick={() => setPendingDeleteId(row.id)}
           className="neo-button min-h-0 p-1.5 rounded bg-rose-100 text-rose-800 border border-border hover:bg-rose-200 active:neo-button-active transition-all"
           title="Xóa khỏi hệ thống"
         >
@@ -229,6 +244,20 @@ export default function AdminVocabularyPage() {
         searchFilter={searchFilter}
         isLoading={loading}
         actions={toolbarActions}
+      />
+
+      <ConfirmModal
+        open={pendingDeleteId !== null}
+        title="Xóa từ vựng hệ thống?"
+        description="Từ vựng này sẽ bị xóa khỏi thư viện dùng chung."
+        confirmLabel="Xóa"
+        cancelLabel="Hủy"
+        variant="danger"
+        onConfirm={() => {
+          if (!pendingDeleteId) return
+          void handleDelete(pendingDeleteId)
+        }}
+        onCancel={() => setPendingDeleteId(null)}
       />
     </div>
   )
