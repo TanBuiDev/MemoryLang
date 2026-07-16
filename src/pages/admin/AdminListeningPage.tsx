@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Plus, Headphones, Award, FileAudio } from 'lucide-react'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { Select } from '@/components/ui/select'
+import { showToast } from '@/components/ui/toast'
 import { adminService } from '@/services/supabase/admin.service'
 import { subscriptionService } from '@/services/supabase/subscription.service'
 import { AccessTierBadge } from '@/components/admin/AccessTierBadge'
@@ -27,14 +30,20 @@ export default function AdminListeningPage() {
   const [showTopicForm, setShowTopicForm] = useState(false)
   const [editingTopic, setEditingTopic] = useState<string | null>(null)
   const [topicForm, setTopicForm] = useState<any>({})
+  const [topicFormError, setTopicFormError] = useState<string | null>(null)
+  const [pendingDeleteTopicId, setPendingDeleteTopicId] = useState<string | null>(null)
 
   const [showTestForm, setShowTestForm] = useState(false)
   const [editingTest, setEditingTest] = useState<string | null>(null)
   const [testForm, setTestForm] = useState<any>({})
+  const [testFormError, setTestFormError] = useState<string | null>(null)
+  const [pendingDeleteTestId, setPendingDeleteTestId] = useState<string | null>(null)
 
   const [showPartForm, setShowPartForm] = useState(false)
   const [editingPart, setEditingPart] = useState<string | null>(null)
   const [partForm, setPartForm] = useState<any>({})
+  const [partFormError, setPartFormError] = useState<string | null>(null)
+  const [pendingDeletePartId, setPendingDeletePartId] = useState<string | null>(null)
 
   const loadTopics = async () => {
     try {
@@ -56,7 +65,7 @@ export default function AdminListeningPage() {
       setTests(data)
     } catch (err: any) {
       console.error(err)
-      alert('Không thể tải danh sách đề thi')
+      setError(err.message || 'Không thể tải danh sách đề thi')
     } finally {
       setTestsLoading(false)
     }
@@ -69,7 +78,7 @@ export default function AdminListeningPage() {
       setParts(data)
     } catch (err: any) {
       console.error(err)
-      alert('Không thể tải danh sách phần thi')
+      setError(err.message || 'Không thể tải danh sách phần thi')
     } finally {
       setPartsLoading(false)
     }
@@ -105,6 +114,7 @@ export default function AdminListeningPage() {
       access_tier: 'free',
       teaser_config: { enabled: true, type: 'title_only' }
     })
+    setTopicFormError(null)
     setShowTopicForm(true)
   }
 
@@ -115,12 +125,17 @@ export default function AdminListeningPage() {
       access_tier: topic.access_tier || 'free',
       teaser_config: topic.teaser_config || { enabled: true, type: 'title_only' }
     })
+    setTopicFormError(null)
     setShowTopicForm(true)
   }
 
   const handleSaveTopic = async () => {
-    if (!topicForm.title) return alert('Vui lòng nhập tiêu đề')
+    if (!topicForm.title) {
+      setTopicFormError('Vui lòng nhập tiêu đề.')
+      return
+    }
     try {
+      setTopicFormError(null)
       if (editingTopic) {
         const updated = await adminService.updateListeningTopic(editingTopic, topicForm)
         setTopics(prev => prev.map(t => t.id === editingTopic ? updated : t))
@@ -131,7 +146,7 @@ export default function AdminListeningPage() {
       }
       setShowTopicForm(false)
     } catch (err: any) {
-      alert(err.message || 'Lỗi khi lưu chủ đề')
+      setError(err.message || 'Lỗi khi lưu chủ đề')
     }
   }
 
@@ -144,7 +159,11 @@ export default function AdminListeningPage() {
     } catch (err: any) {
       setTopics(prev => prev.map(t => t.id === topicId ? { ...t, access_tier: currentTier } : t))
       if (selectedTopic?.id === topicId) setSelectedTopic((prev: any) => prev ? { ...prev, access_tier: currentTier } : null)
-      alert('Không thể thay đổi phân quyền truy cập: ' + err.message)
+      showToast({
+        type: 'error',
+        title: 'Không thể thay đổi phân quyền',
+        message: err.message,
+      })
     }
   }
 
@@ -158,14 +177,17 @@ export default function AdminListeningPage() {
       }
       setSelectedTopicIds([])
     } catch (err: any) {
-      alert('Lỗi thao tác hàng loạt: ' + err.message)
+      showToast({
+        type: 'error',
+        title: 'Lỗi thao tác hàng loạt',
+        message: err.message,
+      })
     } finally {
       setBulkUpdating(false)
     }
   }
 
   const handleDeleteTopic = async (id: string) => {
-    if (!window.confirm('Xóa chủ đề này sẽ xóa toàn bộ đề thi và phần nghe liên quan. Bạn có chắc?')) return
     try {
       await adminService.deleteListeningTopic(id)
       setTopics(prev => prev.filter(t => t.id !== id))
@@ -176,7 +198,9 @@ export default function AdminListeningPage() {
         setParts([])
       }
     } catch (err: any) {
-      alert('Không thể xóa chủ đề')
+      setError(err.message || 'Không thể xóa chủ đề')
+    } finally {
+      setPendingDeleteTopicId(null)
     }
   }
 
@@ -190,18 +214,24 @@ export default function AdminListeningPage() {
       instructions: '',
       order: 1,
     })
+    setTestFormError(null)
     setShowTestForm(true)
   }
 
   const handleEditTest = (test: any) => {
     setEditingTest(test.id)
     setTestForm({ ...test })
+    setTestFormError(null)
     setShowTestForm(true)
   }
 
   const handleSaveTest = async () => {
-    if (!testForm.title) return alert('Vui lòng nhập tên đề thi')
+    if (!testForm.title) {
+      setTestFormError('Vui lòng nhập tên đề thi.')
+      return
+    }
     try {
+      setTestFormError(null)
       if (editingTest) {
         const updated = await adminService.updateListeningTest(editingTest, testForm)
         setTests(prev => prev.map(t => t.id === editingTest ? updated : t))
@@ -212,12 +242,11 @@ export default function AdminListeningPage() {
       }
       setShowTestForm(false)
     } catch (err: any) {
-      alert('Lỗi khi lưu đề thi')
+      setError(err.message || 'Lỗi khi lưu đề thi')
     }
   }
 
   const handleDeleteTest = async (id: string) => {
-    if (!window.confirm('Xóa đề thi sẽ xóa toàn bộ phần nghe và câu hỏi liên quan. Bạn có chắc?')) return
     try {
       await adminService.deleteListeningTest(id)
       setTests(prev => prev.filter(t => t.id !== id))
@@ -226,7 +255,9 @@ export default function AdminListeningPage() {
         setParts([])
       }
     } catch (err: any) {
-      alert('Không thể xóa đề thi')
+      setError(err.message || 'Không thể xóa đề thi')
+    } finally {
+      setPendingDeleteTestId(null)
     }
   }
 
@@ -243,18 +274,24 @@ export default function AdminListeningPage() {
       transcript: '',
       questions: [],
     })
+    setPartFormError(null)
     setShowPartForm(true)
   }
 
   const handleEditPart = (part: any) => {
     setEditingPart(part.id)
     setPartForm({ ...part })
+    setPartFormError(null)
     setShowPartForm(true)
   }
 
   const handleSavePart = async () => {
-    if (!partForm.audio_url) return alert('Vui lòng nhập URL âm thanh')
+    if (!partForm.audio_url) {
+      setPartFormError('Vui lòng nhập URL âm thanh.')
+      return
+    }
     try {
+      setPartFormError(null)
       const payload = {
         ...partForm,
         part_number: Number(partForm.part_number),
@@ -268,17 +305,18 @@ export default function AdminListeningPage() {
       }
       setShowPartForm(false)
     } catch (err: any) {
-      alert('Lỗi khi lưu phần thi')
+      setError(err.message || 'Lỗi khi lưu phần thi')
     }
   }
 
   const handleDeletePart = async (id: string) => {
-    if (!window.confirm('Bạn có chắc muốn xóa phần thi này?')) return
     try {
       await adminService.deleteListeningPart(id)
       setParts(prev => prev.filter(p => p.id !== id))
     } catch (err: any) {
-      alert('Không thể xóa phần thi')
+      setError(err.message || 'Không thể xóa phần thi')
+    } finally {
+      setPendingDeletePartId(null)
     }
   }
 
@@ -368,7 +406,7 @@ export default function AdminListeningPage() {
                       onChange={() => handleToggleAccessTier(t.id, t.access_tier || 'free')}
                     />
                     <button onClick={() => handleEditTopic(t)} className="p-1 rounded hover:bg-muted text-[10px] border border-border">Sửa</button>
-                    <button onClick={() => handleDeleteTopic(t.id)} className="p-1 rounded hover:bg-rose-100 text-rose-800 text-[10px] border border-border">Xóa</button>
+                    <button onClick={() => setPendingDeleteTopicId(t.id)} className="p-1 rounded hover:bg-rose-100 text-rose-800 text-[10px] border border-border">Xóa</button>
                   </div>
                 </div>
               ))}
@@ -408,7 +446,7 @@ export default function AdminListeningPage() {
                   <span className="font-bold truncate">{t.title}</span>
                   <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                     <button onClick={() => handleEditTest(t)} className="p-1 rounded hover:bg-muted text-[10px] border border-border">Sửa</button>
-                    <button onClick={() => handleDeleteTest(t.id)} className="p-1 rounded hover:bg-rose-100 text-rose-800 text-[10px] border border-border">Xóa</button>
+                    <button onClick={() => setPendingDeleteTestId(t.id)} className="p-1 rounded hover:bg-rose-100 text-rose-800 text-[10px] border border-border">Xóa</button>
                   </div>
                 </div>
               ))}
@@ -448,7 +486,7 @@ export default function AdminListeningPage() {
                   </div>
                   <div className="flex items-center gap-1">
                     <button onClick={() => handleEditPart(p)} className="p-1 rounded hover:bg-muted text-[10px] border border-border font-bold">Sửa</button>
-                    <button onClick={() => handleDeletePart(p.id)} className="p-1 rounded hover:bg-rose-100 text-rose-800 text-[10px] border border-border font-bold">Xóa</button>
+                    <button onClick={() => setPendingDeletePartId(p.id)} className="p-1 rounded hover:bg-rose-100 text-rose-800 text-[10px] border border-border font-bold">Xóa</button>
                   </div>
                 </div>
               ))}
@@ -465,6 +503,12 @@ export default function AdminListeningPage() {
               {editingTopic ? 'Sửa chủ đề nghe' : 'Tạo chủ đề nghe mới'}
             </h2>
             <div className="flex flex-col gap-3">
+              {topicFormError && (
+                <div className="p-3 bg-rose-100 border-2 border-rose-400 text-rose-900 rounded-md font-bold text-xs">
+                  {topicFormError}
+                </div>
+              )}
+
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-black text-foreground">Tiêu đề (Title) *</label>
                 <input
@@ -488,15 +532,15 @@ export default function AdminListeningPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-black text-foreground">Độ khó (Difficulty)</label>
-                  <select
+                  <Select
                     value={topicForm.difficulty || 'intermediate'}
-                    onChange={e => setTopicForm((prev: any) => ({ ...prev, difficulty: e.target.value }))}
-                    className="px-3 py-1.5 border-2 border-border rounded bg-muted text-xs font-bold focus:outline-none focus:border-primary focus:bg-card transition-all"
-                  >
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                  </select>
+                    onChange={difficulty => setTopicForm((prev: any) => ({ ...prev, difficulty }))}
+                    options={[
+                      { value: 'beginner', label: 'Beginner' },
+                      { value: 'intermediate', label: 'Intermediate' },
+                      { value: 'advanced', label: 'Advanced' },
+                    ]}
+                  />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-black text-foreground">Thứ tự hiển thị (Order)</label>
@@ -524,14 +568,14 @@ export default function AdminListeningPage() {
               <div className="border-t border-border/40 my-1 pt-3 flex flex-col gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-black text-foreground">Phân quyền truy cập (Access Tier)</label>
-                  <select
+                  <Select
                     value={topicForm.access_tier || 'free'}
-                    onChange={e => setTopicForm((prev: any) => ({ ...prev, access_tier: e.target.value }))}
-                    className="px-3 py-1.5 border-2 border-border rounded bg-muted text-xs font-bold focus:outline-none focus:border-primary"
-                  >
-                    <option value="free">Free (Miễn phí)</option>
-                    <option value="pro">Pro (Trả phí)</option>
-                  </select>
+                    onChange={access_tier => setTopicForm((prev: any) => ({ ...prev, access_tier }))}
+                    options={[
+                      { value: 'free', label: 'Free (Miễn phí)' },
+                      { value: 'pro', label: 'Pro (Trả phí)' },
+                    ]}
+                  />
                 </div>
 
                 {topicForm.access_tier === 'pro' && (
@@ -558,21 +602,21 @@ export default function AdminListeningPage() {
                     {topicForm.teaser_config?.enabled !== false && (
                       <div className="flex flex-col gap-1 mt-1">
                         <label className="text-[11px] font-bold text-muted-foreground">Chế độ hiển thị khi bị khóa</label>
-                        <select
+                        <Select
                           value={topicForm.teaser_config?.type || 'title_only'}
-                          onChange={e => setTopicForm((prev: any) => ({
+                          onChange={type => setTopicForm((prev: any) => ({
                             ...prev,
                             teaser_config: {
                               ...prev.teaser_config,
-                              type: e.target.value
+                              type
                             }
                           }))}
-                          className="px-2 py-1.5 border-2 border-border rounded bg-white text-xs font-bold focus:outline-none"
-                        >
-                          <option value="title_only">Chỉ hiện tiêu đề & mô tả</option>
-                          <option value="audio_preview">Nghe thử 30 giây đầu</option>
-                          <option value="transcript_preview">Hiển thị transcript đoạn đầu</option>
-                        </select>
+                          options={[
+                            { value: 'title_only', label: 'Chỉ hiện tiêu đề & mô tả' },
+                            { value: 'audio_preview', label: 'Nghe thử 30 giây đầu' },
+                            { value: 'transcript_preview', label: 'Hiển thị transcript đoạn đầu' },
+                          ]}
+                        />
                       </div>
                     )}
                   </div>
@@ -595,6 +639,12 @@ export default function AdminListeningPage() {
               {editingTest ? 'Sửa đề thi nghe' : 'Tạo đề thi nghe mới'}
             </h2>
             <div className="flex flex-col gap-3">
+              {testFormError && (
+                <div className="p-3 bg-rose-100 border-2 border-rose-400 text-rose-900 rounded-md font-bold text-xs">
+                  {testFormError}
+                </div>
+              )}
+
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-black text-foreground">Tên đề thi *</label>
                 <input
@@ -639,22 +689,27 @@ export default function AdminListeningPage() {
             <h2 className="text-md font-black uppercase text-foreground border-b-2 border-border pb-2">
               {editingPart ? 'Sửa phần nghe Part' : 'Tạo phần nghe Part mới'}
             </h2>
+            {partFormError && (
+              <div className="p-3 bg-rose-100 border-2 border-rose-400 text-rose-900 rounded-md font-bold text-xs">
+                {partFormError}
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Left Form: Metadata */}
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-black text-foreground">Số thứ tự Part *</label>
-                    <select
-                      value={partForm.part_number || 1}
-                      onChange={e => setPartForm((prev: any) => ({ ...prev, part_number: Number(e.target.value) }))}
-                      className="px-3 py-1.5 border-2 border-border rounded bg-muted text-xs font-bold focus:outline-none focus:border-primary"
-                    >
-                      <option value={1}>Part 1</option>
-                      <option value={2}>Part 2</option>
-                      <option value={3}>Part 3</option>
-                      <option value={4}>Part 4</option>
-                    </select>
+                    <Select
+                      value={String(partForm.part_number || 1)}
+                      onChange={part_number => setPartForm((prev: any) => ({ ...prev, part_number: Number(part_number) }))}
+                      options={[
+                        { value: '1', label: 'Part 1' },
+                        { value: '2', label: 'Part 2' },
+                        { value: '3', label: 'Part 3' },
+                        { value: '4', label: 'Part 4' },
+                      ]}
+                    />
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-black text-foreground">Đường dẫn Audio URL *</label>
@@ -753,20 +808,20 @@ export default function AdminListeningPage() {
                     <div className="grid grid-cols-2 gap-2 mt-1">
                       <div className="flex flex-col gap-0.5">
                         <label className="text-[9px] font-black">Đáp án đúng</label>
-                        <select
-                          value={q.correctIndex}
-                          onChange={e => {
+                        <Select
+                          value={String(q.correctIndex)}
+                          onChange={correctIndex => {
                             const questions = [...partForm.questions]
-                            questions[idx].correctIndex = Number(e.target.value)
+                            questions[idx].correctIndex = Number(correctIndex)
                             setPartForm((prev: any) => ({ ...prev, questions }))
                           }}
-                          className="px-2 py-1 border border-border rounded text-xs font-bold"
-                        >
-                          <option value={0}>A</option>
-                          <option value={1}>B</option>
-                          <option value={2}>C</option>
-                          <option value={3}>D</option>
-                        </select>
+                          options={[
+                            { value: '0', label: 'A' },
+                            { value: '1', label: 'B' },
+                            { value: '2', label: 'C' },
+                            { value: '3', label: 'D' },
+                          ]}
+                        />
                       </div>
                       <div className="flex flex-col gap-0.5">
                         <label className="text-[9px] font-black">Giải thích</label>
@@ -801,6 +856,39 @@ export default function AdminListeningPage() {
         onUpdateTier={handleBulkUpdateAccessTier}
         onClearSelection={() => setSelectedTopicIds([])}
         isLoading={bulkUpdating}
+      />
+
+      <ConfirmModal
+        open={!!pendingDeleteTopicId}
+        title="Xóa chủ đề nghe?"
+        description="Chủ đề này cùng toàn bộ đề thi và phần nghe liên quan sẽ bị xóa. Hành động này không thể hoàn tác."
+        confirmLabel="Xóa chủ đề"
+        cancelLabel="Hủy"
+        variant="danger"
+        onConfirm={() => pendingDeleteTopicId && handleDeleteTopic(pendingDeleteTopicId)}
+        onCancel={() => setPendingDeleteTopicId(null)}
+      />
+
+      <ConfirmModal
+        open={!!pendingDeleteTestId}
+        title="Xóa đề thi nghe?"
+        description="Đề thi này cùng toàn bộ phần nghe và câu hỏi liên quan sẽ bị xóa."
+        confirmLabel="Xóa đề thi"
+        cancelLabel="Hủy"
+        variant="danger"
+        onConfirm={() => pendingDeleteTestId && handleDeleteTest(pendingDeleteTestId)}
+        onCancel={() => setPendingDeleteTestId(null)}
+      />
+
+      <ConfirmModal
+        open={!!pendingDeletePartId}
+        title="Xóa phần thi?"
+        description="Phần nghe này sẽ bị xóa khỏi đề thi hiện tại."
+        confirmLabel="Xóa phần thi"
+        cancelLabel="Hủy"
+        variant="danger"
+        onConfirm={() => pendingDeletePartId && handleDeletePart(pendingDeletePartId)}
+        onCancel={() => setPendingDeletePartId(null)}
       />
     </div>
   )
