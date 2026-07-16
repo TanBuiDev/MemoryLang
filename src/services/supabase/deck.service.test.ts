@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { deckService } from '@/services/supabase/deck.service'
+import { subscriptionService } from '@/services/supabase/subscription.service'
+import { SubscriptionLimitError, isSubscriptionLimitError } from '@/services/supabase/subscription.errors'
 
-const from = vi.fn()
-const select = vi.fn()
-const eq = vi.fn()
+const { from, select, eq } = vi.hoisted(() => ({
+  from: vi.fn(),
+  select: vi.fn(),
+  eq: vi.fn(),
+}))
 
 vi.mock('@/services/supabase/client', () => ({
   supabase: {
@@ -11,6 +15,13 @@ vi.mock('@/services/supabase/client', () => ({
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null })
     }
+  },
+}))
+
+vi.mock('@/services/supabase/subscription.service', () => ({
+  subscriptionService: {
+    canAddDeck: vi.fn().mockResolvedValue(true),
+    canCreateDecks: vi.fn().mockResolvedValue(true),
   },
 }))
 
@@ -33,7 +44,10 @@ function createdDeck(id: string, name: string) {
 
 describe('deckService.createLessonBatch', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     vi.clearAllMocks()
+    vi.mocked(subscriptionService.canAddDeck).mockResolvedValue(true)
+    vi.mocked(subscriptionService.canCreateDecks).mockResolvedValue(true)
     
     // Dynamic mock: eq returns a object with maybeSingle resolving to the passed value
     eq.mockImplementation((_, val) => {
@@ -59,6 +73,38 @@ describe('deckService.createLessonBatch', () => {
         })
       }
     })
+  })
+
+  it('blocks create when deck quota is exhausted', async () => {
+    vi.mocked(subscriptionService.canAddDeck).mockResolvedValueOnce(false)
+
+    await expect(deckService.create({
+      user_id: 'user-1',
+      name: 'Blocked deck',
+      source_language: 'en',
+      native_language: 'vi',
+    })).rejects.toBeInstanceOf(SubscriptionLimitError)
+
+    expect(subscriptionService.canAddDeck).toHaveBeenCalledWith('user-1')
+    expect(from).not.toHaveBeenCalledWith('decks')
+  })
+
+  it('blocks createLessonBatch before creating any deck when batch quota is exhausted', async () => {
+    vi.mocked(subscriptionService.canCreateDecks).mockResolvedValueOnce(false)
+    const create = vi.spyOn(deckService, 'create')
+
+    const result = await deckService.createLessonBatch({
+      base: { user_id: 'user-1', source_language: 'en', native_language: 'vi' },
+      lessons: [
+        { name: 'Bai hoc 01', termIds: ['term-1'] },
+        { name: 'Bai hoc 02', termIds: ['term-2'] },
+      ],
+    })
+
+    expect(subscriptionService.canCreateDecks).toHaveBeenCalledWith('user-1', 2)
+    expect(create).not.toHaveBeenCalled()
+    expect(result.createdDecks).toEqual([])
+    expect(isSubscriptionLimitError(result.error)).toBe(true)
   })
 
   it('creates each prepared lesson and links only its selected term ids', async () => {

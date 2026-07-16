@@ -2,7 +2,10 @@ import { supabase } from '@/services/supabase/client'
 import type { LessonDraft } from '@/features/decks/bulkLessons'
 import type { Deck, DeckVisibility } from '@/types/deck.types'
 import type { LanguageCode } from '@/types/language.types'
+import { FREE_LIMITS } from '@/types/subscription.types'
 import type { VocabularyItem } from '@/types/vocabulary.types'
+import { SubscriptionLimitError } from '@/services/supabase/subscription.errors'
+import { subscriptionService } from '@/services/supabase/subscription.service'
 import { flattenVocabularyItem } from './vocabulary.service'
 
 export interface DeckInput {
@@ -66,6 +69,20 @@ function getDeckPath(deckId: string, allDecks: Pick<Deck, 'id' | 'name' | 'paren
     current = parent
   }
   return path.join(' › ')
+}
+
+async function assertCanAddDeck(userId: string) {
+  const canAdd = await subscriptionService.canAddDeck(userId)
+  if (!canAdd) {
+    throw new SubscriptionLimitError('decks', FREE_LIMITS.maxDecks)
+  }
+}
+
+async function assertCanCreateDecks(userId: string, deckCount: number) {
+  const canCreate = await subscriptionService.canCreateDecks(userId, deckCount)
+  if (!canCreate) {
+    throw new SubscriptionLimitError('decks', FREE_LIMITS.maxDecks)
+  }
 }
 
 export const deckService = {
@@ -137,12 +154,20 @@ export const deckService = {
     return Array.from(termsMap.values())
   },
   async create(input: DeckInput): Promise<Deck> {
+    await assertCanAddDeck(input.user_id)
+
     const { data, error } = await supabase.from('decks').insert(input).select('*').single()
     if (error) throw error
     return data as Deck
   },
   async createLessonBatch({ base, lessons }: CreateLessonBatchInput): Promise<CreateLessonBatchResult> {
     const createdDecks: Deck[] = []
+
+    try {
+      await assertCanCreateDecks(base.user_id, lessons.length)
+    } catch (error) {
+      return { createdDecks, error }
+    }
 
     const uniqueTermIds = Array.from(new Set(lessons.flatMap((lesson) => lesson.termIds)))
     const globalTermIdByTermId = new Map<string, string>()
