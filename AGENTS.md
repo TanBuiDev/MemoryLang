@@ -66,6 +66,8 @@
 
 ### 3. Quy tắc Tái sử dụng Component (DRY UI)
 - Trước khi tạo một button, input, card, hoặc badge mới, PHẢI kiểm tra thư mục `src/components/ui/` và `src/components/common/`.
+- Với mọi nút hiển thị trong page, modal, drawer, toast action, form action hoặc confirmation flow, PHẢI dùng component `Button` từ `@/components/ui/button` với `variant` phù hợp (`primary`, `secondary`, `ghost`, `danger`). KHÔNG dùng raw `<button>` tự gắn `neo-button` thủ công, trừ trường hợp đó là icon-only/specialized control đã có pattern rõ trong codebase và phải giữ đủ các class nền tảng của `Button` (`inline-flex`, `min-h-10`, `items-center`, `justify-center`, `font-black`, `active:neo-button-active`).
+- Nút hủy/đóng trong modal phải dùng `<Button variant="ghost">`, nút hành động chính dùng `primary` hoặc `secondary`, hành động phá hủy dùng `danger`. Không tự tạo style riêng cho các nút này.
 - Luôn ưu tiên sử dụng các class utility có sẵn như `neo-card`, `neo-button`, `neo-button-active` thay vì tự viết CSS inline hoặc Tailwind class từ con số 0.
 - Nếu phát hiện code cũ đang dùng `<select>` hoặc `window.confirm`, nhiệm vụ đầu tiên của AI là refactor (tái cấu trúc) chúng sang custom component ngay lập tức.
 
