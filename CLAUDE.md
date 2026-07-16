@@ -133,6 +133,7 @@ Grammar and Listening topics use `access_tier` (`free`/`pro`) plus optional `tea
 
 ### Subscription & Payment
 MemoryLang has a Free/Pro subscription system backed by `subscriptions` and `payment_logs`. The MVP PayOS flow uses one Edge Function, `process-payment`, for authenticated app actions and PayOS webhooks. User actions send an `action` field; PayOS webhooks are detected by `{ data, signature }` and verified with `PAYOS_CHECKSUM_KEY`. PayOS does not provide a separate sandbox, so end-to-end payment verification must use a small real transaction.
+Admins manage pricing and subscriptions from `/app/admin/subscriptions`, including Pro monthly/yearly price edits, manual Pro grants, renewals, cancel-at-period-end, downgrades, payment history review, and audit logging. Subscription prices live in `subscription_plans`; `/app/upgrade` and `process-payment` read from this table, while PayOS webhook verification uses the amount stored in the pending `payment_logs` row.
 Subscription quota enforcement is shared across DB RPCs and Supabase services: Free users are limited to 100 active vocabulary terms and 5 decks, Pro requires active/trialing status plus a future or null `current_period_end`, and vocabulary/deck create paths call quota RPCs before inserting new `user_terms` or `decks`. UI success flows refresh `useSubscriptionStore` counts after quota-affecting writes.
 
 ### Notification system
@@ -193,10 +194,11 @@ The authenticated `nav.study` sidebar link resumes an active stored flashcard se
 - **CRITICAL:** When deploying new code that relies on database schema changes (such as new columns, tables, or policies), you must ensure that all corresponding SQL migrations under `supabase/migrations/` have been successfully run/applied to the remote production Supabase database. Otherwise, the live app will hit 400 Bad Request errors (`column table.column does not exist`). Use the Supabase MCP server or Supabase Dashboard to run DDL migrations.
 - Deploy edge functions: `npx supabase functions deploy <name> --project-ref brwvbpkgimhamivmaflu`
 - Edge functions source: `supabase/functions/<name>/index.ts`
-- **Edge Functions (3):**
+- **Edge Functions (4):**
   - `enrich-vocabulary` — dictionary lookup + machine translation
   - `search-images` — proxies Unsplash (primary), Pexels, and Pixabay APIs for vocabulary illustrations. All images are downloaded and re-uploaded to `vocabulary-images` bucket. API keys stored in `.env` and synced to Edge Function secrets via `pnpm sync:secrets`.
   - `generate-audio` — Google Cloud Text-to-Speech (WaveNet voices) with audio caching in Cloudflare R2. Accepts `text`, `language` (BCP-47), and optional `voice` name. Returns `audioUrl` + `cached` flag.
+  - `process-payment` — PayOS checkout, payment status/cancel actions, subscription cancellation, and unauthenticated PayOS webhook processing. Deployed with `--no-verify-jwt` so PayOS webhooks can reach the function; app actions still validate the Supabase auth header inside the function.
 - Dashboard: https://supabase.com/dashboard/project/brwvbpkgimhamivmaflu
 
 ## Git Conventions
