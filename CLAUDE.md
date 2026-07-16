@@ -67,14 +67,14 @@ src/
 | `profiles` | User profile (linked to auth.users) |
 | `language_profiles` | Per-language learning config |
 | `global_terms` | Shared vocabulary cache |
-| `user_terms` | Per-user vocabulary items (status, counts, review schedule, translation) |
+| `user_terms` | Per-user vocabulary progress (status, counts, review schedule, SRS state) linked to `global_terms` |
 | `term_relationships` | Directed links between user vocabulary terms (derivative, collocation, synonym, antonym, idiom, related) |
 | `decks` | Vocabulary collections |
-| `deck_terms` | Many-to-many join (decks <-> user_terms) |
+| `deck_terms` | Many-to-many join between decks and vocabulary terms; current app code links deck entries by `global_term_id` |
 | `flashcard_templates` | Card templates (MVP 2 placeholder) |
 | `study_sessions` | Study session records |
-| `quiz_results` | Legacy quiz attempt records (retained; translation-input MVP does not write results) |
-| `quiz_answers` | Legacy individual quiz answers (retained; translation-input MVP does not write answers) |
+| `quiz_results` | Quiz attempt records; translation-input sessions write aggregate result rows |
+| `quiz_answers` | Legacy individual quiz answers; translation-input sessions currently do not write per-question answers |
 | `notifications` | System/admin notifications (Realtime-enabled) |
 | `user_notification_reads` | Tracks which user has read which notification |
 
@@ -119,7 +119,7 @@ Quiz demo sessions scope vocabulary by deck through `getDemoVocabularyForDeck()`
 - Flashcard sessions collect viewed term IDs and calculated SM-2 review actions provisionally inside the persisted session snapshot while cards are shown or rated. Only explicit completion enqueues actions, viewed IDs, and the session summary in Dexie/IndexedDB, then flushes them through the `apply_study_review_batch` Supabase RPC; ending an incomplete session clears its active snapshot without enqueuing those results. Completed pending changes retain the local-first transactional read-merge-write queue so simultaneous completion writes cannot overwrite review progress, and they retry on app startup after login, starting another session, and best-effort on `visibilitychange`/`pagehide`. Vocabulary remains cached per user/deck for offline fallback. Legacy `increment_term_view_counts` still exists, but flashcard study uses the combined batch sync path.
 - Translation-input quiz setup selects all vocabulary or a deck, validates that active items have saved translations, and distinguishes empty, untranslated, partially translated, and failed-to-load sources before allowing start. When a selected source has both translated and untranslated active terms, setup shows the ready count against the total, names the untranslated terms, and links directly to their edit screens while still permitting a quiz from usable terms. The prompt shows source text plus optional IPA and part of speech; learners type the translation, retry incorrect input, or explicitly reveal the answer. Stored translations may contain comma/semicolon/newline-separated alternatives with a leading part-of-speech marker such as `(n)`; the quiz accepts an individual alternative while ignoring that marker. Revealing persists a no-point penalty for that question.
 - The quiz session keeps the answer field focused, shakes it briefly on incorrect submissions, and exposes lightweight input-friendly shortcuts: `Enter` checks the answer, `Alt+R` reveals the answer after an incorrect try, and `Escape` clears the draft answer.
-- Translation-input quiz sessions freeze generated questions and persist versioned progress (`index`, `score`, revealed/completed question IDs, and active session key) in `sessionStorage`, so reloads preserve order and reveal penalties without storing the draft input. Results currently show score only and do not write quiz statistics or update SRS.
+- Translation-input quiz sessions freeze generated questions and persist versioned progress (`index`, `score`, revealed/completed question IDs, and active session key) in `sessionStorage`, so reloads preserve order and reveal penalties without storing the draft input. Results save aggregate `quiz_results` rows for remote sessions, but currently pass an empty answers array, so `quiz_answers` remains legacy/unused for translation-input analytics. Quiz completion still does not update SRS.
 - Legacy quiz system (true/false, quiz_results, quiz_answers) is retained in DB for compatibility but is NOT used by the current translation-input MVP UI.
 
 ### Service abstraction
@@ -217,7 +217,7 @@ See `AGENTS.md` for commit workflow. Conventional commits: `feat:`, `fix:`, `doc
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **MemoryLang** (4096 symbols, 7422 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **MemoryLang** (5105 symbols, 8757 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
