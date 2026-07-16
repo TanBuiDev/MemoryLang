@@ -1,3 +1,5 @@
+import type { TeaserConfig } from '@/types/subscription.types'
+
 export interface ListeningTopic {
   id: string
   title: string
@@ -54,4 +56,12 @@ export interface ListeningSession {
   correctCount: number
   wrongCount: number
   skippedCount: number
+}
+
+export interface ListeningTopicAccess {
+  id: string
+  title: string
+  access_tier?: 'free' | 'pro'
+  teaser_config?: TeaserConfig
+  is_published?: boolean
 }

@@ -1,5 +1,11 @@
 import { supabase } from '@/services/supabase/client'
-import type { ListeningTopic, ListeningTest, ListeningPart, ListeningQuestion } from '@/types/listening.types'
+import type {
+  ListeningTopic,
+  ListeningTest,
+  ListeningPart,
+  ListeningQuestion,
+  ListeningTopicAccess,
+} from '@/types/listening.types'
 
 const mapDbTopic = (dbTopic: any): ListeningTopic => ({
   id: dbTopic.id,
@@ -9,6 +15,18 @@ const mapDbTopic = (dbTopic: any): ListeningTopic => ({
   access_tier: dbTopic.access_tier || 'free',
   teaser_config: dbTopic.teaser_config || { enabled: true, type: 'title_only' }
 })
+
+const mapDbTopicAccess = (dbTopic: any): ListeningTopicAccess | null => {
+  if (!dbTopic) return null
+
+  return {
+    id: dbTopic.id,
+    title: dbTopic.title,
+    access_tier: dbTopic.access_tier || 'free',
+    teaser_config: dbTopic.teaser_config || { enabled: true, type: 'title_only' },
+    is_published: dbTopic.is_published,
+  }
+}
 
 const mapDbTest = (dbTest: any): ListeningTest => ({
   id: dbTest.id,
@@ -28,6 +46,42 @@ const mapDbPart = (dbPart: any): ListeningPart => ({
 })
 
 export const listeningService = {
+  // Lấy metadata topic tối thiểu để kiểm tra access trước khi tải payload sâu
+  async getTopic(topicId: string): Promise<ListeningTopicAccess | null> {
+    const { data, error } = await supabase
+      .from('listening_topics')
+      .select('id,title,access_tier,teaser_config,is_published')
+      .eq('id', topicId)
+      .maybeSingle()
+
+    if (error) throw error
+    return mapDbTopicAccess(data)
+  },
+
+  async getTopicByTestId(testId: string): Promise<ListeningTopicAccess | null> {
+    const { data, error } = await supabase
+      .from('listening_tests')
+      .select('topic:listening_topics(id,title,access_tier,teaser_config,is_published)')
+      .eq('id', testId)
+      .maybeSingle()
+
+    if (error) throw error
+    return mapDbTopicAccess(Array.isArray(data?.topic) ? data.topic[0] : data?.topic)
+  },
+
+  async getTopicByPartId(partId: string): Promise<ListeningTopicAccess | null> {
+    const { data, error } = await supabase
+      .from('listening_parts')
+      .select('test:listening_tests(topic:listening_topics(id,title,access_tier,teaser_config,is_published))')
+      .eq('id', partId)
+      .maybeSingle()
+
+    if (error) throw error
+    const test = Array.isArray(data?.test) ? data.test[0] : data?.test
+    const topic = Array.isArray(test?.topic) ? test.topic[0] : test?.topic
+    return mapDbTopicAccess(topic)
+  },
+
   // Lấy danh sách các chủ đề luyện nghe đã xuất bản
   async listTopics(): Promise<ListeningTopic[]> {
     const { data, error } = await supabase
