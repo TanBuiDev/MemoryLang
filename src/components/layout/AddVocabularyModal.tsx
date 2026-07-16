@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useLanguageStore } from '@/stores/useLanguageStore'
 import { cn } from '@/utils/cn'
 import { supabase } from '@/services/supabase/client'
+import { isSubscriptionLimitError } from '@/services/supabase/subscription.errors'
 import { Select } from '@/components/ui/select'
 import { useNavigate } from 'react-router-dom'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
@@ -118,6 +119,7 @@ export function AddVocabularyModal({ isOpen, onClose, initialWord, onSuccess }: 
       })
 
       setSaveStatus('saved')
+      void useSubscriptionStore.getState().loadSubscription()
       onSuccess?.()
       setTimeout(() => {
         onClose()
@@ -125,7 +127,12 @@ export function AddVocabularyModal({ isOpen, onClose, initialWord, onSuccess }: 
     } catch (err: any) {
       console.error('Error creating vocabulary item:', err)
       setSaveStatus('error')
-      setErrorMessage(err?.message || 'Có lỗi xảy ra khi thêm từ vựng.')
+      if (isSubscriptionLimitError(err)) {
+        setErrorMessage(`Bạn đã đạt giới hạn ${err.limit} từ vựng của gói Free. Hãy nâng cấp Pro để thêm không giới hạn.`)
+        void useSubscriptionStore.getState().loadSubscription()
+      } else {
+        setErrorMessage(err?.message || 'Có lỗi xảy ra khi thêm từ vựng.')
+      }
       setIsSaving(false)
     }
   }

@@ -12,8 +12,10 @@ import { demoDecks, demoVocabulary } from '@/features/demo/demoData'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { deckService } from '@/services/supabase/deck.service'
+import { isSubscriptionLimitError } from '@/services/supabase/subscription.errors'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import { useStudyStore } from '@/stores/useStudyStore'
 import { useQuizStore } from '@/stores/useQuizStore'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
@@ -122,8 +124,11 @@ export function DeckDetailPage() {
     onSuccess: async () => {
       setIsCreatingChild(false)
       setNewChildName('')
-      await queryClient.invalidateQueries({ queryKey: ['deck-children', id] })
-      await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['deck-children', id] }),
+        queryClient.invalidateQueries({ queryKey: ['decks', user?.id] }),
+        useSubscriptionStore.getState().loadSubscription(),
+      ])
     }
   })
 
@@ -143,8 +148,11 @@ export function DeckDetailPage() {
     mutationFn: (childId: string) => deckService.remove(childId),
     onSuccess: async () => {
       setPendingDeleteChildId(null)
-      await queryClient.invalidateQueries({ queryKey: ['deck-children', id] })
-      await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['deck-children', id] }),
+        queryClient.invalidateQueries({ queryKey: ['decks', user?.id] }),
+        useSubscriptionStore.getState().loadSubscription(),
+      ])
     }
   })
   const removeTermMutation = useMutation({
@@ -368,6 +376,13 @@ export function DeckDetailPage() {
                         {t('actions.cancel')}
                       </button>
                     </div>
+                    {createChildMutation.error instanceof Error ? (
+                      <p className="text-xs font-black text-danger">
+                        {isSubscriptionLimitError(createChildMutation.error)
+                          ? `Bạn đã đạt giới hạn ${createChildMutation.error.limit} bộ thẻ của gói Free. Hãy nâng cấp Pro để tạo thêm.`
+                          : createChildMutation.error.message}
+                      </p>
+                    ) : null}
                   </div>
                 </Card>
               ) : (
@@ -521,6 +536,9 @@ export function DeckDetailPage() {
         }}
         onCancel={() => setPendingDeleteChildId(null)}
       />
+      {deleteChildMutation.error instanceof Error ? (
+        <Card className="mt-4 font-black text-danger">{deleteChildMutation.error.message}</Card>
+      ) : null}
     </>
   )
 }

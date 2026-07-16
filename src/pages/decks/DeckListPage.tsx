@@ -12,8 +12,10 @@ import { demoDecks } from '@/features/demo/demoData'
 import { useI18n } from '@/i18n'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { deckService } from '@/services/supabase/deck.service'
+import { isSubscriptionLimitError } from '@/services/supabase/subscription.errors'
 import { quizService } from '@/services/supabase/quiz.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import { useStudyStore } from '@/stores/useStudyStore'
 import { useQuizStore } from '@/stores/useQuizStore'
 import { ProFeatureGate } from '@/components/common/ProFeatureGate'
@@ -56,7 +58,10 @@ export function DeckListPage() {
       return deck
     },
     onSuccess: async (deck) => {
-      await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['decks', user?.id] }),
+        useSubscriptionStore.getState().loadSubscription(),
+      ])
       navigate(`/app/decks/${deck.id}`)
     },
   })
@@ -64,7 +69,10 @@ export function DeckListPage() {
     mutationFn: (deckId: string) => deckService.remove(deckId),
     onSuccess: async () => {
       setPendingDeleteId(null)
-      await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['decks', user?.id] }),
+        useSubscriptionStore.getState().loadSubscription(),
+      ])
     },
   })
   const updateMutation = useMutation({
@@ -206,6 +214,13 @@ export function DeckListPage() {
           </ProFeatureGate>
         }
       />
+      {createMutation.error instanceof Error ? (
+        <Card className="mb-4 font-black text-danger">
+          {isSubscriptionLimitError(createMutation.error)
+            ? `Bạn đã đạt giới hạn ${createMutation.error.limit} bộ thẻ của gói Free. Hãy nâng cấp Pro để tạo thêm.`
+            : createMutation.error.message}
+        </Card>
+      ) : null}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {decksQuery.isLoading ? <Card className="font-black">{t('decks.loading')}</Card> : null}
         {decksQuery.error ? <Card className="font-black text-danger">{decksQuery.error.message}</Card> : null}

@@ -22,8 +22,10 @@ import { useI18n } from '@/i18n'
 import { studyLocalDb } from '@/services/local/studyLocalDb'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { deckService } from '@/services/supabase/deck.service'
+import { isSubscriptionLimitError } from '@/services/supabase/subscription.errors'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import type { Deck } from '@/types/deck.types'
 import type { VocabularyItem, VocabularyItemType, VocabularyStatus } from '@/types/vocabulary.types'
 import { speak } from '@/utils/audio'
@@ -357,6 +359,7 @@ export function VocabularyListPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] }),
         queryClient.invalidateQueries({ queryKey: ['statistics', user?.id] }),
+        useSubscriptionStore.getState().loadSubscription(),
       ])
     },
     onError: async (_error, ids) => {
@@ -393,7 +396,10 @@ export function VocabularyListPage() {
       setLessonModalOpen(false)
       setLessonFeedback({ createdDecks: result.createdDecks, partial: Boolean(result.error) })
       if (!result.error) exitSelectMode()
-      await queryClient.invalidateQueries({ queryKey: ['decks', user?.id] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['decks', user?.id] }),
+        useSubscriptionStore.getState().loadSubscription(),
+      ])
     },
   })
 
@@ -712,7 +718,11 @@ export function VocabularyListPage() {
           <p className="mt-3 font-black">{t('vocabulary.lessonProjection', { count: plannedLessons.length })}</p>
         ) : null}
         {createLessonsMutation.error instanceof Error ? (
-          <p className="mt-3 text-sm font-black text-danger">{t('vocabulary.lessonCreateFailed')}</p>
+          <p className="mt-3 text-sm font-black text-danger">
+            {isSubscriptionLimitError(createLessonsMutation.error)
+              ? `Bạn đã đạt giới hạn ${createLessonsMutation.error.limit} bộ thẻ của gói Free. Hãy nâng cấp Pro để tạo thêm.`
+              : t('vocabulary.lessonCreateFailed')}
+          </p>
         ) : null}
       </ConfirmModal>
       <ConfirmModal
@@ -741,6 +751,7 @@ export function VocabularyListPage() {
         initialWord={quickAddWord ?? undefined}
         onSuccess={() => {
           void queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] })
+          void useSubscriptionStore.getState().loadSubscription()
         }}
       />
     </>

@@ -11,8 +11,10 @@ import { useI18n } from '@/i18n'
 import { studyLocalDb } from '@/services/local/studyLocalDb'
 import { enrichVocabulary } from '@/services/api/enrichVocabulary.api'
 import { isSupabaseConfigured } from '@/services/supabase/client'
+import { isSubscriptionLimitError } from '@/services/supabase/subscription.errors'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import type { EnrichedVocabulary, VocabularyItemType, ExampleSentence } from '@/types/vocabulary.types'
 import { inferItemType } from '@/utils/normalizeText'
 
@@ -46,10 +48,17 @@ export function AddVocabularyForm({ onSuccess }: AddVocabularyFormProps) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] }),
         queryClient.invalidateQueries({ queryKey: ['statistics', user?.id] }),
+        useSubscriptionStore.getState().loadSubscription(),
       ])
       onSuccess()
     },
     onError: async (error, values) => {
+      if (isSubscriptionLimitError(error)) {
+        setMessage(`Bạn đã đạt giới hạn ${error.limit} từ vựng của gói Free. Hãy nâng cấp Pro để thêm không giới hạn.`)
+        void useSubscriptionStore.getState().loadSubscription()
+        return
+      }
+
       setMessage(error instanceof Error ? error.message : 'Could not save vocabulary.')
       if (user) {
         await studyLocalDb.enqueueMutation({
