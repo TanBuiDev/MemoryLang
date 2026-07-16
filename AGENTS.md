@@ -81,7 +81,9 @@
 
 - Khi thêm route hoặc page dùng `React.lazy`, PHẢI dùng `lazyWithChunkRecovery()` từ `src/utils/chunkLoadRecovery.ts`, không gọi `React.lazy(() => import(...))` trực tiếp cho route lazy-load.
 - Nếu production báo `Failed to fetch dynamically imported module: .../assets/*.js`, trước tiên phải xem đây là lỗi stale SPA/chunk sau deploy: kiểm tra URL chunk, `Content-Type`, `Cache-Control`, và hash `index-*.js` hiện tại trên custom domain.
-- KHÔNG cấu hình cache `immutable` dài hạn cho JavaScript/CSS chunks trong `public/_headers`. JS/CSS phải `max-age=0, must-revalidate`; missing assets phải trả 404 thật qua `public/404.html`, không được fallback thành `index.html`.
+- KHÔNG cấu hình cache `immutable` dài hạn cho JavaScript/CSS chunks trong `public/_headers`. JS/CSS phải `max-age=0, must-revalidate`; stale chunk fallback được xử lý bằng `lazyWithChunkRecovery()`, không xử lý bằng top-level `404.html`.
+- KHÔNG thêm rule rewrite 404 kiểu `/assets/* /404.html 404` vào `public/_redirects`. Cloudflare Pages chỉ hỗ trợ rewrite/proxy status `200`; rule 404 không hợp lệ có thể làm hỏng SPA fallback và khiến direct route như `/app/admin` trả trang "Không tìm thấy tài nguyên".
+- KHÔNG tạo top-level `public/404.html` cho SPA này. Cloudflare Pages xem sự tồn tại của root `404.html` là tín hiệu dùng Not Found behavior thay vì SPA rendering, khiến URL trực tiếp như `/app/admin` có thể trả 404 trước khi React Router chạy.
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence

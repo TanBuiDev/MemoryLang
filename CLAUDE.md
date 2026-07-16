@@ -206,7 +206,9 @@ The authenticated `nav.study` sidebar link resumes an active stored flashcard se
 - Vite emits hashed lazy chunks under `/assets`. Cloudflare Pages only serves the current deployment on the custom domain, so users with an older in-memory SPA can request stale chunks after a new deploy.
 - Dynamic import failures such as `Failed to fetch dynamically imported module: .../assets/*.js` usually mean stale deployment/chunk cache, not a broken page component.
 - Lazy routes must use `lazyWithChunkRecovery()` from `src/utils/chunkLoadRecovery.ts` so stale chunk failures reload the app once and then use the newest `index.html`.
-- Do not configure JS chunks with year-long immutable caching. `/assets/*.js`, root `/*.js`, `/assets/*.css`, and root `/*.css` must revalidate; missing assets must hit a real `404.html` instead of falling back to SPA `index.html`.
+- Do not configure JS chunks with year-long immutable caching. `/assets/*.js`, root `/*.js`, `/assets/*.css`, and root `/*.css` must revalidate; stale chunk fallback is handled in the app by `lazyWithChunkRecovery()`, not by a top-level `404.html`.
+- Cloudflare Pages `_redirects` only supports local proxy/rewrite status `200`. Do not add unsupported rewrite rules such as `/assets/* /404.html 404`; they can prevent the SPA fallback `/* /index.html 200` from working and make direct routes like `/app/admin` serve the static 404 page.
+- Do not ship a top-level `public/404.html` for this SPA. On Cloudflare Pages, a root `404.html` switches missing-path handling to Not Found behavior; without it, Pages treats the project as an SPA and routes deep links back to `/`.
 
 ## Git Conventions
 See `AGENTS.md` for commit workflow. Conventional commits: `feat:`, `fix:`, `docs:`, `chore:`, `test:`, `refactor:`. No auto-push. Check for secrets before committing.
