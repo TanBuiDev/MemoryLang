@@ -127,6 +127,19 @@ export const subscriptionService = {
   },
 
   /**
+   * Kiểm tra user có quyền tạo nhiều deck trong một batch không (gọi RPC).
+   */
+  async canCreateDecks(userId: string, deckCount: number): Promise<boolean> {
+    const { data, error } = await supabase.rpc('can_user_create_decks', {
+      p_user_id: userId,
+      p_new_deck_count: deckCount,
+    })
+
+    if (error) throw error
+    return data as boolean
+  },
+
+  /**
    * Bulk update access_tier cho listening/grammar topics (admin).
    */
   async bulkUpdateAccessTier(
