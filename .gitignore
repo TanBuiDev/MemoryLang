@@ -38,7 +38,6 @@ skills-lock.json
 /test-results/
 /playwright-report/
 /playwright/.cache/
-docs/superpowers/plans/
 .playwright-mcp/
 .opencode/skills/
 
