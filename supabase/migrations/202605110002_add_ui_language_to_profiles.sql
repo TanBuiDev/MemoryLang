@@ -1,6 +1,5 @@
 alter table public.profiles
 add column if not exists ui_language text not null default 'vi';
-
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin

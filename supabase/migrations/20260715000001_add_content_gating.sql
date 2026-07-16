@@ -7,30 +7,25 @@
 ALTER TABLE public.listening_topics
   ADD COLUMN IF NOT EXISTS access_tier TEXT NOT NULL DEFAULT 'free'
     CHECK (access_tier IN ('free', 'pro'));
-
 ALTER TABLE public.listening_topics
   ADD COLUMN IF NOT EXISTS teaser_config JSONB NOT NULL DEFAULT '{
     "enabled": true,
     "type": "title_only"
   }'::JSONB;
-
 -- 2. Thêm access_tier + teaser_config vào grammar_topics
 ALTER TABLE public.grammar_topics
   ADD COLUMN IF NOT EXISTS access_tier TEXT NOT NULL DEFAULT 'free'
     CHECK (access_tier IN ('free', 'pro'));
-
 ALTER TABLE public.grammar_topics
   ADD COLUMN IF NOT EXISTS teaser_config JSONB NOT NULL DEFAULT '{
     "enabled": true,
     "type": "theory_only"
   }'::JSONB;
-
 -- 3. Indexes cho filter by access_tier
 CREATE INDEX IF NOT EXISTS listening_topics_access_tier_idx
   ON public.listening_topics(access_tier);
 CREATE INDEX IF NOT EXISTS grammar_topics_access_tier_idx
   ON public.grammar_topics(access_tier);
-
 -- 4. RPC: Bulk update access_tier (admin only, validated by SECURITY DEFINER + is_admin check)
 CREATE OR REPLACE FUNCTION public.bulk_update_access_tier(
   p_table TEXT,
@@ -61,7 +56,6 @@ BEGIN
   END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- 5. RPC: Update teaser_config cho một topic (admin only)
 CREATE OR REPLACE FUNCTION public.update_teaser_config(
   p_table TEXT,

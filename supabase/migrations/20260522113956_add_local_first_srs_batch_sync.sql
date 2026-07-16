@@ -2,7 +2,6 @@ alter table public.user_terms
   add column if not exists srs_repetition int not null default 0,
   add column if not exists srs_interval_days int not null default 0,
   add column if not exists srs_ease_factor numeric(4,2) not null default 2.5;
-
 create or replace function public.apply_study_review_batch(
   actions jsonb default '[]'::jsonb,
   viewed_term_ids uuid[] default '{}'::uuid[],
@@ -59,5 +58,4 @@ begin
   end if;
 end;
 $$;
-
 grant execute on function public.apply_study_review_batch(jsonb, uuid[], jsonb) to authenticated;

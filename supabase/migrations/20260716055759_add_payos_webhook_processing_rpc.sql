@@ -1,7 +1,6 @@
 CREATE UNIQUE INDEX IF NOT EXISTS payment_logs_payos_order_unique_idx
   ON public.payment_logs(payos_order_code)
   WHERE payos_order_code IS NOT NULL;
-
 CREATE OR REPLACE FUNCTION public.process_payos_webhook_payment(
   p_order_code text,
   p_payment_status text,
@@ -112,11 +111,9 @@ BEGIN
   );
 END;
 $$;
-
 REVOKE ALL ON FUNCTION public.process_payos_webhook_payment(
   text, text, integer, text, jsonb, timestamptz, timestamptz
 ) FROM PUBLIC;
-
 GRANT EXECUTE ON FUNCTION public.process_payos_webhook_payment(
   text, text, integer, text, jsonb, timestamptz, timestamptz
 ) TO service_role;

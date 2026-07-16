@@ -9,5 +9,4 @@ as $$
   where user_id = auth.uid()
     and id = any(term_ids);
 $$;
-
 grant execute on function public.increment_term_view_counts(uuid[]) to authenticated;

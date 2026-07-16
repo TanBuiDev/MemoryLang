@@ -1,6 +1,5 @@
 alter table public.profiles
   add column if not exists password_set boolean not null default false;
-
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin

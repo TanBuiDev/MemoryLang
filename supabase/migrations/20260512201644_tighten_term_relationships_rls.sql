@@ -1,6 +1,5 @@
 drop policy if exists "term_relationships through owned source" on public.term_relationships;
 drop policy if exists "term_relationships through owned terms" on public.term_relationships;
-
 create policy "term_relationships through owned terms" on public.term_relationships
 for all to authenticated
 using (

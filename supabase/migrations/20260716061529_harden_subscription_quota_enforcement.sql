@@ -18,9 +18,7 @@ begin
   );
 end;
 $$;
-
 revoke all on function public.is_user_pro(uuid) from public;
-
 create or replace function public.can_user_add_term(p_user_id uuid)
 returns boolean
 language plpgsql
@@ -47,7 +45,6 @@ begin
   return v_term_count < 100;
 end;
 $$;
-
 create or replace function public.can_user_add_deck(p_user_id uuid)
 returns boolean
 language plpgsql
@@ -73,7 +70,6 @@ begin
   return v_deck_count < 5;
 end;
 $$;
-
 create or replace function public.can_user_create_decks(
   p_user_id uuid,
   p_new_deck_count integer
@@ -106,11 +102,9 @@ begin
   return v_deck_count + p_new_deck_count <= 5;
 end;
 $$;
-
 revoke all on function public.can_user_add_term(uuid) from public;
 revoke all on function public.can_user_add_deck(uuid) from public;
 revoke all on function public.can_user_create_decks(uuid, integer) from public;
-
 grant execute on function public.can_user_add_term(uuid) to authenticated;
 grant execute on function public.can_user_add_deck(uuid) to authenticated;
 grant execute on function public.can_user_create_decks(uuid, integer) to authenticated;

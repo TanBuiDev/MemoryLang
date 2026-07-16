@@ -31,10 +31,8 @@ BEGIN
   );
 END;
 $$;
-
 REVOKE ALL ON FUNCTION public.is_user_pro(UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_user_pro(UUID) TO authenticated;
-
 CREATE OR REPLACE FUNCTION public.can_user_add_term(p_user_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -65,10 +63,8 @@ BEGIN
   RETURN v_count < 100;
 END;
 $$;
-
 REVOKE ALL ON FUNCTION public.can_user_add_term(UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.can_user_add_term(UUID) TO authenticated;
-
 CREATE OR REPLACE FUNCTION public.can_user_add_deck(p_user_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -99,12 +95,9 @@ BEGIN
   RETURN v_count < 5;
 END;
 $$;
-
 REVOKE ALL ON FUNCTION public.can_user_add_deck(UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.can_user_add_deck(UUID) TO authenticated;
-
 DROP POLICY IF EXISTS "anyone can view published listening tests" ON public.listening_tests;
-
 CREATE POLICY "users can view accessible published listening tests"
   ON public.listening_tests
   FOR SELECT
@@ -124,9 +117,7 @@ CREATE POLICY "users can view accessible published listening tests"
         )
       )
   ));
-
 DROP POLICY IF EXISTS "anyone can view published listening parts" ON public.listening_parts;
-
 CREATE POLICY "users can view accessible published listening parts"
   ON public.listening_parts
   FOR SELECT
@@ -147,9 +138,7 @@ CREATE POLICY "users can view accessible published listening parts"
         )
       )
   ));
-
 DROP POLICY IF EXISTS "anyone can view blocks of published topics" ON public.lesson_blocks;
-
 CREATE POLICY "users can view accessible blocks of published topics"
   ON public.lesson_blocks
   FOR SELECT
@@ -169,9 +158,7 @@ CREATE POLICY "users can view accessible blocks of published topics"
         )
       )
   ));
-
 DROP POLICY IF EXISTS "anyone can view grammar exercises" ON public.grammar_exercises;
-
 CREATE POLICY "users can view accessible grammar exercises"
   ON public.grammar_exercises
   FOR SELECT

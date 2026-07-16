@@ -3,7 +3,6 @@
 update public.global_terms
 set meanings = '[]'::jsonb
 where source_language != native_language;
-
 -- Fix user_terms meanings: same treatment for user vocabulary items
 -- that were populated from the enrichment (English definitions instead of translations).
 update public.user_terms
