@@ -3,6 +3,7 @@ import {
   BarChart3,
   Bell,
   BookOpen,
+  CreditCard,
   Database,
   Gamepad2,
   Headphones,
@@ -29,6 +30,7 @@ interface SidebarItem {
 const sidebarItems: SidebarItem[] = [
   { name: 'Dashboard', to: '/app/admin', icon: LayoutDashboard, phase: 1, isReady: true },
   { name: 'Người dùng', to: '/app/admin/users', icon: Users, phase: 1, isReady: true },
+  { name: 'Gói đăng ký', to: '/app/admin/subscriptions', icon: CreditCard, phase: 5, isReady: true },
   { name: 'Thông báo', to: '/app/admin/notifications', icon: Bell, phase: 1, isReady: true },
   { name: 'Cấu hình TTS', to: '/app/admin/tts', icon: Volume2, phase: 2, isReady: true },
   { name: 'API Keys & Secrets', to: '/app/admin/secrets', icon: KeyRound, phase: 2, isReady: true },

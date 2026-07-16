@@ -40,6 +40,7 @@ import { UpgradeSuccessPage } from '@/pages/subscription/UpgradeSuccessPage'
 const LazyAdminLayout = React.lazy(() => import('@/components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })))
 const AdminDashboardPage = React.lazy(() => import('@/pages/admin/AdminDashboardPage'))
 const AdminUsersPage = React.lazy(() => import('@/pages/admin/AdminUsersPage'))
+const AdminSubscriptionsPage = React.lazy(() => import('@/pages/admin/AdminSubscriptionsPage'))
 const AdminTtsPage = React.lazy(() => import('@/pages/admin/AdminTtsPage'))
 const AdminSecretsPage = React.lazy(() => import('@/pages/admin/AdminSecretsPage'))
 const AdminFeaturesPage = React.lazy(() => import('@/pages/admin/AdminFeaturesPage'))
@@ -144,6 +145,7 @@ export const router = createBrowserRouter([
                 children: [
                   { index: true, element: <AdminDashboardPage /> },
                   { path: 'users', element: <AdminUsersPage /> },
+                  { path: 'subscriptions', element: <AdminSubscriptionsPage /> },
                   { path: 'tts', element: <AdminTtsPage /> },
                   { path: 'secrets', element: <AdminSecretsPage /> },
                    { path: 'features', element: <AdminFeaturesPage /> },

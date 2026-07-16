@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Shield, ShieldAlert, User, UserX, Crown } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
 import { DataTable } from '@/components/admin/DataTable'
@@ -67,46 +68,6 @@ export default function AdminUsersPage() {
         } catch (err: any) {
           console.error(err)
           setError(err.message || 'Không thể thay đổi quyền quản trị')
-        } finally {
-          setActionLoading(null)
-        }
-      },
-    })
-  }
-
-  const handleToggleSubscription = (userId: string, isProNow: boolean) => {
-    if (actionLoading) return
-
-    setConfirmModal({
-      open: true,
-      title: isProNow ? 'Hạ cấp xuống gói Free' : 'Nâng cấp lên gói Pro',
-      description: isProNow
-        ? 'Bạn có chắc chắn muốn hạ cấp người dùng này xuống gói Free không?'
-        : 'Bạn có chắc chắn muốn nâng cấp người dùng này lên gói Pro không?',
-      confirmLabel: 'Xác nhận',
-      cancelLabel: 'Hủy',
-      onConfirm: async () => {
-        setConfirmModal(null)
-        try {
-          setActionLoading(userId)
-          const newPlan = isProNow ? 'free' : 'pro'
-          await adminService.updateUserSubscription(userId, newPlan)
-          setUsers((prev) =>
-            prev.map((u) =>
-              u.id === userId
-                ? {
-                    ...u,
-                    subscriptions: {
-                      plan_type: newPlan,
-                      status: 'active',
-                    },
-                  }
-                : u
-            )
-          )
-        } catch (err: any) {
-          console.error(err)
-          setError(err.message || 'Không thể thay đổi gói dịch vụ')
         } finally {
           setActionLoading(null)
         }
@@ -196,29 +157,15 @@ export default function AdminUsersPage() {
         return (
           <div className="flex justify-center gap-2">
             {/* Toggle Pro Button */}
-            <button
-              onClick={() => handleToggleSubscription(row.id, isPro)}
-              disabled={actionLoading === row.id}
+            <Link
+              to={`/app/admin/subscriptions?user=${row.id}`}
               className={`neo-button min-h-0 px-2.5 py-1.5 rounded-md border-2 border-border text-xs font-black flex items-center gap-1.5 transition-all ${
-                isPro
-                  ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                  : 'bg-yellow-400 hover:bg-yellow-300 text-navy'
+                isPro ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 'bg-yellow-400 hover:bg-yellow-300 text-navy'
               }`}
             >
-              {actionLoading === row.id ? (
-                <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : isPro ? (
-                <>
-                  <Crown size={14} />
-                  Gỡ PRO
-                </>
-              ) : (
-                <>
-                  <Crown size={14} />
-                  Cấp PRO
-                </>
-              )}
-            </button>
+              <Crown size={14} />
+              Quản lý gói
+            </Link>
 
             {/* Toggle Admin Button */}
             <button
