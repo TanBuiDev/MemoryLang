@@ -83,7 +83,7 @@ export const subscriptionService = {
 
   /**
    * Tạo payment link qua Edge Function process-payment.
-   * Trả về QR code URL + order info từ PayOS.
+   * Trả về payload VietQR, checkout URL và thông tin đơn hàng từ PayOS.
    */
   async createPayment(
     plan: PlanType,

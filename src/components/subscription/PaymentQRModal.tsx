@@ -18,6 +18,18 @@ interface PaymentQRModalProps {
 
 const POLL_INTERVAL = 5_000 // 5 giây
 
+async function createQrImageUrl(payload: string) {
+  const { default: QRCode } = await import('qrcode')
+  const svg = await QRCode.toString(payload, {
+    type: 'svg',
+    margin: 1,
+    width: 224,
+    errorCorrectionLevel: 'M',
+  })
+
+  return `data:image/svg+xml;base64,${window.btoa(svg)}`
+}
+
 export function PaymentQRModal({
   open,
   plan,
@@ -45,7 +57,8 @@ export function PaymentQRModal({
       setStatus('idle')
       try {
         const result = await subscriptionService.createPayment(plan, cycle)
-        setQrCode(result.qrCode)
+        const qrImageUrl = await createQrImageUrl(result.qrCode)
+        setQrCode(qrImageUrl)
         setCheckoutUrl(result.checkoutUrl)
         setOrderCode(result.orderCode)
         setAmount(result.amount)
