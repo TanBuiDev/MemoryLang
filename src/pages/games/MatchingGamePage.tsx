@@ -566,12 +566,12 @@ export default function MatchingGamePage() {
         </div>
 
         {/* Game Matching Layout Container */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 relative">
+        <div className="grid grid-cols-2 gap-x-2 sm:gap-x-4 gap-y-2.5 sm:gap-y-3.5 relative">
           {/* Column Headers */}
-          <div className="text-center text-xs font-black uppercase text-slate-500 tracking-wider col-span-1">
+          <div className="text-center text-[11px] sm:text-xs font-black uppercase text-slate-500 tracking-wider col-span-1">
             Từ tiếng Anh
           </div>
-          <div className="text-center text-xs font-black uppercase text-slate-500 tracking-wider col-span-1">
+          <div className="text-center text-[11px] sm:text-xs font-black uppercase text-slate-500 tracking-wider col-span-1">
             Nghĩa tiếng Việt
           </div>
 
@@ -614,10 +614,10 @@ export default function MatchingGamePage() {
                     stateClasses
                   )}
                 >
-                  <div className="flex-1 p-2.5 flex flex-col justify-center">
-                    <span className="font-black text-sm block md:text-base leading-tight">{item.source_text}</span>
+                  <div className="flex-1 p-2 sm:p-2.5 flex flex-col justify-center">
+                    <span className="font-black text-xs sm:text-sm md:text-base leading-tight">{item.source_text}</span>
                     {item.ipa && (
-                      <span className="text-xs text-purple-700 font-mono font-bold mt-1 block">
+                      <span className="text-[11px] sm:text-xs text-purple-700 font-mono font-bold mt-0.5 sm:mt-1 block">
                         {item.ipa}
                       </span>
                     )}
@@ -625,7 +625,7 @@ export default function MatchingGamePage() {
 
                   {/* Row 2: Part of speech & Vibrant Speaker Button */}
                   <div className="border-t-2 border-dashed border-slate-900/20 bg-slate-900/5 flex items-stretch justify-between select-none">
-                    <div className="px-2.5 py-1 text-slate-700 uppercase text-[9px] font-black tracking-wider flex items-center">
+                    <div className="px-2 sm:px-2.5 py-1 text-slate-700 uppercase text-[8px] sm:text-[9px] font-black tracking-wider flex items-center">
                       {item.part_of_speech
                         ? item.part_of_speech.split(',').map((s) => s.trim()).join(' / ')
                         : 'VOCABULARY'}
@@ -642,7 +642,7 @@ export default function MatchingGamePage() {
                           globalTermId: item.id,
                         })
                       }}
-                      className="border-l-2 border-slate-900 bg-[#fdc800] text-slate-900 px-2.5 py-1 hover:bg-amber-300 active:bg-amber-400 transition-colors flex items-center justify-center cursor-pointer font-black"
+                      className="border-l-2 border-slate-900 bg-[#fdc800] text-slate-900 px-2 sm:px-2.5 py-1 hover:bg-amber-300 active:bg-amber-400 transition-colors flex items-center justify-center cursor-pointer font-black"
                       title="Phát âm"
                     >
                       <Volume2 className="w-3.5 h-3.5" />
@@ -683,22 +683,22 @@ export default function MatchingGamePage() {
                   key={`right-${item.id}`}
                   onClick={() => handleRightClick(index)}
                   className={cn(
-                    'p-3 border-3 rounded-xl transition-colors duration-150 cursor-pointer relative min-h-[84px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#000] h-full',
+                    'px-2.5 py-2 sm:p-3 border-3 rounded-xl transition-colors duration-150 cursor-pointer relative min-h-[84px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#000] h-full',
                     stateClasses
                   )}
                 >
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-xs md:text-sm leading-snug line-clamp-3">
+                  <div className="flex justify-between items-center w-full">
+                    <span className="font-bold text-[11px] sm:text-xs md:text-sm leading-tight sm:leading-snug break-words">
                       {item.translation}
                     </span>
 
                     {/* Correct/Incorrect Icons */}
                     {phase === 'reviewing' && (
-                      <span className="shrink-0 ml-1.5">
+                      <span className="shrink-0 ml-1">
                         {roundIncorrectIds.has(item.id) ? (
-                          <XCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                          <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-rose-600 shrink-0" />
                         ) : (
-                          <Check className="w-5 h-5 text-emerald-600 shrink-0" />
+                          <Check className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 shrink-0" />
                         )}
                       </span>
                     )}
