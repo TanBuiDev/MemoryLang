@@ -135,7 +135,7 @@ export function ChatPage() {
 
   // Auto-scroll to bottom on new messages or thinking state
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' })
   }, [messages, sendMutation.isPending])
 
   const deleteMutation = useMutation({
