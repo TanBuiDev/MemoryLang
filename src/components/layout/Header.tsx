@@ -67,6 +67,7 @@ const mainNavItems = [
   { labelKey: 'header.reading', to: '/app/reading', icon: FileText },
   { labelKey: 'header.writing', to: '/app/writing', icon: PenLine },
   { labelKey: 'header.games', to: '/app/games', icon: Gamepad2 },
+  { labelKey: 'nav.aiTutor', to: '/app/chat', icon: Bot },
 ] as const
 
 const moreDropdownItems = [
@@ -75,7 +76,6 @@ const moreDropdownItems = [
   { labelKey: 'nav.study', to: '/app/study', icon: Brain },
   { labelKey: 'nav.quiz', to: '/app/quiz', icon: ClipboardCheck },
   { labelKey: 'nav.review', to: '/app/review', icon: Gauge },
-  { labelKey: 'nav.aiTutor', to: '/app/chat', icon: Bot },
   { labelKey: 'header.roadmap', to: '/app/roadmap', icon: Map },
   { labelKey: 'header.exams', to: '/app/exams', icon: ClipboardCheck },
   { labelKey: 'header.videos', to: '/app/videos', icon: Video },
