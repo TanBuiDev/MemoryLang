@@ -60,6 +60,7 @@ const AdminGrammarLessonEditPage = lazyWithChunkRecovery(() => import('@/pages/a
 const GameHubPage = lazyWithChunkRecovery(() => import('@/pages/games/GameHubPage'))
 const MatchingGamePage = lazyWithChunkRecovery(() => import('@/pages/games/MatchingGamePage'))
 const AdminGamesPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminGamesPage'))
+const AdminSoundsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminSoundsPage'))
 
 export const router = createBrowserRouter([
   {
@@ -157,6 +158,14 @@ export const router = createBrowserRouter([
                   { path: 'users', element: <AdminUsersPage /> },
                   { path: 'subscriptions', element: <AdminSubscriptionsPage /> },
                   { path: 'tts', element: <AdminTtsPage /> },
+                  {
+                    path: 'sounds',
+                    element: (
+                      <React.Suspense fallback={<AppLoading />}>
+                        <AdminSoundsPage />
+                      </React.Suspense>
+                    ),
+                  },
                   { path: 'secrets', element: <AdminSecretsPage /> },
                    { path: 'features', element: <AdminFeaturesPage /> },
                   {

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
+import { soundEffects } from '@/utils/soundEffects'
 
 interface ConfirmModalProps {
   open: boolean
@@ -31,8 +32,19 @@ export function ConfirmModal({
   const titleId = useId()
   const descriptionId = useId()
 
+  const handleCancel = () => {
+    soundEffects.play('modalClose')
+    onCancel()
+  }
+
+  const handleConfirm = () => {
+    soundEffects.play('modalClose')
+    onConfirm()
+  }
+
   useEffect(() => {
     if (!open) return
+    soundEffects.play('modalOpen')
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
     dialogRef.current?.focus()
 
@@ -68,7 +80,7 @@ export function ConfirmModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onCancel} />
+      <div className="fixed inset-0 bg-black/50" onClick={handleCancel} />
       <div
         ref={dialogRef}
         role="dialog"
@@ -85,8 +97,8 @@ export function ConfirmModal({
         {description ? <p id={descriptionId} className="mt-2 text-sm font-semibold text-muted-foreground">{description}</p> : null}
         {children ? <div className="mt-4">{children}</div> : null}
         <div className="mt-6 flex justify-end gap-2">
-          <Button variant="ghost" onClick={onCancel}>{cancelLabel}</Button>
-          <Button variant={variant} onClick={onConfirm} disabled={confirmDisabled}>{confirmLabel}</Button>
+          <Button variant="ghost" onClick={handleCancel}>{cancelLabel}</Button>
+          <Button variant={variant} onClick={handleConfirm} disabled={confirmDisabled}>{confirmLabel}</Button>
         </div>
       </div>
     </div>

@@ -5,6 +5,8 @@ import { deckService } from '@/services/supabase/deck.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import type { VocabularyItem } from '@/types/vocabulary.types'
 import { speak } from '@/utils/audio'
+import { soundEffects } from '@/utils/soundEffects'
+import { useSoundStore } from '@/stores/useSoundStore'
 import { shuffle } from '@/utils/shuffle'
 import { motion } from 'framer-motion'
 import {
@@ -17,6 +19,7 @@ import {
   BookOpen,
   Check,
   Volume2,
+  VolumeX,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -51,6 +54,14 @@ export default function MatchingGamePage() {
 
   // Confirm modal state
   const [isConfirmExitOpen, setIsConfirmExitOpen] = useState(false)
+
+  // Sound Effects state
+  const { sfxEnabled, toggleSfx } = useSoundStore()
+
+  useEffect(() => {
+    const cleanup = soundEffects.initMobileUnlock()
+    return () => cleanup()
+  }, [])
 
   // Game data queue states
   const [allPoolTerms, setAllPoolTerms] = useState<VocabularyItem[]>([])
@@ -214,6 +225,7 @@ export default function MatchingGamePage() {
   // Handle card selections
   const handleLeftClick = (index: number) => {
     if (phase !== 'matching') return
+    soundEffects.play('cardClick')
 
     // If the clicked card is already matched, unmatch it first
     if (matchedSlots.has(index)) {
@@ -245,6 +257,7 @@ export default function MatchingGamePage() {
 
   const handleRightClick = (index: number) => {
     if (phase !== 'matching') return
+    soundEffects.play('cardClick')
 
     // If the clicked card is already matched, unmatch it first
     if (matchedSlots.has(index)) {
@@ -265,6 +278,7 @@ export default function MatchingGamePage() {
   }
 
   const executeSwap = (leftIdx: number, rightIdx: number) => {
+    soundEffects.play('lineConnect')
     const newRight = [...rightItems]
     const temp = newRight[leftIdx]
     newRight[leftIdx] = newRight[rightIdx]
@@ -298,6 +312,12 @@ export default function MatchingGamePage() {
         roundIncorrectSet.add(item.id)
       }
     })
+
+    if (roundWrong === 0 || roundCorrect >= roundWrong) {
+      soundEffects.play('matchSuccess')
+    } else {
+      soundEffects.play('matchError')
+    }
 
     setCorrectCount((prev) => prev + roundCorrect)
     setWrongCount((prev) => prev + roundWrong)
@@ -356,6 +376,7 @@ export default function MatchingGamePage() {
   }
 
   const handleFinishGame = () => {
+    soundEffects.play('roundComplete')
     const elapsedSeconds = Math.round((Date.now() - startTime) / 1000)
     const totalAnswered = correctCount + wrongCount
     const accuracy = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0
@@ -477,13 +498,29 @@ export default function MatchingGamePage() {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Top Navigation */}
       <div className="flex justify-between items-center">
-        <button
-          onClick={() => setIsConfirmExitOpen(true)}
-          className="neo-button py-2 px-3 flex items-center gap-1.5 text-xs font-black border-2 border-border"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Rời trò chơi
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              soundEffects.play('modalOpen')
+              setIsConfirmExitOpen(true)
+            }}
+            className="neo-button py-2 px-3 flex items-center gap-1.5 text-xs font-black border-2 border-border"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Rời trò chơi
+          </button>
+
+          <button
+            onClick={toggleSfx}
+            title={sfxEnabled ? 'Tắt hiệu ứng âm thanh' : 'Bật hiệu ứng âm thanh'}
+            className={cn(
+              'neo-button p-2 text-xs font-black border-2 border-border transition-colors',
+              sfxEnabled ? 'bg-amber-300 text-slate-900' : 'bg-slate-200 text-slate-500'
+            )}
+          >
+            {sfxEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          </button>
+        </div>
 
         {/* Progress Text */}
         <div className="text-xs font-black text-muted-foreground flex items-center gap-4">
@@ -699,10 +736,14 @@ export default function MatchingGamePage() {
         confirmLabel="Rời đi"
         cancelLabel="Ở lại"
         onConfirm={() => {
+          soundEffects.play('modalClose')
           sessionStorage.removeItem(sessionKey)
           navigate('/app/games')
         }}
-        onCancel={() => setIsConfirmExitOpen(false)}
+        onCancel={() => {
+          soundEffects.play('modalClose')
+          setIsConfirmExitOpen(false)
+        }}
         variant="danger"
       />
     </div>

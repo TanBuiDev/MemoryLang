@@ -33,6 +33,7 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Gói đăng ký', to: '/app/admin/subscriptions', icon: CreditCard, phase: 5, isReady: true },
   { name: 'Thông báo', to: '/app/admin/notifications', icon: Bell, phase: 1, isReady: true },
   { name: 'Cấu hình TTS', to: '/app/admin/tts', icon: Volume2, phase: 2, isReady: true },
+  { name: 'Quản lý Âm thanh', to: '/app/admin/sounds', icon: Volume2, phase: 2, isReady: true },
   { name: 'API Keys & Secrets', to: '/app/admin/secrets', icon: KeyRound, phase: 2, isReady: true },
   { name: 'Cấu hình & Tính năng', to: '/app/admin/features', icon: ToggleLeft, phase: 2, isReady: true },
   { name: 'Quản lý Trò chơi', to: '/app/admin/games', icon: Gamepad2, phase: 3, isReady: true },
