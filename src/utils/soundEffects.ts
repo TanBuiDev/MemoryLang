@@ -221,27 +221,30 @@ class SoundEffectsEngine {
   }
 
   /**
-   * Gentle double-tap low buzz for wrong match
+   * Clean 2-note minor drop for wrong match (soft, warm, zero speaker buzz distortion)
    */
   private synthBuzz(ctx: AudioContext, start: number, vol: number) {
-    const pulses = [0, 0.08]
-    pulses.forEach((offset) => {
-      const pulseStart = start + offset
+    const notes = [
+      { freq: 349.23, time: 0, dur: 0.11 }, // F4
+      { freq: 261.63, time: 0.09, dur: 0.16 }, // C4
+    ]
+
+    notes.forEach(({ freq, time, dur }) => {
+      const noteStart = start + time
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
 
-      osc.type = 'sawtooth'
-      osc.frequency.setValueAtTime(160, pulseStart)
-      osc.frequency.exponentialRampToValueAtTime(110, pulseStart + 0.07)
+      osc.type = 'triangle'
+      osc.frequency.setValueAtTime(freq, noteStart)
 
-      gain.gain.setValueAtTime(vol, pulseStart)
-      gain.gain.exponentialRampToValueAtTime(0.001, pulseStart + 0.07)
+      gain.gain.setValueAtTime(vol * 0.65, noteStart)
+      gain.gain.exponentialRampToValueAtTime(0.001, noteStart + dur)
 
       osc.connect(gain)
       gain.connect(ctx.destination)
 
-      osc.start(pulseStart)
-      osc.stop(pulseStart + 0.08)
+      osc.start(noteStart)
+      osc.stop(noteStart + dur + 0.01)
     })
   }
 
