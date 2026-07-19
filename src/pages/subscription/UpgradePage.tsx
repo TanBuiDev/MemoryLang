@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PageHeader } from '@/components/common/PageHeader'
 import { PricingCard } from '@/components/subscription/PricingCard'
 import { PaymentQRModal } from '@/components/subscription/PaymentQRModal'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
@@ -16,7 +15,6 @@ import { soundEffects } from '@/utils/soundEffects'
 export function UpgradePage() {
   const navigate = useNavigate()
   const subscription = useSubscriptionStore((s) => s.subscription)
-  const isPro = useSubscriptionStore((s) => s.isPro)
 
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly')
   const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null)
@@ -63,37 +61,6 @@ export function UpgradePage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-8">
-      <PageHeader
-        eyebrow="Nâng cấp Dịch vụ"
-        title="MemoryLang Pro"
-      />
-
-      {/* Hero section */}
-      <div className="text-center space-y-3">
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center justify-center gap-2">
-          Mở khoá toàn bộ sức mạnh học tiếng Anh
-          <Sparkles className="w-6 h-6 text-amber-500 animate-pulse" />
-        </h1>
-        <p className="text-slate-600 text-sm sm:text-base font-semibold max-w-xl mx-auto">
-          Truy cập không giới hạn kho từ vựng, bài giảng Ngữ pháp, bài luyện Listening và Trợ lý Gia sư AI 24/7.
-        </p>
-
-        {/* Already Pro Status Badge */}
-        {isPro && (
-          <div className="pt-2">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-slate-900 bg-[#dcfce7] text-[#15803d] font-black shadow-[3px_3px_0px_0px_#000] text-sm">
-              <Crown size={18} className="text-amber-500 fill-amber-400" />
-              <span>Tài khoản Pro đang hoạt động</span>
-              {subscription?.current_period_end && (
-                <span className="text-xs font-bold text-slate-700 ml-1">
-                  (Hạn dùng: {new Date(subscription.current_period_end).toLocaleDateString('vi-VN')})
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Billing cycle toggle */}
       <div className="flex justify-center">
         <div className="inline-flex rounded-xl border-3 border-slate-900 overflow-hidden shadow-[4px_4px_0px_0px_#000] bg-white p-1 gap-1">
