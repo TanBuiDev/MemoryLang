@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChatPage } from '@/pages/chat/ChatPage'
@@ -30,7 +30,7 @@ vi.mock('@/i18n', () => ({
       'chat.title': 'AI Tutor', 'chat.newSession': 'New chat', 'chat.empty': 'Start practicing English with AI.',
       'chat.emptySession': 'Send the first message.', 'chat.placeholder': 'Type a message...', 'chat.send': 'Send',
       'chat.sessionList': 'Chat history', 'chat.demoNotice': 'AI Tutor requires Supabase and an AI provider.',
-      'chat.sending': 'Sending...', 'chat.errorGeneric': 'Something went wrong. Please try again.',
+      'chat.sending': 'Sending...', 'chat.thinking': 'Thinking...', 'chat.errorGeneric': 'Something went wrong. Please try again.',
       'chat.errorAI': 'AI is unavailable. Please try again later.', 'chat.quotaReached': 'You have used today’s chat limit.',
       'chat.upgradeForMore': 'Upgrade to Pro for more chat messages.', 'chat.deleteSession': 'Delete this chat?',
       'chat.deleteDescription': 'Messages in this chat will be permanently deleted.', 'chat.deleteConfirm': 'Delete',
@@ -47,23 +47,35 @@ function renderPage() {
 describe('ChatPage', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('renders an empty chat state and sends with Enter', async () => {
-    vi.mocked(chatService.sendMessage).mockResolvedValue({
-      session: { id: 'session-1' },
-      userMessage: { id: 'message-1', role: 'user', content: 'Hello' },
-      assistantMessage: {
-        id: 'message-2', role: 'assistant', content: 'Hi there!',
-        metadata: { evidence: [{ kind: 'learning_overview', label: 'Learning progress' }] },
-      },
-      quota: { remainingToday: 9, limitToday: 10 },
-      usage: { provider: 'gemini', model: 'test', inputTokens: 1, outputTokens: 1 },
-    } as never)
+  it('shows the user message and thinking state immediately after sending', async () => {
+    let resolveSend: ((value: unknown) => void) | undefined
+    vi.mocked(chatService.sendMessage).mockImplementation(() => new Promise((resolve) => {
+      resolveSend = resolve
+    }) as never)
     renderPage()
 
     expect(await screen.findByText('Start practicing English with AI.')).toBeInTheDocument()
     const textbox = screen.getByPlaceholderText('Type a message...')
     fireEvent.change(textbox, { target: { value: 'Hello' } })
     fireEvent.keyDown(textbox, { key: 'Enter' })
+
+    expect(textbox).toHaveValue('')
+    expect(screen.getByText('Hello')).toBeInTheDocument()
+    expect(screen.getByText('Thinking...')).toBeInTheDocument()
+    await waitFor(() => expect(chatService.sendMessage).toHaveBeenCalledTimes(1))
+
+    await act(async () => {
+      resolveSend?.({
+        session: { id: 'session-1' },
+        userMessage: { id: 'message-1', role: 'user', content: 'Hello' },
+        assistantMessage: {
+          id: 'message-2', role: 'assistant', content: 'Hi there!',
+          metadata: { evidence: [{ kind: 'learning_overview', label: 'Learning progress' }] },
+        },
+        quota: { remainingToday: 9, limitToday: 10 },
+        usage: { provider: 'gemini', model: 'test', inputTokens: 1, outputTokens: 1 },
+      } as never)
+    })
 
     expect(await screen.findByText('Hi there!')).toBeInTheDocument()
     expect(screen.getByText('Verified source: Learning progress')).toBeInTheDocument()

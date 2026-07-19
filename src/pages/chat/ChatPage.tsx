@@ -49,21 +49,26 @@ export function ChatPage() {
   }, [messagesQuery.data, transientMessages])
 
   const sendMutation = useMutation({
-    mutationFn: () => chatService.sendMessage({
-      sessionId: activeSessionId,
-      message: draft,
+    mutationFn: (input: { sessionId: string | null; message: string; temporaryMessage: ChatMessage }) => chatService.sendMessage({
+      sessionId: input.sessionId,
+      message: input.message,
       sourceLanguage: profile?.current_target_language ?? 'en',
       nativeLanguage: profile?.native_language ?? 'vi',
     }),
-    onSuccess: (result) => {
+    onSuccess: (result, input) => {
       setActiveSessionId(result.session.id)
-      setTransientMessages([result.userMessage, result.assistantMessage])
-      setDraft('')
+      setTransientMessages((messages) => [
+        ...messages.filter((message) => message.id !== input.temporaryMessage.id),
+        result.userMessage,
+        result.assistantMessage,
+      ])
       setError(null)
       void queryClient.invalidateQueries({ queryKey: ['chat-sessions', user?.id] })
       void queryClient.invalidateQueries({ queryKey: ['chat-messages', result.session.id] })
     },
-    onError: (cause) => {
+    onError: (cause, input) => {
+      setTransientMessages((messages) => messages.filter((message) => message.id !== input.temporaryMessage.id))
+      setDraft(input.message)
       if (cause instanceof ChatApiError && cause.code === 'CHAT_QUOTA_EXCEEDED') {
         setError(t('chat.quotaReached'))
         return
@@ -104,7 +109,18 @@ export function ChatPage() {
   function send(event?: FormEvent) {
     event?.preventDefault()
     if (!isSupabaseConfigured || !user || !draft.trim() || sendMutation.isPending) return
-    sendMutation.mutate()
+    const message = draft.trim()
+    const temporaryMessage: ChatMessage = {
+      id: `pending-${Date.now()}`,
+      session_id: activeSessionId ?? '',
+      user_id: user.id,
+      role: 'user',
+      content: message,
+      created_at: new Date().toISOString(),
+    }
+    setTransientMessages((messages) => [...messages, temporaryMessage])
+    setDraft('')
+    sendMutation.mutate({ sessionId: activeSessionId, message, temporaryMessage })
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -191,6 +207,18 @@ export function ChatPage() {
                 </div>
               </div>
             ))}
+            {sendMutation.isPending ? (
+              <div className="flex justify-start" role="status">
+                <div className="flex items-center rounded-md border-2 border-border bg-muted px-3 py-2 text-sm font-bold text-muted-foreground">
+                  {t('chat.thinking')}
+                  <span aria-hidden="true" className="ml-2 inline-flex gap-0.5">
+                    <span className="animate-pulse">.</span>
+                    <span className="animate-pulse [animation-delay:150ms]">.</span>
+                    <span className="animate-pulse [animation-delay:300ms]">.</span>
+                  </span>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <form className="border-t-2 border-border p-3" onSubmit={send}>
