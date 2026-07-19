@@ -204,37 +204,34 @@ export function Header() {
           </div>
         </nav>
 
-        <div className="flex items-center gap-1 flex-1 justify-end shrink-0 min-w-max">
+        <div className="flex items-center gap-2 flex-1 justify-end shrink-0 min-w-max">
           {/* AI Tutor Quick Modal Button */}
           <button
             type="button"
             onClick={openAiModal}
-            title="Tra cứu & Hỏi đáp nhanh với Gia sư AI (Ctrl+K)"
-            className="inline-flex items-center gap-1.5 neo-button min-h-0 px-3 py-1.5 rounded-md border-2 border-border text-sm font-black bg-[#432dd7] text-white hover:bg-purple-800 transition whitespace-nowrap active:neo-button-active shadow-[2px_2px_0px_0px_#000]"
+            title="Gia sư AI (Ctrl+K)"
+            className="inline-flex items-center gap-1.5 neo-button min-h-0 px-3 py-1.5 rounded-lg border-2 border-slate-900 text-sm font-black bg-[#432dd7] text-white hover:bg-purple-700 transition whitespace-nowrap active:neo-button-active shadow-[2px_2px_0px_0px_#000]"
           >
             <Bot size={16} />
-            <span className="hidden sm:inline">Hỏi Gia sư AI</span>
-            <span className="hidden md:inline-block px-1.5 py-0.5 text-[10px] bg-white text-slate-900 rounded border border-slate-900 font-mono ml-0.5">Ctrl+K</span>
+            <span className="hidden sm:inline">Gia sư AI</span>
           </button>
 
+          {/* Pro Upgrade / Badge Button */}
           <Link
             to="/app/upgrade"
+            title={isPro ? "Tài khoản Pro" : t('header.upgrade')}
             className={cn(
-              "hidden sm:inline-flex items-center gap-1.5 neo-button min-h-0 px-3 py-1.5 rounded-md border-2 border-border text-sm font-black transition whitespace-nowrap active:neo-button-active",
+              "hidden sm:inline-flex items-center gap-1.5 neo-button min-h-0 px-3 py-1.5 rounded-lg border-2 border-slate-900 text-sm font-black transition whitespace-nowrap active:neo-button-active shadow-[2px_2px_0px_0px_#000]",
               isPro
-                ? "bg-[#dcfce7] text-[#166534] hover:bg-[#bbf7d0]"
-                : "bg-[#fdc800] text-[#1c293c] hover:bg-[#e6b800]"
+                ? "bg-[#dcfce7] text-[#15803d] hover:bg-emerald-200 border-slate-900"
+                : "bg-[#fdc800] text-slate-900 hover:bg-amber-400 border-slate-900"
             )}
           >
+            <Crown size={16} className={cn(isPro ? "text-amber-500 fill-amber-400" : "text-slate-900")} />
             {isPro ? (
-              <>
-                <span>Pro 👑</span>
-              </>
+              <span>Gói Pro</span>
             ) : (
-              <>
-                <Crown size={16} />
-                <span className="hidden md:inline">{t('header.upgrade')}</span>
-              </>
+              <span className="hidden md:inline">{t('header.upgrade')}</span>
             )}
           </Link>
 
