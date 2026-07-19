@@ -351,7 +351,28 @@ export function AiTutorModal() {
           <section className="flex min-h-0 flex-col bg-[#fbfbf9]">
             {/* Messages View */}
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-5" aria-live="polite">
-              {messages.length === 0 ? (
+              {!isSupabaseConfigured || !user ? (
+                <div className="flex h-full min-h-[360px] flex-col items-center justify-center text-center p-4 space-y-4">
+                  <div className="w-16 h-16 bg-[#fdc800] border-3 border-slate-900 rounded-2xl flex items-center justify-center text-slate-900 shadow-[4px_4px_0px_0px_#000] animate-bounce">
+                    <Bot size={36} />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-black text-slate-900">Trò chuyện với Gia sư AI 24/7</h3>
+                    <p className="text-xs sm:text-sm font-semibold text-slate-600 max-w-md">
+                      Đăng nhập tài khoản miễn phí để hỏi đáp ngữ pháp, tra cứu từ vựng và lưu lại lịch sử hội thoại của bạn.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      closeAiModal()
+                      navigate('/login')
+                    }}
+                    className="px-6 py-2.5 font-black text-sm shadow-[3px_3px_0px_0px_#000]"
+                  >
+                    Đăng nhập / Đăng ký ngay ✨
+                  </Button>
+                </div>
+              ) : messages.length === 0 ? (
                 <div className="flex h-full min-h-[360px] flex-col items-center justify-center text-center space-y-5">
                   <div className="w-14 h-14 bg-[#432dd7] border-3 border-slate-900 rounded-2xl flex items-center justify-center shadow-[3px_3px_0px_0px_#000]">
                     <Bot size={32} className="text-white" />

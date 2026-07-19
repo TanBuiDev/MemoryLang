@@ -1,16 +1,14 @@
 import {
   ArrowRight,
   BarChart3,
-  BookMarked,
   Brain,
-  CheckCircle2,
-  ClipboardCheck,
-  LibraryBig,
-  Repeat2,
-  Search,
   Sparkles,
-  Target,
-  Volume2,
+  Bot,
+  Headphones,
+  ScrollText,
+  Gamepad2,
+  Crown,
+  Zap,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import mascotArt from '@/assets/brand/memorylang-mascot.svg'
@@ -21,274 +19,324 @@ import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { useI18n } from '@/i18n'
 import { authService } from '@/services/supabase/auth.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useChatStore } from '@/stores/useChatStore'
+import { soundEffects } from '@/utils/soundEffects'
 
 export function LandingPage() {
   const { t } = useI18n()
   const user = useAuthStore((state) => state.user)
   const isAuthenticated = Boolean(user)
-  const features = [
-    { icon: Brain, title: t('landing.featureFlashcardsTitle'), text: t('landing.featureFlashcardsText') },
-    { icon: Sparkles, title: t('landing.featureHelperTitle'), text: t('landing.featureHelperText') },
-    { icon: ClipboardCheck, title: t('landing.featureChecksTitle'), text: t('landing.featureChecksText') },
+  const openAiModal = useChatStore((state) => state.openAiModal)
+
+  const handleButtonClick = () => {
+    soundEffects.play('cardClick')
+  }
+
+  const pillars = [
+    {
+      icon: Brain,
+      title: 'Flashcards & Thuật toán SRS',
+      text: 'Ghi nhớ từ vựng lâu dài với thuật toán lặp lại ngắt quãng khoa học, tự động tính toán thời điểm ôn tập tối ưu.',
+      color: 'bg-amber-100 text-amber-900 border-amber-300',
+    },
+    {
+      icon: Bot,
+      title: 'Trợ lý Gia sư AI 24/7',
+      text: 'Giải đáp ngữ pháp, tra cứu từ vựng và chữa bài ngay lập tức với phím tắt thần tốc Ctrl+K toàn hệ thống.',
+      color: 'bg-purple-100 text-purple-900 border-purple-300',
+    },
+    {
+      icon: Headphones,
+      title: 'Luyện nghe Listening & TOEIC',
+      text: 'Thực hành bài nghe giao tiếp chuẩn giọng bản ngữ kèm phát âm mẫu và kiểm tra phản xạ nghe.',
+      color: 'bg-blue-100 text-blue-900 border-blue-300',
+    },
+    {
+      icon: ScrollText,
+      title: 'Bài học Ngữ pháp Hệ thống',
+      text: 'Hệ thống bài giảng ngữ pháp từ cơ bản đến nâng cao được thiết kế trực quan, dễ hiểu kèm bài tập.',
+      color: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+    },
+    {
+      icon: Gamepad2,
+      title: 'Game Nối từ (Matching Game)',
+      text: 'Trò chơi ghép cặp từ vựng rèn luyện phản xạ nhanh với hiệu ứng âm thanh sống động và bảng xếp hạng.',
+      color: 'bg-rose-100 text-rose-900 border-rose-300',
+    },
+    {
+      icon: BarChart3,
+      title: 'Thống kê Tiến độ & Streak',
+      text: 'Theo dõi chỉ số chính xác, chuỗi ngày học liên tục (Streak) và mục tiêu từ vựng hàng ngày trực quan.',
+      color: 'bg-sky-100 text-sky-900 border-sky-300',
+    },
   ]
+
   const proofPoints = [
-    { value: 'SRS', label: t('landing.statReview'), text: t('landing.statReviewText') },
-    { value: '4+', label: t('landing.statModes'), text: t('landing.statModesText') },
-    { value: '100%', label: t('landing.statControl'), text: t('landing.statControlText') },
-  ]
-  const workflow = [
-    { icon: Search, title: t('landing.workflowCaptureTitle'), text: t('landing.workflowCaptureText') },
-    { icon: LibraryBig, title: t('landing.workflowOrganizeTitle'), text: t('landing.workflowOrganizeText') },
-    { icon: Volume2, title: t('landing.workflowPracticeTitle'), text: t('landing.workflowPracticeText') },
-    { icon: Repeat2, title: t('landing.workflowImproveTitle'), text: t('landing.workflowImproveText') },
-  ]
-  const previews = [
-    { icon: Target, title: t('landing.previewDashboardTitle'), text: t('landing.previewDashboardText'), href: '/app/dashboard' },
-    { icon: BookMarked, title: t('landing.previewCardsTitle'), text: t('landing.previewCardsText'), href: '/app/study' },
-    { icon: CheckCircle2, title: t('landing.previewQuizTitle'), text: t('landing.previewQuizText'), href: '/app/quiz' },
-  ]
-  const modes = [
-    t('landing.modeLibrary'),
-    t('landing.modeDecks'),
-    t('landing.modeReview'),
-    t('landing.modeStats'),
+    { value: 'SRS 2.0', label: 'Thuật toán ghi nhớ', text: 'Tối ưu hoá khả năng nhớ từ lên đến 95%' },
+    { value: '24/7', label: 'Hỗ trợ AI Tutor', text: 'Hỏi đáp & tra cứu nhanh với phím tắt Ctrl+K' },
+    { value: '100%', label: 'Chủ động học tập', text: 'Tự do tạo bộ thẻ, theo dõi tiến độ theo nhu cầu' },
   ]
 
   return (
     <main className="brand-grid-bg min-h-screen overflow-hidden bg-background px-4 py-6 text-foreground">
+      {/* Top Header Navigation */}
       <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4">
         <Link to="/" className="rounded-md border-2 border-transparent p-1 transition hover:border-border hover:bg-card">
           <BrandLogo variant="compact" size="lg" className="h-12" />
         </Link>
-        <div className="hidden items-center gap-2 rounded-md border-2 border-border bg-card px-2 py-1 shadow-[3px_3px_0_var(--border)] md:flex">
-          <a className="rounded px-3 py-2 text-sm font-black hover:bg-muted" href="#features">{t('landing.navFeatures')}</a>
-          <a className="rounded px-3 py-2 text-sm font-black hover:bg-muted" href="#workflow">{t('landing.navWorkflow')}</a>
-          <a className="rounded px-3 py-2 text-sm font-black hover:bg-muted" href="#preview">{t('landing.navPreview')}</a>
+
+        <div className="hidden items-center gap-2 rounded-lg border-2 border-slate-900 bg-white px-3 py-1.5 shadow-[3px_3px_0px_0px_#000] md:flex font-black text-xs">
+          <a onClick={handleButtonClick} className="rounded px-3 py-1.5 hover:bg-amber-100 transition-colors" href="#features">Tính năng</a>
+          <a onClick={handleButtonClick} className="rounded px-3 py-1.5 hover:bg-amber-100 transition-colors" href="#ai-tutor">Gia sư AI</a>
+          <a onClick={handleButtonClick} className="rounded px-3 py-1.5 hover:bg-amber-100 transition-colors" href="#pillars">Hệ sinh thái</a>
+          <Link onClick={handleButtonClick} className="rounded px-3 py-1.5 hover:bg-purple-100 text-purple-700 transition-colors" to="/app/upgrade">Gói Pro 👑</Link>
         </div>
-        <div className="flex shrink-0 gap-2">
+
+        <div className="flex shrink-0 items-center gap-2">
           {isAuthenticated ? (
             <>
-              <Button asChild variant="ghost"><Link to="/app/dashboard">{t('landing.goDashboard')}</Link></Button>
-              <Button onClick={() => void authService.signOut()}>{t('actions.logout')}</Button>
+              <Button asChild variant="ghost" onClick={handleButtonClick}>
+                <Link to="/app/dashboard">{t('landing.goDashboard')}</Link>
+              </Button>
+              <Button onClick={() => { handleButtonClick(); void authService.signOut() }}>
+                {t('actions.logout')}
+              </Button>
             </>
           ) : (
             <>
-              <Button asChild variant="ghost"><Link to="/login">{t('landing.login')}</Link></Button>
-              <Button asChild><Link to="/login">{t('landing.getStarted')}</Link></Button>
+              <Button asChild variant="ghost" onClick={handleButtonClick}>
+                <Link to="/login">{t('landing.login')}</Link>
+              </Button>
+              <Button asChild onClick={handleButtonClick} className="font-black shadow-[2px_2px_0px_0px_#000]">
+                <Link to="/login">Đăng ký Miễn phí ✨</Link>
+              </Button>
             </>
           )}
         </div>
       </nav>
-      <section className="relative mx-auto grid max-w-7xl items-center gap-8 py-12 lg:min-h-[calc(100vh-7rem)] lg:grid-cols-[1.05fr_0.95fr] lg:py-16">
+
+      {/* Hero Section */}
+      <section className="relative mx-auto grid max-w-7xl items-center gap-8 py-10 lg:min-h-[calc(100vh-6rem)] lg:grid-cols-[1.05fr_0.95fr] lg:py-14">
         <img
           src={mascotArt}
-          alt=""
+          alt="MemoryLang Mascot"
           aria-hidden="true"
           data-testid="homepage-mascot-art"
           className="pointer-events-none absolute -left-28 top-16 z-0 hidden w-[32rem] max-w-none rotate-[-4deg] opacity-95 drop-shadow-[10px_12px_0_rgba(28,41,60,0.18)] lg:block xl:-left-36 xl:top-12 xl:w-[38rem]"
         />
-        <div className="relative z-10 lg:pt-[30rem] xl:pt-[34rem]">
-          <Badge>{t('landing.badge')}</Badge>
-          <h1 className="mt-6 max-w-4xl text-5xl font-black leading-none md:text-7xl">
-            {t('landing.title')}
+
+        <div className="relative z-10 lg:pt-[26rem] xl:pt-[30rem]">
+          <Badge className="bg-purple-100 text-purple-900 border-2 border-slate-900 font-black px-3 py-1 shadow-[2px_2px_0px_0px_#000]">
+            ✨ Phiên bản mới: Gia sư AI 24/7 & Luyện Nghe TOEIC
+          </Badge>
+
+          <h1 className="mt-5 max-w-4xl text-4xl font-black leading-none tracking-tight sm:text-6xl md:text-7xl text-slate-900">
+            Luyện Tiếng Anh Thông Minh Cùng Gia Sư AI
           </h1>
-          <p className="mt-6 max-w-2xl text-lg font-semibold text-muted-foreground">
-            {t('landing.description')}
+
+          <p className="mt-5 max-w-2xl text-base sm:text-lg font-semibold text-slate-600">
+            Hệ thống ghi nhớ từ vựng khoa học theo chu kỳ SRS, tích hợp bài luyện nghe Listening, bài giảng Ngữ pháp và Trợ lý AI giải đáp tức thì.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+
+          {/* Dynamic Hero CTA Buttons */}
+          <div className="mt-8 flex flex-wrap items-center gap-3">
             {isAuthenticated ? (
               <>
-                <Button asChild><Link to="/app/dashboard">{t('landing.goDashboard')} <ArrowRight size={18} /></Link></Button>
-                <Button asChild variant="secondary"><Link to="/app/study">{t('landing.continueStudy')}</Link></Button>
+                <Button asChild onClick={handleButtonClick} className="h-12 px-6 font-black text-base shadow-[4px_4px_0px_0px_#000]">
+                  <Link to="/app/dashboard">
+                    Vào Bảng Điều Khiển <ArrowRight size={18} className="ml-1" />
+                  </Link>
+                </Button>
+                <Button
+                  onClick={() => { handleButtonClick(); openAiModal() }}
+                  className="h-12 px-5 font-black text-base bg-[#432dd7] text-white hover:bg-purple-800 border-2 border-slate-900 shadow-[4px_4px_0px_0px_#000]"
+                >
+                  <Bot size={18} />
+                  <span>Hỏi Gia sư AI (Ctrl+K)</span>
+                </Button>
+                <Button asChild variant="secondary" onClick={handleButtonClick} className="h-12 px-5 font-black text-base border-2 border-slate-900 shadow-[4px_4px_0px_0px_#000]">
+                  <Link to="/app/games/matching">🎮 Game Nối từ</Link>
+                </Button>
               </>
             ) : (
               <>
-                <Button asChild><Link to="/login">{t('landing.startLearning')} <ArrowRight size={18} /></Link></Button>
-                <Button asChild variant="secondary"><Link to="/app/dashboard">{t('landing.openDemo')}</Link></Button>
+                <Button asChild onClick={handleButtonClick} className="h-12 px-6 font-black text-base shadow-[4px_4px_0px_0px_#000]">
+                  <Link to="/login">
+                    Đăng ký Học Miễn Phí <Sparkles size={18} className="ml-1" />
+                  </Link>
+                </Button>
+                <Button
+                  onClick={() => { handleButtonClick(); openAiModal() }}
+                  className="h-12 px-5 font-black text-base bg-[#432dd7] text-white hover:bg-purple-800 border-2 border-slate-900 shadow-[4px_4px_0px_0px_#000]"
+                >
+                  <Bot size={18} />
+                  <span>Dùng thử Gia sư AI (Ctrl+K)</span>
+                </Button>
+                <Button asChild variant="secondary" onClick={handleButtonClick} className="h-12 px-5 font-black text-base border-2 border-slate-900 shadow-[4px_4px_0px_0px_#000]">
+                  <Link to="/app/dashboard">Trải nghiệm Demo 🚀</Link>
+                </Button>
               </>
             )}
           </div>
         </div>
+
+        {/* Interactive Feature Card Preview */}
         <div className="relative">
-          <div className="absolute -right-10 -top-10 hidden h-36 w-36 rounded-full border-2 border-border bg-primary shadow-[6px_6px_0_var(--border)] md:block" />
-          <Card className="relative z-10 rotate-1 overflow-hidden p-6">
+          <div className="absolute -right-6 -top-6 hidden h-32 w-32 rounded-full border-3 border-slate-900 bg-[#fdc800] shadow-[6px_6px_0px_0px_#000] md:block" />
+          <Card className="relative z-10 rotate-1 overflow-hidden p-6 border-3 border-slate-900 shadow-[8px_8px_0px_0px_#000] bg-white">
             <div className="absolute -right-8 -top-8 opacity-10">
               <BrandMark size="xl" label="" className="h-40 w-40" />
             </div>
-            <div className="relative flex items-center justify-between gap-4">
-              <p className="text-sm font-black uppercase text-muted-foreground">{t('landing.todayCard')}</p>
+            <div className="relative flex items-center justify-between gap-4 border-b-2 border-slate-900 pb-3">
+              <p className="text-xs font-black uppercase tracking-wider text-slate-500">Từ Vựng Mẫu Hôm Nay</p>
               <BrandMark size="sm" />
             </div>
-            <div className="relative mt-6 rounded-md border-2 border-border bg-primary p-6 shadow-[4px_4px_0_var(--border)]">
-              <p className="text-5xl font-black">break the ice</p>
-              <p className="mt-3 font-mono text-xl">/breɪk ði aɪs/</p>
+            <div className="relative mt-4 rounded-xl border-3 border-slate-900 bg-[#432dd7] p-5 text-white shadow-[4px_4px_0px_0px_#000]">
+              <p className="text-3xl font-black">break the ice</p>
+              <p className="mt-1.5 font-mono text-base text-amber-300">/breɪk ði aɪs/</p>
             </div>
-            <div className="relative mt-4 rounded-md border-2 border-border bg-card p-4">
-              <p className="font-black">phá vỡ sự ngại ngùng</p>
-              <p className="mt-2 text-sm font-semibold text-muted-foreground">He told a joke to break the ice.</p>
+            <div className="relative mt-3 rounded-xl border-2 border-slate-900 bg-[#fbfbf9] p-3.5 shadow-[2px_2px_0px_0px_#000]">
+              <p className="font-black text-slate-900 text-sm">phá vỡ sự ngại ngùng, làm quen</p>
+              <p className="mt-1 text-xs font-semibold text-slate-600">He told a joke to break the ice.</p>
             </div>
           </Card>
-          <div className="relative -mt-4 ml-auto mr-4 max-w-sm rotate-[-2deg] rounded-md border-2 border-border bg-secondary p-4 text-secondary-foreground shadow-[5px_5px_0_var(--border)]">
-            <p className="font-black">{t('landing.featureChecksTitle')}</p>
-            <p className="mt-1 text-sm font-semibold opacity-90">{t('landing.featureChecksText')}</p>
+          <div className="relative -mt-4 ml-auto mr-4 max-w-sm rotate-[-2deg] rounded-xl border-3 border-slate-900 bg-[#fdc800] p-4 text-slate-900 shadow-[6px_6px_0px_0px_#000]">
+            <p className="font-black text-sm flex items-center gap-1.5">
+              <Zap size={16} /> Kiểm tra SRS định kỳ
+            </p>
+            <p className="mt-1 text-xs font-semibold">Tự động gợi ý từ vựng sắp quên giúp tiết kiệm 70% thời gian ôn tập.</p>
           </div>
         </div>
       </section>
 
+      {/* Proof Points */}
       <section className="mx-auto grid max-w-7xl gap-4 pb-14 md:grid-cols-3">
         {proofPoints.map((item) => (
-          <Card key={item.label} className="bg-card/95">
-            <p className="text-4xl font-black text-secondary">{item.value}</p>
-            <p className="mt-2 text-sm font-black uppercase">{item.label}</p>
-            <CardDescription className="mt-2">{item.text}</CardDescription>
+          <Card key={item.label} className="bg-white border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] p-5">
+            <p className="text-3xl font-black text-purple-700">{item.value}</p>
+            <p className="mt-1 text-xs font-black uppercase text-slate-800">{item.label}</p>
+            <CardDescription className="mt-1 text-xs font-semibold text-slate-600">{item.text}</CardDescription>
           </Card>
         ))}
       </section>
 
-      <section id="features" className="mx-auto grid max-w-7xl gap-4 scroll-mt-24 py-14 md:grid-cols-3">
-        {features.map((feature) => (
-          <Card key={feature.title}>
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-md border-2 border-border bg-primary shadow-[3px_3px_0_var(--border)]">
-              <feature.icon size={24} />
-            </div>
-            <CardTitle className="mt-3">{feature.title}</CardTitle>
-            <CardDescription className="mt-2">{feature.text}</CardDescription>
-          </Card>
-        ))}
-      </section>
-
-      <section id="workflow" className="mx-auto max-w-7xl scroll-mt-24 py-14">
-        <div className="max-w-3xl">
-          <Badge>{t('landing.workflowEyebrow')}</Badge>
-          <h2 className="mt-5 text-4xl font-black leading-tight md:text-6xl">{t('landing.workflowTitle')}</h2>
-          <p className="mt-4 text-lg font-semibold text-muted-foreground">{t('landing.workflowDescription')}</p>
-        </div>
-        <div className="mt-8 grid gap-4 lg:grid-cols-4">
-          {workflow.map((step, index) => (
-            <Card key={step.title} className={index % 2 ? 'lg:mt-10' : ''}>
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-mono text-3xl font-black text-secondary">0{index + 1}</span>
-                <step.icon size={28} />
+      {/* AI Tutor Feature Showcase Section */}
+      <section id="ai-tutor" className="mx-auto max-w-7xl scroll-mt-24 py-12">
+        <div className="neo-card p-6 sm:p-8 border-4 border-slate-900 shadow-[8px_8px_0px_0px_#000] bg-white rounded-2xl">
+          <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr] items-center">
+            <div className="space-y-4">
+              <Badge className="bg-purple-100 text-purple-900 border-2 border-slate-900 font-black px-3 py-1">
+                🤖 Trợ lý AI Thông Minh
+              </Badge>
+              <h2 className="text-3xl sm:text-5xl font-black text-slate-900 leading-tight">
+                Hỏi đáp & Tra cứu tức thì với Gia sư AI 24/7
+              </h2>
+              <p className="text-slate-600 text-sm sm:text-base font-semibold leading-relaxed">
+                Nhấn phím tắt <kbd className="px-2 py-1 bg-slate-900 text-white rounded font-mono text-xs font-bold shadow-[2px_2px_0px_0px_#000]">Ctrl + K</kbd> ở bất kỳ đâu trên ứng dụng để tra từ, giải thích cấu trúc câu hoặc yêu cầu tạo bài tập thực hành ngay lập tức.
+              </p>
+              <div className="pt-2 flex flex-wrap gap-3">
+                <Button
+                  onClick={() => { handleButtonClick(); openAiModal() }}
+                  className="h-11 px-5 font-black bg-[#432dd7] text-white hover:bg-purple-800 border-2 border-slate-900 shadow-[3px_3px_0px_0px_#000]"
+                >
+                  <Bot size={18} />
+                  <span>Trải nghiệm Gia sư AI ngay</span>
+                </Button>
               </div>
-              <CardTitle className="mt-5">{step.title}</CardTitle>
-              <CardDescription className="mt-2">{step.text}</CardDescription>
+            </div>
+
+            {/* Simulated AI Chat Box Preview */}
+            <div className="border-3 border-slate-900 rounded-xl bg-[#fbfbf9] p-4 shadow-[5px_5px_0px_0px_#000] space-y-3">
+              <div className="flex items-center justify-between border-b-2 border-slate-900 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 bg-[#432dd7] border-2 border-slate-900 rounded-lg flex items-center justify-center text-white font-bold text-xs">
+                    <Bot size={14} />
+                  </div>
+                  <span className="font-black text-xs text-slate-900">AI Tutor Preview</span>
+                </div>
+                <span className="text-[10px] font-black uppercase bg-amber-200 border border-slate-900 px-2 py-0.5 rounded">Ctrl + K</span>
+              </div>
+
+              <div className="space-y-2.5 text-xs">
+                <div className="flex justify-end">
+                  <div className="bg-[#fdc800] text-slate-900 border-2 border-slate-900 px-3 py-2 rounded-lg font-bold max-w-[85%] shadow-[2px_2px_0px_0px_#000]">
+                    Phân biệt sự khác nhau giữa Affect và Effect?
+                  </div>
+                </div>
+
+                <div className="flex justify-start items-start gap-2">
+                  <div className="w-6 h-6 bg-[#432dd7] text-white border border-slate-900 rounded flex items-center justify-center shrink-0">
+                    <Bot size={12} />
+                  </div>
+                  <div className="bg-white text-slate-900 border-2 border-slate-900 p-3 rounded-lg font-semibold max-w-[85%] shadow-[2px_2px_0px_0px_#000] space-y-1">
+                    <p className="font-bold text-purple-700">• Affect (Động từ): Tác động/ảnh hưởng đến ai/cái gì.</p>
+                    <p className="text-slate-600">VD: Cold weather affects my health.</p>
+                    <p className="font-bold text-purple-700 mt-1">• Effect (Danh từ): Kết quả/sự ảnh hưởng.</p>
+                    <p className="text-slate-600">VD: The law has a positive effect.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6 Core Learning Pillars Section */}
+      <section id="pillars" className="mx-auto max-w-7xl scroll-mt-24 py-12 space-y-6">
+        <div className="text-center space-y-2 max-w-2xl mx-auto">
+          <Badge className="bg-amber-100 text-amber-900 border-2 border-slate-900 font-black px-3 py-1">
+            ✨ Hệ Sinh Thái Học Tập Toàn Diện
+          </Badge>
+          <h2 className="text-3xl sm:text-5xl font-black text-slate-900">
+            Tất cả công cụ bạn cần để làm chủ Tiếng Anh
+          </h2>
+        </div>
+
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 pt-4">
+          {pillars.map((pillar) => (
+            <Card key={pillar.title} className="p-5 border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] bg-white hover:translate-x-0.5 hover:translate-y-0.5 transition-transform">
+              <div className={`inline-flex h-12 w-12 items-center justify-center rounded-xl border-2 border-slate-900 ${pillar.color} shadow-[2px_2px_0px_0px_#000] mb-3`}>
+                <pillar.icon size={22} />
+              </div>
+              <CardTitle className="text-base font-black text-slate-900">{pillar.title}</CardTitle>
+              <CardDescription className="mt-2 text-xs font-semibold text-slate-600 leading-relaxed">
+                {pillar.text}
+              </CardDescription>
             </Card>
           ))}
         </div>
       </section>
 
-      <section id="preview" className="mx-auto grid max-w-7xl scroll-mt-24 gap-8 py-14 lg:grid-cols-[0.9fr_1.1fr]">
-        <div>
-          <Badge>{t('landing.previewEyebrow')}</Badge>
-          <h2 className="mt-5 text-4xl font-black leading-tight md:text-6xl">{t('landing.previewTitle')}</h2>
-          <p className="mt-4 text-lg font-semibold text-muted-foreground">{t('landing.previewDescription')}</p>
-          <div className="mt-6 grid gap-3">
-            {previews.map((item) => (
-              <Link key={item.title} to={item.href} className="brand-surface block p-4 transition hover:-translate-y-0.5">
-                <div className="flex items-start gap-3">
-                  <item.icon className="mt-1 shrink-0 text-secondary" size={22} />
-                  <div>
-                    <p className="font-black">{item.title}</p>
-                    <p className="mt-1 text-sm font-semibold text-muted-foreground">{item.text}</p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-        <Card className="relative overflow-hidden p-0">
-          <div className="border-b-2 border-border bg-primary px-5 py-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="font-black">{t('dashboard.dailyGoal')}</p>
-              <BarChart3 size={24} />
-            </div>
-          </div>
-          <div className="grid gap-4 p-5">
-            <div className="grid gap-3 sm:grid-cols-4">
-              {[
-                ['453', t('dashboard.totalVocabulary')],
-                ['18', t('dashboard.reviewDue')],
-                ['87%', t('statistics.accuracy')],
-                ['12', t('statistics.days')],
-              ].map(([value, label]) => (
-                <div key={label} className="rounded-md border-2 border-border bg-muted p-3">
-                  <p className="text-2xl font-black">{value}</p>
-                  <p className="mt-1 text-xs font-black uppercase text-muted-foreground">{label}</p>
-                </div>
-              ))}
-            </div>
-            <div className="rounded-md border-2 border-border bg-card p-4">
-              <div className="mb-3 flex items-center justify-between font-black">
-                <span>Business phrases</span>
-                <span className="text-secondary">64%</span>
-              </div>
-              <div className="h-4 overflow-hidden rounded-full border-2 border-border bg-card">
-                <div className="h-full w-2/3 border-r-2 border-border bg-success" />
-              </div>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-md border-2 border-border bg-primary p-4 shadow-[3px_3px_0_var(--border)]">
-                <p className="text-2xl font-black">weather condition</p>
-                <p className="mt-2 font-mono font-black">/ˈweðər kənˈdɪʃən/</p>
-              </div>
-              <div className="rounded-md border-2 border-border bg-secondary p-4 text-secondary-foreground shadow-[3px_3px_0_var(--border)]">
-                <p className="text-sm font-black uppercase opacity-80">{t('quiz.translationInput')}</p>
-                <p className="mt-2 text-2xl font-black">Meaning?</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </section>
-
-      <section className="mx-auto max-w-7xl py-14">
-        <div className="grid gap-6 rounded-md border-2 border-border bg-card p-6 shadow-[6px_6px_0_var(--border)] lg:grid-cols-[0.8fr_1.2fr] lg:p-8">
-          <div>
-            <Badge>{t('landing.modesEyebrow')}</Badge>
-            <h2 className="mt-5 text-4xl font-black leading-tight md:text-5xl">{t('landing.modesTitle')}</h2>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {modes.map((mode) => (
-              <div key={mode} className="flex items-center gap-3 rounded-md border-2 border-border bg-background p-4 font-black">
-                <CheckCircle2 className="shrink-0 text-secondary" />
-                {mode}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl py-14">
-        <div className="relative overflow-hidden rounded-md border-2 border-border bg-secondary p-8 text-secondary-foreground shadow-[6px_6px_0_var(--border)]">
-          <img
-            src={mascotArt}
-            alt=""
-            aria-hidden="true"
-            data-testid="homepage-mascot-art"
-            className="pointer-events-none absolute -bottom-32 right-8 z-0 hidden w-[28rem] max-w-none opacity-[0.32] drop-shadow-[8px_10px_0_rgba(28,41,60,0.18)] lg:block"
-          />
-          <div className="relative z-10 max-w-3xl">
-            <h2 className="text-4xl font-black leading-tight md:text-6xl">{t('landing.finalTitle')}</h2>
-            <p className="mt-4 text-lg font-semibold opacity-90">{t('landing.finalDescription')}</p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              {isAuthenticated ? (
-                <>
-                  <Button asChild><Link to="/app/dashboard">{t('landing.goDashboard')}</Link></Button>
-                  <Button asChild variant="ghost"><Link to="/app/study">{t('landing.continueStudy')}</Link></Button>
-                </>
-              ) : (
-                <>
-                  <Button asChild><Link to="/login">{t('landing.getStarted')}</Link></Button>
-                  <Button asChild variant="ghost"><Link to="/app/dashboard">{t('landing.openDemo')}</Link></Button>
-                </>
-              )}
+      {/* MemoryLang Pro Membership Banner */}
+      <section className="mx-auto max-w-7xl py-12">
+        <div className="neo-card p-6 sm:p-10 border-4 border-slate-900 shadow-[8px_8px_0px_0px_#000] bg-[#fdc800] rounded-2xl relative overflow-hidden">
+          <div className="max-w-2xl space-y-4 relative z-10">
+            <Badge className="bg-slate-900 text-white font-black px-3 py-1 border-0">
+              👑 Nâng cấp Gói Pro
+            </Badge>
+            <h2 className="text-3xl sm:text-5xl font-black text-slate-900 leading-tight">
+              Học không giới hạn cùng MemoryLang Pro
+            </h2>
+            <p className="text-slate-900 text-sm sm:text-base font-bold">
+              Mở khóa toàn bộ từ vựng, bộ thẻ ghi nhớ, toàn bộ bài học Listening, Grammar và lượt hỏi đáp Gia sư AI không giới hạn. Thanh toán VietQR xác nhận tự động trong 5 giây!
+            </p>
+            <div className="pt-2">
+              <Button asChild onClick={handleButtonClick} className="h-12 px-6 font-black text-base bg-slate-900 text-white hover:bg-slate-800 border-2 border-slate-900 shadow-[4px_4px_0px_0px_#000]">
+                <Link to="/app/upgrade">
+                  Khám phá Bảng Giá Pro <Crown size={18} className="ml-1 text-amber-400 fill-amber-400" />
+                </Link>
+              </Button>
             </div>
           </div>
         </div>
       </section>
 
-      <footer className="mx-auto flex max-w-7xl flex-col gap-4 border-t-2 border-border py-8 md:flex-row md:items-center md:justify-between">
+      {/* Footer */}
+      <footer className="mx-auto flex max-w-7xl flex-col gap-4 border-t-3 border-slate-900 py-8 md:flex-row md:items-center md:justify-between">
         <BrandLogo variant="compact" size="md" className="h-10" />
-        <p className="max-w-xl text-sm font-semibold text-muted-foreground">{t('landing.footerTagline')}</p>
+        <p className="max-w-xl text-xs font-bold text-slate-600">
+          MemoryLang — Nền tảng học từ vựng và luyện tiếng Anh thông minh với thuật toán SRS & Gia sư AI 24/7.
+        </p>
       </footer>
     </main>
   )
