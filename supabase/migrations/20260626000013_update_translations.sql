@@ -1,6 +1,9 @@
 -- Update translations from JSON data file
 -- Generated from memorylang_vocabulary.json
 
+-- Ensure fresh replays create the column before this historical data update.
+ALTER TABLE public.global_terms ADD COLUMN IF NOT EXISTS translation text;
+
 UPDATE global_terms AS gt
 SET translation = src.translation
 FROM (VALUES
