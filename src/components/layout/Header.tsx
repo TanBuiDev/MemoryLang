@@ -27,6 +27,7 @@ import {
   Settings,
   ShieldAlert,
   Sun,
+  Bot,
   User,
   Video,
   X,
@@ -35,6 +36,7 @@ import { BrandLogo } from '@/components/common/BrandLogo'
 import { useI18n } from '@/i18n'
 import { authService } from '@/services/supabase/auth.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useChatStore } from '@/stores/useChatStore'
 import { useNotificationStore, useUnreadCount } from '@/stores/useNotificationStore'
 import { useThemeStore } from '@/stores/useThemeStore'
 import { useUiLanguageStore } from '@/stores/useUiLanguageStore'
@@ -87,6 +89,7 @@ export function Header() {
   const profile = useAuthStore((s) => s.profile)
   const user = useAuthStore((s) => s.user)
   const isPro = useSubscriptionStore((s) => s.isPro)
+  const openAiModal = useChatStore((s) => s.openAiModal)
   const { theme, toggleTheme } = useThemeStore()
   const { uiLanguage, setUiLanguage } = useUiLanguageStore()
   const effectiveUiLanguage = uiLanguage ?? profile?.ui_language ?? 'vi'
@@ -202,6 +205,18 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-1 flex-1 justify-end shrink-0 min-w-max">
+          {/* AI Tutor Quick Modal Button */}
+          <button
+            type="button"
+            onClick={openAiModal}
+            title="Tra cứu & Hỏi đáp nhanh với Gia sư AI (Ctrl+K)"
+            className="inline-flex items-center gap-1.5 neo-button min-h-0 px-3 py-1.5 rounded-md border-2 border-border text-sm font-black bg-[#432dd7] text-white hover:bg-purple-800 transition whitespace-nowrap active:neo-button-active shadow-[2px_2px_0px_0px_#000]"
+          >
+            <Bot size={16} />
+            <span className="hidden sm:inline">Hỏi Gia sư AI</span>
+            <span className="hidden md:inline-block px-1.5 py-0.5 text-[10px] bg-white text-slate-900 rounded border border-slate-900 font-mono ml-0.5">Ctrl+K</span>
+          </button>
+
           <Link
             to="/app/upgrade"
             className={cn(

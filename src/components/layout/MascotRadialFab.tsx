@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Bot, FileText, Plus, X } from 'lucide-react'
 import { QuickNotesDrawer } from './QuickNotesDrawer'
 import { AddVocabularyModal } from './AddVocabularyModal'
+import { useChatStore } from '@/stores/useChatStore'
 
 // Mascot SVG Component
 function MascotIcon({ className = 'w-6 h-6' }: { className?: string }) {
@@ -33,6 +33,7 @@ export function MascotRadialFab() {
   const [isOpen, setIsOpen] = useState(false)
   const [isNotesOpen, setIsNotesOpen] = useState(false)
   const [isAddWordOpen, setIsAddWordOpen] = useState(false)
+  const openAiModal = useChatStore((s) => s.openAiModal)
 
   return (
     <div className="fixed bottom-24 sm:bottom-6 right-6 z-[9999] select-none flex flex-col items-end">
@@ -93,14 +94,17 @@ export function MascotRadialFab() {
             : 'opacity-0 scale-50 translate-x-0 translate-y-0 pointer-events-none'
         }`}
       >
-        <Link 
-          to="/app/chat"
-          onClick={() => setIsOpen(false)}
-          title="Mở Gia sư AI"
+        <button 
+          type="button"
+          onClick={() => {
+            setIsOpen(false)
+            openAiModal()
+          }}
+          title="Mở Gia sư AI (Ctrl+K)"
           className="w-11 h-11 sm:w-10 sm:h-10 rounded-full border-2 border-border bg-emerald-400 text-foreground flex items-center justify-center shadow-[2px_2px_0px_#1c293c] hover:-translate-x-0.5 hover:shadow-[3px_3px_0px_#1c293c] active:translate-y-0.5 active:shadow-none"
         >
           <Bot className="w-5 h-5 sm:w-4.5 sm:h-4.5" />
-        </Link>
+        </button>
         <span className="absolute -bottom-6 bg-white text-[9px] font-black border-2 border-border px-1.5 py-0.5 rounded shadow-[1px_1px_0px_#1c293c] whitespace-nowrap text-foreground">
           Gia sư AI
         </span>

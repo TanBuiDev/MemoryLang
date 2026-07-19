@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { NotificationBootstrap } from '@/app/NotificationBootstrap'
 import { Header } from '@/components/layout/Header'
 import { MascotRadialFab } from '@/components/layout/MascotRadialFab'
+import { AiTutorModal } from '@/components/chat/AiTutorModal'
 import { supabase } from '@/services/supabase/client'
 
 export function AppLayout() {
@@ -52,6 +53,7 @@ export function AppLayout() {
         <Outlet />
       </main>
       {showFab && <MascotRadialFab />}
+      <AiTutorModal />
     </div>
   )
 }
