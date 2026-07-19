@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bot, MessageCirclePlus, Send, Trash2 } from 'lucide-react'
-import { useMemo, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,7 @@ export function ChatPage() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [transientMessages, setTransientMessages] = useState<ChatMessage[]>([])
   const [error, setError] = useState<string | null>(null)
+  const composerRef = useRef<HTMLTextAreaElement>(null)
 
   const sessionsQuery = useQuery({
     queryKey: ['chat-sessions', user?.id],
@@ -92,6 +93,10 @@ export function ChatPage() {
       void queryClient.invalidateQueries({ queryKey: ['chat-sessions', user?.id] })
     },
   })
+
+  useEffect(() => {
+    if (!sendMutation.isPending) composerRef.current?.focus()
+  }, [sendMutation.isPending])
 
   function startNewChat() {
     setActiveSessionId(null)
@@ -226,6 +231,7 @@ export function ChatPage() {
             {error === t('chat.quotaReached') && isFree ? <Link className="mb-2 inline-block text-sm font-black text-secondary underline" to="/app/upgrade">{t('chat.upgradeForMore')}</Link> : null}
             <div className="flex items-end gap-2">
               <Textarea
+                ref={composerRef}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={handleKeyDown}

@@ -30,7 +30,7 @@ vi.mock('@/i18n', () => ({
       'chat.title': 'AI Tutor', 'chat.newSession': 'New chat', 'chat.empty': 'Start practicing English with AI.',
       'chat.emptySession': 'Send the first message.', 'chat.placeholder': 'Type a message...', 'chat.send': 'Send',
       'chat.sessionList': 'Chat history', 'chat.demoNotice': 'AI Tutor requires Supabase and an AI provider.',
-      'chat.sending': 'Sending...', 'chat.thinking': 'Thinking...', 'chat.errorGeneric': 'Something went wrong. Please try again.',
+      'chat.sending': 'Sending...', 'chat.thinking': 'Thinking', 'chat.errorGeneric': 'Something went wrong. Please try again.',
       'chat.errorAI': 'AI is unavailable. Please try again later.', 'chat.quotaReached': 'You have used today’s chat limit.',
       'chat.upgradeForMore': 'Upgrade to Pro for more chat messages.', 'chat.deleteSession': 'Delete this chat?',
       'chat.deleteDescription': 'Messages in this chat will be permanently deleted.', 'chat.deleteConfirm': 'Delete',
@@ -61,7 +61,7 @@ describe('ChatPage', () => {
 
     expect(textbox).toHaveValue('')
     expect(screen.getByText('Hello')).toBeInTheDocument()
-    expect(screen.getByText('Thinking...')).toBeInTheDocument()
+    expect(screen.getByText('Thinking')).toBeInTheDocument()
     await waitFor(() => expect(chatService.sendMessage).toHaveBeenCalledTimes(1))
 
     await act(async () => {
@@ -78,6 +78,7 @@ describe('ChatPage', () => {
     })
 
     expect(await screen.findByText('Hi there!')).toBeInTheDocument()
+    expect(textbox).toHaveFocus()
     expect(screen.getByText('Verified source: Learning progress')).toBeInTheDocument()
     expect(chatService.sendMessage).toHaveBeenCalledWith(expect.objectContaining({ message: 'Hello', sessionId: null }))
   })
