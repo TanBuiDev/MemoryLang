@@ -83,6 +83,14 @@ coalesce(
 
 Java API sẽ đặt `request.jwt.claim.sub` trong transaction; không giả định cơ chế này nếu schema remote thay đổi mà chưa có test.
 
+### Phase 0 evidence
+
+- Baseline frontend suite: 61 files, 312 tests passed. Docker Desktop engine `29.5.2` đang chạy.
+- Schema dump remote đã thành công tại `%TEMP%\memorylang-schema-public.sql`: 89,652 bytes, 2,632 lines, 30 public tables, đủ cả 7 bảng analytics và 56 policies.
+- Direct database hostname trên máy này chỉ phân giải IPv6. Pooler của linked project là Supavisor session mode tại `aws-1-ap-southeast-2.pooler.supabase.com:5432`; không ghi credential. Direct IPv6 phù hợp cho local persistent access khi khả dụng; runtime IPv4 như Cloud Run dùng Supavisor session mode, không dùng transaction mode cho baseline.
+- Remote advisors có 88 cảnh báo tổng cộng; 11 cảnh báo liên quan bảng analytics: 10 `auth_rls_initplan` và 1 `multiple_permissive_policies` trên `global_terms`. Phase 0 không sửa các cảnh báo advisor ngoài phạm vi này.
+- Phase 0 chỉ chốt yêu cầu fixture two-user; file fixture Testcontainers sẽ được tạo ở Phase 11 sau khi Java repository tồn tại.
+
 ### Ràng buộc sản phẩm hiện tại
 
 - Java API chỉ đọc; không cập nhật SRS, vocabulary, deck hoặc quiz.
@@ -215,12 +223,12 @@ Bearer JWT
 - [x] Xác nhận các bảng analytics đều bật RLS, `FORCE RLS=false`.
 - [x] Đọc định nghĩa remote `auth.uid()` và xác nhận GUC `request.jwt.claim.sub`.
 - [x] Xác nhận `quiz_answers` chưa phù hợp cho translation-input analytics từ hành vi frontend hiện tại.
-- [ ] Bật Docker Desktop và chạy `npx supabase db dump --linked --schema public --file "$env:TEMP\memorylang-schema-public.sql"` để lưu bằng chứng schema đầy đủ ngoài Git.
-- [ ] Kiểm tra Dashboard → Connect và chọn connection mode: direct IPv6 cho local nếu khả dụng; Supavisor session mode cho runtime IPv4; không dùng transaction mode khi dựa vào session behavior ngoài transaction.
-- [ ] Ghi host, port và username runtime vào Java `.env` mà không ghi password vào Git.
-- [ ] Tạo two-user fixture cho kiểm thử local/Testcontainers, không sao chép dữ liệu người dùng thật.
-- [ ] Chạy `npx supabase db advisors --linked` và lưu các cảnh báo liên quan sáu bảng analytics.
-- [ ] Commit tài liệu baseline bằng `docs: verify Supabase analytics baseline`.
+- [x] Bật Docker Desktop và chạy `npx supabase db dump --linked --schema public --file "$env:TEMP\memorylang-schema-public.sql"` để lưu bằng chứng schema đầy đủ ngoài Git.
+- [x] Kiểm tra Dashboard → Connect và chọn connection mode: direct IPv6 cho local nếu khả dụng; Supavisor session mode tại `aws-1-ap-southeast-2.pooler.supabase.com:5432` cho runtime IPv4; không dùng transaction mode cho baseline.
+- [ ] Sau khi Phase 1 tạo dedicated stats role, ghi host, port và username runtime vào Java `.env` mà không ghi password vào Git; chưa thể hoàn tất khi role chuyên dụng chưa tồn tại.
+- [x] Chốt yêu cầu fixture two-user cho kiểm thử local/Testcontainers, không sao chép dữ liệu người dùng thật; tạo file fixture ở Phase 11 sau khi Java repository tồn tại.
+- [x] Chạy `npx supabase db advisors --linked`: 11 cảnh báo liên quan bảng analytics, gồm 10 `auth_rls_initplan` và 1 `multiple_permissive_policies` trên `global_terms`.
+- [x] Commit tài liệu baseline bằng `docs: verify Supabase analytics baseline`.
 
 **Điều kiện hoàn thành:** Schema snapshot, connection mode và advisors đều được xác minh; không còn giả định về tên cột, JWT algorithm hoặc RLS helper.
 
