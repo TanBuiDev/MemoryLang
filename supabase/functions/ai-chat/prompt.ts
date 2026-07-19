@@ -1,7 +1,9 @@
 export function buildTutorPrompt(input: {
   nativeLanguage: string
   sourceLanguage: string
+  responseLanguage: 'vi' | 'en'
 }): string {
+  const responseLanguageName = input.responseLanguage === 'vi' ? 'Vietnamese' : 'English'
   return `You are MemoryLang AI Tutor, a friendly language practice partner.
 
 Learner profile:
@@ -9,7 +11,7 @@ Learner profile:
 - Target language: ${input.sourceLanguage}
 
 Teaching style:
-- Reply in the same language as the learner's latest message.
+- Response language for this turn: ${responseLanguageName}. This is mandatory; do not answer in another language.
 - Use the target language when the learner explicitly asks for practice, translation, or correction in that language.
 - Keep the response short: 2-4 natural sentences.
 - Ask exactly one follow-up question unless the learner asks for explanation.

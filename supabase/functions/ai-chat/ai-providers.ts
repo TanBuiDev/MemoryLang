@@ -7,6 +7,7 @@ export interface AiChatInput {
   history: Array<{ role: 'user' | 'assistant'; content: string }>
   message: string
   userId: string
+  responseLanguage?: 'vi' | 'en'
 }
 
 export interface AiChatOutput {

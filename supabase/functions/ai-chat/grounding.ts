@@ -1,4 +1,5 @@
 import type { AiChatInput, AiChatOutput, AiProvider } from './ai-providers.ts'
+import { formatVerifiedToolResponse } from './grounded-response.ts'
 import type { ChatEvidence } from './learning-tools.ts'
 import { validateToolCall, type AiTutorToolCall } from './tool-definitions.ts'
 
@@ -31,17 +32,34 @@ export async function generateGroundedReply(input: {
   }
 
   const executed = await Promise.all(toolCalls.map((toolCall) => input.executeTool(toolCall)))
+  const evidence = uniqueEvidence(executed.map((result) => result.evidence))
+  const toolResults = executed.map((result, index) => ({ name: toolCalls[index].name, data: result.data }))
+  const verifiedText = formatVerifiedToolResponse({
+    language: chatInput.responseLanguage ?? 'en',
+    toolCalls,
+    results: toolResults,
+  })
+  if (verifiedText) {
+    return {
+      provider: planned.provider,
+      model: planned.model,
+      text: verifiedText,
+      inputTokens: planned.inputTokens,
+      outputTokens: planned.outputTokens,
+      evidence,
+    }
+  }
   const completed = await provider.completeWithToolResults(
     chatInput,
     toolCalls,
-    executed.map((result, index) => ({ name: toolCalls[index].name, data: result.data })),
+    toolResults,
   )
 
   return {
     ...completed,
     inputTokens: planned.inputTokens + completed.inputTokens,
     outputTokens: planned.outputTokens + completed.outputTokens,
-    evidence: uniqueEvidence(executed.map((result) => result.evidence)),
+    evidence,
   }
 }
 

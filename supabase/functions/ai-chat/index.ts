@@ -4,6 +4,7 @@ import { getAiProvider } from './ai-providers.ts'
 import { generateGroundedReply } from './grounding.ts'
 import { executeLearningTool } from './learning-tools.ts'
 import { buildTutorPrompt } from './prompt.ts'
+import { detectResponseLanguage } from './response-language.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,18 +60,21 @@ serve(async (req) => {
 
     const history = await loadHistory(supabaseAdmin, session.id)
     const provider = getAiProvider()
+    const responseLanguage = detectResponseLanguage(parsed.value.message, parsed.value.nativeLanguage)
     let generated
     try {
       generated = await generateGroundedReply({
         provider,
         input: {
           systemPrompt: buildTutorPrompt({
-          nativeLanguage: parsed.value.nativeLanguage,
-          sourceLanguage: parsed.value.sourceLanguage,
+            nativeLanguage: parsed.value.nativeLanguage,
+            sourceLanguage: parsed.value.sourceLanguage,
+            responseLanguage,
           }),
           history: history.slice(0, -1),
           message: parsed.value.message,
           userId: user.id,
+          responseLanguage,
         },
         executeTool: (toolCall) => executeLearningTool(supabaseUser, toolCall),
       })

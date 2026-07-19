@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { generateGroundedReply } from './grounding'
 
 describe('generateGroundedReply', () => {
-  it('executes only validated Gemini tool calls before producing the final answer', async () => {
+  it('formats verified overview data instead of asking Gemini to interpret it', async () => {
     const generateWithTools = vi.fn().mockResolvedValue({
       provider: 'gemini',
       model: 'gemini-2.5-flash-lite',
@@ -10,15 +10,8 @@ describe('generateGroundedReply', () => {
       outputTokens: 5,
       toolCalls: [{ name: 'get_learning_overview', args: {} }],
     })
-    const completeWithToolResults = vi.fn().mockResolvedValue({
-      provider: 'gemini',
-      model: 'gemini-2.5-flash-lite',
-      inputTokens: 40,
-      outputTokens: 30,
-      text: 'You have learned 26 words so far.',
-    })
     const executeTool = vi.fn().mockResolvedValue({
-      data: { totalVocabulary: 26, reviewDue: 4 },
+      data: { totalVocabulary: 26, memorizedWords: 5, difficultWords: 2, reviewDue: 4 },
       evidence: { kind: 'learning_overview', label: 'Learning progress' },
     })
 
@@ -27,27 +20,23 @@ describe('generateGroundedReply', () => {
         name: 'gemini',
         generate: vi.fn(),
         generateWithTools,
-        completeWithToolResults,
+        completeWithToolResults: vi.fn(),
       },
       input: {
         systemPrompt: 'Use tools for learner facts.',
         history: [],
         message: 'How many words have I learned?',
         userId: 'learner-id',
+        responseLanguage: 'en',
       },
       executeTool,
     })
 
     expect(executeTool).toHaveBeenCalledWith({ name: 'get_learning_overview', args: {} })
-    expect(completeWithToolResults).toHaveBeenCalledWith(
-      expect.anything(),
-      [{ name: 'get_learning_overview', args: {} }],
-      [{ name: 'get_learning_overview', data: { totalVocabulary: 26, reviewDue: 4 } }],
-    )
     expect(result).toMatchObject({
-      text: 'You have learned 26 words so far.',
-      inputTokens: 60,
-      outputTokens: 35,
+      text: 'You currently have 26 vocabulary terms in active study. Of these, 5 are memorized in SRS, 2 are difficult, and 4 are due for review.',
+      inputTokens: 20,
+      outputTokens: 5,
       evidence: [{ kind: 'learning_overview', label: 'Learning progress' }],
     })
   })
