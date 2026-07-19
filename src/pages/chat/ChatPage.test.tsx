@@ -27,8 +27,8 @@ vi.mock('@/i18n', () => ({
   useI18n: () => ({ t: (key: string, params?: { source?: string }) => {
     if (key === 'chat.verifiedSource') return `Verified source: ${params?.source ?? ''}`
     return ({
-      'chat.title': 'AI Tutor', 'chat.newSession': 'New chat', 'chat.empty': 'Start practicing English with AI.',
-      'chat.emptySession': 'Send the first message.', 'chat.placeholder': 'Type a message...', 'chat.send': 'Send',
+      'chat.title': 'AI Tutor', 'chat.newSession': 'New chat', 'chat.empty': 'AI Tutor is ready to practice with you!',
+      'chat.emptySession': 'Pick a suggested topic below or type a message to start practicing.', 'chat.placeholder': 'Type a message...', 'chat.send': 'Send',
       'chat.sessionList': 'Chat history', 'chat.demoNotice': 'AI Tutor requires Supabase and an AI provider.',
       'chat.sending': 'Sending...', 'chat.thinking': 'Thinking', 'chat.errorGeneric': 'Something went wrong. Please try again.',
       'chat.errorAI': 'AI is unavailable. Please try again later.', 'chat.quotaReached': 'You have used today’s chat limit.',
@@ -54,7 +54,7 @@ describe('ChatPage', () => {
     }) as never)
     renderPage()
 
-    expect(await screen.findByText('Start practicing English with AI.')).toBeInTheDocument()
+    expect(await screen.findByText('AI Tutor is ready to practice with you!')).toBeInTheDocument()
     const textbox = screen.getByPlaceholderText('Type a message...')
     fireEvent.change(textbox, { target: { value: 'Hello' } })
     fireEvent.keyDown(textbox, { key: 'Enter' })
