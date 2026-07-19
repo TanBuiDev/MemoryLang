@@ -1,15 +1,19 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { MascotRadialFab } from './MascotRadialFab'
+import { useChatStore } from '@/stores/useChatStore'
 
 vi.mock('./QuickNotesDrawer', () => ({ QuickNotesDrawer: () => null }))
 vi.mock('./AddVocabularyModal', () => ({ AddVocabularyModal: () => null }))
 
 describe('MascotRadialFab', () => {
-  it('links the former settings action to AI Tutor', () => {
+  it('opens AI Tutor Modal when clicking the AI Tutor button', () => {
     render(<MemoryRouter><MascotRadialFab /></MemoryRouter>)
 
-    expect(screen.getByTitle('Mở Gia sư AI')).toHaveAttribute('href', '/app/chat')
+    const button = screen.getByTitle('Mở Gia sư AI (Ctrl+K)')
+    expect(button).toBeInTheDocument()
+    fireEvent.click(button)
+    expect(useChatStore.getState().isAiModalOpen).toBe(true)
   })
 })
