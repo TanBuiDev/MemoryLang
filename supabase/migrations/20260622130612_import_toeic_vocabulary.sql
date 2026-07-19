@@ -1,4 +1,12 @@
-INSERT INTO public.user_terms (
+-- Historical user-specific import; skip on fresh local replays without its production profile.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM public.profiles
+    WHERE id = '7112930d-527c-47dc-85f6-1f03a49d603c'::uuid
+  ) THEN
+    INSERT INTO public.user_terms (
   user_id, source_text, normalized_text, source_language, native_language,
   item_type, part_of_speech, ipa, pronunciation_text,
   meanings, examples, tags, note, translation, status
@@ -23,3 +31,5 @@ INSERT INTO public.user_terms (
 ('7112930d-527c-47dc-85f6-1f03a49d603c', 'surface transportation', 'surface transportation', 'en', 'vi', 'phrase', 'noun phrase', '/ˈsɜː.fɪs ˌtræns.pɔːˈteɪ.ʃən/', 'SUR-fis trans-por-TAY-shun', '[{"text":"(n) vận tải đường bộ / đường thủy (vận tải trên mặt đất, không phải hàng không)","language":"vi"}]'::jsonb, '[{"sentence":"Surface transportation includes trucks, trains, and ships.","translation":"Vận tải đường bộ bao gồm xe tải, tàu hỏa và tàu thủy."}]'::jsonb, ARRAY['noun-phrase', 'logistics', 'transportation'], NULL, 'vận tải đường bộ', 'new'),
 ('7112930d-527c-47dc-85f6-1f03a49d603c', 'hiring manager', 'hiring manager', 'en', 'vi', 'phrase', 'noun phrase', '/ˈhaɪərɪŋ ˈmænɪdʒər/', 'HY-ring MAN-ih-jer', '[{"text":"(n) người quản lý tuyển dụng, trưởng bộ phận tuyển dụng","language":"vi"}]'::jsonb, '[{"sentence":"Please send your resume directly to the hiring manager.","translation":"Vui lòng gửi CV trực tiếp đến người quản lý tuyển dụng."}]'::jsonb, ARRAY['noun-phrase', 'HR', 'recruitment', 'toeic-part6'], NULL, 'người quản lý tuyển dụng', 'new'),
 ('7112930d-527c-47dc-85f6-1f03a49d603c', 'qualification', 'qualification', 'en', 'vi', 'word', 'noun', '/ˌkwɒl.ɪ.fɪˈkeɪ.ʃən/', 'kwol-ih-fih-KAY-shun', '[{"text":"(n) bằng cấp, trình độ chuyên môn; điều kiện, tiêu chuẩn","language":"vi"}]'::jsonb, '[{"sentence":"She has all the qualifications required for this position.","translation":"Cô ấy có đủ tất cả bằng cấp cần thiết cho vị trí này."},{"sentence":"Applicants must submit their resume and qualifications.","translation":"Ứng viên phải nộp CV và bằng cấp của mình."}]'::jsonb, ARRAY['noun', 'HR', 'recruitment', 'toeic-part6'], NULL, 'bằng cấp / trình độ', 'new');
+  END IF;
+END $$;
