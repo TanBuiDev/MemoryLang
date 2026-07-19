@@ -1,3 +1,6 @@
+-- PostgreSQL requires dropping the function before changing its RETURNS TABLE shape.
+DROP FUNCTION IF EXISTS public.get_user_vocabulary(uuid);
+
 CREATE OR REPLACE FUNCTION public.get_user_vocabulary(p_user_id uuid)
 RETURNS TABLE (
   id uuid,
