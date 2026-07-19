@@ -8,6 +8,13 @@
 
 **Tech Stack:** React 19, TypeScript, Supabase PostgreSQL/RLS/RPC/Edge Functions, Gemini function calling, `pgvector`, Supabase Edge Runtime embeddings (`gte-small`, subject to deployment spike), Vitest, Deno tests.
 
+## Implementation Status (2026-07-19)
+
+- [x] Chunk 1 deployed: six JWT-scoped, read-only SQL tools; Gemini native function-calling; bounded two-tool loop; persisted evidence metadata; and evidence badges in chat.
+- [x] Supabase migrations `20260719082407_ai_tutor_grounding.sql` and `20260719083507_add_ai_chat_message_metadata.sql` applied to production; `ai-chat` and Cloudflare Pages deployed.
+- [ ] Phase gate remains: run the listed factual acceptance prompts with real Free and Pro accounts, compare results with direct database data, and collect latency/token usage across at least 20 grounded production turns.
+- [ ] Chunk 2 vector RAG has not started. It remains intentionally blocked by the Phase 1 gate.
+
 ---
 
 ## Why This Plan Exists
