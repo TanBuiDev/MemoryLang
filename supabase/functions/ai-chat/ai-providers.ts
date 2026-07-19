@@ -1,3 +1,5 @@
+import { aiTutorFunctionDeclarations } from './tool-definitions.ts'
+
 export type AiProviderName = 'gemini' | 'openai'
 
 export interface AiChatInput {
@@ -15,9 +17,25 @@ export interface AiChatOutput {
   provider: AiProviderName
 }
 
+export type AiToolCall = {
+  name: string
+  args: Record<string, unknown>
+}
+
+export type AiToolResult = {
+  name: string
+  data: unknown
+}
+
+export type AiToolPlanningOutput = Omit<AiChatOutput, 'text'> & {
+  toolCalls: AiToolCall[]
+}
+
 export interface AiProvider {
   name: AiProviderName
   generate(input: AiChatInput): Promise<AiChatOutput>
+  generateWithTools?: (input: AiChatInput) => Promise<AiToolPlanningOutput | AiChatOutput>
+  completeWithToolResults?: (input: AiChatInput, toolCalls: AiToolCall[], toolResults: AiToolResult[]) => Promise<AiChatOutput>
 }
 
 const PROVIDER_TIMEOUT_MS = 20_000
@@ -42,6 +60,61 @@ function readText(parts: unknown): string {
     .trim()
 }
 
+export function readGeminiFunctionCalls(parts: unknown): AiToolCall[] {
+  if (!Array.isArray(parts)) return []
+  return parts.flatMap((part) => {
+    if (!isRecord(part) || !isRecord(part.functionCall)) return []
+    const { name, args } = part.functionCall
+    return typeof name === 'string' && isRecord(args) ? [{ name, args }] : []
+  })
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+type GeminiPayload = {
+  candidates?: Array<{ content?: { parts?: unknown } }>
+  usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number }
+  error?: { message?: string }
+}
+
+function geminiContents(input: AiChatInput): Array<{ role: string; parts: Array<Record<string, unknown>> }> {
+  return [
+    ...input.history.map((item) => ({
+      role: item.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: item.content }],
+    })),
+    { role: 'user', parts: [{ text: input.message }] },
+  ]
+}
+
+async function requestGemini(apiKey: string, model: string, body: Record<string, unknown>): Promise<GeminiPayload> {
+  const response = await fetchWithTimeout(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  )
+  const payload = await response.json().catch(() => null) as GeminiPayload | null
+  if (!response.ok) throw new Error(payload?.error?.message ?? `Gemini request failed (${response.status})`)
+  return payload ?? {}
+}
+
+function geminiOutput(payload: GeminiPayload, model: string): AiChatOutput {
+  const text = readText(payload.candidates?.[0]?.content?.parts)
+  if (!text) throw new Error('Gemini returned no assistant message')
+  return {
+    provider: 'gemini',
+    model,
+    text,
+    inputTokens: payload.usageMetadata?.promptTokenCount ?? 0,
+    outputTokens: payload.usageMetadata?.candidatesTokenCount ?? 0,
+  }
+}
+
 export function createGeminiProvider(): AiProvider {
   const apiKey = Deno.env.get('GEMINI_API_KEY')
   const model = Deno.env.get('GEMINI_CHAT_MODEL')
@@ -50,41 +123,46 @@ export function createGeminiProvider(): AiProvider {
   return {
     name: 'gemini',
     async generate(input) {
-      const response = await fetchWithTimeout(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: input.systemPrompt }] },
-            contents: [
-              ...input.history.map((item) => ({
-                role: item.role === 'assistant' ? 'model' : 'user',
-                parts: [{ text: item.content }],
-              })),
-              { role: 'user', parts: [{ text: input.message }] },
-            ],
-            generationConfig: { maxOutputTokens: 500, temperature: 0.7 },
-          }),
-        },
-      )
-
-      const payload = await response.json().catch(() => null) as {
-        candidates?: Array<{ content?: { parts?: unknown } }>
-        usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number }
-        error?: { message?: string }
-      } | null
-      if (!response.ok) throw new Error(payload?.error?.message ?? `Gemini request failed (${response.status})`)
-
-      const text = readText(payload?.candidates?.[0]?.content?.parts)
-      if (!text) throw new Error('Gemini returned no assistant message')
+      const payload = await requestGemini(apiKey, model, {
+        systemInstruction: { parts: [{ text: input.systemPrompt }] },
+        contents: geminiContents(input),
+        generationConfig: { maxOutputTokens: 500, temperature: 0.7 },
+      })
+      return geminiOutput(payload, model)
+    },
+    async generateWithTools(input) {
+      const payload = await requestGemini(apiKey, model, {
+        systemInstruction: { parts: [{ text: input.systemPrompt }] },
+        contents: geminiContents(input),
+        tools: [{ functionDeclarations: aiTutorFunctionDeclarations }],
+        generationConfig: { maxOutputTokens: 500, temperature: 0.3 },
+      })
+      const toolCalls = readGeminiFunctionCalls(payload.candidates?.[0]?.content?.parts)
+      if (toolCalls.length === 0) return geminiOutput(payload, model)
       return {
         provider: 'gemini',
         model,
-        text,
-        inputTokens: payload?.usageMetadata?.promptTokenCount ?? 0,
-        outputTokens: payload?.usageMetadata?.candidatesTokenCount ?? 0,
+        toolCalls,
+        inputTokens: payload.usageMetadata?.promptTokenCount ?? 0,
+        outputTokens: payload.usageMetadata?.candidatesTokenCount ?? 0,
       }
+    },
+    async completeWithToolResults(input, toolCalls, toolResults) {
+      const payload = await requestGemini(apiKey, model, {
+        systemInstruction: { parts: [{ text: input.systemPrompt }] },
+        contents: [
+          ...geminiContents(input),
+          { role: 'model', parts: toolCalls.map((toolCall) => ({ functionCall: toolCall })) },
+          {
+            role: 'user',
+            parts: toolResults.map((result) => ({
+              functionResponse: { name: result.name, response: { result: result.data ?? { available: false } } },
+            })),
+          },
+        ],
+        generationConfig: { maxOutputTokens: 500, temperature: 0.5 },
+      })
+      return geminiOutput(payload, model)
     },
   }
 }

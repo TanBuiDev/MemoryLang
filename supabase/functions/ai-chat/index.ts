@@ -1,7 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.105.4'
 import { getAiProvider } from './ai-providers.ts'
-import { buildTutorPrompt, type VocabularyContextItem } from './prompt.ts'
+import { generateGroundedReply } from './grounding.ts'
+import { executeLearningTool } from './learning-tools.ts'
+import { buildTutorPrompt } from './prompt.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -55,22 +57,22 @@ serve(async (req) => {
       .single()
     if (userMessageError) throw userMessageError
 
-    const [history, vocabulary] = await Promise.all([
-      loadHistory(supabaseAdmin, session.id),
-      loadVocabulary(supabaseAdmin, user.id),
-    ])
+    const history = await loadHistory(supabaseAdmin, session.id)
     const provider = getAiProvider()
     let generated
     try {
-      generated = await provider.generate({
-        systemPrompt: buildTutorPrompt({
+      generated = await generateGroundedReply({
+        provider,
+        input: {
+          systemPrompt: buildTutorPrompt({
           nativeLanguage: parsed.value.nativeLanguage,
           sourceLanguage: parsed.value.sourceLanguage,
-          vocabulary,
-        }),
-        history: history.slice(0, -1),
-        message: parsed.value.message,
-        userId: user.id,
+          }),
+          history: history.slice(0, -1),
+          message: parsed.value.message,
+          userId: user.id,
+        },
+        executeTool: (toolCall) => executeLearningTool(supabaseUser, toolCall),
       })
     } catch (error) {
       await supabaseAdmin.from('chat_usage_events').insert({
@@ -182,21 +184,6 @@ async function loadHistory(supabase: ReturnType<typeof createClient>, sessionId:
   const { data, error } = await supabase.from('chat_messages').select('role, content').eq('session_id', sessionId).order('created_at', { ascending: false }).limit(12)
   if (error) throw error
   return (data ?? []).reverse().filter((message): message is { role: 'user' | 'assistant'; content: string } => message.role === 'user' || message.role === 'assistant')
-}
-
-async function loadVocabulary(supabase: ReturnType<typeof createClient>, userId: string): Promise<VocabularyContextItem[]> {
-  const { data, error } = await supabase
-    .from('user_terms')
-    .select('status, global_terms!fk_user_terms_global_term(source_text, translation, part_of_speech)')
-    .eq('user_id', userId)
-    .is('deleted_at', null)
-    .order('last_reviewed_at', { ascending: false, nullsFirst: false })
-    .limit(30)
-  if (error) throw error
-  return (data ?? []).flatMap((item) => {
-    const term = item.global_terms as { source_text?: string; translation?: string | null; part_of_speech?: string | null } | null
-    return term?.source_text ? [{ sourceText: term.source_text, translation: term.translation ?? null, partOfSpeech: term.part_of_speech ?? null, status: item.status ?? null }] : []
-  })
 }
 
 function makeTitle(message: string): string {
