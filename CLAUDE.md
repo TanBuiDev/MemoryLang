@@ -163,6 +163,7 @@ Custom system in `i18n/index.ts`. `useI18n()` returns `{ language, t }`. Keys: `
 
 ### Auth flow
 Supabase Auth (email/password + Google OAuth). `AuthBootstrap` in `providers.tsx` restores session on mount. Database trigger auto-creates profile on signup. `ProtectedRoute` guards: loading -> login redirect -> onboarding redirect -> render.
+The linked Supabase project currently signs user access tokens with an asymmetric EC P-256 key (`ES256`), exposed through the project JWKS endpoint; backend token verification must support JWKS key rotation instead of assuming legacy `HS256` or `RS256`.
 
 ### Design system
 Neobrutalist MemoryLang identity: thick navy borders, hard shadows, warm off-white surfaces, energetic yellow CTA/status accents, and purple secondary actions. Core CSS utilities: `neo-card`, `neo-button`, `neo-button-active`, `brand-grid-bg`, and `brand-surface`. Colors: yellow `#fdc800` (primary), purple `#432dd7` (secondary), off-white `#fbfbf9` (bg), dark navy `#1c293c` (fg). Fonts: Inter + JetBrains Mono.

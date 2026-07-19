@@ -1,738 +1,632 @@
-# Plan: Java Statistics & Recommendation API
+# Java Statistics & Recommendation API — Implementation Plan
 
-## Mục tiêu
+> **Dành cho agent triển khai:** Bắt buộc thực hiện tuần tự theo phase và cập nhật checkbox ngay sau mỗi lần xác minh. Khi bắt đầu triển khai, dùng `superpowers:subagent-driven-development` hoặc `superpowers:executing-plans`. Không đánh dấu hoàn thành chỉ dựa trên việc đã viết code.
 
-Xây dựng một microservice Java Spring Boot độc lập cung cấp API phân tích học tập và gợi ý từ vựng cho MemoryLang. Đây là bridge project cho CV Java Engineer, nhưng phải bám đúng schema Supabase và hành vi frontend hiện tại để có thể tích hợp thật sau này.
+**Mục tiêu:** Xây dựng microservice Java read-only cung cấp analytics học tập và gợi ý từ vựng cho MemoryLang, dùng Supabase PostgreSQL hiện tại làm nguồn dữ liệu và Supabase JWT làm danh tính người dùng.
 
-### Mục tiêu CV
-- Spring Boot 3 + Java 21 (virtual threads, records, sealed classes)
-- Spring Data JPA + PostgreSQL JDBC (direct connection, HikariCP)
-- REST API design (proper endpoints, DTOs, error handling, pagination)
-- SQL analytics (window functions, CTEs, aggregations, FILTER clauses)
-- Recommendation algorithm (content-based filtering)
-- JWT authentication (verify Supabase tokens; RS256/JWKS when project uses asymmetric signing)
-- Docker deployment
-- Google Cloud Run deployment (scale to zero, free-trial friendly)
-- Testing (JUnit 5, Mockito, MockMvc, Testcontainers)
-- API documentation (OpenAPI/Swagger)
+**Kiến trúc:** React gửi Supabase access token tới Spring Boot API. Spring Security xác minh token ES256 qua JWKS; Java lấy `sub`, mở transaction read-only, đặt `request.jwt.claim.sub` bằng `set_config(..., true)`, rồi chạy SQL qua `JdbcClient`. PostgreSQL RLS và điều kiện `user_id` trong SQL cùng bảo vệ user isolation.
 
-### Mục tiêu sản phẩm
-- Cung cấp analytics nâng cao mà frontend hiện chưa có: streaks, heatmap, learning curves
-- Gợi ý từ vựng thông minh dựa trên pattern học tập của user
-- SRS health monitoring và forecast ôn tập
-- Quiz analytics aggregate dựa trên `quiz_results`; per-term/most-failed chỉ bật sau khi frontend ghi `quiz_answers`
-
-### Ngoài phạm vi MVP Java
-- Không thay thế Supabase service layer hiện tại của React app.
-- Không ghi dữ liệu học tập, không cập nhật SRS, không tạo từ vựng/deck.
-- Không triển khai per-question quiz analytics cho translation-input cho đến khi frontend gửi `quiz_answers`.
-- Không dùng service-role key hoặc PostgreSQL superuser trong ứng dụng runtime.
+**Tech stack:** Java 21, Spring Boot 4.1.x, Spring MVC, Spring Security OAuth2 Resource Server, Spring JDBC `JdbcClient`, PostgreSQL 17, HikariCP, Flyway chỉ dùng cho schema test của Java repo, JUnit 5, MockMvc, Testcontainers, springdoc-openapi, Maven Wrapper, Docker.
 
 ---
 
-## Tech Stack
+## 1. Trạng thái kế hoạch
 
-| Thành phần | Công nghệ |
-|------------|-----------|
-| Language | Java 21 (LTS) — virtual threads, records, sealed classes, pattern matching |
-| Framework | Spring Boot 3.3.x |
-| ORM | Spring Data JPA + Hibernate |
-| Database | PostgreSQL 17 (Supabase, direct JDBC via read-only role) |
-| Connection Pool | HikariCP |
-| Auth | Supabase JWT verification (prefer RS256/JWKS; verify actual project alg during setup) |
-| Build | Maven |
-| Testing | JUnit 5, Mockito, MockMvc, Testcontainers |
-| Docs | springdoc-openapi (Swagger UI) |
-| Container | Docker + docker-compose |
-| Optional cloud demo | Google Cloud Run, Artifact Registry, Secret Manager |
+### Quy ước checklist
 
----
+- `[x]`: đã thực hiện và có bằng chứng xác minh.
+- `[ ]`: chưa thực hiện.
+- `[!]`: đang bị chặn hoặc cần quyết định; ghi nguyên nhân ngay bên cạnh.
+- Chỉ hoàn thành một phase khi toàn bộ mục bắt buộc của phase đó là `[x]`.
+- Mỗi phase tạo một commit độc lập theo Conventional Commits; không tự động push.
 
-## Kiến trúc tổng quan
+### Tổng quan tiến độ
 
-```
-[MemoryLang React Frontend]
-    ↓ HTTP (JWT in Authorization header)
-[Spring Boot API: localhost:8080/api/v1 or Cloud Run URL]
-    ├── Auth filter (verify Supabase JWT via JWKS)
-    ├── Statistics endpoints (read-only analytics)
-    ├── Recommendation endpoints (algorithm-based suggestions)
-    └── JDBC → PostgreSQL (Supabase DB, HikariCP pool)
-```
-
-### Key design decisions
-
-- **Read-only access**: API chỉ đọc từ DB Supabase, không ghi. Schema được quản lý bởi Supabase migrations. `ddl-auto: none`.
-- **Least-privilege JDBC**: Kết nối PostgreSQL bằng role read-only riêng, không dùng `postgres`, `service_role`, hoặc role có `bypassrls`. Mọi query vẫn phải filter theo user từ JWT.
-- **Direct JDBC + native SQL**: Dùng Spring Data JPA cho repository boundary, nhưng analytics phức tạp ưu tiên native SQL/`JdbcTemplate` để thể hiện CTE, window functions, FILTER clauses rõ ràng.
-- **Stateless auth**: Verify JWT mỗi request, không lưu session server-side. Bước setup phải kiểm tra token `alg` thực tế của Supabase project trước khi chốt RS256/JWKS hay fallback khác.
-- **Schema snapshot first**: Trước khi viết entity, tạo snapshot schema từ remote/local Supabase hiện hành vì migrations cũ và code hiện tại đã lệch ở `deck_terms`, `user_terms`, `global_terms`.
-- **Separate repo**: Project nằm ngoài MemoryLang repo (`memorylang-stats-api/`), là microservice độc lập.
-- **Integration optional**: Frontend integration là phase sau; Java API standalone vẫn đủ cho CV nếu có test và Swagger rõ.
-- **Cost-controlled Google Cloud demo**: Nếu tận dụng Google Cloud free trial, deploy bằng Cloud Run với `min instances = 0`, `max instances = 1-2`, không dùng VM/GKE/Cloud SQL. Service có thể tắt sau demo/interview.
+| Phase | Nội dung | Trạng thái |
+|---|---|---|
+| 0 | Xác minh baseline remote | Đang thực hiện |
+| 1 | Provision role JDBC và RLS | Chưa bắt đầu |
+| 2 | Scaffold Java project | Chưa bắt đầu |
+| 3 | Supabase JWT authentication | Chưa bắt đầu |
+| 4 | Transaction-scoped DB identity | Chưa bắt đầu |
+| 5 | Streak và activity heatmap | Chưa bắt đầu |
+| 6 | Mastery và SRS analytics | Chưa bắt đầu |
+| 7 | Deck analytics | Chưa bắt đầu |
+| 8 | Quiz aggregate analytics | Chưa bắt đầu |
+| 9 | Recommendation engine | Chưa bắt đầu |
+| 10 | API contract, error handling và observability | Chưa bắt đầu |
+| 11 | Security/integration tests và Docker | Chưa bắt đầu |
+| 12 | Cloud Run demo, tùy chọn | Chưa bắt đầu |
+| 13 | Frontend integration, tùy chọn | Chưa bắt đầu |
 
 ---
 
-## Project Structure
+## 2. Baseline đã xác minh ngày 2026-07-19
 
+### Supabase project
+
+| Thuộc tính | Giá trị đã xác minh |
+|---|---|
+| Project | `MemoryLang` |
+| Project ref | `brwvbpkgimhamivmaflu` |
+| Region | `ap-southeast-2` |
+| Project status | `ACTIVE_HEALTHY` |
+| PostgreSQL | `17.6.1.121` |
+| Supabase CLI | `2.109.1`, chạy bằng `npx supabase` |
+| JWT signing key | EC P-256, `alg=ES256` |
+| JWKS | `https://brwvbpkgimhamivmaflu.supabase.co/auth/v1/.well-known/jwks.json` |
+
+Nguồn xác minh: Supabase CLI `projects list`, Management API qua `db query`, và JWKS công khai. Không chốt `RS256`; verifier phải chỉ chấp nhận thuật toán phù hợp với key hiện hành và cho phép key rotation qua JWKS.
+
+### Schema analytics hiện tại
+
+| Bảng | Cột quan trọng đã xác minh |
+|---|---|
+| `user_terms` | `id`, `user_id`, `global_term_id`, `status`, counters, SRS fields, `flagged`, `deleted_at` |
+| `global_terms` | dictionary fields, `translation`, `note`, `tags text[]`, `deleted_at` |
+| `deck_terms` | `deck_id`, `global_term_id`, `created_at`; **không còn `user_term_id`** |
+| `decks` | `user_id`, language fields, `visibility`, `parent_id` |
+| `study_sessions` | aggregate card/session counters và timestamps |
+| `quiz_results` | aggregate quiz counters, `duration_ms`, `created_at` |
+| `quiz_answers` | còn tồn tại nhưng translation-input frontend hiện không ghi answers |
+
+RLS đang bật trên cả bảy bảng trên; `FORCE ROW LEVEL SECURITY` hiện là `false`. `user_terms`, `study_sessions`, `quiz_results` và `quiz_answers` dùng ownership dựa trên `auth.uid()`. `decks` và `deck_terms` còn cho phép đọc deck public, vì vậy analytics role cần restrictive policy để không đưa dữ liệu user khác vào thống kê cá nhân.
+
+Remote `auth.uid()` hiện đọc theo thứ tự:
+
+```sql
+coalesce(
+  nullif(current_setting('request.jwt.claim.sub', true), ''),
+  nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub'
+)::uuid
 ```
+
+Java API sẽ đặt `request.jwt.claim.sub` trong transaction; không giả định cơ chế này nếu schema remote thay đổi mà chưa có test.
+
+### Ràng buộc sản phẩm hiện tại
+
+- Java API chỉ đọc; không cập nhật SRS, vocabulary, deck hoặc quiz.
+- `deck_terms.global_term_id` là đường join chính thức.
+- Translation-input quiz chỉ ghi `quiz_results`; không cung cấp per-question analytics trong MVP.
+- Study completion ghi `study_sessions` và cập nhật SRS qua flow Supabase hiện tại; Java chỉ tổng hợp dữ liệu đã lưu.
+- Frontend tiếp tục dùng Supabase service layer; Java API là companion service, không phải backend thay thế.
+- Không dùng `service_role`, `postgres`, table owner hoặc role có `BYPASSRLS` ở runtime.
+- Không ghi secret vào Git. MemoryLang `.env` dùng `SUPABASE_DB_PASSWORD`; Java runtime dùng `STATS_DB_PASSWORD` hoặc Secret Manager.
+
+---
+
+## 3. Phạm vi API MVP
+
+### Endpoint bắt buộc
+
+| Nhóm | Method và path | Kết quả |
+|---|---|---|
+| Activity | `GET /api/v1/streaks/current` | current/longest streak và ngày học gần nhất |
+| Activity | `GET /api/v1/streaks/history?limit=12` | các streak gần nhất |
+| Activity | `GET /api/v1/activity/heatmap?from=&to=` | số session/cards theo ngày |
+| Activity | `GET /api/v1/activity/summary?days=30` | tổng session, cards, remembered ratio |
+| Mastery | `GET /api/v1/mastery/distribution` | phân bố status thực tế |
+| Mastery | `GET /api/v1/mastery/ease-factor` | histogram ease factor |
+| SRS | `GET /api/v1/srs/health` | overdue buckets và ease trung bình |
+| SRS | `GET /api/v1/srs/forecast?days=14` | số lượt ôn theo ngày |
+| SRS | `GET /api/v1/srs/difficulty-distribution` | histogram interval |
+| Deck | `GET /api/v1/decks/analytics` | tiến độ từng deck thuộc user |
+| Deck | `GET /api/v1/decks/{id}/engagement` | engagement của deck thuộc user |
+| Quiz | `GET /api/v1/quiz/analytics/summary` | aggregate accuracy/duration |
+| Quiz | `GET /api/v1/quiz/analytics/recent?limit=30` | quiz gần đây |
+| Recommendation | `GET /api/v1/recommendations/review` | từ đến hạn |
+| Recommendation | `GET /api/v1/recommendations/at-risk` | từ có nguy cơ quên |
+| Recommendation | `GET /api/v1/recommendations/almost-memorized` | từ gần đạt mastery |
+| Recommendation | `GET /api/v1/recommendations/neglected?days=14` | từ lâu chưa ôn |
+| Recommendation | `GET /api/v1/recommendations/weak-deck` | deck thuộc user có completion thấp nhất |
+| Recommendation | `GET /api/v1/recommendations/next-terms?limit=10` | từ mới theo language/POS/tag profile |
+
+### Ngoài MVP
+
+- Không có endpoint ghi dữ liệu.
+- Không có `/term-performance` hoặc `/most-failed` cho đến khi frontend ghi `quiz_answers` thật.
+- Không dùng machine learning service; recommendation là deterministic SQL/content-based scoring.
+- Không tạo sealed hierarchy chỉ để quảng bá Java feature. Dùng `record` cho DTO; chỉ dùng sealed types khi domain thật sự có closed variants.
+- Không thêm Redis, Kafka, Cloud SQL, GKE hoặc service discovery.
+
+### Quy ước API
+
+- Tất cả endpoint nghiệp vụ yêu cầu `Authorization: Bearer <supabase-access-token>`.
+- Swagger, OpenAPI và health endpoint là public; metrics chi tiết không public.
+- `userId` không xuất hiện trong query/path/body. User luôn lấy từ JWT `sub`.
+- Timestamps trả về ISO-8601 UTC; ngày heatmap trả về `YYYY-MM-DD` theo timezone được chốt là `Asia/Ho_Chi_Minh`.
+- `limit`: mặc định theo endpoint, tối đa `100`; `days`: `1..365`; `from <= to`, khoảng heatmap tối đa `366` ngày.
+- Empty dataset trả `200` với zero/empty collection, không trả `404`.
+- Deck không thuộc user trả `404` để không tiết lộ sự tồn tại.
+
+---
+
+## 4. Kiến trúc và cấu trúc repository
+
+Java project là sibling repo: `../memorylang-stats-api/`. MemoryLang chỉ chứa migration/policy liên quan database và tài liệu tích hợp.
+
+```text
 memorylang-stats-api/
 ├── pom.xml
-├── Dockerfile
-├── docker-compose.yml
-├── cloudbuild.yaml
+├── mvnw
+├── mvnw.cmd
+├── .mvn/wrapper/
 ├── .env.example
+├── Dockerfile
+├── compose.yaml
 ├── README.md
 ├── src/main/java/com/memorylang/stats/
-│   ├── MemoryLangStatsApplication.java       # @SpringBootApplication, virtual threads
+│   ├── MemoryLangStatsApplication.java
 │   ├── config/
-│   │   ├── SecurityConfig.java               # JWT filter chain, public/protected routes
-│   │   ├── JpaConfig.java                    # HikariCP, JPA properties
-│   │   └── OpenApiConfig.java                # Swagger/OpenAPI docs config
+│   │   ├── SecurityConfig.java
+│   │   ├── DatabaseConfig.java
+│   │   └── OpenApiConfig.java
 │   ├── auth/
-│   │   ├── SupabaseJwtFilter.java            # JWT verification filter
-│   │   ├── SupabaseJwtVerifier.java          # JWT alg detection + RS256/JWKS verification path
-│   │   └── AuthUser.java                     # record: UUID userId, String email
-│   ├── controller/
-│   │   ├── StreakController.java             # /api/v1/streaks/**
-│   │   ├── MasteryController.java            # /api/v1/mastery/**
-│   │   ├── DeckController.java               # /api/v1/decks/analytics/**
-│   │   ├── RecommendationController.java     # /api/v1/recommendations/**
-│   │   ├── QuizController.java               # /api/v1/quiz/analytics/**
-│   │   └── SrsController.java                # /api/v1/srs/**
-│   ├── service/
-│   │   ├── StreakService.java
-│   │   ├── MasteryService.java
-│   │   ├── DeckAnalyticsService.java
-│   │   ├── RecommendationService.java
-│   │   ├── QuizAnalyticsService.java
-│   │   └── SrsHealthService.java
-│   ├── repository/
-│   │   ├── AnalyticsJdbcRepository.java      # native SQL analytics via JdbcTemplate
-│   │   ├── StudySessionRepository.java       # JPA repository for simple reads
-│   │   ├── UserTermRepository.java
-│   │   ├── QuizResultRepository.java
-│   │   ├── DeckRepository.java
-│   │   ├── DeckTermRepository.java
-│   │   └── GlobalTermRepository.java
-│   ├── dto/
-│   │   ├── StreakDto.java                    # record
-│   │   ├── ActivityHeatmapDto.java           # record
-│   │   ├── MasteryDistributionDto.java       # record
-│   │   ├── EaseFactorDistributionDto.java    # record
-│   │   ├── MasteryTrajectoryDto.java         # record
-│   │   ├── DeckCompletionDto.java            # record
-│   │   ├── DeckEngagementDto.java            # record
-│   │   ├── RecommendationDto.java            # record
-│   │   ├── QuizSummaryDto.java              # record
-│   │   ├── TermPerformanceDto.java           # record
-│   │   ├── FailedQuestionDto.java           # record
-│   │   ├── SrsHealthDto.java                # record
-│   │   ├── SrsForecastDto.java             # record
-│   │   ├── SrsDifficultyDto.java           # record
-│   │   └── ErrorResponse.java               # record: timestamp, status, message, path
-│   ├── entity/
-│   │   ├── StudySession.java                # @Entity → study_sessions
-│   │   ├── UserTerm.java                    # @Entity → user_terms
-│   │   ├── QuizResult.java                  # @Entity → quiz_results
-│   │   ├── Deck.java                        # @Entity → decks
-│   │   ├── DeckTerm.java                   # @Entity → deck_terms
-│   │   └── GlobalTerm.java                 # @Entity → global_terms
-│   └── exception/
-│       ├── GlobalExceptionHandler.java      # @ControllerAdvice
-│       ├── ResourceNotFoundException.java
-│       └── InvalidTokenException.java
-├── src/main/resources/
-│   ├── application.yml
-│   ├── application-dev.yml
-│   └── application-prod.yml
-└── src/test/java/com/memorylang/stats/
-    ├── service/
-    │   ├── StreakServiceTest.java
-    │   ├── MasteryServiceTest.java
-    │   ├── DeckAnalyticsServiceTest.java
-    │   ├── RecommendationServiceTest.java
-    │   ├── QuizAnalyticsServiceTest.java
-    │   └── SrsHealthServiceTest.java
-    ├── controller/
-    │   ├── StreakControllerTest.java
-    │   ├── MasteryControllerTest.java
-    │   ├── DeckControllerTest.java
-    │   ├── RecommendationControllerTest.java
-    │   ├── QuizControllerTest.java
-    │   └── SrsControllerTest.java
-    ├── integration/
-    │   ├── StatsApiIntegrationTest.java      # Testcontainers + PostgreSQL
-    │   └── CrossUserIsolationTest.java       # verifies no user can read another user's analytics
-    └── resources/
-        └── schema.sql                        # minimal schema snapshot for Testcontainers
+│   │   ├── AuthenticatedUser.java
+│   │   └── AuthenticatedUserResolver.java
+│   ├── database/
+│   │   ├── UserScopedTransaction.java
+│   │   └── AnalyticsJdbcRepository.java
+│   ├── activity/
+│   ├── mastery/
+│   ├── deck/
+│   ├── quiz/
+│   ├── recommendation/
+│   └── shared/
+│       ├── ApiError.java
+│       └── GlobalExceptionHandler.java
+├── src/main/resources/application.yml
+└── src/test/
+    ├── java/com/memorylang/stats/
+    └── resources/db/test-schema.sql
 ```
 
-### Schema snapshot checklist
+Mỗi feature package chứa controller, service và DTO của riêng feature. Không tạo JPA entities vì MVP chỉ chạy aggregate/native SQL; `JdbcClient` làm boundary rõ hơn và tránh mapping thừa.
 
-Before creating entities, generate and review a schema snapshot from the current Supabase database:
+### Runtime data flow
 
-```bash
-npx supabase db dump --schema public --schema-only > schema-public.sql
+```text
+Bearer JWT
+  → Spring Security JwtDecoder (issuer + JWKS, ES256)
+  → AuthenticatedUser(UUID từ sub)
+  → UserScopedTransaction.execute(userId, callback)
+  → SET LOCAL request.jwt.claim.sub bằng set_config(..., true)
+  → JdbcClient query có user_id = :userId
+  → PostgreSQL RLS kiểm tra auth.uid()
+  → DTO record → JSON
 ```
 
-Confirm these columns before implementation:
-
-| Table | Required current shape |
-|-------|------------------------|
-| `user_terms` | Progress/SRS columns only plus `global_term_id`; dictionary fields and `translation` live on `global_terms` |
-| `global_terms` | `source_text`, `normalized_text`, language fields, dictionary fields, `translation`, `note`, `tags`, `deleted_at` |
-| `deck_terms` | Current app code inserts and reads `global_term_id`; verify whether remote DB still keeps `user_term_id` for compatibility |
-| `decks` | Verify `visibility` and `parent_id`, because current frontend types use both |
-| `quiz_results` | Aggregate quiz result rows are written by translation-input sessions |
-| `quiz_answers` | Treat as legacy/optional in MVP because translation-input currently sends no per-question answers |
-
-### Read-only database role
-
-Create a dedicated runtime role for the Java API instead of using the Supabase `postgres` role. Keep it read-only and grant only the tables needed for analytics.
-
-```sql
-create role memorylang_stats_readonly
-  login
-  password '<generated-strong-password>'
-  nosuperuser
-  nocreatedb
-  nocreaterole
-  noinherit;
-
-grant usage on schema public to memorylang_stats_readonly;
-
-grant select on
-  public.study_sessions,
-  public.user_terms,
-  public.global_terms,
-  public.decks,
-  public.deck_terms,
-  public.quiz_results
-to memorylang_stats_readonly;
-```
-
-Do not grant `insert`, `update`, `delete`, `execute` on RPCs, or `select` on unrelated admin/payment/subscription tables. If `quiz_answers` becomes part of the product later, add `select` only when the endpoint is implemented and tested.
+`UserScopedTransaction` bắt buộc dùng cùng connection cho `set_config` và analytics query. Không dùng session-level `SET`; Hikari tái sử dụng connection và có thể làm rò identity giữa request.
 
 ---
 
-## API Endpoints chi tiết
+## Phase 0 — Xác minh baseline remote
 
-### 1. Streaks & Activity Heatmap
+**Mục tiêu:** Chốt schema, JWT, connection mode và dữ liệu đủ dùng trước khi tạo Java project.
 
-| Method | Path | Mô tả |
-|--------|------|-------|
-| GET | `/api/v1/streaks` | Current streak, best streak, total active days |
-| GET | `/api/v1/streaks/heatmap?year=2026` | GitHub-style activity grid (365 days, count per day) |
+**Đầu ra:** Phần baseline trong tài liệu này và snapshot schema chỉ chứa cấu trúc phục vụ Testcontainers.
 
-**Response — StreakDto:**
-```json
-{
-  "currentStreak": 5,
-  "bestStreak": 12,
-  "totalActiveDays": 45,
-  "lastActiveDate": "2026-07-08"
+### Checklist Phase 0
+
+- [x] Xác nhận CLI đăng nhập và linked project là `brwvbpkgimhamivmaflu`.
+- [x] Xác nhận remote PostgreSQL là 17 và project healthy.
+- [x] Xác nhận JWKS hiện dùng EC/ES256.
+- [x] Xác nhận `deck_terms` dùng `global_term_id` và không còn `user_term_id`.
+- [x] Xác nhận các bảng analytics đều bật RLS, `FORCE RLS=false`.
+- [x] Đọc định nghĩa remote `auth.uid()` và xác nhận GUC `request.jwt.claim.sub`.
+- [x] Xác nhận `quiz_answers` chưa phù hợp cho translation-input analytics từ hành vi frontend hiện tại.
+- [ ] Bật Docker Desktop và chạy `npx supabase db dump --linked --schema public --file "$env:TEMP\memorylang-schema-public.sql"` để lưu bằng chứng schema đầy đủ ngoài Git.
+- [ ] Kiểm tra Dashboard → Connect và chọn connection mode: direct IPv6 cho local nếu khả dụng; Supavisor session mode cho runtime IPv4; không dùng transaction mode khi dựa vào session behavior ngoài transaction.
+- [ ] Ghi host, port và username runtime vào Java `.env` mà không ghi password vào Git.
+- [ ] Tạo two-user fixture cho kiểm thử local/Testcontainers, không sao chép dữ liệu người dùng thật.
+- [ ] Chạy `npx supabase db advisors --linked` và lưu các cảnh báo liên quan sáu bảng analytics.
+- [ ] Commit tài liệu baseline bằng `docs: verify Supabase analytics baseline`.
+
+**Điều kiện hoàn thành:** Schema snapshot, connection mode và advisors đều được xác minh; không còn giả định về tên cột, JWT algorithm hoặc RLS helper.
+
+---
+
+## Phase 1 — Provision JDBC role và RLS isolation
+
+**Mục tiêu:** Tạo runtime role chỉ đọc và giữ user isolation ở cả SQL lẫn RLS.
+
+**Files:**
+
+- MemoryLang tạo migration timestamped bằng `npx supabase migration new add_stats_api_readonly_role`.
+- Java repo tạo mẫu secret: `.env.example`
+- Java repo tài liệu vận hành: `README.md`
+
+**Thiết kế quyền:**
+
+- `memorylang_stats_readonly`: login, `NOSUPERUSER`, `NOCREATEDB`, `NOCREATEROLE`, `NOINHERIT`, `NOBYPASSRLS`.
+- Chỉ `USAGE` trên `public` và `SELECT` trên sáu bảng MVP.
+- `default_transaction_read_only=on`.
+- Không cấp quyền trên `subscriptions`, `payment_logs`, admin tables hoặc RPC ghi dữ liệu.
+- Thêm restrictive `SELECT` policy cho `decks` và `deck_terms` để loại deck public của user khác khỏi analytics cá nhân.
+- Password được tạo/rotate ngoài migration từ secret; migration không chứa literal password.
+
+### Checklist Phase 1
+
+- [ ] Chạy GitNexus impact cho các policy/migration liên quan trước khi sửa.
+- [ ] Tạo migration bằng `npx supabase migration new add_stats_api_readonly_role`.
+- [ ] Định nghĩa/grant role không chứa password trong migration.
+- [ ] Thêm policy ownership cho `user_terms`, `study_sessions`, `quiz_results` và nested ownership cho `deck_terms`.
+- [ ] Thêm restrictive policy cho `decks`/`deck_terms` để policy public không mở rộng analytics scope.
+- [ ] Cho phép đọc `global_terms` đã active chỉ trong phạm vi cần cho join/recommendation.
+- [ ] Chạy migration trên local Supabase.
+- [ ] Test không có GUC: query bảng user-owned trả 0 hàng.
+- [ ] Test GUC user A: query không có `WHERE user_id` vẫn chỉ trả user A.
+- [ ] Test user A không thể đọc row/deck của user B.
+- [ ] Test role không thể `INSERT`, `UPDATE`, `DELETE`, `CREATE`, `SET ROLE postgres` hoặc đọc bảng ngoài allowlist.
+- [ ] Chạy `npx supabase db advisors --local` và sửa cảnh báo mới.
+- [ ] Review SQL, chạy `npx supabase db push --dry-run`, sau đó chỉ push remote khi được xác nhận.
+- [ ] Xác minh lại trên remote bằng transaction read-only và rollback.
+- [ ] Commit `feat: add read-only statistics database role` chỉ gồm migration liên quan.
+
+**Điều kiện hoàn thành:** Credential runtime chỉ đọc; thiếu user context không thấy dữ liệu; user A không thể đọc user B ngay cả khi repository query quên tenant filter.
+
+---
+
+## Phase 2 — Scaffold Java project
+
+**Mục tiêu:** Có ứng dụng Spring Boot khởi động được, cấu hình an toàn và build tái lập.
+
+**Dependencies chính:** `spring-boot-starter-web`, `spring-boot-starter-security`, `spring-boot-starter-oauth2-resource-server`, `spring-boot-starter-jdbc`, `spring-boot-starter-validation`, PostgreSQL JDBC, Actuator, springdoc-openapi, test starter, Testcontainers PostgreSQL.
+
+### Checklist Phase 2
+
+- [ ] Tạo sibling repo `memorylang-stats-api` và Maven Wrapper.
+- [ ] Chốt Spring Boot `4.1.x` patch mới nhất tại thời điểm tạo project; ghi version cụ thể trong `pom.xml` và README.
+- [ ] Cấu hình Java 21 và `spring.threads.virtual.enabled=true`.
+- [ ] Tạo `application.yml` chỉ tham chiếu env vars, không chứa credential.
+- [ ] Tạo `.env.example` gồm `SUPABASE_URL`, `STATS_DB_URL`, `STATS_DB_USER`, `STATS_DB_PASSWORD`.
+- [ ] Cấu hình Hikari tối đa 5 connection cho baseline Supabase nhỏ; `minimum-idle=0` trên Cloud Run.
+- [ ] Bật SSL JDBC; không log URL có credential.
+- [ ] Tạo `/actuator/health` và smoke test context load.
+- [ ] Chạy `./mvnw test` và xác nhận exit code 0.
+- [ ] Chạy `./mvnw package` và xác nhận JAR được tạo.
+- [ ] Scan repository để bảo đảm không có password/token thật.
+- [ ] Commit `chore: scaffold statistics API`.
+
+**Điều kiện hoàn thành:** Clone sạch có thể chạy test/package chỉ bằng Maven Wrapper; ứng dụng khởi động khi có env hợp lệ.
+
+---
+
+## Phase 3 — Supabase JWT authentication
+
+**Mục tiêu:** Chỉ token Supabase hợp lệ mới truy cập endpoint nghiệp vụ.
+
+**Cấu hình:** Dùng Spring Security OAuth2 Resource Server thay vì custom JWT filter/cache. Cấu hình `issuer-uri=https://brwvbpkgimhamivmaflu.supabase.co/auth/v1` và JWKS URL chính thức; decoder phải hỗ trợ ES256 và key rotation.
+
+### Checklist Phase 3
+
+- [ ] Viết MockMvc test: thiếu token trả 401.
+- [ ] Viết test: malformed token trả 401.
+- [ ] Viết test: token hết hạn trả 401.
+- [ ] Viết test: issuer sai trả 401.
+- [ ] Viết test: signature/kid sai trả 401.
+- [ ] Viết test: ES256 token hợp lệ tạo principal với UUID từ `sub`.
+- [ ] Implement `SecurityConfig`, stateless session và public allowlist tối thiểu.
+- [ ] Implement `AuthenticatedUserResolver`; từ chối `sub` thiếu hoặc không phải UUID.
+- [ ] Không dùng `user_metadata` cho authorization.
+- [ ] Không ghi JWT hoặc claims nhạy cảm vào log.
+- [ ] Chạy toàn bộ auth/controller tests.
+- [ ] Test thủ công một token Supabase thật mà không lưu token vào file/log.
+- [ ] Commit `feat: authenticate Supabase JWTs`.
+
+**Điều kiện hoàn thành:** Bộ test bao phủ 401 và valid ES256; endpoint nghiệp vụ không thể truy cập ẩn danh.
+
+---
+
+## Phase 4 — Transaction-scoped database identity
+
+**Mục tiêu:** Mỗi query chạy trong transaction read-only có `auth.uid()` đúng và không rò qua Hikari connection reuse.
+
+**Interface:**
+
+```java
+public interface UserScopedTransaction {
+    <T> T execute(UUID userId, Supplier<T> operation);
 }
 ```
 
-**Response — ActivityHeatmapDto:**
-```json
-{
-  "year": 2026,
-  "days": [
-    { "date": "2026-01-01", "count": 0 },
-    { "date": "2026-01-02", "count": 3 },
-    ...
-  ]
-}
-```
+Implementation gọi parameterized SQL trước callback:
 
-**SQL core (streak calculation):**
 ```sql
-WITH active_days AS (
-  SELECT DISTINCT DATE(started_at) AS study_date
-  FROM study_sessions
-  WHERE user_id = :userId AND started_at IS NOT NULL
-),
-streak_calc AS (
-  SELECT study_date,
-         study_date - (ROW_NUMBER() OVER (ORDER BY study_date))::int AS grp
-  FROM active_days
-)
-SELECT MIN(study_date) AS start_date,
-       MAX(study_date) AS end_date,
-       (MAX(study_date) - MIN(study_date))::int + 1 AS streak_length
-FROM streak_calc
-GROUP BY grp
-ORDER BY start_date DESC;
+select set_config('request.jwt.claim.sub', :user_id, true)
 ```
 
-### 2. Learning Curve & Mastery
+### Checklist Phase 4
 
-| Method | Path | Mô tả |
-|--------|------|-------|
-| GET | `/api/v1/mastery/distribution` | Status distribution histogram (new/learning/familiar/memorized/difficult/need_review) |
-| GET | `/api/v1/mastery/ease-factor` | Ease factor distribution (buckets: <1.5, 1.5-2.0, 2.0-2.5, 2.5+) |
-| GET | `/api/v1/mastery/trajectory?weeks=12` | Weekly mastery progression: count of memorized terms per week |
+- [ ] Viết integration test `auth.uid()` là null ngoài transaction context.
+- [ ] Viết integration test context user A chỉ thấy row A với query cố tình thiếu `WHERE user_id`.
+- [ ] Viết integration test A → commit → tái sử dụng connection → B chỉ thấy B.
+- [ ] Viết integration test rollback cũng xóa context.
+- [ ] Implement `UserScopedTransaction` bằng `TransactionTemplate` read-only.
+- [ ] Bảo đảm `set_config` và callback dùng cùng connection.
+- [ ] Repository SQL vẫn nhận `userId` và thêm ownership predicate; RLS là lớp thứ hai.
+- [ ] Không cho phép nested transaction đổi từ user A sang user B.
+- [ ] Chạy concurrency test với nhiều request A/B xen kẽ.
+- [ ] Chạy full test suite.
+- [ ] Commit `feat: scope database transactions to authenticated users`.
 
-**SQL core (ease factor distribution):**
-```sql
-SELECT
-  COUNT(*) FILTER (WHERE srs_ease_factor < 1.5) AS bucket_1,
-  COUNT(*) FILTER (WHERE srs_ease_factor >= 1.5 AND srs_ease_factor < 2.0) AS bucket_2,
-  COUNT(*) FILTER (WHERE srs_ease_factor >= 2.0 AND srs_ease_factor < 2.5) AS bucket_3,
-  COUNT(*) FILTER (WHERE srs_ease_factor >= 2.5) AS bucket_4
-FROM user_terms
-WHERE user_id = :userId AND deleted_at IS NULL;
-```
-
-### 3. Deck Completion & Engagement
-
-| Method | Path | Mô tả |
-|--------|------|-------|
-| GET | `/api/v1/decks/analytics` | All decks: completion %, term count, memorized count, difficult count |
-| GET | `/api/v1/decks/{id}/engagement` | Per-deck: session count, avg cards/session, remembered ratio, avg duration |
-
-**SQL core (deck completion — use verified `deck_terms.global_term_id` path if present):**
-```sql
-SELECT d.id, d.name,
-  COUNT(ut.id) AS total_terms,
-  COUNT(ut.id) FILTER (WHERE ut.status = 'memorized') AS memorized_count,
-  COUNT(ut.id) FILTER (WHERE ut.status = 'difficult') AS difficult_count,
-  ROUND(COUNT(ut.id) FILTER (WHERE ut.status = 'memorized')::numeric
-    / NULLIF(COUNT(ut.id), 0) * 100, 1) AS completion_pct
-FROM decks d
-LEFT JOIN deck_terms dt ON dt.deck_id = d.id
-LEFT JOIN user_terms ut
-  ON ut.user_id = d.user_id
- AND ut.global_term_id = dt.global_term_id
- AND ut.deleted_at IS NULL
-WHERE d.user_id = :userId
-GROUP BY d.id, d.name;
-```
-
-If the schema snapshot shows `deck_terms.user_term_id` is still the production source of truth, use `ut.id = dt.user_term_id` instead. Do not ship both assumptions blindly.
-
-### 4. Recommendation Engine
-
-| Method | Path | Mô tả |
-|--------|------|-------|
-| GET | `/api/v1/recommendations/review` | Terms due for review now (next_review_at <= now) |
-| GET | `/api/v1/recommendations/at-risk` | Terms with high wrong_count, low repetition, status difficult/need_review |
-| GET | `/api/v1/recommendations/almost-memorized` | Status familiar + srs_interval_days >= 7 → one more review to memorized |
-| GET | `/api/v1/recommendations/neglected?days=14` | Terms not reviewed in X days (configurable, default 14) |
-| GET | `/api/v1/recommendations/next-terms?limit=10` | Unstarted global terms sharing tags/POS with mastered terms (content-based) |
-| GET | `/api/v1/recommendations/weak-deck` | Deck with lowest completion → recommend study |
-
-**Recommendation algorithm (content-based filtering):**
-```sql
--- Find tags/POS of user's mastered terms
-WITH mastered_profile AS (
-  SELECT gt.part_of_speech, unnest(gt.tags) AS tag
-  FROM user_terms ut
-  JOIN global_terms gt ON gt.id = ut.global_term_id
-  WHERE ut.user_id = :userId
-    AND ut.status = 'memorized'
-    AND ut.deleted_at IS NULL
-    AND gt.deleted_at IS NULL
-),
--- Score unstarted terms by tag/POS overlap
-candidate_terms AS (
-  SELECT gt.id, gt.source_text, gt.part_of_speech, gt.tags,
-    (SELECT COUNT(*) FROM mastered_profile mp
-     WHERE mp.part_of_speech = gt.part_of_speech) AS pos_score,
-    (SELECT COUNT(*) FROM mastered_profile mp
-     WHERE mp.tag = ANY(gt.tags)) AS tag_score
-  FROM global_terms gt
-  WHERE gt.deleted_at IS NULL
-    AND gt.source_language = :sourceLanguage
-    AND gt.native_language = :nativeLanguage
-    AND gt.id NOT IN (
-      SELECT global_term_id FROM user_terms WHERE user_id = :userId AND deleted_at IS NULL
-    )
-)
-SELECT id, source_text, part_of_speech,
-  (COALESCE(pos_score, 0) + COALESCE(tag_score, 0)) AS relevance_score
-FROM candidate_terms
-ORDER BY relevance_score DESC, source_text
-LIMIT :limit;
-```
-
-### 5. Quiz Analytics
-
-| Method | Path | Mô tả |
-|--------|------|-------|
-| GET | `/api/v1/quiz/analytics/summary` | Overall: total quizzes, avg accuracy, avg duration, per-type breakdown |
-| GET | `/api/v1/quiz/analytics/recent?limit=30` | Recent aggregate quiz attempts from `quiz_results` |
-| FUTURE | `/api/v1/quiz/analytics/term-performance?limit=20` | Add only after `quiz_answers` is populated by translation-input sessions |
-| FUTURE | `/api/v1/quiz/analytics/most-failed?limit=10` | Add only after `quiz_answers` is populated by translation-input sessions |
-
-**Current product constraint:** `QuizSessionPage.saveQuizResult()` writes aggregate `quiz_results` rows, but passes `answers: []`, so `quiz_answers` does not contain translation-input attempts. For MVP Java, implement only summary/recent endpoints and omit per-question endpoints from OpenAPI until the frontend starts writing answers.
-
-**SQL core (aggregate summary):**
-```sql
-SELECT
-  COUNT(*) AS total_quizzes,
-  COALESCE(ROUND(
-    SUM(correct_answers)::numeric / NULLIF(SUM(total_questions), 0) * 100,
-    1
-  ), 0) AS average_accuracy,
-  COALESCE(ROUND(AVG(duration_ms)), 0) AS average_duration_ms,
-  quiz_type
-FROM quiz_results
-WHERE user_id = :userId
-GROUP BY quiz_type;
-```
-
-**Future SQL core (only after `quiz_answers` has data):**
-```sql
-SELECT qa.question, qa.user_answer, qa.correct_answer,
-  COUNT(*) AS fail_count,
-  AVG(qa.duration_ms) AS avg_duration_ms
-FROM quiz_answers qa
-JOIN quiz_results qr ON qr.id = qa.quiz_result_id
-WHERE qr.user_id = :userId AND qa.is_correct = false
-GROUP BY qa.question, qa.user_answer, qa.correct_answer
-ORDER BY fail_count DESC
-LIMIT :limit;
-```
-
-### 6. SRS Health & Forecast
-
-| Method | Path | Mô tả |
-|--------|------|-------|
-| GET | `/api/v1/srs/health` | Overdue backlog (by days overdue: 1d/3d/7d+), retrograde terms, ease factor avg |
-| GET | `/api/v1/srs/forecast?days=14` | Upcoming reviews count per day for next N days |
-| GET | `/api/v1/srs/difficulty-distribution` | Histogram of srs_interval_days (1d/7d/30d/90d+ buckets) |
-
-**SQL core (SRS forecast):**
-```sql
-SELECT DATE(next_review_at) AS review_date,
-  COUNT(*) AS review_count
-FROM user_terms
-WHERE user_id = :userId
-  AND deleted_at IS NULL
-  AND next_review_at BETWEEN now() AND now() + :days::int
-GROUP BY DATE(next_review_at)
-ORDER BY review_date;
-```
+**Điều kiện hoàn thành:** Không có identity leakage; cả tenant predicate và RLS cùng được chứng minh bằng Testcontainers.
 
 ---
 
-## Authentication: Supabase JWT Verification
+## Phase 5 — Streak và activity heatmap
 
-### Flow
+**Mục tiêu:** Cung cấp bốn endpoint activity từ `study_sessions.ended_at` và counters đã lưu.
 
-```
-Request → Authorization: Bearer <supabase_jwt>
-    ↓
-SupabaseJwtFilter
-    ├── Decode JWT header and verify actual alg for this Supabase project
-    ├── If RS256/ES256: fetch JWKS from https://<project>.supabase.co/auth/v1/.well-known/jwks.json
-    ├── Cache JWKS (Caffeine or Guava Cache, TTL 1h)
-    ├── Verify signature using cached public key
-    ├── Validate: iss, exp, iat
-    ├── Extract sub (user UUID) → AuthUser record
-    └── Set SecurityContext
-    ↓
-Controller receives AuthUser via @AuthenticationPrincipal
-```
+### Checklist Phase 5
 
-### Config (`application.yml`)
-```yaml
-supabase:
-  url: https://brwvbpkgimhamivmaflu.supabase.co
-  jwt:
-    issuer: https://brwvbpkgimhamivmaflu.supabase.co/auth/v1
-    jwks-url: ${supabase.url}/auth/v1/.well-known/jwks.json
-    expected-algorithm: ${SUPABASE_JWT_ALG:RS256}
-```
+- [ ] Viết SQL integration tests cho ngày liên tiếp, ngày trống, duplicate sessions cùng ngày và timezone boundary.
+- [ ] Implement current/longest streak bằng CTE/window functions.
+- [ ] Implement streak history có `limit 1..100`.
+- [ ] Implement heatmap với `from/to`, tối đa 366 ngày.
+- [ ] Implement summary với `days 1..365` và remembered ratio chia cho 0 an toàn.
+- [ ] Viết DTO records, service và controllers trong package `activity`.
+- [ ] Viết MockMvc tests cho JSON contract và invalid parameters.
+- [ ] Xác minh mọi query nằm trong `UserScopedTransaction`.
+- [ ] Chạy feature tests và full suite.
+- [ ] Commit `feat: add study activity analytics`.
 
-### Key implementation details
-- Do not assume the JWT algorithm from memory; verify with a real access token in setup and document the result in `README.md`
-- JWKS caching avoids fetching public keys on every request
-- Cache public keys with 1-hour TTL, auto-refresh on cache miss
-- `AuthUser` is a Java `record` — immutable, thread-safe
-- `SupabaseJwtFilter` extends `OncePerRequestFilter`
-- Public endpoints (`/swagger-ui/**`, `/v3/api-docs/**`, `/actuator/health`) bypass JWT filter
-- Protected endpoint tests must include: missing token → 401, invalid signature → 401, expired token → 401, valid token user A cannot query user B data → no leaked rows
+**Điều kiện hoàn thành:** Bốn endpoint đúng timezone, empty-state và không nhìn thấy session của user khác.
 
 ---
 
-## Configuration
+## Phase 6 — Mastery và SRS analytics
 
-### `application.yml`
+**Mục tiêu:** Phản ánh trạng thái/SRS thực tế trong `user_terms`, không suy diễn lịch sử không tồn tại.
 
-```yaml
-spring:
-  application:
-    name: memorylang-stats-api
-  datasource:
-    url: jdbc:postgresql://db.brwvbpkgimhamivmaflu.supabase.co:5432/postgres
-    username: ${STATS_DB_USER}
-    password: ${STATS_DB_PASSWORD}
-    hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
-      connection-timeout: 20000
-      idle-timeout: 300000
-      max-lifetime: 1200000
-  jpa:
-    hibernate:
-      ddl-auto: none
-    properties:
-      hibernate:
-        default_schema: public
-        jdbc.time_zone: UTC
-    open-in-view: false
-  threads:
-    virtual:
-      enabled: true
+**Lưu ý:** Không triển khai mastery trajectory theo tuần trong MVP vì schema không lưu lịch sử chuyển status; current rows không thể tái tạo lịch sử đáng tin cậy.
 
-supabase:
-  url: https://brwvbpkgimhamivmaflu.supabase.co
-  jwt:
-    issuer: ${supabase.url}/auth/v1
-    jwks-url: ${supabase.url}/auth/v1/.well-known/jwks.json
+### Checklist Phase 6
 
-server:
-  port: 8080
+- [ ] Viết test distribution dùng các status thực tế và vẫn trả bucket 0 cho status hợp lệ không có row.
+- [ ] Implement ease buckets `<1.5`, `1.5..<2.0`, `2.0..<2.5`, `>=2.5`.
+- [ ] Implement overdue buckets: `1d`, `2-3d`, `4-7d`, `8d+` không chồng lấn.
+- [ ] Định nghĩa retrograde term bằng tiêu chí có thể kiểm thử: `status in ('difficult','need_review')` hoặc `wrong_count > correct_count`.
+- [ ] Implement forecast `1..90` ngày theo `next_review_at`.
+- [ ] Implement interval buckets `1d`, `2-7d`, `8-30d`, `31-90d`, `91d+`.
+- [ ] Mọi query loại `deleted_at is not null`.
+- [ ] Viết controller validation và cross-user tests.
+- [ ] Chạy feature tests và full suite.
+- [ ] Commit `feat: add mastery and SRS analytics`.
 
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    path: /swagger-ui.html
-```
-
-### `.env.example`
-```
-SUPABASE_URL=https://brwvbpkgimhamivmaflu.supabase.co
-STATS_DB_USER=memorylang_stats_readonly
-STATS_DB_PASSWORD=your-readonly-db-password
-```
+**Điều kiện hoàn thành:** Sáu phép tổng hợp trả số liệu không chồng bucket, không tính soft-deleted row và không hứa dữ liệu lịch sử không tồn tại.
 
 ---
 
-## Docker
+## Phase 7 — Deck analytics
 
-### Dockerfile
-```dockerfile
-FROM eclipse-temurin:21-jdk AS build
-WORKDIR /app
-COPY mvnw .
-COPY .mvn .mvn
-COPY pom.xml .
-RUN ./mvnw dependency:go-offline
-COPY src ./src
-RUN ./mvnw package -DskipTests
+**Mục tiêu:** Tính tiến độ và engagement chỉ cho deck thuộc authenticated user.
 
-FROM eclipse-temurin:21-jre
-WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
-```
+**Join đã chốt:** `decks.id → deck_terms.deck_id → deck_terms.global_term_id → user_terms.global_term_id`, đồng thời `user_terms.user_id = decks.user_id`.
 
-### docker-compose.yml
-```yaml
-services:
-  api:
-    build: .
-    ports:
-      - "8080:8080"
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - SUPABASE_URL=${SUPABASE_URL}
-      - STATS_DB_USER=${STATS_DB_USER}
-      - STATS_DB_PASSWORD=${STATS_DB_PASSWORD}
-    restart: unless-stopped
-```
+### Checklist Phase 7
+
+- [ ] Viết tests cho deck rỗng, deck có duplicate-safe term count và deck public của user khác.
+- [ ] Implement completion: total, memorized, difficult/need_review và percentage.
+- [ ] Implement engagement từ `study_sessions`: session count, average cards, remembered ratio; duration chỉ tính khi cả `started_at` và `ended_at` có giá trị hợp lệ.
+- [ ] Query deck detail luôn yêu cầu `d.user_id=:userId`, không dựa vào public deck policy.
+- [ ] Deck không thuộc user trả 404.
+- [ ] Viết controller/service/DTO tests.
+- [ ] Chạy EXPLAIN trên fixture đủ lớn và thêm index chỉ khi kế hoạch thực thi chứng minh cần thiết.
+- [ ] Chạy feature tests và full suite.
+- [ ] Commit `feat: add deck analytics`.
+
+**Điều kiện hoàn thành:** Không dùng `user_term_id`; public deck không làm nhiễu analytics cá nhân.
 
 ---
 
-## Google Cloud Run Demo Deployment
+## Phase 8 — Quiz aggregate analytics
 
-Use this only as a portfolio/demo deployment while the Google Cloud free trial is active. Local Docker remains the zero-cost baseline.
+**Mục tiêu:** Chỉ cung cấp analytics có dữ liệu đáng tin từ `quiz_results`.
 
-### Cost guardrails
+### Checklist Phase 8
 
-- Create a Google Cloud budget alert before deploying.
-- Use Cloud Run, not Compute Engine VM, GKE, or Cloud SQL.
-- Set Cloud Run `min-instances=0` so idle cost is zero.
-- Set `max-instances=1` for demo or `2` for light testing.
-- Keep CPU allocated only during request.
-- Store DB credentials in Secret Manager, not environment variables committed to Git.
-- Delete or disable the Cloud Run service after demo/interview if not needed.
+- [ ] Viết tests cho zero quiz, nhiều quiz type, tổng questions bằng 0 và limit boundary.
+- [ ] Implement summary: total quizzes, weighted accuracy, average duration và breakdown theo `quiz_type`.
+- [ ] Implement recent results với `limit 1..100`, mặc định 30, sort `created_at desc`.
+- [ ] Không tạo DTO/controller/OpenAPI path cho per-question analytics.
+- [ ] Không query `quiz_answers` trong MVP.
+- [ ] Viết cross-user isolation tests.
+- [ ] Chạy feature tests và full suite.
+- [ ] Commit `feat: add aggregate quiz analytics`.
 
-### `cloudbuild.yaml`
-
-```yaml
-steps:
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - build
-      - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/memorylang/stats-api:$SHORT_SHA
-      - .
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - push
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/memorylang/stats-api:$SHORT_SHA
-images:
-  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/memorylang/stats-api:$SHORT_SHA
-substitutions:
-  _REGION: asia-southeast1
-```
-
-### Cloud Run commands
-
-```bash
-gcloud services enable run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com
-
-gcloud artifacts repositories create memorylang \
-  --repository-format=docker \
-  --location=asia-southeast1
-
-gcloud builds submit --config cloudbuild.yaml --substitutions=_REGION=asia-southeast1
-
-gcloud run deploy memorylang-stats-api \
-  --image=asia-southeast1-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT/memorylang/stats-api:COMMIT_SHA \
-  --region=asia-southeast1 \
-  --platform=managed \
-  --allow-unauthenticated \
-  --min-instances=0 \
-  --max-instances=1 \
-  --memory=512Mi \
-  --cpu=1 \
-  --set-env-vars=SUPABASE_URL=https://brwvbpkgimhamivmaflu.supabase.co
-```
-
-For a real deploy, replace `COMMIT_SHA` with the image tag emitted by Cloud Build and mount `STATS_DB_USER`, `STATS_DB_PASSWORD`, and JWT settings from Secret Manager.
-
-### Cloud Run verification
-
-- Open `/actuator/health` and Swagger UI on the Cloud Run URL.
-- Call one protected endpoint with a valid Supabase JWT.
-- Confirm unauthenticated requests return 401.
-- Confirm Cloud Run scales to zero after idle time.
-- Confirm billing dashboard shows only small Cloud Run/Artifact Registry/egress usage under free-trial credits.
+**Điều kiện hoàn thành:** API không trình bày dữ liệu per-question giả hoặc legacy như dữ liệu translation-input hiện hành.
 
 ---
 
-## Entity Mappings
+## Phase 9 — Recommendation engine
 
-| Entity | Table | Key columns mapped |
-|--------|-------|--------------------|
-| `StudySession` | `study_sessions` | id, userId, deckId, mode, totalCards, viewedCards, rememberedCount, difficultCount, startedAt, endedAt |
-| `UserTerm` | `user_terms` | id, userId, globalTermId, status, viewCount, correctCount, wrongCount, audioPlayCount, srsRepetition, srsIntervalDays, srsEaseFactor, lastReviewedAt, nextReviewAt, flagged, deletedAt |
-| `GlobalTerm` | `global_terms` | id, sourceText, normalizedText, sourceLanguage, nativeLanguage, itemType, partOfSpeech, ipa, audioUrl, imageUrl, meanings(jsonb), examples(jsonb), translation, note, tags(text[]), deletedAt |
-| `QuizResult` | `quiz_results` | id, userId, deckId, quizType, totalQuestions, correctAnswers, wrongAnswers, durationMs, createdAt |
-| `QuizAnswer` | `quiz_answers` | Future/optional only; do not depend on this table for MVP analytics |
-| `Deck` | `decks` | id, userId, name, description, sourceLanguage, nativeLanguage, color, icon, visibility, parentId, createdAt, updatedAt |
-| `DeckTerm` | `deck_terms` | deckId, globalTermId, createdAt; verify whether userTermId remains in remote schema |
+**Mục tiêu:** Trả gợi ý deterministic, giải thích được và giới hạn theo ngôn ngữ học hiện tại.
 
-### Entity conventions
-- Use `@Table(name = "...")` with explicit snake_case mapping
-- Use Java `record` for DTOs, `@Entity` classes for JPA entities
-- `@Column(name = "snake_case")` for all columns
-- `@Enumerated(EnumType.STRING)` for status/mode enum fields
-- `@Type(JsonType.class)` for jsonb columns (using `hypersistence-utils`)
-- Soft-delete filter: all queries add `deleted_at IS NULL` where the table has that column
-- Keep entity fields aligned to the schema snapshot, not the initial migration file alone
+**Scoring `next-terms`:** candidate phải active, chưa có trong `user_terms` của user, khớp `source_language/native_language`; điểm gồm POS overlap và tag overlap với mastered profile. Tie-break theo score giảm dần rồi `source_text`, `id` để ổn định.
 
----
+### Checklist Phase 9
 
-## Testing Strategy
+- [ ] Viết tests cho due review, at-risk, almost-memorized và neglected boundary.
+- [ ] Chốt công thức at-risk bằng weighted score từ status, wrong/correct counts, ease factor và overdue days; ghi công thức trong README.
+- [ ] Implement review recommendations theo `next_review_at <= now()`.
+- [ ] Implement almost-memorized theo status/interval đã chốt trong test.
+- [ ] Implement neglected với `days 1..365`.
+- [ ] Implement weak-deck chỉ trên deck thuộc user.
+- [ ] Implement next-terms với language filters và `limit 1..50`.
+- [ ] Candidate score 0 không được ưu tiên trước candidate có overlap; empty profile có fallback deterministic được ghi rõ.
+- [ ] Viết tests chống duplicate từ tags và `NOT EXISTS` thay vì `NOT IN` có null trap.
+- [ ] Chạy EXPLAIN ANALYZE trên fixture lớn, không chạy trên production traffic cao.
+- [ ] Viết controller/service/DTO và OpenAPI descriptions.
+- [ ] Chạy feature tests và full suite.
+- [ ] Commit `feat: add vocabulary recommendations`.
 
-| Layer | Tool | What's tested | Coverage target |
-|-------|------|---------------|-----------------|
-| Unit (Service) | JUnit 5 + Mockito | Business logic, recommendation scoring, DTO mapping | 80%+ |
-| Controller (Web layer) | MockMvc + `@WebMvcTest` | HTTP status, JSON shape, auth filter, error responses | All endpoints |
-| Integration | Testcontainers + PostgreSQL | Real SQL queries against schema snapshot, cross-user isolation | Critical paths |
-| Auth | MockMvc + mocked JWT | Token verification, expired token, invalid token | Filter logic |
-| Security | Integration + seeded user A/B data | Every endpoint filters by authenticated user and never leaks another user | All protected endpoints |
-
-### Test conventions
-- Service tests: mock repositories, verify SQL query construction
-- Controller tests: `@WebMvcTest` with mocked services, test all status codes (200, 401, 404, 500)
-- Integration tests: `@SpringBootTest` + Testcontainers PostgreSQL, run actual SQL against a fresh DB with schema snapshot
-- Cross-user test seed must create two users with overlapping decks/terms and assert the token for user A never returns user B rows
-- Quiz per-question endpoint tests stay disabled/not present until frontend writes `quiz_answers`
-- Test data: use `@Sql` scripts or Flyway test migrations to seed test data
+**Điều kiện hoàn thành:** Recommendation ổn định, giải thích được, không cross-language và không đề xuất từ user đã có.
 
 ---
 
-## Implementation Phases
+## Phase 10 — API contract, error handling và observability
 
-| Phase | Nội dung | Thời gian |
-|-------|----------|-----------|
-| 0 | Schema/auth verification: dump schema, verify JWT alg, create/read test read-only DB role, document findings in README | 0.5 ngày |
-| 1 | Project setup: `pom.xml`, Dockerfile, `docker-compose.yml`, `application.yml`, project structure, base application class | 0.5 ngày |
-| 2 | Auth: `SupabaseJwtFilter`, `SupabaseJwtVerifier`, JWKS caching if applicable, `SecurityConfig`, `AuthUser` record | 1 ngày |
-| 3 | Entities + repositories: map verified current tables, add `AnalyticsJdbcRepository`, add schema snapshot for tests | 0.75 ngày |
-| 4 | Streaks + Heatmap: SQL, service, controller, unit tests, controller tests | 1 ngày |
-| 5 | Mastery + SRS health/forecast: SQL, service, controller, unit tests, controller tests | 1 ngày |
-| 6 | Deck analytics: SQL using verified `deck_terms` join path, service, controller, tests | 0.75 ngày |
-| 7 | Quiz aggregate analytics only: summary/recent from `quiz_results`, explicit deferral for `quiz_answers` endpoints | 0.5 ngày |
-| 8 | Recommendation engine: review/at-risk/almost-memorized/neglected/weak-deck/next-terms with language filters | 1.5 ngày |
-| 9 | GlobalExceptionHandler, OpenAPI docs, Swagger UI, error handling polish | 0.5 ngày |
-| 10 | Integration/security tests (Testcontainers), Docker build + verify | 1 ngày |
-| 11 | Optional Google Cloud Run demo deploy with budget guardrails, Secret Manager, and scale-to-zero verification | 0.5 ngày |
+**Mục tiêu:** API có contract nhất quán, lỗi an toàn và đủ quan sát khi demo.
 
-**Tổng: ~9 ngày local/portfolio, ~9.5 ngày nếu thêm Cloud Run demo**
+### Checklist Phase 10
 
----
+- [ ] Implement `ApiError` record gồm timestamp, status, code, message, path và requestId.
+- [ ] Implement handler cho validation 400, auth 401, forbidden 403, not found 404 và unexpected 500.
+- [ ] Response 500 không chứa SQL, schema, stack trace hoặc credential.
+- [ ] Cấu hình request correlation ID; log method/path/status/duration, không log JWT.
+- [ ] Hoàn thiện OpenAPI security scheme Bearer JWT và examples.
+- [ ] Swagger/OpenAPI public; endpoint nghiệp vụ protected.
+- [ ] Cấu hình CORS allowlist bằng env; không dùng wildcard khi credentials/authorization được gửi.
+- [ ] Health endpoint không tiết lộ host/user database.
+- [ ] Viết contract tests cho error shape và OpenAPI paths.
+- [ ] Chạy full test suite.
+- [ ] Commit `feat: finalize API contract and observability`.
 
-## Dependencies (`pom.xml` key entries)
-
-| Dependency | Purpose |
-|------------|---------|
-| `spring-boot-starter-web` | REST API |
-| `spring-boot-starter-data-jpa` | JPA/Hibernate |
-| `spring-boot-starter-security` | Security filter chain |
-| `spring-boot-starter-validation` | Bean validation |
-| `org.postgresql:postgresql` | PostgreSQL JDBC driver |
-| `com.zaxxer:HikariCP` | Connection pooling (included transitively) |
-| `io.hypersistence:hypersistence-utils-hibernate-63` | JSONB + array mapping |
-| `com.github.ben-manes.caffeine:caffeine` | JWKS/public-key cache |
-| `org.springdoc:springdoc-openapi-starter-webmvc-ui` | Swagger UI |
-| `org.springframework.boot:spring-boot-starter-test` | Test framework |
-| `org.testcontainers:postgresql` | Integration tests |
-| `org.testcontainers:junit-jupiter` | Testcontainers JUnit5 |
-| `org.mockito:mockito-core` | Mocking |
+**Điều kiện hoàn thành:** Mọi endpoint có schema OpenAPI, lỗi nhất quán và log không làm rò secret/token.
 
 ---
 
-## Cost Strategy
+## Phase 11 — Integration/security tests và Docker
 
-- **Zero-cost baseline**: run locally with Docker Compose and Testcontainers; no public hosting required for CV.
-- **Free-trial demo**: deploy to Google Cloud Run only when needed, with `min-instances=0` and `max-instances=1`.
-- **Avoid fixed costs**: do not add Cloud SQL, VM, GKE, or always-on instances.
-- **Supabase impact**: analytics responses are small; watch database egress, but initial demo traffic should stay inside existing free quotas.
-- **Shutdown plan**: after demo/interview, either delete the Cloud Run service or set ingress/internal access to prevent unexpected traffic.
+**Mục tiêu:** Chứng minh API build/run độc lập và user isolation chịu được lỗi query/pooling.
+
+### Checklist Phase 11
+
+- [ ] Testcontainers dùng PostgreSQL 17 và schema/policies tối thiểu tương đương remote.
+- [ ] Seed user A/B có overlapping deck/term data.
+- [ ] Chạy cross-user tests cho toàn bộ protected endpoints.
+- [ ] Chạy test role chỉ đọc và transaction context leakage.
+- [ ] Chạy Maven test/package từ clone sạch.
+- [ ] Tạo multi-stage Dockerfile bằng JRE 21 non-root runtime.
+- [ ] Không dùng `-DskipTests` trong verification build cuối.
+- [ ] Tạo `compose.yaml` chỉ tham chiếu env vars.
+- [ ] Build image và chạy container local.
+- [ ] Smoke test health, Swagger, 401 và một request hợp lệ.
+- [ ] Scan image/repository để bảo đảm không chứa `.env`, password hoặc access token.
+- [ ] Ghi kết quả test và cách chạy trong README.
+- [ ] Commit `test: verify statistics API end to end` và `chore: containerize statistics API` thành hai commit nếu thay đổi độc lập.
+
+**Điều kiện hoàn thành:** `./mvnw verify`, Docker build và smoke tests đều exit 0; mọi endpoint vượt qua cross-user isolation.
 
 ---
 
-## Frontend Integration (optional, future)
+## Phase 12 — Cloud Run demo (tùy chọn)
 
-After the Java API is built and verified, the MemoryLang React frontend can optionally consume it:
+**Mục tiêu:** Có URL demo chi phí thấp mà không làm yếu bảo mật database.
 
-1. Add API base URL to `.env`: `VITE_STATS_API_URL=http://localhost:8080/api/v1`
-2. Create `src/services/stats/statsApi.service.ts` — HTTP client with JWT injection
-3. Create new dashboard widgets that call the Java API for advanced analytics
-4. Add a "Smart Recommendations" panel to the dashboard
+**Connection:** Cloud Run thường cần IPv4; ưu tiên Supavisor session mode cho backend persistent JDBC/Hikari. Chỉ dùng transaction mode nếu driver tắt prepared statements và test transaction-scoped GUC thành công end-to-end.
 
-This step is optional for the CV — the Java API standalone already demonstrates the required skills.
+### Checklist Phase 12
+
+- [ ] Tạo budget alert trước deployment.
+- [ ] Tạo Artifact Registry tại `asia-southeast1` hoặc region được chọn gần Supabase `ap-southeast-2` sau khi đo latency/cost.
+- [ ] Lưu `STATS_DB_PASSWORD` trong Secret Manager; không dùng plain deploy flag.
+- [ ] Cấu hình `min-instances=0`, `max-instances=1`, CPU chỉ khi request và memory ban đầu 512 MiB.
+- [ ] Cấu hình network restrictions nếu có static egress phù hợp; nếu không, ghi nhận giới hạn này trong threat model.
+- [ ] Deploy container và xác minh health/Swagger.
+- [ ] Gọi endpoint protected bằng token thật; xác nhận unauthenticated là 401.
+- [ ] Chạy cross-user smoke test trên deployed service.
+- [ ] Xác minh connection pool không vượt giới hạn Supabase.
+- [ ] Xác minh scale-to-zero và billing dashboard.
+- [ ] Ghi shutdown/delete procedure trong README.
+- [ ] Commit `docs: document Cloud Run deployment`.
+
+**Điều kiện hoàn thành:** Demo hoạt động, secrets nằm trong Secret Manager, cost guardrails được bật và có quy trình tắt service.
 
 ---
 
-## CV bullet points (sau khi hoàn thành)
+## Phase 13 — Frontend integration (tùy chọn)
 
-- Designed and built a REST analytics microservice with Spring Boot 3 and Java 21 (virtual threads), providing 18+ endpoints for learning analytics and personalized recommendations
-- Implemented content-based recommendation engine using SQL window functions, CTEs, and FILTER clauses to suggest vocabulary based on user mastery patterns
-- Integrated stateless Supabase JWT authentication with project-specific algorithm verification and cached public-key lookup when asymmetric signing is enabled
-- Deployed the containerized service to Google Cloud Run with scale-to-zero cost controls and Secret Manager configuration
-- Built comprehensive SQL analytics for streaks, activity heatmaps, SRS health forecasting, deck engagement, and quiz performance — surfacing insights the frontend could not compute
-- Packaged with Docker, tested with JUnit 5 + Mockito + Testcontainers, and documented with OpenAPI/Swagger
-- Applied Java 21 features: virtual threads for non-blocking I/O, records for immutable DTOs, sealed classes for entity hierarchies, pattern matching for type-safe error handling
+**Mục tiêu:** MemoryLang React gọi Java API mà không thay thế Supabase service layer hiện tại.
+
+**Files dự kiến trong MemoryLang:**
+
+- `src/services/stats/statsApi.service.ts`
+- `src/services/stats/statsApi.types.ts`
+- Các dashboard widgets được duyệt riêng
+- `.env.example` thêm `VITE_STATS_API_URL`
+
+### Checklist Phase 13
+
+- [ ] Thực hiện GitNexus impact trước khi sửa service/dashboard symbols.
+- [ ] Thêm base URL env và không hardcode production URL.
+- [ ] HTTP client lấy access token hiện tại, gửi Bearer token và không log token.
+- [ ] Xử lý 401 bằng auth flow hiện có; không tự lưu JWT bản sao.
+- [ ] Thêm React Query keys theo convention dự án.
+- [ ] Thiết kế/loading/error/empty states theo Neobrutalist components hiện có.
+- [ ] Viết unit/component tests cho widgets và API adapter.
+- [ ] Chạy `pnpm test`, `pnpm lint`, `pnpm tsc -b` và `pnpm build`.
+- [ ] Chạy GitNexus detect changes trước commit.
+- [ ] Commit từng widget hoặc integration unit độc lập.
+
+**Điều kiện hoàn thành:** Frontend dùng API contract ổn định, không làm hỏng dashboard hiện tại và có fallback lỗi rõ ràng.
+
+---
+
+## 5. SQL rules bắt buộc
+
+- Mọi query user-owned có cả `user_id=:userId` và chạy trong user-scoped transaction.
+- Mọi query `user_terms`/`global_terms` loại soft-deleted row.
+- Dùng `COUNT(*)`, `FILTER`, CTE/window functions ở database; không tải danh sách rồi `.size()` trong Java.
+- Pagination/limit được bind parameter và có upper bound.
+- Không nối chuỗi input vào SQL.
+- Dùng `NULLIF` cho phép chia; định nghĩa rõ cách làm tròn.
+- Dùng `NOT EXISTS` cho candidate exclusion.
+- Timezone conversion phải explicit và có boundary tests.
+- Thêm index chỉ dựa trên `EXPLAIN (ANALYZE, BUFFERS)` của fixture phù hợp; index là migration MemoryLang riêng.
+
+---
+
+## 6. Security acceptance matrix
+
+| Tình huống | Kết quả bắt buộc |
+|---|---|
+| Không có token | 401 |
+| Token hết hạn/sai issuer/sai signature | 401 |
+| `sub` thiếu hoặc không phải UUID | 401 |
+| User A yêu cầu deck của B | 404 |
+| Repository query thiếu `WHERE user_id` trong security test | RLS vẫn chỉ trả A |
+| Không đặt transaction GUC | 0 user-owned rows |
+| Hikari reuse connection A rồi B | B không thấy dữ liệu A |
+| Runtime role thử ghi dữ liệu | Permission denied/read-only error |
+| Runtime role đọc bảng ngoài allowlist | Permission denied |
+| Exception SQL | 500 generic, không lộ SQL/credential |
+
+---
+
+## 7. Definition of Done toàn dự án
+
+- [ ] Phase 0–11 hoàn thành; Phase 12–13 có thể để tùy chọn nhưng phải ghi rõ trạng thái.
+- [ ] 19 endpoint MVP xuất hiện trong OpenAPI và có controller tests.
+- [ ] `./mvnw verify` exit 0.
+- [ ] Docker image build và smoke test exit 0.
+- [ ] Cross-user isolation chạy trên Testcontainers và remote smoke environment.
+- [ ] Runtime role chỉ có quyền cần thiết, không có `BYPASSRLS`.
+- [ ] Không có secret trong Git history của Java repo hoặc commit MemoryLang liên quan.
+- [ ] README mô tả local run, auth, database role, Docker, troubleshooting và optional Cloud Run.
+- [ ] CV bullet chỉ nêu tính năng thực sự đã hoàn thành; không ghi Cloud Run, sealed classes hoặc endpoint chưa triển khai.
+
+---
+
+## 8. Ước lượng
+
+| Phạm vi | Ước lượng |
+|---|---|
+| Phase 0–4: nền tảng, auth, RLS/JDBC isolation | 3–4 ngày |
+| Phase 5–9: analytics và recommendation | 5–7 ngày |
+| Phase 10–11: contract, security, Docker | 2–3 ngày |
+| Phase 12: Cloud Run tùy chọn | 0.5–1 ngày |
+| Phase 13: frontend tùy số widget | 1–3 ngày |
+
+Baseline local/portfolio thực tế: **10–14 ngày**, chưa gồm frontend. Ước lượng cũ 9 ngày là quá sát nếu yêu cầu đầy đủ RLS isolation, Testcontainers và Docker verification.
+
+---
+
+## 9. Tài liệu tham chiếu chính thức
+
+- Supabase RLS: `https://supabase.com/docs/guides/database/postgres/row-level-security`
+- Supabase JWT signing keys: `https://supabase.com/docs/guides/auth/signing-keys`
+- Supabase PostgreSQL connection modes: `https://supabase.com/docs/guides/database/connecting-to-postgres`
+- PostgreSQL row security: `https://www.postgresql.org/docs/current/ddl-rowsecurity.html`
+- Spring Boot: `https://spring.io/projects/spring-boot/`
