@@ -4,6 +4,7 @@ import { useMemo, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/input'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -13,7 +14,7 @@ import { isSupabaseConfigured } from '@/services/supabase/client'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useChatStore } from '@/stores/useChatStore'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
-import { ChatApiError, type ChatMessage } from '@/types/chat.types'
+import { ChatApiError, type ChatEvidenceKind, type ChatMessage } from '@/types/chat.types'
 import { cn } from '@/utils/cn'
 
 export function ChatPage() {
@@ -171,11 +172,22 @@ export function ChatPage() {
               </div>
             ) : messages.map((message) => (
               <div key={message.id} className={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}>
-                <div className={cn(
-                  'max-w-[85%] whitespace-pre-wrap break-words rounded-md border-2 border-border px-3 py-2 text-sm font-semibold sm:max-w-[75%]',
-                  message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-card text-foreground',
-                )}>
-                  {message.content}
+                <div className="max-w-[85%] sm:max-w-[75%]">
+                  <div className={cn(
+                    'whitespace-pre-wrap break-words rounded-md border-2 border-border px-3 py-2 text-sm font-semibold',
+                    message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-card text-foreground',
+                  )}>
+                    {message.content}
+                  </div>
+                  {message.role === 'assistant' && message.metadata?.evidence?.length ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {message.metadata.evidence.map((evidence) => (
+                        <Badge key={evidence.kind} className="bg-secondary text-secondary-foreground">
+                          {t('chat.verifiedSource', { source: t(evidenceKey(evidence.kind)) })}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))}
@@ -214,4 +226,8 @@ export function ChatPage() {
       />
     </div>
   )
+}
+
+function evidenceKey(kind: ChatEvidenceKind): string {
+  return `chat.source.${kind}`
 }

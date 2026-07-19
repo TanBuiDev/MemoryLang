@@ -24,15 +24,19 @@ vi.mock('@/stores/useSubscriptionStore', () => ({
   useSubscriptionStore: vi.fn((selector: (state: unknown) => unknown) => selector({ isFree: true })),
 }))
 vi.mock('@/i18n', () => ({
-  useI18n: () => ({ t: (key: string) => ({
-    'chat.title': 'AI Tutor', 'chat.newSession': 'New chat', 'chat.empty': 'Start practicing English with AI.',
-    'chat.emptySession': 'Send the first message.', 'chat.placeholder': 'Type a message...', 'chat.send': 'Send',
-    'chat.sessionList': 'Chat history', 'chat.demoNotice': 'AI Tutor requires Supabase and an AI provider.',
-    'chat.sending': 'Sending...', 'chat.errorGeneric': 'Something went wrong. Please try again.',
-    'chat.errorAI': 'AI is unavailable. Please try again later.', 'chat.quotaReached': 'You have used today’s chat limit.',
-    'chat.upgradeForMore': 'Upgrade to Pro for more chat messages.', 'chat.deleteSession': 'Delete this chat?',
-    'chat.deleteDescription': 'Messages in this chat will be permanently deleted.', 'chat.deleteConfirm': 'Delete',
-  }[key] ?? key) }),
+  useI18n: () => ({ t: (key: string, params?: { source?: string }) => {
+    if (key === 'chat.verifiedSource') return `Verified source: ${params?.source ?? ''}`
+    return ({
+      'chat.title': 'AI Tutor', 'chat.newSession': 'New chat', 'chat.empty': 'Start practicing English with AI.',
+      'chat.emptySession': 'Send the first message.', 'chat.placeholder': 'Type a message...', 'chat.send': 'Send',
+      'chat.sessionList': 'Chat history', 'chat.demoNotice': 'AI Tutor requires Supabase and an AI provider.',
+      'chat.sending': 'Sending...', 'chat.errorGeneric': 'Something went wrong. Please try again.',
+      'chat.errorAI': 'AI is unavailable. Please try again later.', 'chat.quotaReached': 'You have used today’s chat limit.',
+      'chat.upgradeForMore': 'Upgrade to Pro for more chat messages.', 'chat.deleteSession': 'Delete this chat?',
+      'chat.deleteDescription': 'Messages in this chat will be permanently deleted.', 'chat.deleteConfirm': 'Delete',
+      'chat.source.learning_overview': 'Learning progress',
+    }[key] ?? key)
+  } }),
 }))
 
 function renderPage() {
@@ -47,7 +51,10 @@ describe('ChatPage', () => {
     vi.mocked(chatService.sendMessage).mockResolvedValue({
       session: { id: 'session-1' },
       userMessage: { id: 'message-1', role: 'user', content: 'Hello' },
-      assistantMessage: { id: 'message-2', role: 'assistant', content: 'Hi there!' },
+      assistantMessage: {
+        id: 'message-2', role: 'assistant', content: 'Hi there!',
+        metadata: { evidence: [{ kind: 'learning_overview', label: 'Learning progress' }] },
+      },
       quota: { remainingToday: 9, limitToday: 10 },
       usage: { provider: 'gemini', model: 'test', inputTokens: 1, outputTokens: 1 },
     } as never)
@@ -59,6 +66,7 @@ describe('ChatPage', () => {
     fireEvent.keyDown(textbox, { key: 'Enter' })
 
     expect(await screen.findByText('Hi there!')).toBeInTheDocument()
+    expect(screen.getByText('Verified source: Learning progress')).toBeInTheDocument()
     expect(chatService.sendMessage).toHaveBeenCalledWith(expect.objectContaining({ message: 'Hello', sessionId: null }))
   })
 

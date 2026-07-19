@@ -204,7 +204,7 @@ The authenticated `nav.study` sidebar link resumes an active stored flashcard se
   - `search-images` — proxies Unsplash (primary), Pexels, and Pixabay APIs for vocabulary illustrations. All images are downloaded and re-uploaded to `vocabulary-images` bucket. API keys stored in `.env` and synced to Edge Function secrets via `pnpm sync:secrets`.
   - `generate-audio` — Google Cloud Text-to-Speech (WaveNet voices) with audio caching in Cloudflare R2. Accepts `text`, `language` (BCP-47), and optional `voice` name. Returns `audioUrl` + `cached` flag.
   - `process-payment` — PayOS checkout, payment status/cancel actions, subscription cancellation, and unauthenticated PayOS webhook processing. Deployed with `--no-verify-jwt` so PayOS webhooks can reach the function; app actions still validate the Supabase auth header inside the function.
-  - `ai-chat` — authenticated AI Tutor chat with Gemini/OpenAI provider selection, server-side vocabulary context, daily tier quota, and persisted session history. Requires the AI chat migration plus `AI_PROVIDER`, provider API key, and model secrets before deployment.
+  - `ai-chat` — authenticated AI Tutor chat with Gemini/OpenAI provider selection, daily tier quota, and persisted session history. Gemini uses native function calling for read-only, JWT-scoped learner data tools; assistant messages retain the verified evidence labels in `chat_messages.metadata`. Requires the AI chat migrations plus `AI_PROVIDER`, provider API key, and model secrets before deployment.
 - Dashboard: https://supabase.com/dashboard/project/brwvbpkgimhamivmaflu
 
 ## Frontend Deployment & Chunk Cache

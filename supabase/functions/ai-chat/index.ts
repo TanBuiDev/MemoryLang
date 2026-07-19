@@ -88,7 +88,13 @@ serve(async (req) => {
 
     const { data: assistantMessage, error: assistantMessageError } = await supabaseAdmin
       .from('chat_messages')
-      .insert({ session_id: session.id, user_id: user.id, role: 'assistant', content: generated.text })
+      .insert({
+        session_id: session.id,
+        user_id: user.id,
+        role: 'assistant',
+        content: generated.text,
+        metadata: { evidence: generated.evidence },
+      })
       .select('*')
       .single()
     if (assistantMessageError) throw assistantMessageError

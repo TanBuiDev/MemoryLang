@@ -2,6 +2,11 @@ import type { LanguageCode } from '@/types/language.types'
 
 export type ChatRole = 'user' | 'assistant'
 export type AiProviderName = 'gemini' | 'openai'
+export type ChatEvidenceKind = 'learning_overview' | 'review_queue' | 'vocabulary' | 'decks' | 'grammar_catalog' | 'grammar_topic'
+
+export interface ChatMessageMetadata {
+  evidence?: Array<{ kind: ChatEvidenceKind; label: string }>
+}
 
 export interface ChatSession {
   id: string
@@ -21,6 +26,7 @@ export interface ChatMessage {
   user_id: string
   role: ChatRole
   content: string
+  metadata?: ChatMessageMetadata
   created_at: string
 }
 
