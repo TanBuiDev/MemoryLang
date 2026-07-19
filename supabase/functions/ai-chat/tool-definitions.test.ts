@@ -29,4 +29,17 @@ describe('validateToolCall', () => {
       message: 'Vocabulary search query must contain 1 to 80 characters.',
     })
   })
+
+  it('accepts a standard UUID v4 grammar topic ID', () => {
+    expect(validateToolCall({
+      name: 'get_grammar_topic',
+      args: { topicId: '550e8400-e29b-41d4-a716-446655440000' },
+    })).toEqual({
+      ok: true,
+      value: {
+        name: 'get_grammar_topic',
+        args: { topicId: '550e8400-e29b-41d4-a716-446655440000' },
+      },
+    })
+  })
 })
