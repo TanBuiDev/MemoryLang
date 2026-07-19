@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+html {
+  scroll-behavior: smooth;
+}
+
 :root {
   --background: #fbfbf9;
   --foreground: #1c293c;

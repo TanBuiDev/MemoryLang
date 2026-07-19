@@ -32,6 +32,15 @@ export function LandingPage() {
     soundEffects.play('cardClick')
   }
 
+  const scrollToSection = (id: string, e?: React.MouseEvent) => {
+    e?.preventDefault()
+    soundEffects.play('cardClick')
+    const element = document.getElementById(id)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
   const pillars = [
     {
       icon: Brain,
@@ -86,9 +95,9 @@ export function LandingPage() {
         </Link>
 
         <div className="hidden items-center gap-2 rounded-lg border-2 border-slate-900 bg-white px-3 py-1.5 shadow-[3px_3px_0px_0px_#000] md:flex font-black text-xs">
-          <a onClick={handleButtonClick} className="rounded px-3 py-1.5 hover:bg-amber-100 transition-colors" href="#features">Tính năng</a>
-          <a onClick={handleButtonClick} className="rounded px-3 py-1.5 hover:bg-amber-100 transition-colors" href="#ai-tutor">Gia sư AI</a>
-          <a onClick={handleButtonClick} className="rounded px-3 py-1.5 hover:bg-amber-100 transition-colors" href="#pillars">Hệ sinh thái</a>
+          <button onClick={(e) => scrollToSection('features', e)} className="rounded px-3 py-1.5 hover:bg-amber-100 transition-colors text-slate-900 font-black cursor-pointer">Tính năng</button>
+          <button onClick={(e) => scrollToSection('ai-tutor', e)} className="rounded px-3 py-1.5 hover:bg-amber-100 transition-colors text-slate-900 font-black cursor-pointer">Gia sư AI</button>
+          <button onClick={(e) => scrollToSection('pillars', e)} className="rounded px-3 py-1.5 hover:bg-amber-100 transition-colors text-slate-900 font-black cursor-pointer">Hệ sinh thái</button>
           <Link onClick={handleButtonClick} className="rounded px-3 py-1.5 hover:bg-purple-100 text-purple-700 transition-colors" to="/app/upgrade">Gói Pro 👑</Link>
         </div>
 
@@ -210,7 +219,7 @@ export function LandingPage() {
       </section>
 
       {/* Proof Points */}
-      <section className="mx-auto grid max-w-7xl gap-4 pb-14 md:grid-cols-3">
+      <section id="features" className="mx-auto grid max-w-7xl gap-4 pb-14 md:grid-cols-3 scroll-mt-24">
         {proofPoints.map((item) => (
           <Card key={item.label} className="bg-white border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] p-5">
             <p className="text-3xl font-black text-purple-700">{item.value}</p>
