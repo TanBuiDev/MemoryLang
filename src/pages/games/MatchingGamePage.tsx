@@ -715,12 +715,7 @@ export default function MatchingGamePage() {
         </div>
 
         {/* Match Check & Progress Actions */}
-        <div className="border-t-3 border-slate-900 pt-5 flex flex-col items-center gap-3">
-          {phase === 'matching' && (
-            <span className="text-xs font-black text-slate-700 bg-amber-100 border border-slate-900 px-3 py-1 rounded-full shadow-[2px_2px_0px_0px_#000]">
-              Đã ghép: {matchedSlots.size}/{leftItems.length} cặp 🧩
-            </span>
-          )}
+        <div className="border-t-3 border-slate-900 pt-5 flex justify-center">
 
           {phase === 'matching' ? (
             <button
