@@ -25,13 +25,4 @@ describe('AppLayout navigation', () => {
     expect(screen.getByRole('link', { name: 'Học' })).toHaveAttribute('href', '/app/study')
   })
 
-  it('exposes a direct AI Tutor link', () => {
-    render(
-      <MemoryRouter initialEntries={['/app/dashboard']}>
-        <AppLayout />
-      </MemoryRouter>,
-    )
-
-    expect(screen.getByRole('link', { name: 'Gia sư AI' })).toHaveAttribute('href', '/app/chat')
-  })
 })

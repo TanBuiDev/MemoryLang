@@ -3,7 +3,6 @@ import { NavLink, Link } from 'react-router-dom'
 import {
   Bell,
   BookOpen,
-  Bot,
   Brain,
   ChevronDown,
   ClipboardCheck,
@@ -67,7 +66,6 @@ const mainNavItems = [
   { labelKey: 'header.reading', to: '/app/reading', icon: FileText },
   { labelKey: 'header.writing', to: '/app/writing', icon: PenLine },
   { labelKey: 'header.games', to: '/app/games', icon: Gamepad2 },
-  { labelKey: 'nav.aiTutor', to: '/app/chat', icon: Bot },
 ] as const
 
 const moreDropdownItems = [

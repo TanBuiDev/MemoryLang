@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FileText, Plus, Settings, X } from 'lucide-react'
+import { Bot, FileText, Plus, X } from 'lucide-react'
 import { QuickNotesDrawer } from './QuickNotesDrawer'
 import { AddVocabularyModal } from './AddVocabularyModal'
 
@@ -85,7 +85,7 @@ export function MascotRadialFab() {
         </span>
       </div>
 
-      {/* Secondary item 3: Settings (Left: translate-x-[85px] on mobile, [106px] on desktop) */}
+      {/* Secondary item 3: AI Tutor (Left: translate-x-[85px] on mobile, [106px] on desktop) */}
       <div 
         className={`absolute transition-all duration-300 delay-[80ms] flex flex-col items-center justify-center ${
           isOpen 
@@ -94,15 +94,15 @@ export function MascotRadialFab() {
         }`}
       >
         <Link 
-          to="/app/settings"
+          to="/app/chat"
           onClick={() => setIsOpen(false)}
-          title="Cấu hình tài khoản"
+          title="Mở Gia sư AI"
           className="w-11 h-11 sm:w-10 sm:h-10 rounded-full border-2 border-border bg-emerald-400 text-foreground flex items-center justify-center shadow-[2px_2px_0px_#1c293c] hover:-translate-x-0.5 hover:shadow-[3px_3px_0px_#1c293c] active:translate-y-0.5 active:shadow-none"
         >
-          <Settings className="w-5 h-5 sm:w-4.5 sm:h-4.5" />
+          <Bot className="w-5 h-5 sm:w-4.5 sm:h-4.5" />
         </Link>
         <span className="absolute -bottom-6 bg-white text-[9px] font-black border-2 border-border px-1.5 py-0.5 rounded shadow-[1px_1px_0px_#1c293c] whitespace-nowrap text-foreground">
-          Cài đặt
+          Gia sư AI
         </span>
       </div>
 
