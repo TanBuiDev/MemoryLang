@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/Header'
 import { MascotRadialFab } from '@/components/layout/MascotRadialFab'
 import { AiTutorModal } from '@/components/chat/AiTutorModal'
 import { supabase } from '@/services/supabase/client'
+import { useChatStore } from '@/stores/useChatStore'
 
 export function AppLayout() {
   const location = useLocation()
@@ -12,6 +13,20 @@ export function AppLayout() {
   const [fabDesktop, setFabDesktop] = useState(true)
   const [fabMobile, setFabMobile] = useState(true)
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 639px)').matches)
+
+  const isAiModalOpen = useChatStore((s) => s.isAiModalOpen)
+  const toggleAiModal = useChatStore((s) => s.toggleAiModal)
+
+  useEffect(() => {
+    function handleGlobalKeyDown(e: globalThis.KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        toggleAiModal()
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [toggleAiModal])
 
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 639px)')
@@ -53,7 +68,7 @@ export function AppLayout() {
         <Outlet />
       </main>
       {showFab && <MascotRadialFab />}
-      <AiTutorModal />
+      {isAiModalOpen && <AiTutorModal />}
     </div>
   )
 }
