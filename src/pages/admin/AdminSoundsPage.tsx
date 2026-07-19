@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { soundEffects } from '@/utils/soundEffects'
 import { useSoundStore } from '@/stores/useSoundStore'
 import { supabase } from '@/services/supabase/client'
@@ -14,6 +14,10 @@ import {
   Layers,
   Settings2,
   Music,
+  Upload,
+  Link as LinkIcon,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
@@ -51,9 +55,9 @@ const SOUND_LIST: SoundEffectItem[] = [
   {
     id: 'matchError',
     name: 'Nối sai (Match Error)',
-    description: 'Âm kép trầm nhẹ phản hồi khi chọn sai cặp từ.',
+    description: 'Âm 2 nốt trầm êm dịu phản hồi khi chọn sai cặp từ.',
     category: 'Game',
-    recommended: 'Soft Low Buzz 160Hz-110Hz',
+    recommended: 'Soft Minor Drop F4-C4',
   },
   {
     id: 'roundComplete',
@@ -74,27 +78,63 @@ const SOUND_LIST: SoundEffectItem[] = [
     name: 'Mở Modal / Dialog',
     description: 'Phát âm thanh nảy khi mở hộp thoại xác nhận.',
     category: 'UI',
-    recommended: 'Pop-up 250Hz-550Hz',
+    recommended: 'Pop-up 280Hz-620Hz',
   },
   {
     id: 'modalClose',
     name: 'Đóng Modal / Dialog',
     description: 'Phát âm thanh nảy khi đóng hộp thoại.',
     category: 'UI',
-    recommended: 'Slide-down 550Hz-200Hz',
+    recommended: 'Slide-down 620Hz-220Hz',
   },
 ]
 
 export default function AdminSoundsPage() {
-  const { sfxEnabled, sfxVolume, sfxEngineMode, setSfxEnabled, setSfxVolume, setEngineMode } = useSoundStore()
+  const {
+    sfxEnabled,
+    sfxVolume,
+    sfxEngineMode,
+    customSoundUrls,
+    setSfxEnabled,
+    setSfxVolume,
+    setEngineMode,
+    setCustomSoundUrl,
+    setCustomSoundUrls,
+  } = useSoundStore()
 
   const [saving, setSaving] = useState(false)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [audioContextStatus, setAudioContextStatus] = useState<string>('Unknown')
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const [preloadStatus, setPreloadStatus] = useState<Record<string, 'loading' | 'success' | 'failed'>>({})
 
-  // Init mobile unlock on mount
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
+
+  // Init mobile unlock on mount & load remote config
   useEffect(() => {
     const cleanup = soundEffects.initMobileUnlock()
+
+    async function loadRemoteConfig() {
+      try {
+        const { data } = await supabase.from('app_settings').select('value').eq('key', 'sfx_config').maybeSingle()
+        if (data?.value) {
+          const val = data.value
+          if (val.custom_urls && typeof val.custom_urls === 'object') {
+            setCustomSoundUrls(val.custom_urls)
+            // Preload remote MP3 files into AudioBuffer cache
+            Object.entries(val.custom_urls).forEach(([id, url]) => {
+              if (url && typeof url === 'string') {
+                void preloadAndCache(id as SoundEffectItem['id'], url)
+              }
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load remote SFX config:', err)
+      }
+    }
+
+    void loadRemoteConfig()
     return () => cleanup()
   }, [])
 
@@ -114,8 +154,43 @@ export default function AdminSoundsPage() {
     checkCtx()
   }, [])
 
+  const preloadAndCache = async (id: SoundEffectItem['id'], url: string) => {
+    if (!url.trim()) return
+    setPreloadStatus((prev) => ({ ...prev, [id]: 'loading' }))
+    const success = await soundEffects.preloadAudioBuffer(id, url.trim())
+    setPreloadStatus((prev) => ({ ...prev, [id]: success ? 'success' : 'failed' }))
+  }
+
   const handleTestSound = (id: SoundEffectItem['id']) => {
     soundEffects.play(id)
+  }
+
+  const handleFileUpload = async (id: SoundEffectItem['id'], file: File) => {
+    try {
+      setUploadingId(id)
+      const fileExt = file.name.split('.').pop() || 'mp3'
+      const fileName = `sfx/${id}-${Date.now()}.${fileExt}`
+
+      const { error: uploadErr } = await supabase.storage
+        .from('audio_assets')
+        .upload(fileName, file, { cacheControl: '31536000', upsert: true })
+
+      let publicUrl = ''
+      if (uploadErr) {
+        console.warn('Storage upload error, using local Blob URL preview fallback:', uploadErr)
+        publicUrl = URL.createObjectURL(file)
+      } else {
+        const { data } = supabase.storage.from('audio_assets').getPublicUrl(fileName)
+        publicUrl = data.publicUrl
+      }
+
+      setCustomSoundUrl(id, publicUrl)
+      await preloadAndCache(id, publicUrl)
+    } catch (err) {
+      console.error('Upload MP3 failed:', err)
+    } finally {
+      setUploadingId(null)
+    }
   }
 
   const handleSaveConfig = async () => {
@@ -123,7 +198,6 @@ export default function AdminSoundsPage() {
       setSaving(true)
       setSuccessMsg(null)
 
-      // Save sound settings to database table app_settings for system-wide default
       const { error } = await supabase.from('app_settings').upsert(
         {
           key: 'sfx_config',
@@ -131,6 +205,7 @@ export default function AdminSoundsPage() {
             enabled_by_default: sfxEnabled,
             default_volume: sfxVolume,
             engine_mode: sfxEngineMode,
+            custom_urls: customSoundUrls,
             updated_at: new Date().toISOString(),
           },
         },
@@ -141,7 +216,7 @@ export default function AdminSoundsPage() {
         console.error('Failed to save SFX config to app_settings:', error)
       }
 
-      setSuccessMsg('Đã lưu cấu hình âm thanh hệ thống thành công!')
+      setSuccessMsg('Đã lưu cấu hình âm thanh & danh sách file MP3 thành công!')
       setTimeout(() => setSuccessMsg(null), 3000)
     } catch (err) {
       console.error('Save config error:', err)
@@ -161,7 +236,7 @@ export default function AdminSoundsPage() {
           <div>
             <h1 className="text-2xl font-black text-slate-900">Quản lý Hệ thống Âm thanh (SFX)</h1>
             <p className="text-sm font-semibold text-slate-700">
-              Cấu hình, nghe thử và tối ưu độ trễ âm thanh hiệu ứng (0ms Latency Engine)
+              Cấu hình Synthesizer, nạp file MP3 tùy chọn và tối ưu độ trễ âm thanh hiệu ứng (0ms Latency Engine)
             </p>
           </div>
         </div>
@@ -270,7 +345,7 @@ export default function AdminSoundsPage() {
                 <Music className="w-4 h-4 text-purple-700" />
                 <div>
                   <div>Preloaded AudioBuffer</div>
-                  <div className="text-[10px] font-normal text-slate-700">Nạp file MP3 tối ưu (Mono 64kbps)</div>
+                  <div className="text-[10px] font-normal text-slate-700">Nạp tệp MP3 tùy chọn (Mono 64kbps)</div>
                 </div>
               </div>
               {sfxEngineMode === 'custom_files' && <CheckCircle2 className="w-4 h-4 text-slate-900" />}
@@ -304,45 +379,124 @@ export default function AdminSoundsPage() {
         </div>
       </div>
 
-      {/* Sound Testing Matrix */}
+      {/* Sound Testing & Custom MP3 Upload Matrix */}
       <div className="neo-card p-6 bg-white border-2 border-slate-900 rounded-xl space-y-4 shadow-[4px_4px_0px_0px_#000]">
         <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
           <div className="flex items-center gap-2">
             <Settings2 className="w-6 h-6 text-indigo-600" />
-            <h2 className="text-xl font-black text-slate-900">Danh sách Hiệu ứng Âm thanh & Nghe thử</h2>
+            <h2 className="text-xl font-black text-slate-900">Danh sách Hiệu ứng & Nạp tệp MP3 Tùy chọn</h2>
           </div>
           <span className="text-xs font-bold px-3 py-1 bg-amber-200 border border-slate-900 rounded-full">
             {SOUND_LIST.length} hiệu ứng khả dụng
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {SOUND_LIST.map((sound) => (
-            <div
-              key={sound.id}
-              className="p-4 bg-slate-50 border-2 border-slate-900 rounded-lg flex items-center justify-between gap-3 hover:bg-amber-50/60 transition-colors"
-            >
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-slate-900 text-sm">{sound.name}</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-200 border border-slate-800 rounded">
-                    {sound.category}
-                  </span>
-                </div>
-                <p className="text-xs font-medium text-slate-600">{sound.description}</p>
-                <div className="text-[11px] font-mono text-indigo-600 font-bold">{sound.recommended}</div>
-              </div>
+        <div className="space-y-4">
+          {SOUND_LIST.map((sound) => {
+            const currentUrl = customSoundUrls[sound.id] || ''
+            const status = preloadStatus[sound.id]
+            const isUploading = uploadingId === sound.id
 
-              <Button
-                variant="secondary"
-                onClick={() => handleTestSound(sound.id)}
-                className="flex items-center gap-1 font-bold shrink-0 text-xs py-1.5 px-3 min-h-8"
+            return (
+              <div
+                key={sound.id}
+                className="p-4 bg-slate-50 border-2 border-slate-900 rounded-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-amber-50/40 transition-colors"
               >
-                <Play className="w-3.5 h-3.5 fill-current" />
-                Nghe
-              </Button>
-            </div>
-          ))}
+                {/* Info */}
+                <div className="space-y-1 md:w-1/3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-slate-900 text-sm">{sound.name}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-200 border border-slate-800 rounded">
+                      {sound.category}
+                    </span>
+                  </div>
+                  <p className="text-xs font-medium text-slate-600">{sound.description}</p>
+                  <div className="text-[11px] font-mono text-indigo-600 font-bold">{sound.recommended}</div>
+                </div>
+
+                {/* MP3 URL / Upload Bar */}
+                <div className="flex-1 w-full md:w-auto flex flex-col sm:flex-row items-center gap-2">
+                  <div className="relative w-full">
+                    <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                      <LinkIcon className="w-3.5 h-3.5" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Nhập đường dẫn URL MP3 hoặc tải tệp lên..."
+                      value={currentUrl}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setCustomSoundUrl(sound.id, val)
+                        if (val.trim()) {
+                          void preloadAndCache(sound.id, val)
+                        }
+                      }}
+                      className="w-full pl-8 pr-3 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded focus:border-indigo-600 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Hidden File Input */}
+                  <input
+                    type="file"
+                    accept="audio/mp3,audio/wav,audio/mpeg"
+                    ref={(el) => {
+                      fileInputRefs.current[sound.id] = el
+                    }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) void handleFileUpload(sound.id, file)
+                    }}
+                    className="hidden"
+                  />
+
+                  {/* Upload MP3 Button */}
+                  <Button
+                    variant="ghost"
+                    disabled={isUploading}
+                    onClick={() => fileInputRefs.current[sound.id]?.click()}
+                    className="flex items-center gap-1 font-bold shrink-0 text-xs py-1 px-3 min-h-8 border border-slate-300 hover:bg-slate-100"
+                  >
+                    {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                    Tải MP3
+                  </Button>
+
+                  {/* Reload Preload Button */}
+                  {currentUrl && (
+                    <button
+                      onClick={() => void preloadAndCache(sound.id, currentUrl)}
+                      title="Nạp lại AudioBuffer"
+                      className="p-2 bg-slate-100 border border-slate-300 hover:bg-slate-200 rounded text-slate-700"
+                    >
+                      <RefreshCw className={cn('w-3.5 h-3.5', status === 'loading' && 'animate-spin')} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Test Sound Button & Status Indicator */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {status === 'success' && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 border border-emerald-400 text-emerald-800 rounded">
+                      RAM Cached
+                    </span>
+                  )}
+                  {status === 'failed' && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-100 border border-rose-400 text-rose-800 rounded">
+                      Lỗi nạp (Dùng Synth)
+                    </span>
+                  )}
+
+                  <Button
+                    variant="secondary"
+                    onClick={() => handleTestSound(sound.id)}
+                    className="flex items-center gap-1 font-bold shrink-0 text-xs py-1.5 px-3 min-h-8"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    Nghe thử
+                  </Button>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
