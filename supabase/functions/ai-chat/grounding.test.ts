@@ -66,4 +66,28 @@ describe('generateGroundedReply', () => {
     expect(generate).toHaveBeenCalledTimes(1)
     expect(result).toMatchObject({ text: 'Let us practise.', evidence: [] })
   })
+
+  it('does not execute a repeated tool call twice', async () => {
+    const generateWithTools = vi.fn().mockResolvedValue({
+      provider: 'gemini', model: 'gemini-2.5-flash-lite', inputTokens: 10, outputTokens: 2,
+      toolCalls: [
+        { name: 'get_learning_overview', args: {} },
+        { name: 'get_learning_overview', args: {} },
+      ],
+    })
+    const completeWithToolResults = vi.fn().mockResolvedValue({
+      provider: 'gemini', model: 'gemini-2.5-flash-lite', inputTokens: 10, outputTokens: 5, text: 'You have 26 words.',
+    })
+    const executeTool = vi.fn().mockResolvedValue({
+      data: { totalVocabulary: 26 }, evidence: { kind: 'learning_overview', label: 'Learning progress' },
+    })
+
+    await generateGroundedReply({
+      provider: { name: 'gemini', generate: vi.fn(), generateWithTools, completeWithToolResults },
+      input: { systemPrompt: 'Tutor', history: [], message: 'My progress?', userId: 'learner-id' },
+      executeTool,
+    })
+
+    expect(executeTool).toHaveBeenCalledTimes(1)
+  })
 })

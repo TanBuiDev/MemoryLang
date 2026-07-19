@@ -20,7 +20,7 @@ export async function generateGroundedReply(input: {
   const planned = await provider.generateWithTools(chatInput)
   if ('text' in planned) return { ...planned, evidence: [] }
 
-  const toolCalls = planned.toolCalls
+  const toolCalls = uniqueToolCalls(planned.toolCalls)
     .slice(0, MAX_TOOL_CALLS_PER_TURN)
     .map(validateToolCall)
     .filter((result): result is { ok: true; value: AiTutorToolCall } => result.ok)
@@ -47,4 +47,11 @@ export async function generateGroundedReply(input: {
 
 function uniqueEvidence(evidence: ChatEvidence[]): ChatEvidence[] {
   return Array.from(new Map(evidence.map((item) => [item.kind, item])).values())
+}
+
+function uniqueToolCalls(toolCalls: Array<{ name: string; args: Record<string, unknown> }>): Array<{ name: string; args: Record<string, unknown> }> {
+  return Array.from(new Map(toolCalls.map((toolCall) => [
+    `${toolCall.name}:${JSON.stringify(toolCall.args)}`,
+    toolCall,
+  ])).values())
 }
