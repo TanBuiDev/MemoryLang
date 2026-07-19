@@ -131,35 +131,35 @@ class SoundEffectsEngine {
 
     switch (name) {
       case 'cardClick':
-        this.synthPop(ctx, now, masterVolume * 0.4, 420, 160, 0.05)
+        this.synthPop(ctx, now, masterVolume * 0.85, 480, 180, 0.07)
         break
 
       case 'matchSuccess':
-        this.synthChime(ctx, now, masterVolume * 0.5)
+        this.synthChime(ctx, now, masterVolume * 0.9)
         break
 
       case 'matchError':
-        this.synthBuzz(ctx, now, masterVolume * 0.4)
+        this.synthBuzz(ctx, now, masterVolume * 0.85)
         break
 
       case 'roundComplete':
-        this.synthFanfare(ctx, now, masterVolume * 0.6)
+        this.synthFanfare(ctx, now, masterVolume * 0.95)
         break
 
       case 'lineConnect':
-        this.synthWhoosh(ctx, now, masterVolume * 0.3)
+        this.synthWhoosh(ctx, now, masterVolume * 0.75)
         break
 
       case 'modalOpen':
-        this.synthPop(ctx, now, masterVolume * 0.35, 250, 550, 0.07)
+        this.synthPop(ctx, now, masterVolume * 0.85, 280, 620, 0.08)
         break
 
       case 'modalClose':
-        this.synthPop(ctx, now, masterVolume * 0.35, 550, 200, 0.07)
+        this.synthPop(ctx, now, masterVolume * 0.85, 620, 220, 0.08)
         break
 
       case 'hover':
-        this.synthTick(ctx, now, masterVolume * 0.15)
+        this.synthTick(ctx, now, masterVolume * 0.4)
         break
     }
   }
@@ -180,7 +180,7 @@ class SoundEffectsEngine {
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
 
-    osc.type = 'sine'
+    osc.type = 'triangle'
     osc.frequency.setValueAtTime(fromFreq, start)
     osc.frequency.exponentialRampToValueAtTime(Math.max(20, toFreq), start + duration)
 
@@ -234,7 +234,7 @@ class SoundEffectsEngine {
       osc.frequency.setValueAtTime(160, pulseStart)
       osc.frequency.exponentialRampToValueAtTime(110, pulseStart + 0.07)
 
-      gain.gain.setValueAtTime(vol * 0.7, pulseStart)
+      gain.gain.setValueAtTime(vol, pulseStart)
       gain.gain.exponentialRampToValueAtTime(0.001, pulseStart + 0.07)
 
       osc.connect(gain)
@@ -282,11 +282,11 @@ class SoundEffectsEngine {
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
 
-    osc.type = 'sine'
+    osc.type = 'triangle'
     osc.frequency.setValueAtTime(300, start)
     osc.frequency.linearRampToValueAtTime(600, start + 0.06)
 
-    gain.gain.setValueAtTime(vol * 0.5, start)
+    gain.gain.setValueAtTime(vol, start)
     gain.gain.exponentialRampToValueAtTime(0.001, start + 0.06)
 
     osc.connect(gain)
