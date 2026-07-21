@@ -22,8 +22,9 @@ import {
   VolumeX,
   RotateCcw,
 } from 'lucide-react'
-import { cn } from '@/utils/cn'
+import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { cn } from '@/utils/cn'
 
 interface GameStats {
   accuracy: number
@@ -34,11 +35,11 @@ interface GameStats {
 }
 
 const PAIR_COLORS = [
-  { bg: 'bg-emerald-100', border: 'border-emerald-500', text: 'text-emerald-900' },
-  { bg: 'bg-purple-100', border: 'border-purple-500', text: 'text-purple-900' },
-  { bg: 'bg-amber-100', border: 'border-amber-500', text: 'text-amber-900' },
-  { bg: 'bg-rose-100', border: 'border-rose-500', text: 'text-rose-900' },
-  { bg: 'bg-sky-100', border: 'border-sky-500', text: 'text-sky-900' },
+  { bg: 'bg-emerald-100', border: 'border-emerald-500', text: 'text-emerald-950' },
+  { bg: 'bg-purple-100', border: 'border-purple-500', text: 'text-purple-950' },
+  { bg: 'bg-amber-100', border: 'border-amber-500', text: 'text-amber-950' },
+  { bg: 'bg-rose-100', border: 'border-rose-500', text: 'text-rose-950' },
+  { bg: 'bg-sky-100', border: 'border-sky-500', text: 'text-sky-950' },
 ]
 
 export default function MatchingGamePage() {
@@ -417,60 +418,60 @@ export default function MatchingGamePage() {
 
   if (phase === 'loading') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
-        <div className="w-12 h-12 border-4 border-slate-900 border-t-amber-400 rounded-full animate-spin"></div>
-        <p className="text-sm font-black text-slate-700">Đang chuẩn bị bộ thẻ ghép từ vựng...</p>
+      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4 px-4">
+        <div className="w-12 h-12 border-4 border-slate-900 border-t-[#fdc800] rounded-full animate-spin"></div>
+        <p className="text-sm font-black text-slate-800">Đang tải bộ từ vựng...</p>
       </div>
     )
   }
 
   if (phase === 'finished' && finalStats) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
         {/* Header Success Card */}
         <div className="neo-card p-6 md:p-8 bg-[#22c55e] text-white border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] text-center space-y-4 rounded-2xl">
           <div className="w-16 h-16 bg-[#fdc800] rounded-2xl border-3 border-slate-900 flex items-center justify-center mx-auto shadow-[3px_3px_0px_0px_#000] animate-bounce text-slate-900">
             <Trophy className="w-8 h-8 text-slate-900" />
           </div>
           <div>
-            <h1 className="text-3xl font-black">HOÀN THÀNH THỬ THÁCH!</h1>
-            <p className="text-sm font-bold text-green-100 mt-1">
+            <h1 className="text-2xl sm:text-3xl font-black">HOÀN THÀNH THỬ THÁCH!</h1>
+            <p className="text-xs sm:text-sm font-bold text-green-100 mt-1">
               Bạn đã xuất sắc kết nối và củng cố toàn bộ từ vựng!
             </p>
           </div>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-3 sm:gap-4">
-          <div className="neo-card p-4 bg-white border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] text-center rounded-xl">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Độ chính xác</span>
-            <div className="text-2xl sm:text-3xl font-black text-purple-700 mt-1">{finalStats.accuracy}%</div>
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
+          <div className="neo-card p-3.5 sm:p-4 bg-white border-3 border-slate-900 shadow-[3px_3px_0px_0px_#000] text-center rounded-xl">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">Độ chính xác</span>
+            <div className="text-xl sm:text-3xl font-black text-purple-700 mt-1">{finalStats.accuracy}%</div>
           </div>
-          <div className="neo-card p-4 bg-white border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] text-center rounded-xl">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Thời gian</span>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 flex items-center justify-center gap-1">
-              <Clock className="w-5 h-5 text-slate-500" />
-              {formatTime(finalStats.elapsedSeconds)}
+          <div className="neo-card p-3.5 sm:p-4 bg-white border-3 border-slate-900 shadow-[3px_3px_0px_0px_#000] text-center rounded-xl">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">Thời gian</span>
+            <div className="text-xl sm:text-3xl font-black text-slate-900 mt-1 flex items-center justify-center gap-1">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
+              <span>{formatTime(finalStats.elapsedSeconds)}</span>
             </div>
           </div>
-          <div className="neo-card p-4 bg-white border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] text-center rounded-xl">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Điểm XP</span>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-600 mt-1 flex items-center justify-center gap-1">
-              <Sparkles className="w-5 h-5 text-amber-500" />
-              +{finalStats.xpEarned}
+          <div className="neo-card p-3.5 sm:p-4 bg-white border-3 border-slate-900 shadow-[3px_3px_0px_0px_#000] text-center rounded-xl">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">Điểm XP</span>
+            <div className="text-xl sm:text-3xl font-black text-emerald-600 mt-1 flex items-center justify-center gap-1">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
+              <span>+{finalStats.xpEarned}</span>
             </div>
           </div>
         </div>
 
         {/* Words Reviewed Table */}
-        <div className="neo-card p-6 bg-white border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] space-y-4 rounded-2xl">
-          <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+        <div className="neo-card p-4 sm:p-6 bg-white border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] space-y-4 rounded-2xl">
+          <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-[#432dd7]" />
-            Các từ vựng đã ôn ({reviewedTerms.size})
+            <span>Các từ vựng đã ôn ({reviewedTerms.size})</span>
           </h2>
 
-          <div className="border-2 border-slate-900 rounded-xl overflow-hidden">
-            <table className="w-full text-left border-collapse">
+          <div className="border-2 border-slate-900 rounded-xl overflow-hidden overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[320px]">
               <thead>
                 <tr className="bg-amber-100 border-b-2 border-slate-900 text-slate-900">
                   <th className="p-3 text-xs font-black uppercase">Từ tiếng Anh</th>
@@ -495,20 +496,23 @@ export default function MatchingGamePage() {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <button
+          <Button
+            type="button"
             onClick={handleRestartGame}
-            className="neo-button flex-1 bg-[#fdc800] hover:bg-amber-300 py-3.5 px-4 font-black text-slate-900 border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] rounded-xl flex items-center justify-center gap-2"
+            className="neo-button flex-1 bg-[#fdc800] hover:bg-amber-300 py-3.5 px-4 font-black text-slate-900 border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] rounded-xl flex items-center justify-center gap-2 cursor-pointer"
           >
             <RotateCcw className="w-5 h-5" />
-            Chơi lại lượt mới
-          </button>
-          <button
+            <span>Chơi lại lượt mới</span>
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
             onClick={() => navigate('/app/games')}
-            className="neo-button flex-1 bg-white hover:bg-slate-100 py-3.5 px-4 font-black text-slate-900 border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] rounded-xl flex items-center justify-center gap-2"
+            className="neo-button flex-1 bg-white hover:bg-slate-100 py-3.5 px-4 font-black text-slate-900 border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] rounded-xl flex items-center justify-center gap-2 cursor-pointer"
           >
             <Gamepad2 className="w-5 h-5" />
-            Trở lại Game Hub
-          </button>
+            <span>Trở lại Game Hub</span>
+          </Button>
         </div>
       </div>
     )
@@ -518,60 +522,67 @@ export default function MatchingGamePage() {
   const allMatched = matchedSlots.size === leftItems.length
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4">
-      {/* Main Game Card with Compact Integrated Control Header */}
-      <div className="neo-card p-4 sm:p-6 bg-white border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] space-y-5 rounded-2xl">
+    <div className="max-w-4xl mx-auto px-2 sm:px-4 py-4 space-y-4">
+      {/* Main Game Card with Integrated Mobile Control Header */}
+      <div className="neo-card p-3.5 sm:p-6 bg-white border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] space-y-4 sm:space-y-5 rounded-2xl">
         
-        {/* Compact Integrated Header (Exit, Sound, Title, Stats) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b-3 border-slate-900">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                soundEffects.play('modalOpen')
-                setIsConfirmExitOpen(true)
-              }}
-              className="neo-button py-1.5 px-3 flex items-center gap-1.5 text-xs font-black border-2 border-slate-900 bg-white shadow-[2px_2px_0px_0px_#000] rounded-lg text-slate-900 hover:bg-slate-100 transition-all"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Rời trò chơi
-            </button>
+        {/* Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4 border-b-3 border-slate-900">
+          <div className="flex items-center justify-between sm:justify-start gap-2">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  soundEffects.play('modalOpen')
+                  setIsConfirmExitOpen(true)
+                }}
+                className="neo-button py-1 px-2.5 sm:py-1.5 sm:px-3 flex items-center gap-1.5 text-xs font-black border-2 border-slate-900 bg-white shadow-[2px_2px_0px_0px_#000] rounded-lg text-slate-900 hover:bg-slate-100 transition-all cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Rời trò chơi</span>
+              </Button>
 
-            <button
-              onClick={toggleSfx}
-              title={sfxEnabled ? 'Tắt hiệu ứng âm thanh' : 'Bật hiệu ứng âm thanh'}
-              className={cn(
-                'neo-button p-1.5 text-xs font-black border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-lg transition-colors',
-                sfxEnabled ? 'bg-amber-300 text-slate-900' : 'bg-slate-200 text-slate-500'
-              )}
-            >
-              {sfxEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            </button>
+              <button
+                type="button"
+                onClick={toggleSfx}
+                title={sfxEnabled ? 'Tắt hiệu ứng âm thanh' : 'Bật hiệu ứng âm thanh'}
+                className={cn(
+                  'neo-button p-1.5 text-xs font-black border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-lg transition-colors cursor-pointer',
+                  sfxEnabled ? 'bg-[#fdc800] text-slate-900' : 'bg-slate-200 text-slate-500'
+                )}
+              >
+                {sfxEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              </button>
+            </div>
 
-            <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-1.5 ml-1 sm:ml-2">
-              <Gamepad2 className="w-5 h-5 text-amber-500" />
-              NỐI TỪ & CỦNG CỐ PHẢN XẠ
+            <h2 className="text-xs sm:text-base md:text-lg font-black text-slate-900 flex items-center gap-1.5 ml-1">
+              <Gamepad2 className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" />
+              <span>NỐI TỪ & CỦNG CỐ PHẢN XẠ</span>
             </h2>
           </div>
 
           {/* Compact Stats Info */}
-          <div className="text-xs font-black text-slate-900 flex items-center gap-3 bg-amber-50 border-2 border-slate-900 px-3 py-1.5 rounded-xl shadow-[2px_2px_0px_0px_#000]">
-            <span>Đúng: <span className="text-emerald-600 font-black">{correctCount}</span></span>
-            <span>Sai: <span className="text-rose-600 font-black">{wrongCount}</span></span>
+          <div className="text-xs font-black text-slate-900 flex items-center justify-between sm:justify-end gap-3 bg-amber-50 border-2 border-slate-900 px-3 py-1.5 rounded-xl shadow-[2px_2px_0px_0px_#000]">
+            <div className="flex items-center gap-3">
+              <span>Đúng: <span className="text-emerald-700 font-black">{correctCount}</span></span>
+              <span>Sai: <span className="text-rose-600 font-black">{wrongCount}</span></span>
+            </div>
             {repeatWrong && (
-              <span className="bg-amber-200 text-amber-900 border border-slate-900 px-2 py-0.5 rounded font-black text-[10px] uppercase">
-                Cần ôn tập: {failedQueue.length} từ
+              <span className="bg-amber-200 text-amber-900 border border-slate-900 px-2 py-0.5 rounded font-black text-[10px] uppercase shrink-0">
+                Cần ôn: {failedQueue.length} từ
               </span>
             )}
           </div>
         </div>
 
         {/* Game Matching Layout Container */}
-        <div className="grid grid-cols-2 gap-x-2 sm:gap-x-4 gap-y-2.5 sm:gap-y-3.5 relative">
+        <div className="grid grid-cols-2 gap-x-2 sm:gap-x-4 gap-y-2 sm:gap-y-3 relative">
           {/* Column Headers */}
-          <div className="text-center text-[11px] sm:text-xs font-black uppercase text-slate-500 tracking-wider col-span-1">
+          <div className="text-center text-[10px] sm:text-xs font-black uppercase text-slate-500 tracking-wider col-span-1">
             Từ tiếng Anh
           </div>
-          <div className="text-center text-[11px] sm:text-xs font-black uppercase text-slate-500 tracking-wider col-span-1">
+          <div className="text-center text-[10px] sm:text-xs font-black uppercase text-slate-500 tracking-wider col-span-1">
             Nghĩa tiếng Việt
           </div>
 
@@ -603,32 +614,32 @@ export default function MatchingGamePage() {
 
               return (
                 <motion.div
-                  whileHover={!isSelected && phase === 'matching' ? { scale: 1.015, x: 3 } : {}}
+                  whileHover={!isSelected && phase === 'matching' ? { scale: 1.015, x: 2 } : {}}
                   whileTap={!isSelected && phase === 'matching' ? { scale: 0.985 } : {}}
                   animate={phase === 'reviewing' && roundIncorrectIds.has(item.id) ? { x: [-4, 4, -4, 4, 0] } : {}}
                   transition={{ duration: 0.3 }}
                   key={`left-${item.id}`}
                   onClick={() => handleLeftClick(index)}
                   className={cn(
-                    'border-3 rounded-xl transition-colors duration-150 cursor-pointer relative min-h-[84px] flex flex-col justify-between shadow-[3px_3px_0px_0px_#000] h-full overflow-hidden',
+                    'border-3 rounded-xl transition-colors duration-150 cursor-pointer relative min-h-[76px] sm:min-h-[84px] flex flex-col justify-between shadow-[3px_3px_0px_0px_#000] h-full overflow-hidden select-none',
                     stateClasses
                   )}
                 >
                   <div className="flex-1 p-2 sm:p-2.5 flex flex-col justify-center">
-                    <span className="font-black text-xs sm:text-sm md:text-base leading-tight">{item.source_text}</span>
+                    <span className="font-black text-xs sm:text-sm md:text-base leading-tight break-words">{item.source_text}</span>
                     {item.ipa && (
-                      <span className="text-[11px] sm:text-xs text-purple-700 font-mono font-bold mt-0.5 sm:mt-1 block">
+                      <span className="text-[10px] sm:text-xs text-purple-700 font-mono font-bold mt-0.5 block">
                         {item.ipa}
                       </span>
                     )}
                   </div>
 
-                  {/* Row 2: Part of speech & Vibrant Speaker Button */}
+                  {/* Speaker Button */}
                   <div className="border-t-2 border-dashed border-slate-900/20 bg-slate-900/5 flex items-stretch justify-between select-none">
-                    <div className="px-2 sm:px-2.5 py-1 text-slate-700 uppercase text-[8px] sm:text-[9px] font-black tracking-wider flex items-center">
+                    <div className="px-1.5 sm:px-2.5 py-1 text-slate-700 uppercase text-[8px] sm:text-[9px] font-black tracking-wider flex items-center truncate">
                       {item.part_of_speech
                         ? item.part_of_speech.split(',').map((s) => s.trim()).join(' / ')
-                        : 'VOCABULARY'}
+                        : 'VOCAB'}
                     </div>
 
                     <motion.button
@@ -642,7 +653,7 @@ export default function MatchingGamePage() {
                           globalTermId: item.id,
                         })
                       }}
-                      className="border-l-2 border-slate-900 bg-[#fdc800] text-slate-900 px-2 sm:px-2.5 py-1 hover:bg-amber-300 active:bg-amber-400 transition-colors flex items-center justify-center cursor-pointer font-black"
+                      className="border-l-2 border-slate-900 bg-[#fdc800] text-slate-900 px-2 sm:px-2.5 py-1 hover:bg-amber-300 active:bg-amber-400 transition-colors flex items-center justify-center cursor-pointer font-black shrink-0"
                       title="Phát âm"
                     >
                       <Volume2 className="w-3.5 h-3.5" />
@@ -676,19 +687,19 @@ export default function MatchingGamePage() {
               return (
                 <motion.div
                   layout
-                  whileHover={!isSelected && phase === 'matching' ? { scale: 1.015, x: -3 } : {}}
+                  whileHover={!isSelected && phase === 'matching' ? { scale: 1.015, x: -2 } : {}}
                   whileTap={!isSelected && phase === 'matching' ? { scale: 0.985 } : {}}
                   animate={phase === 'reviewing' && roundIncorrectIds.has(item.id) ? { x: [-4, 4, -4, 4, 0] } : {}}
                   transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                   key={`right-${item.id}`}
                   onClick={() => handleRightClick(index)}
                   className={cn(
-                    'px-2.5 py-2 sm:p-3 border-3 rounded-xl transition-colors duration-150 cursor-pointer relative min-h-[84px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#000] h-full',
+                    'p-2 sm:p-3 border-3 rounded-xl transition-colors duration-150 cursor-pointer relative min-h-[76px] sm:min-h-[84px] flex flex-col justify-center shadow-[3px_3px_0px_0px_#000] h-full select-none',
                     stateClasses
                   )}
                 >
                   <div className="flex justify-between items-center w-full">
-                    <span className="font-bold text-[11px] sm:text-xs md:text-sm leading-tight sm:leading-snug break-words">
+                    <span className="font-bold text-xs sm:text-sm leading-tight sm:leading-snug break-words">
                       {item.translation}
                     </span>
 
@@ -715,23 +726,24 @@ export default function MatchingGamePage() {
         </div>
 
         {/* Match Check & Progress Actions */}
-        <div className="border-t-3 border-slate-900 pt-5 flex justify-center">
-
+        <div className="border-t-3 border-slate-900 pt-4 flex justify-center">
           {phase === 'matching' ? (
-            <button
+            <Button
+              type="button"
               onClick={handleCheckResults}
               disabled={!allMatched}
               className={cn(
-                'neo-button px-8 py-3 text-base font-black text-center border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] rounded-xl transition-all',
+                'neo-button px-6 sm:px-8 py-3 text-sm sm:text-base font-black text-center border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] rounded-xl transition-all',
                 allMatched
                   ? 'bg-[#fdc800] hover:bg-amber-300 text-slate-900 cursor-pointer active:neo-button-active'
                   : 'bg-slate-100 text-slate-400 opacity-60 cursor-not-allowed shadow-none border-slate-400'
               )}
             >
               Kiểm tra kết quả
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
+              type="button"
               onClick={() => {
                 const nextQueueSize = currentQueue.length + (repeatWrong ? failedQueue.length : 0)
                 if (nextQueueSize === 0) {
@@ -740,10 +752,10 @@ export default function MatchingGamePage() {
                   handleNextRound()
                 }
               }}
-              className="neo-button px-8 py-3 bg-[#fdc800] hover:bg-amber-300 text-base font-black text-slate-900 border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] rounded-xl active:neo-button-active transition-all"
+              className="neo-button px-6 sm:px-8 py-3 bg-[#fdc800] hover:bg-amber-300 text-sm sm:text-base font-black text-slate-900 border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] rounded-xl active:neo-button-active transition-all cursor-pointer"
             >
               Tiếp tục ➔
-            </button>
+            </Button>
           )}
         </div>
       </div>
