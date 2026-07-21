@@ -32,6 +32,12 @@
 - After committing, report the commit hash, commit message, and included files to the user.
 - Do not push automatically after creating commits. The user will review and push the code.
 
+## Quy tắc Kiểm tra Build & Type-checking (Bắt buộc tuyệt đối)
+
+- **BẮT BUỘC kiểm tra build thành công trước khi commit:** Trước khi tạo bất kỳ git commit nào, AI BẮT BUỘC phải chạy lệnh `pnpm tsc -b` hoặc `pnpm build` đồng bộ và ĐẢM BẢO kết quả trả về thành công 100% (exit code 0, không có lỗi TS hay lint).
+- **TUYỆT ĐỐI KHÔNG commit khi lệnh build chưa hoàn thành:** Không tạo commit khi lệnh `tsc` hoặc `build` vẫn đang chạy ngầm trong background task mà chưa trả về kết quả hoàn tất.
+- **Dọn dẹp triệt để các tham chiếu biến:** Khi refactor hoặc xóa bớt state/import/biến, PHẢI kiểm tra tất cả các vị trí gọi/sử dụng biến đó trong toàn bộ file để xóa sạch sẽ, tránh để lại biến chưa khai báo (`TS2304`).
+
 ## Quy tắc UI/UX & Vibecoding (Bắt buộc tuyệt đối)
 
 Để đảm bảo tính nhất quán của thiết kế Neobrutalist và trải nghiệm người dùng, AI PHẢI tuân thủ các quy tắc sau khi sinh code giao diện:
