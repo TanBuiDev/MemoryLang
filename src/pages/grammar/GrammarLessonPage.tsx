@@ -193,14 +193,14 @@ export default function GrammarLessonPage() {
                     key={hb.id}
                     onClick={() => scrollToSection(hb.id)}
                     className={cn(
-                      'w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all hover:bg-amber-200/70 border-2 border-slate-900/10 hover:border-slate-900 flex items-center gap-2.5 text-slate-900 bg-white/70 hover:shadow-[2px_2px_0px_0px_#000] cursor-pointer',
-                      level > 1 && 'ml-4 sm:ml-6 text-slate-700'
+                      'w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all hover:bg-amber-200/70 border-2 border-slate-900/10 hover:border-slate-900 flex items-center gap-2.5 text-slate-900 bg-white/70 hover:shadow-[2px_2px_0px_0px_#000] cursor-pointer min-w-0',
+                      level > 1 && 'pl-5 sm:pl-7 text-slate-700'
                     )}
                   >
                     <span className="w-5 h-5 rounded-full bg-slate-900 text-white font-black text-[10px] flex items-center justify-center shrink-0">
                       {idx + 1}
                     </span>
-                    <span className="truncate">{headingText}</span>
+                    <span className="truncate min-w-0">{headingText}</span>
                   </button>
                 )
               })}
