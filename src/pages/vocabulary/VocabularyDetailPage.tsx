@@ -968,96 +968,98 @@ export function VocabularyDetailPage() {
   if (!item) return null
 
   return (
-    <div key={id} className="pb-20 sm:pb-0">
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div className="flex flex-col gap-1 min-w-0 max-w-full flex-1">
-          <div className="flex items-center gap-2">
-            <div
-              className="relative"
-              onContextMenu={async (e) => {
-                e.preventDefault()
-                await handleCopyEntry()
-              }}
-              onTouchStart={() => {
-                pressTimerRef.current = setTimeout(() => {
-                  handleCopyEntry()
-                }, 1000)
-              }}
-              onTouchEnd={() => {
-                if (pressTimerRef.current) {
-                  clearTimeout(pressTimerRef.current)
-                  pressTimerRef.current = null
-                }
-              }}
-              onTouchMove={() => {
-                if (pressTimerRef.current) {
-                  clearTimeout(pressTimerRef.current)
-                  pressTimerRef.current = null
-                }
-              }}
-            >
-              <InlineEditableField
-                value={item.source_text}
-                onSave={(val) => {
-                  const cleanedVal = val.trim()
-                  if (cleanedVal !== item.source_text) {
-                    handleSaveField({ source_text: cleanedVal, audio_url: null })
+    <div key={id} className="pb-20 sm:pb-0 max-w-7xl mx-auto space-y-6">
+      {/* Main Vocabulary Header Card */}
+      <div className="neo-card p-6 sm:p-8 bg-white border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] rounded-2xl relative space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-1.5 min-w-0 max-w-full flex-1">
+            <div className="flex items-center gap-2">
+              <div
+                className="relative"
+                onContextMenu={async (e) => {
+                  e.preventDefault()
+                  await handleCopyEntry()
+                }}
+                onTouchStart={() => {
+                  pressTimerRef.current = setTimeout(() => {
+                    handleCopyEntry()
+                  }, 1000)
+                }}
+                onTouchEnd={() => {
+                  if (pressTimerRef.current) {
+                    clearTimeout(pressTimerRef.current)
+                    pressTimerRef.current = null
                   }
                 }}
-                className="text-3xl font-black sm:text-4xl md:text-5xl border-dashed w-fit"
-                editClassName="w-[300px] md:w-[500px]"
-                fullWidth={false}
-                placeholder={t('vocabulary.sourceText')}
+                onTouchMove={() => {
+                  if (pressTimerRef.current) {
+                    clearTimeout(pressTimerRef.current)
+                    pressTimerRef.current = null
+                  }
+                }}
+              >
+                <InlineEditableField
+                  value={item.source_text}
+                  onSave={(val) => {
+                    const cleanedVal = val.trim()
+                    if (cleanedVal !== item.source_text) {
+                      handleSaveField({ source_text: cleanedVal, audio_url: null })
+                    }
+                  }}
+                  className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 border-dashed w-fit"
+                  editClassName="w-[300px] md:w-[500px]"
+                  fullWidth={false}
+                  placeholder={t('vocabulary.sourceText')}
+                  disabled={!isAdmin}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                className="hidden sm:inline-flex h-8 w-8 p-0 shrink-0 text-slate-500 hover:text-slate-900 items-center justify-center transition-colors rounded-lg border border-slate-900/20"
+                onClick={handleCopyEntry}
+                title={t('vocabulary.copyTooltip')}
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-emerald-600" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2 mt-1">
+              <InlineEditableField
+                value={item.ipa ?? ''}
+                onSave={(val) => handleSaveField({ ipa: val || null })}
+                placeholder="/.../"
+                className="font-mono text-base sm:text-lg font-black text-purple-700"
                 disabled={!isAdmin}
               />
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              className="hidden sm:inline-flex h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-foreground items-center justify-center transition-colors rounded-md"
-              onClick={handleCopyEntry}
-              title={t('vocabulary.copyTooltip')}
-            >
-              {copied ? (
-                <Check className="h-4 w-4 text-success" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
           </div>
 
-          <div className="flex items-center gap-1.5 mt-1 text-muted-foreground">
-            <InlineEditableField
-              value={item.ipa ?? ''}
-              onSave={(val) => handleSaveField({ ipa: val || null })}
-              placeholder="/.../"
-              className="font-mono text-lg font-black text-muted-foreground"
-              disabled={!isAdmin}
-            />
-
+          <div className="relative w-5 h-5 shrink-0 mt-1">
+            {copied && (
+              <Check className="absolute inset-0 h-5 w-5 text-emerald-600 animate-in fade-in duration-150" />
+            )}
+            {(autoSaveStatus === 'saving' || enrichingIpa || isTranslating) && (
+              <Loader2 className="absolute inset-0 h-5 w-5 animate-spin text-slate-500" />
+            )}
+            {autoSaveStatus === 'saved' && (
+              <Check className="absolute inset-0 h-5 w-5 text-emerald-600 animate-in fade-in duration-150" />
+            )}
+            {enrichingIpa && (
+              <span className="absolute right-0 top-6 text-[10px] font-bold text-slate-500 whitespace-nowrap">Đang làm mới...</span>
+            )}
+            {isTranslating && (
+              <span className="absolute right-0 top-6 text-[10px] font-bold text-slate-500 whitespace-nowrap">Đang dịch...</span>
+            )}
+            {formError && (
+              <span className="absolute right-0 top-6 text-[10px] font-bold text-rose-600 whitespace-nowrap">{formError}</span>
+            )}
           </div>
         </div>
-        <div className="relative w-5 h-5 shrink-0 mt-1">
-          {copied && (
-            <Check className="absolute inset-0 h-5 w-5 text-success animate-in fade-in duration-150" />
-          )}
-          {(autoSaveStatus === 'saving' || enrichingIpa || isTranslating) && (
-            <Loader2 className="absolute inset-0 h-5 w-5 animate-spin text-muted-foreground" />
-          )}
-          {autoSaveStatus === 'saved' && (
-            <Check className="absolute inset-0 h-5 w-5 text-success animate-in fade-in duration-150" />
-          )}
-          {enrichingIpa && (
-            <span className="absolute right-0 top-6 text-[10px] font-bold text-muted-foreground whitespace-nowrap">Đang làm mới...</span>
-          )}
-          {isTranslating && (
-            <span className="absolute right-0 top-6 text-[10px] font-bold text-muted-foreground whitespace-nowrap">Đang dịch...</span>
-          )}
-          {formError && (
-            <span className="absolute right-0 top-6 text-[10px] font-bold text-danger whitespace-nowrap">{formError}</span>
-          )}
-        </div>
-      </div>
 
       {/* Thanh metadata và thanh công cụ điều hướng/thao tác (actions) nằm chung một hàng */}
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -1381,6 +1383,7 @@ export function VocabularyDetailPage() {
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       <div className={cn(
