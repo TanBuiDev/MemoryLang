@@ -604,7 +604,23 @@ export function VocabularyListPage() {
           )}
         </div>
       </div>
-      {vocabularyQuery.isLoading ? <Card className="font-black">{t('vocabulary.loading')}</Card> : null}
+      {vocabularyQuery.isLoading ? (
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 mb-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="neo-card p-5 bg-white border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] rounded-2xl animate-pulse space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <div className="h-6 w-36 bg-slate-200 rounded-lg" />
+                <div className="h-5 w-14 bg-purple-100 rounded-full" />
+              </div>
+              <div className="h-4 w-28 bg-purple-200/60 rounded-md" />
+              <div className="h-4 w-3/4 bg-slate-100 rounded-md" />
+            </div>
+          ))}
+        </div>
+      ) : null}
       {vocabularyQuery.isError && cachedVocabulary.length === 0 ? (
         <Card className="text-center">
           <p className="text-xl font-black">{t('vocabulary.offlineTitle')}</p>
