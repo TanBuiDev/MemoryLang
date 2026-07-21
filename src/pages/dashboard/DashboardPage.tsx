@@ -24,6 +24,10 @@ import {
   AlertTriangle,
   ChevronRight,
   ArrowRight,
+  BarChart3,
+  PieChart,
+  TrendingUp,
+  Activity,
 } from 'lucide-react'
 
 export function DashboardPage() {
@@ -102,6 +106,64 @@ export function DashboardPage() {
   const handleCardClick = () => {
     soundEffects.play('cardClick')
   }
+
+  // 7-day review history calculation for SVG Bar Chart
+  const last7Days = useMemo(() => {
+    const days = []
+    const today = new Date()
+    const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today)
+      d.setDate(today.getDate() - i)
+      const dateStr = d.toDateString()
+      const dayShort = i === 0 ? 'Hôm nay' : dayNames[d.getDay()]
+
+      const count = vocabulary.filter((item) => {
+        if (!item.last_reviewed_at) return false
+        return new Date(item.last_reviewed_at).toDateString() === dateStr
+      }).length
+
+      days.push({ dayShort, count, isToday: i === 0 })
+    }
+    return days
+  }, [vocabulary])
+
+  const max7DayCount = useMemo(() => {
+    const max = Math.max(...last7Days.map((d) => d.count), 5)
+    return max
+  }, [last7Days])
+
+  // Donut Chart calculations
+  const donutSegments = useMemo(() => {
+    const safeTotal = total || 1
+    const parts = [
+      { label: 'Từ mới', count: newWords, color: '#38bdf8', bgClass: 'bg-sky-400' },
+      { label: 'Đang học', count: learning, color: '#facc15', bgClass: 'bg-amber-400' },
+      { label: 'Từ khó', count: difficult, color: '#f43f5e', bgClass: 'bg-rose-500' },
+      { label: 'Đã ghi nhớ', count: memorized, color: '#34d399', bgClass: 'bg-emerald-400' },
+    ]
+
+    const radius = 38
+    const circumference = 2 * Math.PI * radius
+    let accumulatedPercent = 0
+
+    return parts.map((part) => {
+      const percent = part.count / safeTotal
+      const strokeDasharray = `${percent * circumference} ${circumference}`
+      const strokeDashoffset = -accumulatedPercent * circumference
+      accumulatedPercent += percent
+
+      return {
+        ...part,
+        percent: Math.round(percent * 100),
+        strokeDasharray,
+        strokeDashoffset,
+      }
+    })
+  }, [total, newWords, learning, difficult, memorized])
+
+  const masteryRate = total ? Math.round((memorized / total) * 100) : 0
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
@@ -190,6 +252,202 @@ export function DashboardPage() {
             <Target className="w-5 h-5 text-amber-800 shrink-0" />
           </div>
           <div className="text-2xl sm:text-4xl font-black text-amber-950">{stats.averageAccuracy}%</div>
+        </div>
+      </div>
+
+      {/* CHARTS SECTION: 7-Day Bar Chart & Donut Chart */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5">
+        {/* 1. 7-Day Review Trend SVG Bar Chart */}
+        <div className="neo-card p-5 sm:p-6 bg-white border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] rounded-2xl space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-purple-700" />
+              <span>Xu Hướng Ôn Tập 7 Ngày Qua</span>
+            </h2>
+            <Badge className="bg-purple-100 text-purple-950 border border-slate-900 font-bold text-xs">
+              <TrendingUp className="w-3.5 h-3.5 mr-1 text-purple-700" />
+              {wordsReviewedToday} từ hôm nay
+            </Badge>
+          </div>
+
+          <div className="pt-2">
+            <div className="h-44 flex items-end justify-between gap-2 border-b-2 border-slate-900 pb-2 px-1 relative">
+              {/* Background grid lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20 border-t border-dashed border-slate-900">
+                <div className="border-b border-dashed border-slate-900 w-full" />
+                <div className="border-b border-dashed border-slate-900 w-full" />
+                <div className="border-b border-dashed border-slate-900 w-full" />
+              </div>
+
+              {last7Days.map((item, idx) => {
+                const heightPercent = max7DayCount ? Math.max(12, Math.round((item.count / max7DayCount) * 100)) : 12
+
+                return (
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-1 z-10 h-full justify-end group">
+                    <span className="text-[11px] font-black text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {item.count} từ
+                    </span>
+                    <div
+                      style={{ height: `${heightPercent}%` }}
+                      className={`w-full max-w-[36px] border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-t-lg transition-all duration-300 group-hover:scale-105 ${
+                        item.isToday
+                          ? 'bg-purple-600 border-purple-950'
+                          : 'bg-[#fdc800] hover:bg-amber-300'
+                      }`}
+                    />
+                    <span
+                      className={`text-xs font-black mt-1.5 ${
+                        item.isToday ? 'text-purple-700 underline' : 'text-slate-600'
+                      }`}
+                    >
+                      {item.dayShort}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Vocabulary Status Donut SVG Chart & Mastery Ratio */}
+        <div className="neo-card p-5 sm:p-6 bg-white border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] rounded-2xl space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
+              <PieChart className="w-5 h-5 text-amber-500" />
+              <span>Phân Phối Trạng Thái Từ Vựng</span>
+            </h2>
+            <span className="text-xs font-black bg-emerald-100 text-emerald-950 border border-slate-900 px-2.5 py-1 rounded-full">
+              {masteryRate}% Đã làm chủ
+            </span>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-6 pt-1">
+            {/* SVG Donut Chart */}
+            <div className="relative w-36 h-36 shrink-0 flex items-center justify-center">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="38"
+                  fill="none"
+                  stroke="#e2e8f0"
+                  strokeWidth="16"
+                />
+                {total > 0 &&
+                  donutSegments.map((seg, i) => (
+                    <circle
+                      key={i}
+                      cx="50"
+                      cy="50"
+                      r="38"
+                      fill="none"
+                      stroke={seg.color}
+                      strokeWidth="16"
+                      strokeDasharray={seg.strokeDasharray}
+                      strokeDashoffset={seg.strokeDashoffset}
+                      className="transition-all duration-500"
+                    />
+                  ))}
+              </svg>
+              <div className="absolute flex flex-col items-center justify-center text-center">
+                <span className="text-2xl font-black text-slate-900">{total}</span>
+                <span className="text-[10px] font-bold uppercase text-slate-500">Từ vựng</span>
+              </div>
+            </div>
+
+            {/* Status Legend */}
+            <div className="grid grid-cols-2 gap-2.5 w-full">
+              {donutSegments.map((seg, i) => (
+                <div
+                  key={i}
+                  className="neo-card p-2.5 bg-slate-50 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl flex items-center gap-2"
+                >
+                  <div className={`w-3.5 h-3.5 rounded-full border border-slate-900 shrink-0 ${seg.bgClass}`} />
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-[11px] font-black text-slate-600 truncate">{seg.label}</span>
+                    <span className="text-sm font-black text-slate-900">{seg.count} ({seg.percent}%)</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Vocabulary Journey Flow Diagram */}
+      <div className="neo-card p-5 sm:p-6 bg-white border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] rounded-2xl space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-emerald-600" />
+            <span>Sơ Đồ Hành Trình Học Từ Vựng</span>
+          </h2>
+          <span className="text-xs font-bold text-slate-500">Chu trình ghi nhớ SR</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 relative pt-2">
+          {/* Step 1 */}
+          <div className="neo-card p-4 bg-sky-50 border-2 border-slate-900 shadow-[3px_3px_0px_0px_#000] rounded-xl space-y-2 relative">
+            <div className="flex items-center justify-between">
+              <span className="w-6 h-6 rounded-full bg-sky-400 border border-slate-900 text-slate-900 font-black text-xs flex items-center justify-center">
+                1
+              </span>
+              <Badge className="bg-sky-200 text-sky-950 font-bold border border-slate-900 text-[10px]">
+                {newWords} từ
+              </Badge>
+            </div>
+            <h3 className="font-black text-sm text-slate-900">1. Nạp Từ Mới</h3>
+            <p className="text-xs font-semibold text-slate-600">
+              Từ mới được thêm vào hệ thống và bắt đầu phiên học flashcards đầu tiên.
+            </p>
+          </div>
+
+          {/* Step 2 */}
+          <div className="neo-card p-4 bg-amber-50 border-2 border-slate-900 shadow-[3px_3px_0px_0px_#000] rounded-xl space-y-2 relative">
+            <div className="flex items-center justify-between">
+              <span className="w-6 h-6 rounded-full bg-amber-400 border border-slate-900 text-slate-900 font-black text-xs flex items-center justify-center">
+                2
+              </span>
+              <Badge className="bg-amber-200 text-amber-950 font-bold border border-slate-900 text-[10px]">
+                {learning} từ
+              </Badge>
+            </div>
+            <h3 className="font-black text-sm text-slate-900">2. Đang Luyện Tập</h3>
+            <p className="text-xs font-semibold text-slate-600">
+              Lặp lại ngắt quãng (Spaced Repetition) giúp khắc sâu nghĩa và cách dùng.
+            </p>
+          </div>
+
+          {/* Step 3 */}
+          <div className="neo-card p-4 bg-rose-50 border-2 border-slate-900 shadow-[3px_3px_0px_0px_#000] rounded-xl space-y-2 relative">
+            <div className="flex items-center justify-between">
+              <span className="w-6 h-6 rounded-full bg-rose-400 border border-slate-900 text-white font-black text-xs flex items-center justify-center">
+                3
+              </span>
+              <Badge className="bg-rose-200 text-rose-950 font-bold border border-slate-900 text-[10px]">
+                {difficult} từ
+              </Badge>
+            </div>
+            <h3 className="font-black text-sm text-slate-900">3. Từ Khó Cần Chú Ý</h3>
+            <p className="text-xs font-semibold text-slate-600">
+              Các từ làm sai nhiều lần được ưu tiên ôn tập dồn dập trong game & quiz.
+            </p>
+          </div>
+
+          {/* Step 4 */}
+          <div className="neo-card p-4 bg-emerald-50 border-2 border-slate-900 shadow-[3px_3px_0px_0px_#000] rounded-xl space-y-2 relative">
+            <div className="flex items-center justify-between">
+              <span className="w-6 h-6 rounded-full bg-emerald-400 border border-slate-900 text-slate-900 font-black text-xs flex items-center justify-center">
+                4
+              </span>
+              <Badge className="bg-emerald-200 text-emerald-950 font-bold border border-slate-900 text-[10px]">
+                {memorized} từ
+              </Badge>
+            </div>
+            <h3 className="font-black text-sm text-slate-900">4. Đã Làm Chủ 🏆</h3>
+            <p className="text-xs font-semibold text-slate-600">
+              Từ vựng đã đi vào trí nhớ dài hạn, đạt 100% độ chính xác phản xạ.
+            </p>
+          </div>
         </div>
       </div>
 
