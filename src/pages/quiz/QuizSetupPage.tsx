@@ -102,7 +102,6 @@ export function QuizSetupPage() {
       removeTranslationSuggestion(suggestion.userTermId, user?.id)
       setSuggestions((prev) => prev.filter((s) => s.userTermId !== suggestion.userTermId))
       setAcceptedIds((prev) => new Set(prev).add(suggestion.userTermId))
-      setEditingSuggestionId(null)
     } catch {
       setSavingIds((prev) => {
         const next = new Set(prev)
