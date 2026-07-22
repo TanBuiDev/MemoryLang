@@ -25,7 +25,7 @@
 | Phase | Nội dung | Trạng thái |
 |---|---|---|
 | 0 | Xác minh baseline remote | Đang thực hiện |
-| 1 | Provision role JDBC và RLS | Chưa bắt đầu |
+| 1 | Provision role JDBC và RLS | Đã xác minh local; chờ remote |
 | 2 | Scaffold Java project | Chưa bắt đầu |
 | 3 | Supabase JWT authentication | Chưa bắt đầu |
 | 4 | Transaction-scoped DB identity | Chưa bắt đầu |
@@ -255,21 +255,21 @@ Bearer JWT
 
 ### Checklist Phase 1
 
-- [ ] Chạy GitNexus impact cho các policy/migration liên quan trước khi sửa.
-- [ ] Tạo migration bằng `npx supabase migration new add_stats_api_readonly_role`.
-- [ ] Định nghĩa/grant role không chứa password trong migration.
-- [ ] Thêm policy ownership cho `user_terms`, `study_sessions`, `quiz_results` và nested ownership cho `deck_terms`.
-- [ ] Thêm restrictive policy cho `decks`/`deck_terms` để policy public không mở rộng analytics scope.
-- [ ] Cho phép đọc `global_terms` đã active chỉ trong phạm vi cần cho join/recommendation.
-- [ ] Chạy migration trên local Supabase.
-- [ ] Test không có GUC: query bảng user-owned trả 0 hàng.
-- [ ] Test GUC user A: query không có `WHERE user_id` vẫn chỉ trả user A.
-- [ ] Test user A không thể đọc row/deck của user B.
-- [ ] Test role không thể `INSERT`, `UPDATE`, `DELETE`, `CREATE`, `SET ROLE postgres` hoặc đọc bảng ngoài allowlist.
-- [ ] Chạy `npx supabase db advisors --local` và sửa cảnh báo mới.
+- [x] Chạy GitNexus impact cho các policy/migration liên quan trước khi sửa.
+- [x] Tạo migration bằng `npx supabase migration new add_stats_api_readonly_role`.
+- [x] Định nghĩa/grant role không chứa password trong migration.
+- [x] Thêm policy ownership cho `user_terms`, `study_sessions`, `quiz_results` và nested ownership cho `deck_terms`.
+- [x] Thêm restrictive policy cho `decks`/`deck_terms` để policy public không mở rộng analytics scope.
+- [x] Cho phép đọc `global_terms` đã active chỉ trong phạm vi cần cho join/recommendation.
+- [x] Chạy migration trên local Supabase.
+- [x] Test không có GUC: query bảng user-owned trả 0 hàng.
+- [x] Test GUC user A: query không có `WHERE user_id` vẫn chỉ trả user A.
+- [x] Test user A không thể đọc row/deck của user B.
+- [x] Test role không thể `INSERT`, `UPDATE`, `DELETE`, `CREATE`, `SET ROLE postgres` hoặc đọc bảng ngoài allowlist.
+- [x] Chạy `npx supabase db advisors --local` và xác nhận không có cảnh báo mới từ các policy stats.
 - [ ] Review SQL, chạy `npx supabase db push --dry-run`, sau đó chỉ push remote khi được xác nhận.
 - [ ] Xác minh lại trên remote bằng transaction read-only và rollback.
-- [ ] Commit `feat: add read-only statistics database role` chỉ gồm migration liên quan.
+- [x] Commit `feat: add read-only statistics database role` chỉ gồm migration, test và tài liệu xác minh liên quan.
 
 **Điều kiện hoàn thành:** Credential runtime chỉ đọc; thiếu user context không thấy dữ liệu; user A không thể đọc user B ngay cả khi repository query quên tenant filter.
 
