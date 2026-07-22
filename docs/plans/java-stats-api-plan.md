@@ -33,8 +33,8 @@
 | 6 | Mastery và SRS analytics | Hoàn thành |
 | 7 | Deck analytics | Hoàn thành |
 | 8 | Quiz aggregate analytics | Hoàn thành |
-| 9 | Recommendation engine | Chưa bắt đầu |
-| 10 | API contract, error handling và observability | Chưa bắt đầu |
+| 9 | Recommendation engine | Hoàn thành |
+| 10 | API contract, error handling và observability | Hoàn thành |
 | 11 | Security/integration tests và Docker | Chưa bắt đầu |
 | 12 | Cloud Run demo, tùy chọn | Chưa bắt đầu |
 | 13 | Frontend integration, tùy chọn | Chưa bắt đầu |
@@ -473,19 +473,21 @@ Bằng chứng tự động Phase 8 dùng 10 test PostgreSQL 17 Testcontainers q
 
 ### Checklist Phase 9
 
-- [ ] Viết tests cho due review, at-risk, almost-memorized và neglected boundary.
-- [ ] Chốt công thức at-risk bằng weighted score từ status, wrong/correct counts, ease factor và overdue days; ghi công thức trong README.
-- [ ] Implement review recommendations theo `next_review_at <= now()`.
-- [ ] Implement almost-memorized theo status/interval đã chốt trong test.
-- [ ] Implement neglected với `days 1..365`.
-- [ ] Implement weak-deck chỉ trên deck thuộc user.
-- [ ] Implement next-terms với language filters và `limit 1..50`.
-- [ ] Candidate score 0 không được ưu tiên trước candidate có overlap; empty profile có fallback deterministic được ghi rõ.
-- [ ] Viết tests chống duplicate từ tags và `NOT EXISTS` thay vì `NOT IN` có null trap.
-- [ ] Chạy EXPLAIN ANALYZE trên fixture lớn, không chạy trên production traffic cao.
-- [ ] Viết controller/service/DTO và OpenAPI descriptions.
-- [ ] Chạy feature tests và full suite.
-- [ ] Commit `feat: add vocabulary recommendations`.
+- [x] Viết tests cho due review, at-risk, almost-memorized và neglected boundary.
+- [x] Chốt công thức at-risk bằng weighted score từ status, wrong/correct counts, ease factor và overdue days; ghi công thức trong README.
+- [x] Implement review recommendations theo `next_review_at <= now()`.
+- [x] Implement almost-memorized theo status/interval đã chốt trong test.
+- [x] Implement neglected với `days 1..365`.
+- [x] Implement weak-deck chỉ trên deck thuộc user và deck không rỗng.
+- [x] Implement next-terms với language filters và `limit 1..50`.
+- [x] Candidate score 0 không được ưu tiên trước candidate có overlap; empty profile có fallback deterministic được ghi rõ.
+- [x] Viết tests chống duplicate từ tags và dùng `NOT EXISTS` để tránh null trap.
+- [x] Chạy `EXPLAIN ANALYZE` trong transaction rollback trên fixture local gồm 10.000 global terms, 5.000 user terms, 100 decks và 10.000 memberships; execution time 42,650 ms, dùng index hiện có và không cần thêm index.
+- [x] Viết controller/service/DTO và OpenAPI descriptions.
+- [x] Chạy 12 feature tests (gồm duplicate `global_term_id`) và full suite tích hợp 105 tests, tất cả đều đạt.
+- [x] Commit `2dd93ca feat: add vocabulary recommendations`.
+
+**Review độc lập:** Finding duplicate recommendation/language-pair đã được đóng bằng `454214e fix: deduplicate recommendation terms`; query chọn một row deterministic cho mỗi `global_term_id` và profile đếm distinct term.
 
 **Điều kiện hoàn thành:** Recommendation ổn định, giải thích được, không cross-language và không đề xuất từ user đã có.
 
@@ -497,17 +499,19 @@ Bằng chứng tự động Phase 8 dùng 10 test PostgreSQL 17 Testcontainers q
 
 ### Checklist Phase 10
 
-- [ ] Implement `ApiError` record gồm timestamp, status, code, message, path và requestId.
-- [ ] Implement handler cho validation 400, auth 401, forbidden 403, not found 404 và unexpected 500.
-- [ ] Response 500 không chứa SQL, schema, stack trace hoặc credential.
-- [ ] Cấu hình request correlation ID; log method/path/status/duration, không log JWT.
-- [ ] Hoàn thiện OpenAPI security scheme Bearer JWT và examples.
-- [ ] Swagger/OpenAPI public; endpoint nghiệp vụ protected.
-- [ ] Cấu hình CORS allowlist bằng env; không dùng wildcard khi credentials/authorization được gửi.
-- [ ] Health endpoint không tiết lộ host/user database.
-- [ ] Viết contract tests cho error shape và OpenAPI paths.
-- [ ] Chạy full test suite.
-- [ ] Commit `feat: finalize API contract and observability`.
+- [x] Implement `ApiError` record gồm timestamp, status, code, message, path và requestId.
+- [x] Implement handler cho validation 400, auth 401, forbidden 403, not found 404 và unexpected 500.
+- [x] Response 500 không chứa SQL, schema, stack trace hoặc credential.
+- [x] Cấu hình request correlation ID; log method/path/status/duration, không log JWT.
+- [x] Hoàn thiện OpenAPI security scheme Bearer JWT, error schemas và examples.
+- [x] Swagger/OpenAPI public; endpoint nghiệp vụ protected.
+- [x] Cấu hình CORS allowlist bằng `STATS_CORS_ALLOWED_ORIGINS`; từ chối cấu hình rỗng hoặc wildcard khi credentials được bật.
+- [x] Health endpoint không tiết lộ host/user database.
+- [x] Viết 12 contract tests cho error shape, OpenAPI paths, CORS, logging, health exposure và HTTP 405; tất cả đều đạt.
+- [x] Chạy full suite 105 tests và đóng gói JAR thành công.
+- [x] Commit `fb05b19 feat: finalize API contract and observability`.
+
+**Review độc lập:** Finding method không hỗ trợ bị đổi thành 500 đã được đóng bằng `7e4b8f9 fix: preserve method not allowed contract`; API trả `405 METHOD_NOT_ALLOWED`, OpenAPI khai báo response tương ứng, và `fed0207 fix: preserve allowed methods in 405 responses` giữ header HTTP `Allow`.
 
 **Điều kiện hoàn thành:** Mọi endpoint có schema OpenAPI, lỗi nhất quán và log không làm rò secret/token.
 
