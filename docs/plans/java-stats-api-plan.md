@@ -26,7 +26,7 @@
 |---|---|---|
 | 0 | Xác minh baseline remote | Đang thực hiện |
 | 1 | Provision role JDBC và RLS | Đã xác minh local; chờ remote |
-| 2 | Scaffold Java project | Chưa bắt đầu |
+| 2 | Scaffold Java project | Hoàn thành |
 | 3 | Supabase JWT authentication | Chưa bắt đầu |
 | 4 | Transaction-scoped DB identity | Chưa bắt đầu |
 | 5 | Streak và activity heatmap | Chưa bắt đầu |
@@ -289,18 +289,18 @@ Bearer JWT
 
 ### Checklist Phase 2
 
-- [ ] Tạo sibling repo `memorylang-stats-api` và Maven Wrapper.
-- [ ] Chốt Spring Boot `4.1.x` patch mới nhất tại thời điểm tạo project; ghi version cụ thể trong `pom.xml` và README.
-- [ ] Cấu hình Java 21 và `spring.threads.virtual.enabled=true`.
-- [ ] Tạo `application.yml` chỉ tham chiếu env vars, không chứa credential.
-- [ ] Tạo `.env.example` gồm `SUPABASE_URL`, `STATS_DB_URL`, `STATS_DB_USER`, `STATS_DB_PASSWORD`.
-- [ ] Cấu hình Hikari tối đa 5 connection cho baseline Supabase nhỏ; `minimum-idle=0` trên Cloud Run.
-- [ ] Bật SSL JDBC; không log URL có credential.
-- [ ] Tạo `/actuator/health` và smoke test context load.
-- [ ] Chạy `./mvnw test` và xác nhận exit code 0.
-- [ ] Chạy `./mvnw package` và xác nhận JAR được tạo.
-- [ ] Scan repository để bảo đảm không có password/token thật.
-- [ ] Commit `chore: scaffold statistics API`.
+- [x] Tạo sibling repo `memorylang-stats-api` và Maven Wrapper 3.3.4 (Maven 3.9.15).
+- [x] Chốt Spring Boot 4.1.0 và springdoc-openapi 3.0.3; ghi version cụ thể trong `pom.xml` và README.
+- [x] Cấu hình Java 21 và `spring.threads.virtual.enabled=true`.
+- [x] Tạo `application.yml` chỉ tham chiếu env vars, không chứa credential.
+- [x] Tạo `.env.example` gồm `SUPABASE_URL`, `STATS_DB_URL`, `STATS_DB_USER`, `STATS_DB_PASSWORD`.
+- [x] Cấu hình Hikari tối đa 5 connection cho baseline Supabase nhỏ; `minimum-idle=0` trên Cloud Run.
+- [x] Bật SSL JDBC; không log URL có credential.
+- [x] Tạo `/actuator/health` và smoke test context load với Testcontainers PostgreSQL 17.
+- [x] Chạy `./mvnw test` và xác nhận exit code 0.
+- [x] Chạy `./mvnw package` và xác nhận JAR được tạo.
+- [x] Scan repository để bảo đảm không có password/token thật.
+- [x] Commit `chore: scaffold statistics API`.
 
 **Điều kiện hoàn thành:** Clone sạch có thể chạy test/package chỉ bằng Maven Wrapper; ứng dụng khởi động khi có env hợp lệ.
 
