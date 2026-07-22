@@ -32,7 +32,7 @@
 | 5 | Streak và activity heatmap | Hoàn thành |
 | 6 | Mastery và SRS analytics | Hoàn thành |
 | 7 | Deck analytics | Hoàn thành |
-| 8 | Quiz aggregate analytics | Chưa bắt đầu |
+| 8 | Quiz aggregate analytics | Hoàn thành |
 | 9 | Recommendation engine | Chưa bắt đầu |
 | 10 | API contract, error handling và observability | Chưa bắt đầu |
 | 11 | Security/integration tests và Docker | Chưa bắt đầu |
@@ -450,14 +450,16 @@ Bằng chứng tự động Phase 7 dùng 12 test PostgreSQL 17 Testcontainers q
 
 ### Checklist Phase 8
 
-- [ ] Viết tests cho zero quiz, nhiều quiz type, tổng questions bằng 0 và limit boundary.
-- [ ] Implement summary: total quizzes, weighted accuracy, average duration và breakdown theo `quiz_type`.
-- [ ] Implement recent results với `limit 1..100`, mặc định 30, sort `created_at desc`.
-- [ ] Không tạo DTO/controller/OpenAPI path cho per-question analytics.
-- [ ] Không query `quiz_answers` trong MVP.
-- [ ] Viết cross-user isolation tests.
-- [ ] Chạy feature tests và full suite.
-- [ ] Commit `feat: add aggregate quiz analytics`.
+- [x] Viết tests cho zero quiz, nhiều quiz type, tổng questions bằng 0 và limit boundary.
+- [x] Implement summary: total quizzes, weighted accuracy, average duration và breakdown theo `quiz_type`.
+- [x] Implement recent results với `limit 1..100`, mặc định 30, sort `created_at desc`.
+- [x] Không tạo DTO/controller/OpenAPI path cho per-question analytics.
+- [x] Không query `quiz_answers` trong MVP.
+- [x] Viết cross-user isolation tests.
+- [x] Chạy feature tests và full suite.
+- [x] Commit `feat: add aggregate quiz analytics`.
+
+Bằng chứng tự động Phase 8 dùng 10 test PostgreSQL 17 Testcontainers qua security chain ES256/JWKS thật tại local. Bộ test xác minh zero quiz, weighted accuracy trên nhiều `quiz_type`, tổng questions bằng 0, duration null/âm/0, default limit 30, boundary `1..100`, thứ tự recent, aggregate-only JSON contract, explicit tenant predicate và RLS cross-user isolation. Toàn bộ Java suite/package chạy 81 test thành công; executable JAR chứa production quiz classes nhưng không chứa fixture, test class, JUnit hoặc Testcontainers. Không có production query, DTO hay controller nào tham chiếu `quiz_answers`. Java commit là `92ab2bd`.
 
 **Điều kiện hoàn thành:** API không trình bày dữ liệu per-question giả hoặc legacy như dữ liệu translation-input hiện hành.
 
