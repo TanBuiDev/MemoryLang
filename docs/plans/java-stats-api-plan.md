@@ -35,7 +35,7 @@
 | 8 | Quiz aggregate analytics | Hoàn thành |
 | 9 | Recommendation engine | Hoàn thành |
 | 10 | API contract, error handling và observability | Hoàn thành |
-| 11 | Security/integration tests và Docker | Chưa bắt đầu |
+| 11 | Security/integration tests và Docker | Hoàn thành |
 | 12 | Cloud Run demo, tùy chọn | Chưa bắt đầu |
 | 13 | Frontend integration, tùy chọn | Chưa bắt đầu |
 
@@ -523,19 +523,21 @@ Bằng chứng tự động Phase 8 dùng 10 test PostgreSQL 17 Testcontainers q
 
 ### Checklist Phase 11
 
-- [ ] Testcontainers dùng PostgreSQL 17 và schema/policies tối thiểu tương đương remote.
-- [ ] Seed user A/B có overlapping deck/term data.
-- [ ] Chạy cross-user tests cho toàn bộ protected endpoints.
-- [ ] Chạy test role chỉ đọc và transaction context leakage.
-- [ ] Chạy Maven test/package từ clone sạch.
-- [ ] Tạo multi-stage Dockerfile bằng JRE 21 non-root runtime.
-- [ ] Không dùng `-DskipTests` trong verification build cuối.
-- [ ] Tạo `compose.yaml` chỉ tham chiếu env vars.
-- [ ] Build image và chạy container local.
-- [ ] Smoke test health, Swagger, 401 và một request hợp lệ.
-- [ ] Scan image/repository để bảo đảm không chứa `.env`, password hoặc access token.
-- [ ] Ghi kết quả test và cách chạy trong README.
-- [ ] Commit `test: verify statistics API end to end` và `chore: containerize statistics API` thành hai commit nếu thay đổi độc lập.
+- [x] Testcontainers dùng PostgreSQL 17 và fixture có schema/policies tối thiểu tương đương remote cho sáu relation được phép đọc.
+- [x] Seed user A/B có overlapping deck/term/session/quiz data.
+- [x] Chạy cross-user tests cho toàn bộ 19 protected endpoints; negative-control mutation `auth.uid()=user B` làm hai test coverage mới RED đúng mục tiêu trước khi fixture được khôi phục và chuyển GREEN.
+- [x] Chạy test role chỉ đọc và transaction context leakage qua commit/rollback, Hikari connection reuse, nested scope, exception và concurrent virtual threads.
+- [x] Clone repository vào thư mục tạm độc lập và chạy `mvnw clean verify`: 107 tests, 0 failure/error/skip, JAR đóng gói thành công.
+- [x] Tạo multi-stage Dockerfile: validate executable JAR rồi copy duy nhất artifact sang Eclipse Temurin JRE 21; runtime UID/GID 10001.
+- [x] Không dùng `-DskipTests` hoặc `-Dmaven.test.skip=true`; host verification bắt buộc hoàn tất trước image build.
+- [x] Tạo `compose.yaml` dùng env substitutions, read-only root filesystem, tmpfs `/tmp`, `cap_drop: ALL`, `no-new-privileges` và init.
+- [x] Build image `memorylang-stats-api:phase11` thành công và chạy container local trên Docker Engine 29.5.2.
+- [x] Smoke test local với PostgreSQL 17 fixture và JWKS ES256 tạm: health 200, Swagger 200, unauthenticated 401 và request hợp lệ user A 200.
+- [x] Scan tracked files, build context, image metadata/history, runtime filesystem và packaged JAR; không có `.env`, token/password smoke, test fixture, Testcontainers hoặc JUnit trong artifact.
+- [x] Ghi quy trình `clean verify`, build, Compose, smoke và shutdown trong README.
+- [x] Commit `ceb2418 test: verify statistics API user isolation` và `9dfafd7 chore: containerize statistics API`.
+
+**Review độc lập:** Đã đối chiếu đủ 19 endpoint theo 5 controller và không phát hiện finding Critical/Important trong coverage, isolation, artifact validation, non-root runtime, `.dockerignore`, Compose hardening hoặc tài liệu.
 
 **Điều kiện hoàn thành:** `./mvnw verify`, Docker build và smoke tests đều exit 0; mọi endpoint vượt qua cross-user isolation.
 
