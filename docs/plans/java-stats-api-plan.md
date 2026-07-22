@@ -29,7 +29,7 @@
 | 2 | Scaffold Java project | Hoàn thành |
 | 3 | Supabase JWT authentication | Đã xác minh tự động; chờ test token thật |
 | 4 | Transaction-scoped DB identity | Chưa bắt đầu |
-| 5 | Streak và activity heatmap | Chưa bắt đầu |
+| 5 | Streak và activity heatmap | Hoàn thành |
 | 6 | Mastery và SRS analytics | Chưa bắt đầu |
 | 7 | Deck analytics | Chưa bắt đầu |
 | 8 | Quiz aggregate analytics | Chưa bắt đầu |
@@ -378,16 +378,18 @@ Bằng chứng tự động Phase 4 dùng fixture versioned trên PostgreSQL 17 
 
 ### Checklist Phase 5
 
-- [ ] Viết SQL integration tests cho ngày liên tiếp, ngày trống, duplicate sessions cùng ngày và timezone boundary.
-- [ ] Implement current/longest streak bằng CTE/window functions.
-- [ ] Implement streak history có `limit 1..100`.
-- [ ] Implement heatmap với `from/to`, tối đa 366 ngày.
-- [ ] Implement summary với `days 1..365` và remembered ratio chia cho 0 an toàn.
-- [ ] Viết DTO records, service và controllers trong package `activity`.
-- [ ] Viết MockMvc tests cho JSON contract và invalid parameters.
-- [ ] Xác minh mọi query nằm trong `UserScopedTransaction`.
-- [ ] Chạy feature tests và full suite.
-- [ ] Commit `feat: add study activity analytics`.
+- [x] Viết SQL integration tests cho ngày liên tiếp, ngày trống, duplicate sessions cùng ngày và timezone boundary.
+- [x] Implement current/longest streak bằng CTE/window functions.
+- [x] Implement streak history có `limit 1..100`.
+- [x] Implement heatmap với `from/to`, tối đa 366 ngày.
+- [x] Implement summary với `days 1..365` và remembered ratio chia cho 0 an toàn.
+- [x] Viết DTO records, service và controllers trong package `activity`.
+- [x] Viết MockMvc tests cho JSON contract và invalid parameters.
+- [x] Xác minh mọi query nằm trong `UserScopedTransaction`.
+- [x] Chạy feature tests và full suite.
+- [x] Commit `feat: add study activity analytics`.
+
+Bằng chứng tự động Phase 5 dùng 15 test PostgreSQL 17 Testcontainers với clock cố định và security chain ES256/JWKS thật tại local. Bộ test xác minh CTE/window streak theo ngày distinct, stale streak, duplicate session, ranh giới nửa đêm `Asia/Ho_Chi_Minh`, empty state, zero-filled heatmap, tổng counter/ratio, giới hạn input, tenant predicate và RLS độc lập. Toàn bộ Java suite và package chạy 44 test thành công; executable JAR không chứa fixture, test class hoặc thư viện Testcontainers. Java commit là `1c7142e`.
 
 **Điều kiện hoàn thành:** Bốn endpoint đúng timezone, empty-state và không nhìn thấy session của user khác.
 
