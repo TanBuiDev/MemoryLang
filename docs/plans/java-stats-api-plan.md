@@ -27,7 +27,7 @@
 | 0 | Xác minh baseline remote | Đang thực hiện |
 | 1 | Provision role JDBC và RLS | Đã xác minh local; chờ remote |
 | 2 | Scaffold Java project | Hoàn thành |
-| 3 | Supabase JWT authentication | Chưa bắt đầu |
+| 3 | Supabase JWT authentication | Đã xác minh tự động; chờ test token thật |
 | 4 | Transaction-scoped DB identity | Chưa bắt đầu |
 | 5 | Streak và activity heatmap | Chưa bắt đầu |
 | 6 | Mastery và SRS analytics | Chưa bắt đầu |
@@ -314,19 +314,21 @@ Bearer JWT
 
 ### Checklist Phase 3
 
-- [ ] Viết MockMvc test: thiếu token trả 401.
-- [ ] Viết test: malformed token trả 401.
-- [ ] Viết test: token hết hạn trả 401.
-- [ ] Viết test: issuer sai trả 401.
-- [ ] Viết test: signature/kid sai trả 401.
-- [ ] Viết test: ES256 token hợp lệ tạo principal với UUID từ `sub`.
-- [ ] Implement `SecurityConfig`, stateless session và public allowlist tối thiểu.
-- [ ] Implement `AuthenticatedUserResolver`; từ chối `sub` thiếu hoặc không phải UUID.
-- [ ] Không dùng `user_metadata` cho authorization.
-- [ ] Không ghi JWT hoặc claims nhạy cảm vào log.
-- [ ] Chạy toàn bộ auth/controller tests.
+- [x] Viết MockMvc test: thiếu token trả 401.
+- [x] Viết test: malformed token trả 401.
+- [x] Viết test: token hết hạn trả 401.
+- [x] Viết test: issuer sai trả 401.
+- [x] Viết test: signature/kid sai trả 401.
+- [x] Viết test: ES256 token hợp lệ tạo principal với UUID từ `sub`.
+- [x] Implement `SecurityConfig`, stateless session và public allowlist tối thiểu.
+- [x] Implement `AuthenticatedUserResolver`; từ chối `sub` thiếu hoặc không phải UUID.
+- [x] Không dùng `user_metadata` cho authorization.
+- [x] Không ghi JWT hoặc claims nhạy cảm vào log.
+- [x] Chạy toàn bộ auth/controller tests.
 - [ ] Test thủ công một token Supabase thật mà không lưu token vào file/log.
-- [ ] Commit `feat: authenticate Supabase JWTs`.
+- [x] Commit `feat: authenticate Supabase JWTs` (`abd6d51`).
+
+Bằng chứng tự động Phase 3 dùng JWKS server cục bộ và khóa EC P-256 sinh tạm thời trong bộ nhớ để chạy 13 test auth qua decoder/Nimbus/security chain thật, không gọi Supabase từ xa. Bộ test còn chứng minh RS256 bị từ chối dù public key tương ứng có trong JWKS, `user_metadata` không thể thay đổi danh tính từ `sub`, và authentication không được lưu trong HTTP session. Toàn bộ Java suite chạy 15 test thành công; executable JAR được package lại sau thay đổi.
 
 **Điều kiện hoàn thành:** Bộ test bao phủ 401 và valid ES256; endpoint nghiệp vụ không thể truy cập ẩn danh.
 
