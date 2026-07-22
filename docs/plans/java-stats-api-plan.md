@@ -403,16 +403,18 @@ Bằng chứng tự động Phase 5 dùng 15 test PostgreSQL 17 Testcontainers v
 
 ### Checklist Phase 6
 
-- [ ] Viết test distribution dùng các status thực tế và vẫn trả bucket 0 cho status hợp lệ không có row.
-- [ ] Implement ease buckets `<1.5`, `1.5..<2.0`, `2.0..<2.5`, `>=2.5`.
-- [ ] Implement overdue buckets: `1d`, `2-3d`, `4-7d`, `8d+` không chồng lấn.
-- [ ] Định nghĩa retrograde term bằng tiêu chí có thể kiểm thử: `status in ('difficult','need_review')` hoặc `wrong_count > correct_count`.
-- [ ] Implement forecast `1..90` ngày theo `next_review_at`.
-- [ ] Implement interval buckets `1d`, `2-7d`, `8-30d`, `31-90d`, `91d+`.
-- [ ] Mọi query loại `deleted_at is not null`.
-- [ ] Viết controller validation và cross-user tests.
-- [ ] Chạy feature tests và full suite.
-- [ ] Commit `feat: add mastery and SRS analytics`.
+- [x] Viết test distribution dùng các status thực tế và vẫn trả bucket 0 cho status hợp lệ không có row.
+- [x] Implement ease buckets `<1.5`, `1.5..<2.0`, `2.0..<2.5`, `>=2.5`.
+- [x] Implement overdue buckets: `1d`, `2-3d`, `4-7d`, `8d+` không chồng lấn.
+- [x] Định nghĩa retrograde term bằng tiêu chí có thể kiểm thử: `status in ('difficult','need_review')` hoặc `wrong_count > correct_count`.
+- [x] Implement forecast `1..90` ngày theo `next_review_at`.
+- [x] Implement interval buckets `1d`, `2-7d`, `8-30d`, `31-90d`, `91d+`.
+- [x] Mọi query loại `deleted_at is not null`.
+- [x] Viết controller validation và cross-user tests.
+- [x] Chạy feature tests và full suite.
+- [x] Commit `feat: add mastery and SRS analytics`.
+
+Bằng chứng tự động Phase 6 dùng 13 test PostgreSQL 17 Testcontainers với clock cố định và security chain ES256/JWKS thật tại local. Bộ test xác minh status/ease/overdue/interval boundaries, retrograde OR không double-count, forecast theo nửa đêm `Asia/Ho_Chi_Minh`, zero-filled/empty responses, validation, explicit tenant predicate và RLS độc lập; đồng thời xác nhận không có mastery trajectory. Toàn bộ Java suite và package chạy 59 test thành công; executable JAR không chứa fixture, test class hoặc Testcontainers. Java commit là `921d85d`.
 
 **Điều kiện hoàn thành:** Sáu phép tổng hợp trả số liệu không chồng bucket, không tính soft-deleted row và không hứa dữ liệu lịch sử không tồn tại.
 
