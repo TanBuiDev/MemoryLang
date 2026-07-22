@@ -28,10 +28,10 @@
 | 1 | Provision role JDBC và RLS | Đã xác minh local; chờ remote |
 | 2 | Scaffold Java project | Hoàn thành |
 | 3 | Supabase JWT authentication | Đã xác minh tự động; chờ test token thật |
-| 4 | Transaction-scoped DB identity | Chưa bắt đầu |
+| 4 | Transaction-scoped DB identity | Hoàn thành |
 | 5 | Streak và activity heatmap | Hoàn thành |
-| 6 | Mastery và SRS analytics | Chưa bắt đầu |
-| 7 | Deck analytics | Chưa bắt đầu |
+| 6 | Mastery và SRS analytics | Hoàn thành |
+| 7 | Deck analytics | Hoàn thành |
 | 8 | Quiz aggregate analytics | Chưa bắt đầu |
 | 9 | Recommendation engine | Chưa bắt đầu |
 | 10 | API contract, error handling và observability | Chưa bắt đầu |
@@ -428,15 +428,17 @@ Bằng chứng tự động Phase 6 dùng 13 test PostgreSQL 17 Testcontainers v
 
 ### Checklist Phase 7
 
-- [ ] Viết tests cho deck rỗng, deck có duplicate-safe term count và deck public của user khác.
-- [ ] Implement completion: total, memorized, difficult/need_review và percentage.
-- [ ] Implement engagement từ `study_sessions`: session count, average cards, remembered ratio; duration chỉ tính khi cả `started_at` và `ended_at` có giá trị hợp lệ.
-- [ ] Query deck detail luôn yêu cầu `d.user_id=:userId`, không dựa vào public deck policy.
-- [ ] Deck không thuộc user trả 404.
-- [ ] Viết controller/service/DTO tests.
-- [ ] Chạy EXPLAIN trên fixture đủ lớn và thêm index chỉ khi kế hoạch thực thi chứng minh cần thiết.
-- [ ] Chạy feature tests và full suite.
-- [ ] Commit `feat: add deck analytics`.
+- [x] Viết tests cho deck rỗng, deck có duplicate-safe term count và deck public của user khác.
+- [x] Implement completion: total, memorized, difficult/need_review và percentage.
+- [x] Implement engagement từ `study_sessions`: session count, average cards, remembered ratio; duration chỉ tính khi cả `started_at` và `ended_at` có giá trị hợp lệ.
+- [x] Query deck detail luôn yêu cầu `d.user_id=:userId`, không dựa vào public deck policy.
+- [x] Deck không thuộc user trả 404.
+- [x] Viết controller/service/DTO tests.
+- [x] Chạy EXPLAIN trên fixture đủ lớn và thêm index chỉ khi kế hoạch thực thi chứng minh cần thiết.
+- [x] Chạy feature tests và full suite.
+- [x] Commit `feat: add deck analytics`.
+
+Bằng chứng tự động Phase 7 dùng 12 test PostgreSQL 17 Testcontainers qua security chain ES256/JWKS thật tại local. Bộ test xác minh deck rỗng, distinct `global_term_id`, trạng thái trùng lặp an toàn, soft-delete, thứ tự ổn định, engagement chỉ từ session hoàn thành, duration hợp lệ, explicit owner predicate, public/private deck của user khác và RLS độc lập. Toàn bộ Java suite và package chạy 71 test thành công; executable JAR chỉ chứa production deck classes. Trên fixture hiệu năng 10.000 deck, 100.000 deck-term và 200.000 user-term, truy vấn danh sách dùng các index hiện có và hoàn tất trong 15,510 ms. Trên 500.000 study session, partial index `study_sessions_user_deck_completed_idx` giảm engagement query từ Parallel Seq Scan 18,307 ms/6.667 buffers xuống Bitmap Index Scan 5,774 ms/4.873 buffers, nên index được lưu bằng migration `20260722152210_add_stats_deck_engagement_index.sql`. Supabase local replay và 34 pgTAP test đều thành công. Java commit là `8a1a585`.
 
 **Điều kiện hoàn thành:** Không dùng `user_term_id`; public deck không làm nhiễu analytics cá nhân.
 
