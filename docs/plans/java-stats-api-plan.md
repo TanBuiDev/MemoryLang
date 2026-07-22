@@ -250,6 +250,8 @@ Bearer JWT
 - Chỉ `USAGE` trên `public` và `SELECT` trên sáu bảng MVP.
 - `default_transaction_read_only=on`.
 - Không cấp quyền trên `subscriptions`, `payment_logs`, admin tables hoặc RPC ghi dữ liệu.
+- Không có effective `EXECUTE` trên bất kỳ function nào trong `public`; ACL hiện hữu của `anon`, `authenticated`, `service_role` được giữ nguyên bằng explicit grants.
+- Default function privileges của `postgres` không cấp `EXECUTE` cho `PUBLIC`; migration tạo RPC mới phải explicit grant đúng Supabase role cần dùng.
 - Thêm restrictive `SELECT` policy cho `decks` và `deck_terms` để loại deck public của user khác khỏi analytics cá nhân.
 - Password được tạo/rotate ngoài migration từ secret; migration không chứa literal password.
 
@@ -265,7 +267,9 @@ Bearer JWT
 - [x] Test không có GUC: query bảng user-owned trả 0 hàng.
 - [x] Test GUC user A: query không có `WHERE user_id` vẫn chỉ trả user A.
 - [x] Test user A không thể đọc row/deck của user B.
-- [x] Test role không thể `INSERT`, `UPDATE`, `DELETE`, `CREATE`, `SET ROLE postgres` hoặc đọc bảng ngoài allowlist.
+- [x] Test role không có bất kỳ table write privilege trên toàn bộ public base tables, không thể `CREATE` hoặc đọc bảng ngoài allowlist.
+- [x] Xác nhận catalog không cấp `SET OPTION` tới `postgres`; behavioral local session-authorization check trả `permission denied` khi thử `SET ROLE postgres`.
+- [x] Test role không có effective `EXECUTE` trên public functions, Supabase RPC ACL hiện hữu không đổi và function mới không tự cấp quyền qua `PUBLIC`.
 - [x] Chạy `npx supabase db advisors --local` và xác nhận không có cảnh báo mới từ các policy stats.
 - [ ] Review SQL, chạy `npx supabase db push --dry-run`, sau đó chỉ push remote khi được xác nhận.
 - [ ] Xác minh lại trên remote bằng transaction read-only và rollback.

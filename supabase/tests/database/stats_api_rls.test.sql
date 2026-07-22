@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(30);
+select extensions.plan(35);
 
 insert into auth.users (
   id,
@@ -249,6 +249,63 @@ select extensions.ok(
   'statistics role has no privileged role memberships'
 );
 
+select extensions.ok(
+  not exists (
+    select 1
+    from pg_proc functions
+    join pg_namespace schemas on schemas.oid = functions.pronamespace
+    where schemas.nspname = 'public'
+      and has_function_privilege(
+        'memorylang_stats_readonly',
+        functions.oid,
+        'EXECUTE'
+      )
+  ),
+  'statistics role cannot execute any public function through effective privileges'
+);
+select extensions.ok(
+  has_function_privilege('anon', 'public.handle_new_user()', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.handle_new_user()', 'EXECUTE')
+    and has_function_privilege('service_role', 'public.handle_new_user()', 'EXECUTE'),
+  'existing Supabase roles retain execution of formerly PUBLIC functions'
+);
+select extensions.ok(
+  not has_function_privilege('anon', 'public.can_user_add_term(uuid)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.can_user_add_term(uuid)', 'EXECUTE')
+    and not has_function_privilege('service_role', 'public.can_user_add_term(uuid)', 'EXECUTE'),
+  'function ACL hardening preserves an existing restricted RPC allowlist'
+);
+
+create function public.stats_api_future_acl_fixture()
+returns integer
+language sql
+as $$
+  select 1
+$$;
+
+select extensions.ok(
+  not exists (
+    select 1
+    from pg_proc functions
+    cross join lateral aclexplode(functions.proacl) grants
+    where functions.oid = 'public.stats_api_future_acl_fixture()'::regprocedure
+      and grants.grantee = 0
+      and grants.privilege_type = 'EXECUTE'
+  ),
+  'future postgres-created public functions do not grant execute to PUBLIC'
+);
+select extensions.ok(
+  not has_function_privilege('anon', 'public.stats_api_future_acl_fixture()', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.stats_api_future_acl_fixture()', 'EXECUTE')
+    and not has_function_privilege('service_role', 'public.stats_api_future_acl_fixture()', 'EXECUTE')
+    and not has_function_privilege(
+      'memorylang_stats_readonly',
+      'public.stats_api_future_acl_fixture()',
+      'EXECUTE'
+    ),
+  'future public functions require explicit execution grants'
+);
+
 select extensions.is(
   (
     select array_agg(t.table_name::text order by t.table_name)
@@ -274,21 +331,24 @@ select extensions.is(
 select extensions.ok(
   not exists (
     select 1
-    from unnest(array[
-      'deck_terms',
-      'decks',
-      'global_terms',
-      'quiz_results',
-      'study_sessions',
-      'user_terms'
-    ]) as allowed(table_name)
-    where has_table_privilege(
-      'memorylang_stats_readonly',
-      format('public.%I', allowed.table_name),
-      'INSERT,UPDATE,DELETE'
-    )
+    from information_schema.tables tables
+    cross join unnest(array[
+      'INSERT',
+      'UPDATE',
+      'DELETE',
+      'TRUNCATE',
+      'REFERENCES',
+      'TRIGGER'
+    ]) as write_privileges(privilege_name)
+    where tables.table_schema = 'public'
+      and tables.table_type = 'BASE TABLE'
+      and has_table_privilege(
+        'memorylang_stats_readonly',
+        format('%I.%I', tables.table_schema, tables.table_name),
+        write_privileges.privilege_name
+      )
   ),
-  'statistics role has no insert, update, or delete privileges'
+  'statistics role has no effective write privileges on any public base table'
 );
 select extensions.is(
   has_schema_privilege('memorylang_stats_readonly', 'public', 'CREATE'),
@@ -298,6 +358,9 @@ select extensions.is(
 
 -- These temporary grants let the local pg_prove connection assume the runtime
 -- role and keep calling pgTAP. Both are rolled back with this test transaction.
+-- SET OPTION is asserted below; direct-login behavior is verified separately
+-- because the default local test connection is not a superuser and therefore
+-- cannot SET SESSION AUTHORIZATION.
 grant memorylang_stats_readonly to postgres;
 grant usage on schema extensions to memorylang_stats_readonly;
 set local role memorylang_stats_readonly;
@@ -315,11 +378,76 @@ select set_config(
   true
 );
 
-select extensions.is((select count(*) from public.user_terms), 1::bigint, 'user A sees only own user terms');
-select extensions.is((select count(*) from public.decks), 1::bigint, 'user A sees only own decks');
-select extensions.is((select count(*) from public.deck_terms), 1::bigint, 'user A sees only terms in own decks');
-select extensions.is((select count(*) from public.study_sessions), 1::bigint, 'user A sees only own study sessions');
-select extensions.is((select count(*) from public.quiz_results), 1::bigint, 'user A sees only own quiz results');
+select extensions.results_eq(
+  $$
+    select id, user_id
+    from public.user_terms
+    order by id
+  $$,
+  $$
+    values (
+      '40000000-0000-0000-0000-000000000001'::uuid,
+      '10000000-0000-0000-0000-000000000001'::uuid
+    )
+  $$,
+  'user A sees the exact owned user term fixture'
+);
+select extensions.results_eq(
+  $$
+    select id, user_id
+    from public.decks
+    order by id
+  $$,
+  $$
+    values (
+      '50000000-0000-0000-0000-000000000001'::uuid,
+      '10000000-0000-0000-0000-000000000001'::uuid
+    )
+  $$,
+  'user A sees the exact owned deck fixture'
+);
+select extensions.results_eq(
+  $$
+    select deck_id, global_term_id
+    from public.deck_terms
+    order by deck_id, global_term_id
+  $$,
+  $$
+    values (
+      '50000000-0000-0000-0000-000000000001'::uuid,
+      '30000000-0000-0000-0000-000000000001'::uuid
+    )
+  $$,
+  'user A sees the exact term fixture in the owned deck'
+);
+select extensions.results_eq(
+  $$
+    select id, user_id
+    from public.study_sessions
+    order by id
+  $$,
+  $$
+    values (
+      '60000000-0000-0000-0000-000000000001'::uuid,
+      '10000000-0000-0000-0000-000000000001'::uuid
+    )
+  $$,
+  'user A sees the exact owned study session fixture'
+);
+select extensions.results_eq(
+  $$
+    select id, user_id
+    from public.quiz_results
+    order by id
+  $$,
+  $$
+    values (
+      '70000000-0000-0000-0000-000000000001'::uuid,
+      '10000000-0000-0000-0000-000000000001'::uuid
+    )
+  $$,
+  'user A sees the exact owned quiz result fixture'
+);
 select extensions.is(
   (
     select count(*)
@@ -381,9 +509,9 @@ select extensions.throws_ok(
   'statistics role cannot create tables'
 );
 select extensions.is(
-  pg_has_role('memorylang_stats_readonly', 'postgres', 'MEMBER'),
+  pg_has_role('memorylang_stats_readonly', 'postgres', 'SET'),
   false,
-  'statistics role is not authorized to assume postgres'
+  'statistics role has no SET OPTION for postgres'
 );
 
 reset role;
