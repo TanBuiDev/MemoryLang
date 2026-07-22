@@ -354,17 +354,19 @@ select set_config('request.jwt.claim.sub', :user_id, true)
 
 ### Checklist Phase 4
 
-- [ ] Viết integration test `auth.uid()` là null ngoài transaction context.
-- [ ] Viết integration test context user A chỉ thấy row A với query cố tình thiếu `WHERE user_id`.
-- [ ] Viết integration test A → commit → tái sử dụng connection → B chỉ thấy B.
-- [ ] Viết integration test rollback cũng xóa context.
-- [ ] Implement `UserScopedTransaction` bằng `TransactionTemplate` read-only.
-- [ ] Bảo đảm `set_config` và callback dùng cùng connection.
-- [ ] Repository SQL vẫn nhận `userId` và thêm ownership predicate; RLS là lớp thứ hai.
-- [ ] Không cho phép nested transaction đổi từ user A sang user B.
-- [ ] Chạy concurrency test với nhiều request A/B xen kẽ.
-- [ ] Chạy full test suite.
-- [ ] Commit `feat: scope database transactions to authenticated users`.
+- [x] Viết integration test `auth.uid()` là null ngoài transaction context.
+- [x] Viết integration test context user A chỉ thấy row A với query cố tình thiếu `WHERE user_id`.
+- [x] Viết integration test A → commit → tái sử dụng connection → B chỉ thấy B.
+- [x] Viết integration test rollback cũng xóa context.
+- [x] Implement `UserScopedTransaction` bằng `TransactionTemplate` read-only.
+- [x] Bảo đảm `set_config` và callback dùng cùng connection.
+- [x] Repository SQL vẫn nhận `userId` và thêm ownership predicate; RLS là lớp thứ hai.
+- [x] Không cho phép nested transaction đổi từ user A sang user B.
+- [x] Chạy concurrency test với nhiều request A/B xen kẽ.
+- [x] Chạy full test suite.
+- [x] Commit `feat: scope database transactions to authenticated users`.
+
+Bằng chứng tự động Phase 4 dùng fixture versioned trên PostgreSQL 17 Testcontainers và datasource Hikari một connection đăng nhập bằng role test read-only `NOINHERIT`, `NOSUPERUSER`, `NOBYPASSRLS`. Mười một test tích hợp xác nhận transaction-local `auth.uid()`, RLS khi query cố tình thiếu ownership predicate, explicit repository predicate, cùng backend PID qua commit/rollback reuse, nested same-user, từ chối A → B trước khi đổi identity, 24 request virtual-thread đồng thời không rò dữ liệu, transaction read-only từ chối `INSERT`, và Java guard được dọn sau lỗi. Toàn bộ Java suite chạy 26 test thành công; executable JAR không chứa fixture hay Testcontainers. Java commit là `66051cd`.
 
 **Điều kiện hoàn thành:** Không có identity leakage; cả tenant predicate và RLS cùng được chứng minh bằng Testcontainers.
 
