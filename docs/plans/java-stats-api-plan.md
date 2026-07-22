@@ -285,18 +285,18 @@ Bearer JWT
 
 **Mục tiêu:** Có ứng dụng Spring Boot khởi động được, cấu hình an toàn và build tái lập.
 
-**Dependencies chính:** `spring-boot-starter-web`, `spring-boot-starter-security`, `spring-boot-starter-oauth2-resource-server`, `spring-boot-starter-jdbc`, `spring-boot-starter-validation`, PostgreSQL JDBC, Actuator, springdoc-openapi, test starter, Testcontainers PostgreSQL.
+**Dependencies chính:** `spring-boot-starter-webmvc`, `spring-boot-starter-security`, `spring-boot-starter-security-oauth2-resource-server`, `spring-boot-starter-jdbc`, `spring-boot-starter-validation`, PostgreSQL JDBC, Actuator, springdoc-openapi, test starter, Testcontainers PostgreSQL.
 
 ### Checklist Phase 2
 
 - [x] Tạo sibling repo `memorylang-stats-api` và Maven Wrapper 3.3.4 (Maven 3.9.15).
-- [x] Chốt Spring Boot 4.1.0 và springdoc-openapi 3.0.3; ghi version cụ thể trong `pom.xml` và README.
+- [x] Chốt Spring Boot 4.1.0 và springdoc-openapi 3.0.3; tài liệu chính thức xác nhận springdoc 3.x hỗ trợ Boot 4 nói chung, còn cặp version chính xác được xác minh bằng local integration test/build và ghi rõ trong `pom.xml`/README.
 - [x] Cấu hình Java 21 và `spring.threads.virtual.enabled=true`.
 - [x] Tạo `application.yml` chỉ tham chiếu env vars, không chứa credential.
 - [x] Tạo `.env.example` gồm `SUPABASE_URL`, `STATS_DB_URL`, `STATS_DB_USER`, `STATS_DB_PASSWORD`.
 - [x] Cấu hình Hikari tối đa 5 connection cho baseline Supabase nhỏ; `minimum-idle=0` trên Cloud Run.
 - [x] Bật SSL JDBC; không log URL có credential.
-- [x] Tạo `/actuator/health` và smoke test context load với Testcontainers PostgreSQL 17.
+- [x] Tạo `/actuator/health` và smoke test context load với Testcontainers PostgreSQL 17; bật springdoc chỉ trong test để xác minh `/v3/api-docs` trả OpenAPI JSON thực trên Boot 4.1.0.
 - [x] Chạy `./mvnw test` và xác nhận exit code 0.
 - [x] Chạy `./mvnw package` và xác nhận JAR được tạo.
 - [x] Scan repository để bảo đảm không có password/token thật.
