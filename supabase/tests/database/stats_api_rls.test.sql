@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(35);
+select extensions.plan(34);
 
 insert into auth.users (
   id,
@@ -242,11 +242,9 @@ select extensions.ok(
     select 1
     from pg_auth_members memberships
     join pg_roles member_role on member_role.oid = memberships.member
-    join pg_roles granted_role on granted_role.oid = memberships.roleid
     where member_role.rolname = 'memorylang_stats_readonly'
-      and granted_role.rolname in ('authenticated', 'service_role', 'postgres')
   ),
-  'statistics role has no privileged role memberships'
+  'statistics role has no direct role memberships or SET options'
 );
 
 select extensions.ok(
@@ -261,7 +259,7 @@ select extensions.ok(
         'EXECUTE'
       )
   ),
-  'statistics role cannot execute any public function through effective privileges'
+  'statistics role cannot execute any current public routine through effective privileges'
 );
 select extensions.ok(
   has_function_privilege('anon', 'public.handle_new_user()', 'EXECUTE')
@@ -276,62 +274,37 @@ select extensions.ok(
   'function ACL hardening preserves an existing restricted RPC allowlist'
 );
 
-create function public.stats_api_future_acl_fixture()
-returns integer
-language sql
-as $$
-  select 1
-$$;
-
-select extensions.ok(
-  not exists (
-    select 1
-    from pg_proc functions
-    cross join lateral aclexplode(functions.proacl) grants
-    where functions.oid = 'public.stats_api_future_acl_fixture()'::regprocedure
-      and grants.grantee = 0
-      and grants.privilege_type = 'EXECUTE'
-  ),
-  'future postgres-created public functions do not grant execute to PUBLIC'
-);
-select extensions.ok(
-  not has_function_privilege('anon', 'public.stats_api_future_acl_fixture()', 'EXECUTE')
-    and not has_function_privilege('authenticated', 'public.stats_api_future_acl_fixture()', 'EXECUTE')
-    and not has_function_privilege('service_role', 'public.stats_api_future_acl_fixture()', 'EXECUTE')
-    and not has_function_privilege(
-      'memorylang_stats_readonly',
-      'public.stats_api_future_acl_fixture()',
-      'EXECUTE'
-    ),
-  'future public functions require explicit execution grants'
-);
-
 select extensions.is(
   (
-    select array_agg(t.table_name::text order by t.table_name)
-    from information_schema.tables t
-    where t.table_schema = 'public'
-      and t.table_type = 'BASE TABLE'
+    select array_agg(
+      format('%I.%I', schemas.nspname, relations.relname)
+      order by schemas.nspname, relations.relname
+    )
+    from pg_class relations
+    join pg_namespace schemas on schemas.oid = relations.relnamespace
+    where schemas.nspname = 'public'
+      and relations.relkind in ('r', 'p', 'v', 'm', 'f')
       and has_table_privilege(
         'memorylang_stats_readonly',
-        format('%I.%I', t.table_schema, t.table_name),
+        relations.oid,
         'SELECT'
       )
   ),
   array[
-    'deck_terms',
-    'decks',
-    'global_terms',
-    'quiz_results',
-    'study_sessions',
-    'user_terms'
+    'public.deck_terms',
+    'public.decks',
+    'public.global_terms',
+    'public.quiz_results',
+    'public.study_sessions',
+    'public.user_terms'
   ]::text[],
-  'statistics role can select exactly the six allowlisted tables'
+  'statistics role can select exactly the six allowlisted public relations'
 );
 select extensions.ok(
   not exists (
     select 1
-    from information_schema.tables tables
+    from pg_class relations
+    join pg_namespace schemas on schemas.oid = relations.relnamespace
     cross join unnest(array[
       'INSERT',
       'UPDATE',
@@ -340,15 +313,34 @@ select extensions.ok(
       'REFERENCES',
       'TRIGGER'
     ]) as write_privileges(privilege_name)
-    where tables.table_schema = 'public'
-      and tables.table_type = 'BASE TABLE'
+    where schemas.nspname = 'public'
+      and relations.relkind in ('r', 'p', 'v', 'm', 'f')
       and has_table_privilege(
         'memorylang_stats_readonly',
-        format('%I.%I', tables.table_schema, tables.table_name),
+        relations.oid,
         write_privileges.privilege_name
       )
   ),
-  'statistics role has no effective write privileges on any public base table'
+  'statistics role has no effective write privileges on any public relation'
+);
+select extensions.ok(
+  not exists (
+    with public_sequences as materialized (
+      select sequences.oid
+      from pg_class sequences
+      join pg_namespace schemas on schemas.oid = sequences.relnamespace
+      where schemas.nspname = 'public'
+        and sequences.relkind = 'S'
+    )
+    select 1
+    from public_sequences
+    where has_sequence_privilege(
+        'memorylang_stats_readonly',
+        public_sequences.oid,
+        'USAGE,SELECT,UPDATE'
+      )
+  ),
+  'statistics role has no effective privileges on public sequences'
 );
 select extensions.is(
   has_schema_privilege('memorylang_stats_readonly', 'public', 'CREATE'),

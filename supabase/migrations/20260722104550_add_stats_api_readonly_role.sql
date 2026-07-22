@@ -64,22 +64,28 @@ do $$
 declare
   granted_role name;
 begin
-  foreach granted_role in array array['authenticated', 'service_role', 'postgres']::name[]
+  for granted_role in
+    select parent_role.rolname
+    from pg_auth_members memberships
+    join pg_roles member_role on member_role.oid = memberships.member
+    join pg_roles parent_role on parent_role.oid = memberships.roleid
+    where member_role.rolname = 'memorylang_stats_readonly'
   loop
-    if exists (
-      select 1
-      from pg_auth_members memberships
-      join pg_roles member_role on member_role.oid = memberships.member
-      join pg_roles parent_role on parent_role.oid = memberships.roleid
-      where member_role.rolname = 'memorylang_stats_readonly'
-        and parent_role.rolname = granted_role
-    ) then
-      execute format(
-        'revoke %I from memorylang_stats_readonly',
-        granted_role
-      );
-    end if;
+    execute format(
+      'revoke %I from memorylang_stats_readonly',
+      granted_role
+    );
   end loop;
+
+  if exists (
+    select 1
+    from pg_auth_members memberships
+    join pg_roles member_role on member_role.oid = memberships.member
+    where member_role.rolname = 'memorylang_stats_readonly'
+  ) then
+    raise exception
+      'memorylang_stats_readonly still has direct role memberships after revocation';
+  end if;
 end
 $$;
 
@@ -102,82 +108,80 @@ grant select on table
   public.quiz_results
 to memorylang_stats_readonly;
 
--- PostgreSQL grants EXECUTE on new functions to PUBLIC by default. Preserve
--- each Supabase runtime role's effective access to existing public functions,
+-- PostgreSQL grants EXECUTE on new routines to PUBLIC by default. Preserve
+-- each Supabase runtime role's effective access to existing public routines,
 -- including deliberately restricted RPCs, while removing all effective
--- function access from the dedicated JDBC role.
+-- routine access from the dedicated JDBC role.
 do $$
 declare
-  public_function record;
+  public_routine record;
   anon_can_execute boolean;
   authenticated_can_execute boolean;
   service_role_can_execute boolean;
-  function_signature text;
+  routine_signature text;
 begin
-  for public_function in
+  for public_routine in
     select
-      functions.oid,
+      routines.oid,
       schemas.nspname,
-      functions.proname,
-      pg_get_function_identity_arguments(functions.oid) as identity_arguments
-    from pg_proc functions
-    join pg_namespace schemas on schemas.oid = functions.pronamespace
+      routines.proname,
+      pg_get_function_identity_arguments(routines.oid) as identity_arguments
+    from pg_proc routines
+    join pg_namespace schemas on schemas.oid = routines.pronamespace
     where schemas.nspname = 'public'
   loop
     anon_can_execute := has_function_privilege(
       'anon',
-      public_function.oid,
+      public_routine.oid,
       'EXECUTE'
     );
     authenticated_can_execute := has_function_privilege(
       'authenticated',
-      public_function.oid,
+      public_routine.oid,
       'EXECUTE'
     );
     service_role_can_execute := has_function_privilege(
       'service_role',
-      public_function.oid,
+      public_routine.oid,
       'EXECUTE'
     );
-    function_signature := format(
+    routine_signature := format(
       '%I.%I(%s)',
-      public_function.nspname,
-      public_function.proname,
-      public_function.identity_arguments
+      public_routine.nspname,
+      public_routine.proname,
+      public_routine.identity_arguments
     );
 
     execute format(
-      'revoke execute on function %s from public, memorylang_stats_readonly',
-      function_signature
+      'revoke execute on routine %s from public, memorylang_stats_readonly',
+      routine_signature
     );
 
     if anon_can_execute then
       execute format(
-        'grant execute on function %s to anon',
-        function_signature
+        'grant execute on routine %s to anon',
+        routine_signature
       );
     end if;
     if authenticated_can_execute then
       execute format(
-        'grant execute on function %s to authenticated',
-        function_signature
+        'grant execute on routine %s to authenticated',
+        routine_signature
       );
     end if;
     if service_role_can_execute then
       execute format(
-        'grant execute on function %s to service_role',
-        function_signature
+        'grant execute on routine %s to service_role',
+        routine_signature
       );
     end if;
   end loop;
 end
 $$;
 
--- Default PUBLIC function privileges are global; a schema-scoped REVOKE cannot
--- override them. Future migrations must grant each new RPC only to its intended
--- Supabase roles instead of exposing every new function implicitly.
-alter default privileges for role postgres
-  revoke execute on functions from public;
+-- This snapshot covers routines that exist when this migration runs. Every
+-- later public routine migration must explicitly revoke PUBLIC execution, grant
+-- only its intended Supabase roles, and rerun the stats privilege audit.
 
 drop policy if exists "stats_api_user_terms_select" on public.user_terms;
 create policy "stats_api_user_terms_select"
