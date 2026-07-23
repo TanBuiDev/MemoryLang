@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import {
   ArrowLeft,
   Save,
@@ -8,6 +8,8 @@ import {
   Volume2,
   HelpCircle,
   ScanSearch,
+  Eye,
+  Pencil,
 } from 'lucide-react'
 import {
   adminReadingService,
@@ -18,6 +20,13 @@ import { Select } from '@/components/ui/select'
 import { CreatableReadingSelect } from '@/components/reading/CreatableReadingSelect'
 import { showToast } from '@/components/ui/toast'
 import { buildReadingOption, normalizeReadingContent } from '@/utils/readingContent'
+import { annotateReadingHtml } from '@/utils/readingVocabulary'
+import {
+  getInitialReadingEditorMode,
+  type ReadingEditorMode,
+} from '@/utils/adminReadingPreview'
+import { readingService } from '@/services/supabase/reading.service'
+import { ReadingVocabularyPopover } from '@/components/reading/ReadingVocabularyPopover'
 import type {
   AccessTier,
   CEFRLevel,
@@ -28,6 +37,7 @@ import type {
   ReadingOptionField,
   ReadingPurpose,
   ReadingQuestionOption,
+  ReadingArticleTerm,
 } from '@/types/reading.types'
 
 const questionTypeOptions = [
@@ -47,12 +57,19 @@ interface LocalQuestion {
 export default function AdminReadingEditorPage() {
   const { id } = useParams<{ id?: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const isEditing = Boolean(id)
 
   const [saving, setSaving] = useState(false)
   const [generatingTts, setGeneratingTts] = useState(false)
   const [scanningTerms, setScanningTerms] = useState(false)
   const [matchedTermCount, setMatchedTermCount] = useState<number | null>(null)
+  const [editorMode, setEditorMode] = useState<ReadingEditorMode>(
+    () => getInitialReadingEditorMode(location.search)
+  )
+  const [articleTerms, setArticleTerms] = useState<ReadingArticleTerm[]>([])
+  const [selectedTerm, setSelectedTerm] = useState<ReadingArticleTerm | null>(null)
+  const [termPopoverPosition, setTermPopoverPosition] = useState({ x: 0, y: 0 })
   const [error, setError] = useState<string | null>(null)
 
   // Basic Form state
@@ -88,7 +105,13 @@ export default function AdminReadingEditorPage() {
     async function loadArticleToEdit() {
       if (!id) return
       try {
-        const detail = await adminReadingService.getArticleDetail(id)
+        const [detail, terms] = await Promise.all([
+          adminReadingService.getArticleDetail(id),
+          readingService.getArticleTerms(id).catch((termError) => {
+            console.error('Không thể tải từ vựng bài đọc:', termError)
+            return []
+          }),
+        ])
         if (detail) {
           setTitle(detail.title)
           setSubtitle(detail.subtitle || '')
@@ -102,6 +125,8 @@ export default function AdminReadingEditorPage() {
           setContentHtml(detail.content_html)
           setPlainText(detail.plain_text)
           setAudioUrl(detail.audio_url || null)
+          setArticleTerms(terms)
+          setMatchedTermCount(terms.length)
 
           if (detail.questions && detail.questions.length > 0) {
             setQuestions(
@@ -123,6 +148,10 @@ export default function AdminReadingEditorPage() {
 
     void loadArticleToEdit()
   }, [id])
+
+  useEffect(() => {
+    setEditorMode(getInitialReadingEditorMode(location.search))
+  }, [location.search])
 
   const handleContentChange = (value: string) => {
     const normalized = normalizeReadingContent(value)
@@ -217,7 +246,10 @@ export default function AdminReadingEditorPage() {
     try {
       setScanningTerms(true)
       const count = await adminReadingService.scanArticleTerms(id)
+      const terms = await readingService.getArticleTerms(id)
       setMatchedTermCount(count)
+      setArticleTerms(terms)
+      setEditorMode('preview')
       showToast({
         type: 'success',
         title: 'Đã quét từ vựng',
@@ -233,6 +265,34 @@ export default function AdminReadingEditorPage() {
     } finally {
       setScanningTerms(false)
     }
+  }
+
+  const annotatedPreviewHtml = useMemo(
+    () => annotateReadingHtml(contentHtml, articleTerms),
+    [contentHtml, articleTerms]
+  )
+
+  const openTermPopover = (marker: HTMLElement) => {
+    const termId = marker.dataset.readingTermId
+    const term = articleTerms.find((item) => item.global_term_id === termId)
+    if (!term) return
+
+    const rect = marker.getBoundingClientRect()
+    setSelectedTerm(term)
+    setTermPopoverPosition({ x: rect.left, y: rect.bottom })
+  }
+
+  const handlePreviewClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const marker = (event.target as HTMLElement).closest<HTMLElement>('[data-reading-term-id]')
+    if (marker) openTermPopover(marker)
+  }
+
+  const handlePreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    const marker = (event.target as HTMLElement).closest<HTMLElement>('[data-reading-term-id]')
+    if (!marker) return
+    event.preventDefault()
+    openTermPopover(marker)
   }
 
   // Save Article Handler
@@ -273,11 +333,20 @@ export default function AdminReadingEditorPage() {
 
       if (isEditing && id) {
         await adminReadingService.updateArticle(id, payload)
+        setIsPublished(Boolean(payload.is_published))
         showToast({ type: 'success', title: 'Đã cập nhật bài đọc' })
+        if (!payload.is_published) {
+          setEditorMode('preview')
+          navigate(`/app/admin/reading/${id}/edit?preview=1`, { replace: true })
+        }
       } else {
         const created = await adminReadingService.createArticle(payload)
+        setIsPublished(created.is_published)
         showToast({ type: 'success', title: 'Đã tạo bài đọc mới' })
-        navigate(`/app/admin/reading/${created.id}/edit`, { replace: true })
+        navigate(
+          `/app/admin/reading/${created.id}/edit${created.is_published ? '' : '?preview=1'}`,
+          { replace: true }
+        )
       }
     } catch (err: any) {
       console.error(err)
@@ -306,16 +375,6 @@ export default function AdminReadingEditorPage() {
         </Button>
 
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => handleSave(false)}
-            disabled={saving}
-            className="neo-button px-4 py-2 h-10 bg-white hover:bg-slate-100 text-slate-900 font-black text-xs border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl cursor-pointer"
-          >
-            Lưu Nháp
-          </Button>
-
           <Button
             type="button"
             onClick={() => handleSave(true)}
@@ -435,32 +494,69 @@ export default function AdminReadingEditorPage() {
 
       {/* 2. Rich Text Content Card */}
       <div className="neo-card p-6 bg-white border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] rounded-2xl space-y-4">
-        <div className="flex items-center justify-between border-b-2 border-slate-900 pb-2">
+        <div className="flex flex-col gap-3 border-b-2 border-slate-900 pb-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-base font-black text-slate-900">
             NỘI DUNG BÀI ĐỌC
           </h2>
-          <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
-            <span>{wordCount} từ</span>
-            <span>~{estReadingTime} phút đọc</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="mr-1 flex items-center gap-3 text-xs font-bold text-slate-600">
+              <span>{wordCount} từ</span>
+              <span>~{estReadingTime} phút đọc</span>
+            </div>
+            <Button
+              type="button"
+              variant={editorMode === 'edit' ? 'secondary' : 'ghost'}
+              onClick={() => setEditorMode('edit')}
+              className="h-8 min-h-0 px-3 text-xs"
+            >
+              <Pencil size={14} />
+              Soạn thảo
+            </Button>
+            <Button
+              type="button"
+              variant={editorMode === 'preview' ? 'secondary' : 'ghost'}
+              onClick={() => setEditorMode('preview')}
+              className="h-8 min-h-0 px-3 text-xs"
+            >
+              <Eye size={14} />
+              Preview
+            </Button>
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
-            Dán văn bản thường hoặc HTML *
-          </label>
-          <textarea
-            value={contentInput}
-            onChange={(e) => handleContentChange(e.target.value)}
-            rows={10}
-            placeholder={'Dán nguyên đoạn văn tại đây. Tách đoạn bằng một dòng trống.\n\nBạn cũng có thể dùng HTML như <p>, <h2>, <strong> nếu cần định dạng nâng cao.'}
-            className="w-full p-3 text-xs font-mono border-2 border-slate-900 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-          <p className="mt-2 text-[11px] font-bold text-slate-600">
-            Văn bản thường sẽ tự chuyển thành các đoạn HTML. Plain text dùng cho TTS,
-            đếm từ và thời gian đọc được tạo tự động.
-          </p>
-        </div>
+        {editorMode === 'edit' ? (
+          <div>
+            <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
+              Dán văn bản thường hoặc HTML *
+            </label>
+            <textarea
+              value={contentInput}
+              onChange={(e) => handleContentChange(e.target.value)}
+              rows={10}
+              placeholder={'Dán nguyên đoạn văn tại đây. Tách đoạn bằng một dòng trống.\n\nBạn cũng có thể dùng HTML như <p>, <h2>, <strong> nếu cần định dạng nâng cao.'}
+              className="w-full p-3 text-xs font-mono border-2 border-slate-900 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+            <p className="mt-2 text-[11px] font-bold text-slate-600">
+              Văn bản thường sẽ tự chuyển thành các đoạn HTML. Plain text dùng cho TTS,
+              đếm từ và thời gian đọc được tạo tự động.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-xl border-2 border-slate-900 bg-amber-50/40 p-5">
+            {contentHtml ? (
+              <div
+                onClick={handlePreviewClick}
+                onKeyDown={handlePreviewKeyDown}
+                className="prose max-w-none select-text font-serif text-base leading-relaxed text-slate-900"
+                dangerouslySetInnerHTML={{ __html: annotatedPreviewHtml }}
+              />
+            ) : (
+              <p className="py-8 text-center text-sm font-bold text-slate-500">
+                Chưa có nội dung để xem trước.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1 text-xs font-bold text-slate-500">
@@ -472,6 +568,16 @@ export default function AdminReadingEditorPage() {
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => handleSave(false)}
+              disabled={saving}
+              className="h-9 bg-white"
+            >
+              <Save size={15} />
+              <span>{saving ? 'Đang lưu...' : 'Lưu Nháp'}</span>
+            </Button>
             <Button
               type="button"
               variant="secondary"
@@ -579,6 +685,14 @@ export default function AdminReadingEditorPage() {
           </div>
         )}
       </div>
+
+      {selectedTerm && (
+        <ReadingVocabularyPopover
+          term={selectedTerm}
+          position={termPopoverPosition}
+          onClose={() => setSelectedTerm(null)}
+        />
+      )}
     </div>
   )
 }

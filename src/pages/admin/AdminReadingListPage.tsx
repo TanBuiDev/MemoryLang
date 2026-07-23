@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { showToast } from '@/components/ui/toast'
 import type { ReadingArticle } from '@/types/reading.types'
+import { getAdminReadingViewPath } from '@/utils/adminReadingPreview'
 
 export default function AdminReadingListPage() {
   const navigate = useNavigate()
@@ -126,7 +127,7 @@ export default function AdminReadingListPage() {
           <Button
             type="button"
             variant="ghost"
-            onClick={() => navigate(`/app/reading/${row.id}`)}
+            onClick={() => navigate(getAdminReadingViewPath(row))}
             className="neo-button p-1.5 h-8 w-8 min-h-0 rounded-lg border-2 border-slate-900 bg-white text-slate-900 shadow-[1.5px_1.5px_0px_0px_#000] hover:bg-slate-100 cursor-pointer"
             title="Xem bài đọc"
           >
