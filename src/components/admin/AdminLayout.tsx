@@ -45,7 +45,7 @@ export function AdminLayout() {
     <div className="brand-grid-bg min-h-screen bg-background text-foreground flex flex-col font-sans">
       {/* Admin Top Header */}
       <header className="sticky top-0 z-40 h-16 sm:h-18 border-b-3 border-slate-900 bg-white/95 backdrop-blur shadow-[0_2px_0_#000]">
-        <div className="flex items-center justify-between px-3 sm:px-6 lg:px-8 h-full w-full max-w-7xl mx-auto">
+        <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-full w-full">
           {/* Left section: Hamburger button + Logo + Admin badge + Breadcrumb */}
           <div className="flex items-center gap-2.5 sm:gap-4">
             {/* Mobile Hamburger toggle */}
@@ -128,7 +128,7 @@ export function AdminLayout() {
       )}
 
       {/* Main Admin Content Container */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row gap-6 relative">
+      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row gap-6 relative">
         {/* Desktop Sticky Sidebar */}
         <div className="hidden md:block">
           <AdminSidebar />
