@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { readingService } from '@/services/supabase/reading.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import type {
   QuizAnswer,
   ReadingArticleDetail,
@@ -24,6 +25,7 @@ import { VocabularyPopup } from '@/components/reading/VocabularyPopup'
 import { ReadingProModal } from '@/components/reading/ReadingProModal'
 import { showToast } from '@/components/ui/toast'
 import { generateAudio } from '@/services/api/generateAudio.api'
+import { isRestrictedReadingTier } from '@/utils/readingContent'
 
 const speedOptions = [
   { value: '0.5', label: '0.5x' },
@@ -37,7 +39,8 @@ const speedOptions = [
 export function ReadingDetailPage() {
   const { articleId } = useParams<{ articleId: string }>()
   const profile = useAuthStore((s) => s.profile)
-  const isPro = Boolean(profile?.is_admin)
+  const hasProSubscription = useSubscriptionStore((s) => s.isPro)
+  const isPro = Boolean(profile?.is_admin) || hasProSubscription
 
   const [article, setArticle] = useState<ReadingArticleDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -92,7 +95,7 @@ export function ReadingDetailPage() {
 
   // Audio play/pause handler
   const handleToggleAudio = async () => {
-    if (article?.access_tier === 'pro' && !isPro) {
+    if (article && isRestrictedReadingTier(article.access_tier) && !isPro) {
       setProModalReason('Audio TTS cho bài đọc này dành riêng cho thành viên Pro.')
       setProModalOpen(true)
       return
@@ -229,10 +232,10 @@ export function ReadingDetailPage() {
           <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-slate-900">
             {article.purpose}
           </span>
-          {article.access_tier === 'pro' && (
+          {isRestrictedReadingTier(article.access_tier) && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-slate-900 text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_#000]">
               <Lock size={11} />
-              Pro
+              {article.access_tier}
             </span>
           )}
         </div>

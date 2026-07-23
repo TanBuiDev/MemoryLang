@@ -1,7 +1,7 @@
-export type CEFRLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'
-export type ReadingDifficulty = 'easy' | 'medium' | 'hard'
-export type ReadingPurpose = 'IELTS' | 'TOEFL' | 'General' | 'Academic'
-export type AccessTier = 'free' | 'pro'
+export type CEFRLevel = string
+export type ReadingDifficulty = string
+export type ReadingPurpose = string
+export type AccessTier = string
 export type QuestionType = 'multiple_choice' | 'true_false' | 'fill_blank'
 export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink'
 
@@ -9,6 +9,15 @@ export interface ReadingQuestionOption {
   text: string
   is_correct: boolean
 }
+
+export type ReadingOptionField = 'cefr_level' | 'difficulty' | 'purpose' | 'access_tier'
+
+export interface ReadingArticleOption {
+  value: string
+  label: string
+}
+
+export type ReadingArticleOptions = Record<ReadingOptionField, ReadingArticleOption[]>
 
 export interface ReadingQuestion {
   id: string

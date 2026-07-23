@@ -1,8 +1,80 @@
 import { generateAudio as callGenerateAudioApi } from '@/services/api/generateAudio.api'
 import { supabase } from '@/services/supabase/client'
-import type { CreateArticleInput, ReadingArticle, ReadingArticleDetail } from '@/types/reading.types'
+import { buildReadingOption } from '@/utils/readingContent'
+import type {
+  CreateArticleInput,
+  ReadingArticle,
+  ReadingArticleDetail,
+  ReadingArticleOptions,
+  ReadingOptionField,
+} from '@/types/reading.types'
+
+export const defaultReadingArticleOptions: ReadingArticleOptions = {
+  cefr_level: [
+    { value: 'A1', label: 'A1 - Beginner' },
+    { value: 'A2', label: 'A2 - Elementary' },
+    { value: 'B1', label: 'B1 - Intermediate' },
+    { value: 'B2', label: 'B2 - Upper Intermediate' },
+    { value: 'C1', label: 'C1 - Advanced' },
+    { value: 'C2', label: 'C2 - Mastery' },
+  ],
+  difficulty: [
+    { value: 'easy', label: 'Dễ (Easy)' },
+    { value: 'medium', label: 'Vừa (Medium)' },
+    { value: 'hard', label: 'Khó (Hard)' },
+  ],
+  purpose: [
+    { value: 'General', label: 'Đọc Giao tiếp Chung' },
+    { value: 'IELTS', label: 'Luyện thi IELTS' },
+    { value: 'TOEFL', label: 'Luyện thi TOEFL' },
+    { value: 'Academic', label: 'Học thuật Academic' },
+  ],
+  access_tier: [
+    { value: 'free', label: 'Free Tier (Tất cả người dùng)' },
+    { value: 'pro', label: 'Pro Tier (Chỉ Pro Users)' },
+  ],
+}
 
 export const adminReadingService = {
+  async getArticleOptions(): Promise<ReadingArticleOptions> {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'reading_article_options')
+      .maybeSingle()
+
+    if (error) throw error
+
+    const stored = data?.value as Partial<ReadingArticleOptions> | undefined
+    return {
+      cefr_level: stored?.cefr_level || defaultReadingArticleOptions.cefr_level,
+      difficulty: stored?.difficulty || defaultReadingArticleOptions.difficulty,
+      purpose: stored?.purpose || defaultReadingArticleOptions.purpose,
+      access_tier: stored?.access_tier || defaultReadingArticleOptions.access_tier,
+    }
+  },
+
+  async addArticleOption(
+    field: ReadingOptionField,
+    value: string,
+    label: string
+  ): Promise<ReadingArticleOptions> {
+    const options = await this.getArticleOptions()
+    const option = buildReadingOption(value, label)
+
+    if (!options[field].some((item) => item.value === option.value)) {
+      options[field] = [...options[field], option]
+    }
+
+    const { error } = await supabase
+      .from('app_settings')
+      .update({ value: options })
+      .eq('key', 'reading_article_options')
+
+    if (error) throw error
+    return options
+  },
+
   /**
    * Admin: Danh sách tất cả bài đọc (bao gồm bản nháp)
    */

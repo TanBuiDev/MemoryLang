@@ -105,10 +105,10 @@ export default function AdminReadingListPage() {
             </span>
           )}
 
-          {row.access_tier === 'pro' ? (
+          {row.access_tier !== 'free' ? (
             <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-slate-900">
               <Crown size={11} className="text-amber-600" />
-              Pro Tier
+              {row.access_tier} Tier
             </span>
           ) : (
             <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-900">

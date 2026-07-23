@@ -8,46 +8,26 @@ import {
   Volume2,
   HelpCircle,
 } from 'lucide-react'
-import { adminReadingService } from '@/services/supabase/adminReading.service'
+import {
+  adminReadingService,
+  defaultReadingArticleOptions,
+} from '@/services/supabase/adminReading.service'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
+import { CreatableReadingSelect } from '@/components/reading/CreatableReadingSelect'
 import { showToast } from '@/components/ui/toast'
+import { buildReadingOption, normalizeReadingContent } from '@/utils/readingContent'
 import type {
   AccessTier,
   CEFRLevel,
   CreateArticleInput,
   QuestionType,
+  ReadingArticleOptions,
   ReadingDifficulty,
+  ReadingOptionField,
   ReadingPurpose,
   ReadingQuestionOption,
 } from '@/types/reading.types'
-
-const levelOptions = [
-  { value: 'A1', label: 'A1 - Beginner' },
-  { value: 'A2', label: 'A2 - Elementary' },
-  { value: 'B1', label: 'B1 - Intermediate' },
-  { value: 'B2', label: 'B2 - Upper Intermediate' },
-  { value: 'C1', label: 'C1 - Advanced' },
-  { value: 'C2', label: 'C2 - Mastery' },
-]
-
-const difficultyOptions = [
-  { value: 'easy', label: 'Dễ (Easy)' },
-  { value: 'medium', label: 'Vừa (Medium)' },
-  { value: 'hard', label: 'Khó (Hard)' },
-]
-
-const purposeOptions = [
-  { value: 'General', label: 'Đọc Giao tiếp Chung' },
-  { value: 'IELTS', label: 'Luyện thi IELTS' },
-  { value: 'TOEFL', label: 'Luyện thi TOEFL' },
-  { value: 'Academic', label: 'Học thuật Academic' },
-]
-
-const accessTierOptions = [
-  { value: 'free', label: 'Free Tier (Tất cả người dùng)' },
-  { value: 'pro', label: 'Pro Tier (Chỉ Pro Users)' },
-]
 
 const questionTypeOptions = [
   { value: 'multiple_choice', label: 'Trắc nghiệm (Multiple Choice)' },
@@ -81,14 +61,25 @@ export default function AdminReadingEditorPage() {
   const [topicsInput, setTopicsInput] = useState('Technology, General')
   const [accessTier, setAccessTier] = useState<AccessTier>('free')
   const [isPublished, setIsPublished] = useState(false)
+  const [articleOptions, setArticleOptions] = useState<ReadingArticleOptions>(
+    defaultReadingArticleOptions
+  )
 
   // Content state
+  const [contentInput, setContentInput] = useState('')
   const [contentHtml, setContentHtml] = useState('')
   const [plainText, setPlainText] = useState('')
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
 
   // Questions state
   const [questions, setQuestions] = useState<LocalQuestion[]>([])
+
+  useEffect(() => {
+    void adminReadingService
+      .getArticleOptions()
+      .then(setArticleOptions)
+      .catch((optionsError) => console.error('Không thể tải tùy chọn bài đọc:', optionsError))
+  }, [])
 
   useEffect(() => {
     async function loadArticleToEdit() {
@@ -104,6 +95,7 @@ export default function AdminReadingEditorPage() {
           setTopicsInput((detail.topics || []).join(', '))
           setAccessTier(detail.access_tier)
           setIsPublished(detail.is_published)
+          setContentInput(detail.content_html)
           setContentHtml(detail.content_html)
           setPlainText(detail.plain_text)
           setAudioUrl(detail.audio_url || null)
@@ -129,12 +121,22 @@ export default function AdminReadingEditorPage() {
     void loadArticleToEdit()
   }, [id])
 
-  // Sync plain_text when HTML changes
-  const handleHtmlChange = (html: string) => {
-    setContentHtml(html)
-    // Strip HTML tags for plain text
-    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-    setPlainText(text)
+  const handleContentChange = (value: string) => {
+    const normalized = normalizeReadingContent(value)
+    setContentInput(value)
+    setContentHtml(normalized.contentHtml)
+    setPlainText(normalized.plainText)
+  }
+
+  const handleCreateOption = async (
+    field: ReadingOptionField,
+    value: string,
+    label: string
+  ) => {
+    const candidate = buildReadingOption(value, label)
+    const updatedOptions = await adminReadingService.addArticleOption(field, value, label)
+    setArticleOptions(updatedOptions)
+    return updatedOptions[field].find((option) => option.value === candidate.value) || candidate
   }
 
   // Quiz Builder Handlers
@@ -208,7 +210,7 @@ export default function AdminReadingEditorPage() {
 
   // Save Article Handler
   const handleSave = async (publishedState?: boolean) => {
-    if (!title.trim() || !contentHtml.trim()) {
+    if (!title.trim() || !contentInput.trim()) {
       setError('Vui lòng nhập tiêu đề và nội dung bài đọc.')
       return
     }
@@ -342,10 +344,11 @@ export default function AdminReadingEditorPage() {
             <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
               Trình độ CEFR *
             </label>
-            <Select
+            <CreatableReadingSelect
               value={cefrLevel}
-              onChange={(val) => setCefrLevel(val as CEFRLevel)}
-              options={levelOptions}
+              onChange={setCefrLevel}
+              options={articleOptions.cefr_level}
+              onCreate={(value, label) => handleCreateOption('cefr_level', value, label)}
             />
           </div>
 
@@ -353,10 +356,11 @@ export default function AdminReadingEditorPage() {
             <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
               Độ khó *
             </label>
-            <Select
+            <CreatableReadingSelect
               value={difficulty}
-              onChange={(val) => setDifficulty(val as ReadingDifficulty)}
-              options={difficultyOptions}
+              onChange={setDifficulty}
+              options={articleOptions.difficulty}
+              onCreate={(value, label) => handleCreateOption('difficulty', value, label)}
             />
           </div>
 
@@ -364,10 +368,11 @@ export default function AdminReadingEditorPage() {
             <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
               Mục đích học *
             </label>
-            <Select
+            <CreatableReadingSelect
               value={purpose}
-              onChange={(val) => setPurpose(val as ReadingPurpose)}
-              options={purposeOptions}
+              onChange={setPurpose}
+              options={articleOptions.purpose}
+              onCreate={(value, label) => handleCreateOption('purpose', value, label)}
             />
           </div>
 
@@ -375,11 +380,15 @@ export default function AdminReadingEditorPage() {
             <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
               Quyền truy cập (Tier) *
             </label>
-            <Select
+            <CreatableReadingSelect
               value={accessTier}
-              onChange={(val) => setAccessTier(val as AccessTier)}
-              options={accessTierOptions}
+              onChange={setAccessTier}
+              options={articleOptions.access_tier}
+              onCreate={(value, label) => handleCreateOption('access_tier', value, label)}
             />
+            <p className="mt-1 text-[10px] font-bold text-slate-500">
+              Tier tự tạo được xem là nội dung giới hạn, tương đương Pro.
+            </p>
           </div>
 
           <div className="md:col-span-2">
@@ -401,7 +410,7 @@ export default function AdminReadingEditorPage() {
       <div className="neo-card p-6 bg-white border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] rounded-2xl space-y-4">
         <div className="flex items-center justify-between border-b-2 border-slate-900 pb-2">
           <h2 className="text-base font-black text-slate-900">
-            NỘI DUNG VĂN BẢN (HTML & PLAIN TEXT)
+            NỘI DUNG BÀI ĐỌC
           </h2>
           <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
             <span>{wordCount} từ</span>
@@ -411,15 +420,19 @@ export default function AdminReadingEditorPage() {
 
         <div>
           <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
-            Nội dung bài đọc (HTML Rich Text) *
+            Dán văn bản thường hoặc HTML *
           </label>
           <textarea
-            value={contentHtml}
-            onChange={(e) => handleHtmlChange(e.target.value)}
+            value={contentInput}
+            onChange={(e) => handleContentChange(e.target.value)}
             rows={10}
-            placeholder="Nhập nội dung bài đọc dạng HTML (ví dụ: <p>Artificial intelligence is...</p>)"
+            placeholder={'Dán nguyên đoạn văn tại đây. Tách đoạn bằng một dòng trống.\n\nBạn cũng có thể dùng HTML như <p>, <h2>, <strong> nếu cần định dạng nâng cao.'}
             className="w-full p-3 text-xs font-mono border-2 border-slate-900 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-400"
           />
+          <p className="mt-2 text-[11px] font-bold text-slate-600">
+            Văn bản thường sẽ tự chuyển thành các đoạn HTML. Plain text dùng cho TTS,
+            đếm từ và thời gian đọc được tạo tự động.
+          </p>
         </div>
 
         <div className="flex items-center justify-between pt-1">

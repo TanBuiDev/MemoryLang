@@ -16,8 +16,10 @@ import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { readingService } from '@/services/supabase/reading.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import type { CEFRLevel, ReadingArticle, ReadingFilters, ReadingStatsSummary } from '@/types/reading.types'
 import { ReadingProModal } from '@/components/reading/ReadingProModal'
+import { isRestrictedReadingTier } from '@/utils/readingContent'
 
 const levelOptions = [
   { value: 'all', label: 'Tất cả Trình độ' },
@@ -109,7 +111,8 @@ const DEMO_ARTICLES: ReadingArticle[] = [
 export function ReadingHubPage() {
   const navigate = useNavigate()
   const profile = useAuthStore((s) => s.profile)
-  const isPro = Boolean(profile?.is_admin)
+  const hasProSubscription = useSubscriptionStore((s) => s.isPro)
+  const isPro = Boolean(profile?.is_admin) || hasProSubscription
 
   const [articles, setArticles] = useState<ReadingArticle[]>([])
   const [loading, setLoading] = useState(true)
@@ -152,7 +155,7 @@ export function ReadingHubPage() {
   }, [filters])
 
   const handleArticleClick = (article: ReadingArticle) => {
-    if (article.access_tier === 'pro' && !isPro) {
+    if (isRestrictedReadingTier(article.access_tier) && !isPro) {
       setProModalReason('Bài đọc này dành riêng cho tài khoản Pro. Hãy nâng cấp để trải nghiệm!')
       setProModalOpen(true)
       return
@@ -289,7 +292,7 @@ export function ReadingHubPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {articles.map((article) => {
-              const isLocked = article.access_tier === 'pro' && !isPro
+              const isLocked = isRestrictedReadingTier(article.access_tier) && !isPro
               return (
                 <div
                   key={article.id}
@@ -306,10 +309,10 @@ export function ReadingHubPage() {
                         <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-slate-100 border border-slate-900 text-slate-700">
                           {article.purpose}
                         </span>
-                        {article.access_tier === 'pro' && (
+                        {isRestrictedReadingTier(article.access_tier) && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-slate-900 text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_#000]">
                             <Crown size={11} className="text-amber-600" />
-                            Pro
+                            {article.access_tier}
                           </span>
                         )}
                       </div>
