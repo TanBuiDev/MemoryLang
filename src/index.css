@@ -248,6 +248,22 @@ html {
   }
 }
 
+.reading-vocabulary-term {
+  position: relative;
+  text-decoration: none;
+}
+
+.reading-vocabulary-term::after {
+  position: absolute;
+  right: 2px;
+  bottom: -2px;
+  left: 2px;
+  border-bottom: 2px dotted currentColor;
+  content: '';
+  opacity: 0.8;
+  pointer-events: none;
+}
+
 @keyframes neo-wobble {
   0%, 100% {
     transform: rotate(0deg) scale(1);

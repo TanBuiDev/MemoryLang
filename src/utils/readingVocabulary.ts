@@ -57,7 +57,7 @@ export function annotateReadingHtml(
       marker.className = 'reading-vocabulary-term'
       marker.setAttribute(
         'style',
-        'text-decoration-line: underline; text-decoration-style: dotted; text-decoration-thickness: 2px; text-underline-offset: 4px; cursor: pointer; font-weight: 700;'
+        'cursor: pointer; font-weight: 700;'
       )
       marker.textContent = token
       fragment.append(marker)

@@ -49,4 +49,42 @@ describe('ReadingVocabularyPopover', () => {
 
     expect(screen.getByText('làm việc')).toBeInTheDocument()
   })
+
+  it('groups translations by part of speech instead of merging them into one badge', () => {
+    render(
+      <ReadingVocabularyPopover
+        term={{
+          global_term_id: 'term-interest',
+          normalized_text: 'interest',
+          source_text: 'interest',
+          ipa: '/ˈɪntrəst/',
+          part_of_speech: 'noun, verb',
+          audio_url: null,
+          translation: 'sự quan tâm; làm quan tâm',
+          meanings: [
+            {
+              text: 'a feeling of wanting to know',
+              language: 'en',
+              part_of_speech: 'noun',
+              translation: 'sự quan tâm; sự hứng thú',
+            },
+            {
+              text: 'to attract attention',
+              language: 'en',
+              part_of_speech: 'verb',
+              translation: 'làm quan tâm; thu hút',
+            },
+          ],
+        }}
+        position={{ x: 20, y: 20 }}
+        onClose={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('noun')).toBeInTheDocument()
+    expect(screen.getByText('verb')).toBeInTheDocument()
+    expect(screen.getByText('sự quan tâm; sự hứng thú')).toBeInTheDocument()
+    expect(screen.getByText('làm quan tâm; thu hút')).toBeInTheDocument()
+    expect(screen.queryByText('noun, verb')).toBeNull()
+  })
 })

@@ -16,6 +16,7 @@ describe('annotateReadingHtml', () => {
     expect(matches).toHaveLength(2)
     expect(matches[0].textContent).toBe('Grace')
     expect(matches[1].textContent).toBe('grace')
+    expect(matches[0].getAttribute('style')).not.toContain('text-decoration')
     expect(container.textContent).toBe('Grace works with grace.')
   })
 
