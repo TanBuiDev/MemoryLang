@@ -111,6 +111,18 @@ ALTER TABLE reading_questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reading_attempts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reading_highlights ENABLE ROW LEVEL SECURITY;
 
+-- 5a. Data API privileges
+-- RLS still controls which rows each role can access. These grants only expose
+-- the required table operations through PostgREST.
+REVOKE ALL ON TABLE reading_articles FROM anon, authenticated;
+REVOKE ALL ON TABLE reading_questions FROM anon, authenticated;
+REVOKE ALL ON TABLE reading_attempts FROM anon, authenticated;
+REVOKE ALL ON TABLE reading_highlights FROM anon, authenticated;
+
+GRANT SELECT ON TABLE reading_articles, reading_questions TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE reading_articles, reading_questions TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE reading_attempts, reading_highlights TO authenticated;
+
 -- Articles: Public read for published articles; Admin full access
 CREATE POLICY "reading_articles_public_read"
 ON reading_articles FOR SELECT
