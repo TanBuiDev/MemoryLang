@@ -77,6 +77,12 @@
 - Luôn ưu tiên sử dụng các class utility có sẵn như `neo-card`, `neo-button`, `neo-button-active` thay vì tự viết CSS inline hoặc Tailwind class từ con số 0.
 - Nếu phát hiện code cũ đang dùng `<select>` hoặc `window.confirm`, nhiệm vụ đầu tiên của AI là refactor (tái cấu trúc) chúng sang custom component ngay lập tức.
 
+### 4. Quy tắc chống "Developer-Centric UI" (Cực kỳ quan trọng)
+- **TUYỆT ĐỐI KHÔNG** dùng `<textarea>` để nhập JSON, HTML, CSS, SQL hoặc bất kỳ đoạn code/config nào. Bắt buộc dùng Form controls trực quan (Input, Select, Toggle, Checkbox).
+- **TUYỆT ĐỐI KHÔNG** yêu cầu user/admin viết raw code. Bắt buộc dùng WYSIWYG editor (cho văn bản) hoặc Visual Builder (cho cấu hình phức tạp).
+- **BẮT BUỘC** thiết kế cho người dùng KHÔNG rành kỹ thuật (Non-technical). Mọi tùy chọn phải có Label rõ ràng, có giá trị mặc định và hiển thị Preview ngay lập tức.
+- **Nếu phát hiện code cũ vi phạm** (ví dụ: đang dùng textarea nhập JSON), nhiệm vụ đầu tiên là refactor sang visual form trước khi làm tính năng mới.
+
 ## Quy tắc tích hợp Supabase / PostgREST (Bắt buộc tuyệt đối)
 
 - **Giới hạn kết quả (1000-row PostgREST limit):**
