@@ -14,6 +14,8 @@ import { statisticsService } from '@/services/supabase/statistics.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
+import { isStatsApiConfigured, statsApiService } from '@/services/stats/statsApi.service'
+import { StatsInsightsWidget } from './StatsInsightsWidget'
 
 export function DashboardPage() {
   const profile = useAuthStore((state) => state.profile)
@@ -34,6 +36,11 @@ export function DashboardPage() {
     queryKey: ['statistics', user?.id],
     queryFn: () => statisticsService.getDashboardStats(user!.id),
     enabled: shouldUseRemoteData,
+  })
+  const statsApiQuery = useQuery({
+    queryKey: ['stats-api', 'dashboard-insights', user?.id],
+    queryFn: () => statsApiService.getDashboardInsights(),
+    enabled: shouldUseRemoteData && isStatsApiConfigured,
   })
   const vocabulary = useMemo(
     () => filterActiveVocabulary(shouldUseRemoteData ? vocabularyQuery.data ?? [] : demoVocabulary),
@@ -88,6 +95,13 @@ export function DashboardPage() {
         <StatTile label={t('dashboard.memorized')} value={memorized} />
         <StatTile label={t('statistics.accuracy')} value={`${stats.averageAccuracy}%`} />
       </div>
+      {shouldUseRemoteData && isStatsApiConfigured ? (
+        <StatsInsightsWidget
+          data={statsApiQuery.data}
+          error={statsApiQuery.error}
+          isLoading={statsApiQuery.isLoading}
+        />
+      ) : null}
       <div className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <Card>
           <CardTitle>{t('dashboard.dailyGoal')}</CardTitle>
