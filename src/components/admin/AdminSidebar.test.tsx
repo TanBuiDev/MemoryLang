@@ -15,4 +15,15 @@ describe('AdminSidebar', () => {
 
     expect(link).toHaveAttribute('href', '/app/admin/subscriptions')
   })
+
+  it('links to the learning analytics control center', () => {
+    render(
+      <MemoryRouter>
+        <AdminSidebar />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: /Phân tích học tập/i }))
+      .toHaveAttribute('href', '/app/admin/analytics')
+  })
 })

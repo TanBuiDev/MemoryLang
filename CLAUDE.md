@@ -185,7 +185,7 @@ The Java API returns one `ApiError` shape for 400/401/403/404/405/500 responses 
 
 The Java repository is containerized through a host-verified artifact workflow: `mvnw clean verify` runs all PostgreSQL 17 Testcontainers tests and produces the executable JAR before Docker build. The multi-stage Dockerfile validates that JAR, copies only it into an Eclipse Temurin JRE 21 runtime, and runs as UID/GID 10001. Compose supplies required Supabase/database values only through environment substitution and applies a read-only root filesystem, tmpfs `/tmp`, dropped capabilities, `no-new-privileges`, and init. Phase 11 local verification covers all 19 protected endpoints across user A/B, 107 tests from a clean clone, health/Swagger/401/valid-token container smoke, and repository/image/JAR secret and test-artifact scans. Phase 12 Cloud Run deployment remains deliberately deferred until local operation is accepted.
 
-The React dashboard integrates the Java statistics API when `VITE_STATS_API_URL` is set. `statsApiService` reads the current Supabase session token per request, retries one 401 through Supabase session refresh without persisting another JWT copy, and fetches current streak plus the 30-day activity summary. The Neobrutalist learning-insights widget stays visible for signed-in users and shows session count, studied cards, remembered cards, streaks, remembered ratio, and last study date. It has distinct disconnected, loading, generic error, empty, and success states; when the URL is absent, it shows safe placeholders instead of silently hiding study analytics.
+The React dashboard integrates the Java statistics API when `VITE_STATS_API_URL` is set. `statsApiService` reads the current Supabase session token per request, retries one 401 through Supabase session refresh without persisting another JWT copy, and fetches current streak plus the 30-day activity summary. The Neobrutalist learning-insights widget shows session count, studied cards, remembered cards, streaks, remembered ratio, and last study date. Admins control its visibility from `/app/admin/analytics` through the `feature_flags.learning_analytics_dashboard` row and can monitor public health plus the current admin's authenticated statistics pipeline. When hidden, the learner dashboard does not request Java analytics endpoints; when the URL is absent, the admin monitor reports the missing frontend configuration.
 
 ### Design system
 Neobrutalist MemoryLang identity: thick navy borders, hard shadows, warm off-white surfaces, energetic yellow CTA/status accents, and purple secondary actions. Core CSS utilities: `neo-card`, `neo-button`, `neo-button-active`, `brand-grid-bg`, and `brand-surface`. Colors: yellow `#fdc800` (primary), purple `#432dd7` (secondary), off-white `#fbfbf9` (bg), dark navy `#1c293c` (fg). Fonts: Inter + JetBrains Mono.
@@ -248,7 +248,7 @@ See `AGENTS.md` for commit workflow. Conventional commits: `feat:`, `fix:`, `doc
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **MemoryLang** (5140 symbols, 8806 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **MemoryLang** (5723 symbols, 10074 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

@@ -1,122 +1,286 @@
-import { BarChart3, TrendingUp, DollarSign, Award } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import {
+  Activity,
+  BarChart3,
+  CheckCircle2,
+  CircleOff,
+  Eye,
+  EyeOff,
+  HeartPulse,
+  KeyRound,
+  Layers3,
+  RefreshCw,
+  Server,
+  ShieldCheck,
+} from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { showToast } from '@/components/ui/toast'
+import { adminService } from '@/services/supabase/admin.service'
+import { isStatsApiConfigured, statsApiService } from '@/services/stats/statsApi.service'
+import type { DashboardInsights, StatsApiHealth } from '@/services/stats/statsApi.types'
+
+const VISIBILITY_FLAG = 'learning_analytics_dashboard'
+const VISIBILITY_DESCRIPTION = 'Hiển thị khối Phân tích học tập từ Java Statistics API trên dashboard người học'
 
 export default function AdminAnalyticsPage() {
+  const [visible, setVisible] = useState(true)
+  const [visibilityLoading, setVisibilityLoading] = useState(true)
+  const [savingVisibility, setSavingVisibility] = useState(false)
+  const [health, setHealth] = useState<StatsApiHealth | null>(null)
+  const [insights, setInsights] = useState<DashboardInsights | null>(null)
+  const [monitoring, setMonitoring] = useState(false)
+  const [monitorError, setMonitorError] = useState<string | null>(null)
+  const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null)
 
-  // Dữ liệu DAU/MAU mockup (Vẽ cột CSS)
-  const dauData = [
-    { day: 'T2', val: 45 },
-    { day: 'T3', val: 55 },
-    { day: 'T4', val: 75 },
-    { day: 'T5', val: 60 },
-    { day: 'T6', val: 90 },
-    { day: 'T7', val: 110 },
-    { day: 'CN', val: 130 },
-  ]
+  const refreshMonitoring = useCallback(async () => {
+    setMonitoring(true)
+    setMonitorError(null)
+    setHealth(null)
+    setInsights(null)
 
-  const retentionData = [
-    { week: 'W1', rate: '85%' },
-    { week: 'W2', rate: '65%' },
-    { week: 'W3', rate: '50%' },
-    { week: 'W4', rate: '42%' },
-  ]
+    if (!isStatsApiConfigured) {
+      setMonitorError('Frontend production chưa cấu hình VITE_STATS_API_URL.')
+      setLastCheckedAt(new Date())
+      setMonitoring(false)
+      return
+    }
+
+    const [healthResult, insightsResult] = await Promise.allSettled([
+      statsApiService.getHealth(),
+      statsApiService.getDashboardInsights(),
+    ])
+
+    if (healthResult.status === 'fulfilled') setHealth(healthResult.value)
+    if (insightsResult.status === 'fulfilled') setInsights(insightsResult.value)
+
+    if (healthResult.status === 'rejected' || insightsResult.status === 'rejected') {
+      setMonitorError('Một hoặc nhiều bước kiểm tra Statistics API không thành công.')
+    }
+    setLastCheckedAt(new Date())
+    setMonitoring(false)
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    const monitoringTimer = window.setTimeout(() => {
+      void refreshMonitoring()
+    }, 0)
+
+    void adminService.listFeatureFlags()
+      .then((flags) => {
+        if (!active) return
+        setVisible(flags.find((item) => item.flag === VISIBILITY_FLAG)?.enabled ?? true)
+      })
+      .catch(() => {
+        if (active) {
+          showToast({
+            type: 'error',
+            title: 'Không tải được cấu hình',
+            message: 'Dashboard sẽ giữ trạng thái hiển thị mặc định.',
+          })
+        }
+      })
+      .finally(() => {
+        if (active) setVisibilityLoading(false)
+      })
+    return () => {
+      active = false
+      window.clearTimeout(monitoringTimer)
+    }
+  }, [refreshMonitoring])
+
+  const handleVisibilityChange = async () => {
+    const nextVisible = !visible
+    try {
+      setSavingVisibility(true)
+      const updated = await adminService.updateFeatureFlag(
+        VISIBILITY_FLAG,
+        nextVisible,
+        VISIBILITY_DESCRIPTION,
+      )
+      setVisible(updated.enabled)
+      showToast({
+        type: 'success',
+        title: updated.enabled ? 'Đã hiện phân tích học tập' : 'Đã ẩn phân tích học tập',
+        message: 'Thay đổi áp dụng cho dashboard người học sau lần tải dữ liệu kế tiếp.',
+      })
+    } catch {
+      showToast({
+        type: 'error',
+        title: 'Không lưu được thay đổi',
+        message: 'Vui lòng kiểm tra quyền admin và thử lại.',
+      })
+    } finally {
+      setSavingVisibility(false)
+    }
+  }
+
+  const healthUp = health?.status === 'UP'
+  const authenticatedCheckUp = Boolean(insights)
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Title */}
-      <div>
-        <h1 className="text-2xl font-black tracking-tight text-foreground">THỐNG KÊ & PHÂN TÍCH NÂNG CAO</h1>
-        <p className="text-muted-foreground font-bold">Thống kê dữ liệu tương tác người dùng, hiệu năng học tập và ước tính chi phí Cloud.</p>
-      </div>
-
-      {/* Grid Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex items-start justify-between">
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-black text-muted-foreground uppercase">Tỷ lệ DAU / MAU</span>
-            <span className="text-2xl font-black text-foreground">33.3%</span>
-            <span className="text-xs font-bold text-muted-foreground mt-1">Chỉ số tương tác (Engagement)</span>
-          </div>
-          <div className="p-2 border border-border rounded bg-[#fdc800]">
-            <TrendingUp size={16} />
-          </div>
+    <div className="space-y-6">
+      <section className="neo-card relative overflow-hidden border-3 border-slate-900 bg-slate-950 p-6 text-white shadow-[6px_6px_0px_0px_#fdc800] sm:p-8">
+        <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full border-4 border-[#fdc800] bg-purple-700/60" />
+        <div className="relative max-w-3xl">
+          <Badge className="border-2 border-white bg-[#fdc800] px-3 py-1 font-black text-slate-950">
+            JAVA STATISTICS CONTROL ROOM
+          </Badge>
+          <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">PHÂN TÍCH HỌC TẬP</h1>
+          <p className="mt-2 font-bold text-slate-300">
+            Điều khiển khả năng hiển thị và giám sát đường truyền dữ liệu từ Supabase đến Java API rồi về dashboard.
+          </p>
         </div>
+      </section>
 
-        <div className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex items-start justify-between">
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-black text-muted-foreground uppercase">Ước tính chi phí API (Tháng)</span>
-            <span className="text-2xl font-black text-foreground">$1.45</span>
-            <span className="text-xs font-bold text-muted-foreground mt-1">Google TTS + MyMemory + R2</span>
-          </div>
-          <div className="p-2 border border-border rounded bg-[#c084fc]">
-            <DollarSign size={16} />
-          </div>
-        </div>
-
-        <div className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex items-start justify-between">
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-black text-muted-foreground uppercase">Tỷ lệ thuộc bài (SM-2)</span>
-            <span className="text-2xl font-black text-foreground">78.5%</span>
-            <span className="text-xs font-bold text-muted-foreground mt-1">Đánh giá Quality 4 (Remembered)</span>
-          </div>
-          <div className="p-2 border border-border rounded bg-[#86efac]">
-            <Award size={16} />
-          </div>
-        </div>
-      </div>
-
-      {/* Row Charts & Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
-        {/* Chart Column: DAU trend (Neobrutalist Chart) */}
-        <div className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex flex-col gap-4">
-          <h3 className="text-sm font-black border-b border-border pb-2 text-foreground flex items-center gap-1.5">
-            <BarChart3 size={16} />
-            BIỂU ĐỒ HOẠT ĐỘNG NGÀY (DAU TREND)
-          </h3>
-          
-          <div className="h-48 flex items-end justify-between px-2 pt-6 pb-2 border-b-2 border-l-2 border-border">
-            {dauData.map((d, i) => (
-              <div key={i} className="flex flex-col items-center gap-2 flex-1">
-                {/* CSS Bar Chart */}
-                <div
-                  className="w-8 bg-[#fdc800] border-2 border-border hover:bg-[#e0b000] transition-all cursor-pointer relative group flex justify-center"
-                  style={{ height: `${(d.val / 150) * 120}px` }}
-                >
-                  {/* Tooltip */}
-                  <span className="absolute -top-7 scale-0 group-hover:scale-100 bg-foreground text-background text-[10px] font-black px-1.5 py-0.5 rounded border border-border transition-all">
-                    {d.val}
-                  </span>
-                </div>
-                <span className="text-[10px] font-black text-muted-foreground">{d.day}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Table Column: User Retention */}
-        <div className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex flex-col gap-4">
-          <h3 className="text-sm font-black border-b border-border pb-2 text-foreground">
-            TỶ LỆ GIỮ CHÂN USER (RETENTION COHORT)
-          </h3>
-          
-          <div className="flex flex-col gap-2">
-            <div className="flex justify-between items-center text-xs font-black border-b border-border pb-1 text-muted-foreground">
-              <span>MỐC THỜI GIAN</span>
-              <span>TỶ LỆ GIỮ CHÂN</span>
+      <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
+        <section className="neo-card border-3 border-slate-900 bg-white p-5 shadow-[5px_5px_0px_0px_#000]">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-purple-700">Quyền hiển thị</p>
+              <h2 className="mt-1 text-xl font-black text-slate-900">Widget dashboard người học</h2>
             </div>
-            {retentionData.map((r, i) => (
-              <div key={i} className="flex justify-between items-center py-2 border-b border-border/30 last:border-b-0 text-xs font-bold">
-                <span>Tuần {i + 1} ({r.week})</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-24 bg-slate-100 border border-border h-3.5 rounded overflow-hidden">
-                    <div className="bg-[#c084fc] h-full" style={{ width: r.rate }} />
-                  </div>
-                  <span className="font-black w-8 text-right">{r.rate}</span>
-                </div>
+            {visible ? <Eye className="h-7 w-7 text-emerald-600" /> : <EyeOff className="h-7 w-7 text-rose-600" />}
+          </div>
+
+          <div className={`mt-5 rounded-xl border-3 border-slate-900 p-5 ${visible ? 'bg-emerald-100' : 'bg-rose-100'}`}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase text-slate-600">Trạng thái hiện tại</p>
+                <p className="mt-1 text-3xl font-black text-slate-950">
+                  {visibilityLoading ? 'ĐANG TẢI' : visible ? 'ĐANG HIỆN' : 'ĐANG ẨN'}
+                </p>
               </div>
-            ))}
+              <div className={`h-5 w-5 rounded-full border-2 border-slate-900 ${visible ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+            </div>
+          </div>
+
+          <p className="mt-4 text-sm font-semibold text-slate-600">
+            Khi ẩn, Java API vẫn có thể hoạt động nhưng dashboard người học không gọi các endpoint analytics.
+          </p>
+
+          <Button
+            className="mt-5 w-full"
+            disabled={visibilityLoading || savingVisibility}
+            onClick={() => void handleVisibilityChange()}
+            variant={visible ? 'danger' : 'primary'}
+          >
+            {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {savingVisibility
+              ? 'Đang lưu…'
+              : visible
+                ? 'Ẩn khỏi người học'
+                : 'Hiện cho người học'}
+          </Button>
+        </section>
+
+        <section className="neo-card border-3 border-slate-900 bg-white p-5 shadow-[5px_5px_0px_0px_#000]">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-purple-700">Giám sát trực tiếp</p>
+              <h2 className="mt-1 text-xl font-black text-slate-900">Tình trạng đường truyền</h2>
+            </div>
+            <Button variant="ghost" disabled={monitoring} onClick={() => void refreshMonitoring()}>
+              <RefreshCw className={`h-4 w-4 ${monitoring ? 'animate-spin' : ''}`} />
+              Kiểm tra lại
+            </Button>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <MonitorStep
+              icon={Server}
+              label="Frontend config"
+              ok={isStatsApiConfigured}
+              value={isStatsApiConfigured ? 'Đã cấu hình' : 'Thiếu URL'}
+            />
+            <MonitorStep
+              icon={HeartPulse}
+              label="Java health"
+              ok={healthUp}
+              value={monitoring ? 'Đang kiểm tra' : health?.status ?? 'Không phản hồi'}
+            />
+            <MonitorStep
+              icon={KeyRound}
+              label="JWT + RLS query"
+              ok={authenticatedCheckUp}
+              value={monitoring ? 'Đang kiểm tra' : authenticatedCheckUp ? 'Thành công' : 'Chưa xác minh'}
+            />
+          </div>
+
+          {monitorError ? (
+            <div className="mt-4 flex gap-2 rounded-xl border-2 border-amber-500 bg-amber-100 p-3 text-sm font-bold text-amber-950">
+              <CircleOff className="h-5 w-5 shrink-0" />
+              <p>{monitorError}</p>
+            </div>
+          ) : null}
+
+          <div className="mt-4 flex items-center justify-between border-t-2 border-dashed border-slate-300 pt-3 text-xs font-bold text-slate-500">
+            <span>Kiểm tra health công khai và 2 endpoint có JWT</span>
+            <span>{lastCheckedAt ? lastCheckedAt.toLocaleTimeString('vi-VN') : '—'}</span>
+          </div>
+        </section>
+      </div>
+
+      <section className="neo-card border-3 border-slate-900 bg-white p-5 shadow-[5px_5px_0px_0px_#000]">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-6 w-6 text-purple-700" />
+          <div>
+            <h2 className="text-xl font-black text-slate-900">Mẫu dữ liệu tài khoản admin</h2>
+            <p className="text-sm font-semibold text-slate-500">Dùng để xác nhận pipeline; không đọc dữ liệu của người dùng khác.</p>
           </div>
         </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Metric icon={Activity} label="Phiên học / 30 ngày" value={insights ? `${insights.activity.totalSessions} phiên` : '—'} tone="bg-sky-100" />
+          <Metric icon={Layers3} label="Thẻ đã học" value={insights ? `${insights.activity.totalCards} thẻ` : '—'} tone="bg-cyan-100" />
+          <Metric icon={ShieldCheck} label="Tỷ lệ ghi nhớ" value={insights ? `${Math.round(insights.activity.rememberedRatio * 100)}%` : '—'} tone="bg-emerald-100" />
+          <Metric icon={CheckCircle2} label="Chuỗi hiện tại" value={insights ? `${insights.currentStreak.currentStreakDays} ngày` : '—'} tone="bg-amber-100" />
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function MonitorStep({
+  icon: Icon,
+  label,
+  ok,
+  value,
+}: {
+  icon: typeof Server
+  label: string
+  ok: boolean
+  value: string
+}) {
+  return (
+    <div className={`rounded-xl border-2 border-slate-900 p-3 ${ok ? 'bg-emerald-100' : 'bg-slate-100'}`}>
+      <div className="flex items-center justify-between gap-2">
+        <Icon className="h-5 w-5" />
+        <span className={`h-3 w-3 rounded-full border border-slate-900 ${ok ? 'bg-emerald-500' : 'bg-slate-400'}`} />
       </div>
+      <p className="mt-3 text-[10px] font-black uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 font-black text-slate-900">{value}</p>
+    </div>
+  )
+}
+
+function Metric({
+  icon: Icon,
+  label,
+  tone,
+  value,
+}: {
+  icon: typeof Activity
+  label: string
+  tone: string
+  value: string
+}) {
+  return (
+    <div className={`rounded-xl border-2 border-slate-900 p-4 shadow-[3px_3px_0px_0px_#000] ${tone}`}>
+      <Icon className="h-5 w-5" />
+      <p className="mt-3 text-[10px] font-black uppercase tracking-wide text-slate-600">{label}</p>
+      <p className="mt-1 text-2xl font-black text-slate-950">{value}</p>
     </div>
   )
 }

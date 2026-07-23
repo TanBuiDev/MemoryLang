@@ -83,4 +83,23 @@ describe('statsApiService', () => {
     await expect(statsApiService.getCurrentStreak()).rejects.toBeInstanceOf(StatsApiError)
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it('checks the public health endpoint without reading the user session', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: 'UP', groups: ['liveness', 'readiness'] }), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { statsApiService } = await import('./statsApi.service')
+    await expect(statsApiService.getHealth()).resolves.toEqual({
+      status: 'UP',
+      groups: ['liveness', 'readiness'],
+    })
+
+    expect(auth.getSession).not.toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:8080/actuator/health',
+      expect.objectContaining({ headers: { Accept: 'application/json' } }),
+    )
+  })
 })

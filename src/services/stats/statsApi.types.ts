@@ -21,6 +21,11 @@ export interface DashboardInsights {
   activity: ActivitySummary
 }
 
+export interface StatsApiHealth {
+  status: string
+  groups: string[]
+}
+
 export interface ApiErrorResponse {
   timestamp: string
   status: number

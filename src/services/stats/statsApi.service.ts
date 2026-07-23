@@ -1,5 +1,5 @@
 import { supabase } from '@/services/supabase/client'
-import type { ActivitySummary, CurrentStreak, DashboardInsights } from './statsApi.types'
+import type { ActivitySummary, CurrentStreak, DashboardInsights, StatsApiHealth } from './statsApi.types'
 
 const statsApiUrl = (import.meta.env.VITE_STATS_API_URL || '').trim().replace(/\/+$/, '')
 
@@ -50,6 +50,16 @@ async function request<T>(path: string, retryAfterRefresh = true): Promise<T> {
 }
 
 export const statsApiService = {
+  async getHealth(): Promise<StatsApiHealth> {
+    if (!isStatsApiConfigured) {
+      throw new StatsApiError('Statistics API is not configured', 0)
+    }
+    const response = await fetch(`${statsApiUrl}/actuator/health`, {
+      headers: { Accept: 'application/json' },
+    })
+    if (!response.ok) throw new StatsApiError('Statistics API health check failed', response.status)
+    return response.json() as Promise<StatsApiHealth>
+  },
   getCurrentStreak: () => request<CurrentStreak>('/api/v1/streaks/current'),
   getActivitySummary: (days = 30) => request<ActivitySummary>(`/api/v1/activity/summary?days=${days}`),
   async getDashboardInsights(): Promise<DashboardInsights> {

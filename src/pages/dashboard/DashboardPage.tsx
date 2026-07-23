@@ -55,10 +55,20 @@ export function DashboardPage() {
     queryFn: () => statisticsService.getDashboardStats(user!.id),
     enabled: shouldUseRemoteData,
   })
+  const analyticsVisibilityQuery = useQuery({
+    queryKey: ['feature-flag', 'learning-analytics-dashboard'],
+    queryFn: () => statisticsService.isLearningAnalyticsVisible(),
+    enabled: shouldUseRemoteData,
+    staleTime: 60_000,
+  })
+  const isLearningAnalyticsVisible = analyticsVisibilityQuery.data ?? true
   const statsApiQuery = useQuery({
     queryKey: ['stats-api', 'dashboard-insights', user?.id],
     queryFn: () => statsApiService.getDashboardInsights(),
-    enabled: shouldUseRemoteData && isStatsApiConfigured,
+    enabled:
+      shouldUseRemoteData &&
+      isStatsApiConfigured &&
+      isLearningAnalyticsVisible,
   })
 
   const vocabulary = useMemo(
@@ -215,7 +225,7 @@ export function DashboardPage() {
         </div>
       ) : null}
 
-      {shouldUseRemoteData ? (
+      {shouldUseRemoteData && isLearningAnalyticsVisible ? (
         <StatsInsightsWidget
           data={statsApiQuery.data}
           error={statsApiQuery.error}

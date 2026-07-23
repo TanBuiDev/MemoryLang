@@ -17,12 +17,13 @@ import {
   Users,
   Volume2,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/utils/cn'
 
 interface SidebarItem {
   name: string
   to: string
-  icon: any
+  icon: LucideIcon
   phase: number
   isReady: boolean
 }
@@ -45,7 +46,7 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Edge Functions', to: '/app/admin/functions', icon: Terminal, phase: 4, isReady: true },
   { name: 'Quản lý i18n', to: '/app/admin/i18n', icon: Languages, phase: 4, isReady: true },
   { name: 'Lịch sử thao tác', to: '/app/admin/audit', icon: History, phase: 4, isReady: true },
-  { name: 'Thống kê nâng cao', to: '/app/admin/analytics', icon: BarChart3, phase: 4, isReady: true },
+  { name: 'Phân tích học tập', to: '/app/admin/analytics', icon: BarChart3, phase: 4, isReady: true },
 ]
 
 export function AdminSidebar() {

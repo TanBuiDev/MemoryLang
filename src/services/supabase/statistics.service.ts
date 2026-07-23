@@ -11,6 +11,16 @@ export interface DashboardStats {
 }
 
 export const statisticsService = {
+  async isLearningAnalyticsVisible(): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('feature_flags')
+      .select('enabled')
+      .eq('flag', 'learning_analytics_dashboard')
+      .maybeSingle()
+    if (error) throw error
+    return data?.enabled ?? true
+  },
+
   async getDashboardStats(userId: string): Promise<DashboardStats> {
     const [{ data: terms }, { data: decks }, { data: quizzes }] = await Promise.all([
       supabase.from('user_terms').select('status,next_review_at,correct_count,wrong_count').eq('user_id', userId),
