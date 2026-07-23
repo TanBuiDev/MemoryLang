@@ -62,6 +62,10 @@ const GameHubPage = lazyWithChunkRecovery(() => import('@/pages/games/GameHubPag
 const MatchingGamePage = lazyWithChunkRecovery(() => import('@/pages/games/MatchingGamePage'))
 const AdminGamesPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminGamesPage'))
 const AdminSoundsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminSoundsPage'))
+const ReadingHubPage = lazyWithChunkRecovery(() => import('@/pages/reading/ReadingHubPage'))
+const ReadingDetailPage = lazyWithChunkRecovery(() => import('@/pages/reading/ReadingDetailPage'))
+const AdminReadingListPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminReadingListPage'))
+const AdminReadingEditorPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminReadingEditorPage'))
 
 function RootLayout() {
   return (
@@ -127,6 +131,22 @@ export const router = createBrowserRouter([
                 element: (
                   <React.Suspense fallback={<AppLoading />}>
                     <GrammarLessonPage />
+                  </React.Suspense>
+                ),
+              },
+              {
+                path: 'reading',
+                element: (
+                  <React.Suspense fallback={<AppLoading />}>
+                    <ReadingHubPage />
+                  </React.Suspense>
+                ),
+              },
+              {
+                path: 'reading/:articleId',
+                element: (
+                  <React.Suspense fallback={<AppLoading />}>
+                    <ReadingDetailPage />
                   </React.Suspense>
                 ),
               },
@@ -199,6 +219,30 @@ export const router = createBrowserRouter([
                     ),
                   },
                   { path: 'listening', element: <AdminListeningPage /> },
+                  {
+                    path: 'reading',
+                    element: (
+                      <React.Suspense fallback={<AppLoading />}>
+                        <AdminReadingListPage />
+                      </React.Suspense>
+                    ),
+                  },
+                  {
+                    path: 'reading/new',
+                    element: (
+                      <React.Suspense fallback={<AppLoading />}>
+                        <AdminReadingEditorPage />
+                      </React.Suspense>
+                    ),
+                  },
+                  {
+                    path: 'reading/:id/edit',
+                    element: (
+                      <React.Suspense fallback={<AppLoading />}>
+                        <AdminReadingEditorPage />
+                      </React.Suspense>
+                    ),
+                  },
                   { path: 'storage', element: <AdminStoragePage /> },
                   { path: 'functions', element: <AdminFunctionsPage /> },
                   { path: 'i18n', element: <AdminI18nPage /> },
