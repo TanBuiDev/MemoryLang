@@ -43,6 +43,10 @@ values
   (
     '82000000-0000-0000-0000-000000000003',
     'Graceful', 'graceful', 'en', 'vi', 'word', null, 'duyên dáng'
+  ),
+  (
+    '82000000-0000-0000-0000-000000000004',
+    'ambulance', 'ambulance', 'en', 'vi', 'word', null, 'xe cứu thương'
   );
 
 insert into public.reading_articles (
@@ -56,6 +60,22 @@ values (
   true,
   'free',
   '81000000-0000-0000-0000-000000000001'
+);
+
+insert into public.reading_questions (
+  id, article_id, question_text, question_type, options, order_index, points
+)
+values (
+  '84000000-0000-0000-0000-000000000001',
+  '83000000-0000-0000-0000-000000000001',
+  'Choose the missing word',
+  'multiple_choice',
+  '[
+    {"text":"ambulance","is_correct":true},
+    {"text":"hospital","is_correct":false}
+  ]'::jsonb,
+  1,
+  1
 );
 
 select extensions.has_table(
@@ -73,8 +93,8 @@ select set_config(
 
 select extensions.is(
   public.scan_reading_article_terms('83000000-0000-0000-0000-000000000001'),
-  2,
-  'admin scan stores the two exact whole-word matches'
+  3,
+  'admin scan stores whole-word matches from the passage and correct quiz answers'
 );
 
 select extensions.results_eq(
@@ -83,7 +103,7 @@ select extensions.results_eq(
     from public.get_reading_article_terms('83000000-0000-0000-0000-000000000001')
     order by normalized_text
   $$,
-  $$ values ('grace'::text), ('work'::text) $$,
+  $$ values ('ambulance'::text), ('grace'::text), ('work'::text) $$,
   'reader RPC returns persisted global term details'
 );
 
@@ -105,8 +125,8 @@ select extensions.is(
     select count(*)
     from public.get_reading_article_terms('83000000-0000-0000-0000-000000000001')
   ),
-  2::bigint,
-  'authenticated reader can load terms for an accessible article'
+  3::bigint,
+  'authenticated reader can load passage and correct-answer terms for an accessible article'
 );
 
 reset role;
