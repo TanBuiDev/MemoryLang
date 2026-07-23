@@ -537,8 +537,8 @@ export default function AdminReadingEditorPage() {
               onChange={handleContentChange}
             />
             <p className="mt-2 text-[11px] font-bold text-slate-600">
-              Dán văn bản trực tiếp rồi dùng thanh công cụ để định dạng. Chọn HTML nếu
-              cần chỉnh mã nâng cao; nội dung cho TTS và thời gian đọc được tạo tự động.
+              Dán văn bản trực tiếp, chọn cách giữ định dạng rồi dùng thanh công cụ để
+              trình bày và tạo bảng. Nội dung cho TTS và thời gian đọc được tạo tự động.
             </p>
           </div>
         ) : (

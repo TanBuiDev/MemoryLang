@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import TextAlign from '@tiptap/extension-text-align'
+import { TableKit } from '@tiptap/extension-table'
 import {
   AlignCenter,
   AlignJustify,
   AlignLeft,
   AlignRight,
   Bold,
-  Code2,
+  Columns3,
   Italic,
   Link2,
   List,
@@ -18,9 +19,12 @@ import {
   Redo2,
   RemoveFormatting,
   Strikethrough,
+  Table2,
+  Trash2,
   Underline,
   Undo2,
   Unlink,
+  Rows3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
@@ -43,6 +47,11 @@ const blockOptions = [
   { value: 'paragraph', label: 'Đoạn văn' },
   { value: 'heading-2', label: 'Tiêu đề lớn' },
   { value: 'heading-3', label: 'Tiêu đề nhỏ' },
+]
+
+const pasteOptions = [
+  { value: 'formatted', label: 'Giữ định dạng' },
+  { value: 'plain', label: 'Chỉ giữ văn bản' },
 ]
 
 function ToolbarButton({
@@ -80,9 +89,9 @@ export function ReadingRichTextEditor({
   value,
   onChange,
 }: ReadingRichTextEditorProps) {
-  const [sourceMode, setSourceMode] = useState(false)
   const [showLinkEditor, setShowLinkEditor] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
+  const [pasteMode, setPasteMode] = useState('formatted')
 
   const editor = useEditor({
     extensions: [
@@ -96,6 +105,11 @@ export function ReadingRichTextEditor({
       }),
       TextAlign.configure({
         types: ['heading', 'paragraph'],
+      }),
+      TableKit.configure({
+        table: {
+          resizable: true,
+        },
       }),
     ],
     content: value,
@@ -112,9 +126,9 @@ export function ReadingRichTextEditor({
   })
 
   useEffect(() => {
-    if (!editor || sourceMode || editor.getHTML() === value) return
+    if (!editor || editor.getHTML() === value) return
     editor.commands.setContent(value, { emitUpdate: false })
-  }, [editor, sourceMode, value])
+  }, [editor, value])
 
   const toolbarState = useEditorState({
     editor,
@@ -139,6 +153,7 @@ export function ReadingRichTextEditor({
       alignJustify: activeEditor?.isActive({ textAlign: 'justify' }) ?? false,
       canUndo: activeEditor?.can().chain().focus().undo().run() ?? false,
       canRedo: activeEditor?.can().chain().focus().redo().run() ?? false,
+      inTable: activeEditor?.isActive('table') ?? false,
     }),
   })
 
@@ -178,7 +193,7 @@ export function ReadingRichTextEditor({
             value={toolbarState?.block || 'paragraph'}
             onChange={handleBlockChange}
             options={blockOptions}
-            disabled={!editor || sourceMode}
+            disabled={!editor}
           />
         </div>
 
@@ -187,7 +202,7 @@ export function ReadingRichTextEditor({
         <ToolbarButton
           label="In đậm"
           active={toolbarState?.bold}
-          disabled={!editor || sourceMode}
+          disabled={!editor}
           onClick={() => editor?.chain().focus().toggleBold().run()}
         >
           <Bold size={15} />
@@ -195,7 +210,7 @@ export function ReadingRichTextEditor({
         <ToolbarButton
           label="In nghiêng"
           active={toolbarState?.italic}
-          disabled={!editor || sourceMode}
+          disabled={!editor}
           onClick={() => editor?.chain().focus().toggleItalic().run()}
         >
           <Italic size={15} />
@@ -203,7 +218,7 @@ export function ReadingRichTextEditor({
         <ToolbarButton
           label="Gạch chân"
           active={toolbarState?.underline}
-          disabled={!editor || sourceMode}
+          disabled={!editor}
           onClick={() => editor?.chain().focus().toggleUnderline().run()}
         >
           <Underline size={15} />
@@ -211,7 +226,7 @@ export function ReadingRichTextEditor({
         <ToolbarButton
           label="Gạch ngang"
           active={toolbarState?.strike}
-          disabled={!editor || sourceMode}
+          disabled={!editor}
           onClick={() => editor?.chain().focus().toggleStrike().run()}
         >
           <Strikethrough size={15} />
@@ -222,7 +237,7 @@ export function ReadingRichTextEditor({
         <ToolbarButton
           label="Danh sách dấu chấm"
           active={toolbarState?.bulletList}
-          disabled={!editor || sourceMode}
+          disabled={!editor}
           onClick={() => editor?.chain().focus().toggleBulletList().run()}
         >
           <List size={15} />
@@ -230,7 +245,7 @@ export function ReadingRichTextEditor({
         <ToolbarButton
           label="Danh sách đánh số"
           active={toolbarState?.orderedList}
-          disabled={!editor || sourceMode}
+          disabled={!editor}
           onClick={() => editor?.chain().focus().toggleOrderedList().run()}
         >
           <ListOrdered size={15} />
@@ -238,14 +253,14 @@ export function ReadingRichTextEditor({
         <ToolbarButton
           label="Trích dẫn"
           active={toolbarState?.blockquote}
-          disabled={!editor || sourceMode}
+          disabled={!editor}
           onClick={() => editor?.chain().focus().toggleBlockquote().run()}
         >
           <Quote size={15} />
         </ToolbarButton>
         <ToolbarButton
           label="Đường phân cách"
-          disabled={!editor || sourceMode}
+          disabled={!editor}
           onClick={() => editor?.chain().focus().setHorizontalRule().run()}
         >
           <Minus size={15} />
@@ -256,7 +271,7 @@ export function ReadingRichTextEditor({
         <ToolbarButton
           label="Căn trái"
           active={toolbarState?.alignLeft}
-          disabled={!editor || sourceMode}
+          disabled={!editor}
           onClick={() => editor?.chain().focus().setTextAlign('left').run()}
         >
           <AlignLeft size={15} />
@@ -264,7 +279,7 @@ export function ReadingRichTextEditor({
         <ToolbarButton
           label="Căn giữa"
           active={toolbarState?.alignCenter}
-          disabled={!editor || sourceMode}
+          disabled={!editor}
           onClick={() => editor?.chain().focus().setTextAlign('center').run()}
         >
           <AlignCenter size={15} />
@@ -272,7 +287,7 @@ export function ReadingRichTextEditor({
         <ToolbarButton
           label="Căn phải"
           active={toolbarState?.alignRight}
-          disabled={!editor || sourceMode}
+          disabled={!editor}
           onClick={() => editor?.chain().focus().setTextAlign('right').run()}
         >
           <AlignRight size={15} />
@@ -280,7 +295,7 @@ export function ReadingRichTextEditor({
         <ToolbarButton
           label="Căn đều"
           active={toolbarState?.alignJustify}
-          disabled={!editor || sourceMode}
+          disabled={!editor}
           onClick={() => editor?.chain().focus().setTextAlign('justify').run()}
         >
           <AlignJustify size={15} />
@@ -291,21 +306,21 @@ export function ReadingRichTextEditor({
         <ToolbarButton
           label="Thêm hoặc sửa liên kết"
           active={toolbarState?.link}
-          disabled={!editor || sourceMode}
+          disabled={!editor}
           onClick={handleOpenLinkEditor}
         >
           <Link2 size={15} />
         </ToolbarButton>
         <ToolbarButton
           label="Xóa liên kết"
-          disabled={!editor || sourceMode || !toolbarState?.link}
+          disabled={!editor || !toolbarState?.link}
           onClick={() => editor?.chain().focus().unsetLink().run()}
         >
           <Unlink size={15} />
         </ToolbarButton>
         <ToolbarButton
           label="Xóa định dạng"
-          disabled={!editor || sourceMode}
+          disabled={!editor}
           onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()}
         >
           <RemoveFormatting size={15} />
@@ -315,32 +330,103 @@ export function ReadingRichTextEditor({
 
         <ToolbarButton
           label="Hoàn tác"
-          disabled={!editor || sourceMode || !toolbarState?.canUndo}
+          disabled={!editor || !toolbarState?.canUndo}
           onClick={() => editor?.chain().focus().undo().run()}
         >
           <Undo2 size={15} />
         </ToolbarButton>
         <ToolbarButton
           label="Làm lại"
-          disabled={!editor || sourceMode || !toolbarState?.canRedo}
+          disabled={!editor || !toolbarState?.canRedo}
           onClick={() => editor?.chain().focus().redo().run()}
         >
           <Redo2 size={15} />
         </ToolbarButton>
 
-        <Button
-          type="button"
-          variant={sourceMode ? 'secondary' : 'ghost'}
-          aria-label="Chỉnh sửa HTML"
-          onClick={() => setSourceMode((current) => !current)}
-          className="ml-auto h-8 min-h-0 px-3 text-xs"
+        <ToolbarButton
+          label="Chèn bảng"
+          disabled={!editor}
+          onClick={() =>
+            editor?.chain().focus().insertTable({
+              rows: 3,
+              cols: 3,
+              withHeaderRow: true,
+            }).run()
+          }
         >
-          <Code2 size={15} />
-          HTML
-        </Button>
+          <Table2 size={15} />
+        </ToolbarButton>
+
+        <div className="ml-auto flex items-center gap-2">
+          <label htmlFor="reading-paste-mode" className="text-xs font-black">
+            Khi dán
+          </label>
+          <div className="w-40">
+            <Select
+              id="reading-paste-mode"
+              value={pasteMode}
+              onChange={setPasteMode}
+              options={pasteOptions}
+            />
+          </div>
+        </div>
       </div>
 
-      {showLinkEditor && !sourceMode && (
+      {toolbarState?.inTable && (
+        <div className="flex flex-wrap items-center gap-2 border-b-2 border-slate-900 bg-violet-50 p-2">
+          <span className="mr-1 text-xs font-black">Chỉnh sửa bảng:</span>
+          <Button
+            type="button"
+            variant="ghost"
+            aria-label="Thêm hàng bên dưới"
+            onClick={() => editor?.chain().focus().addRowAfter().run()}
+            className="h-8 min-h-0 px-2 text-xs"
+          >
+            <Rows3 size={15} />
+            Thêm hàng
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            aria-label="Thêm cột bên phải"
+            onClick={() => editor?.chain().focus().addColumnAfter().run()}
+            className="h-8 min-h-0 px-2 text-xs"
+          >
+            <Columns3 size={15} />
+            Thêm cột
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            aria-label="Xóa hàng"
+            onClick={() => editor?.chain().focus().deleteRow().run()}
+            className="h-8 min-h-0 px-2 text-xs"
+          >
+            Xóa hàng
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            aria-label="Xóa cột"
+            onClick={() => editor?.chain().focus().deleteColumn().run()}
+            className="h-8 min-h-0 px-2 text-xs"
+          >
+            Xóa cột
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            aria-label="Xóa bảng"
+            onClick={() => editor?.chain().focus().deleteTable().run()}
+            className="h-8 min-h-0 px-2 text-xs"
+          >
+            <Trash2 size={15} />
+            Xóa bảng
+          </Button>
+        </div>
+      )}
+
+      {showLinkEditor && (
         <div className="flex flex-col gap-2 border-b-2 border-slate-900 bg-amber-50 p-3 sm:flex-row">
           <input
             type="url"
@@ -372,20 +458,30 @@ export function ReadingRichTextEditor({
         </div>
       )}
 
-      {sourceMode ? (
-        <textarea
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          rows={14}
-          aria-label="Mã HTML bài đọc"
-          className="min-h-72 w-full resize-y bg-slate-950 p-4 font-mono text-xs leading-relaxed text-emerald-200 focus:outline-none"
-        />
-      ) : (
-        <EditorContent
-          editor={editor}
-          className="max-h-[36rem] min-h-72 overflow-y-auto [&_.tiptap_a]:font-bold [&_.tiptap_a]:text-blue-700 [&_.tiptap_a]:underline [&_.tiptap_blockquote]:border-l-4 [&_.tiptap_blockquote]:border-amber-400 [&_.tiptap_blockquote]:pl-4 [&_.tiptap_h2]:mb-3 [&_.tiptap_h2]:mt-5 [&_.tiptap_h2]:text-2xl [&_.tiptap_h2]:font-black [&_.tiptap_h3]:mb-2 [&_.tiptap_h3]:mt-4 [&_.tiptap_h3]:text-xl [&_.tiptap_h3]:font-black [&_.tiptap_hr]:my-5 [&_.tiptap_hr]:border-slate-300 [&_.tiptap_li]:my-1 [&_.tiptap_ol]:list-decimal [&_.tiptap_ol]:pl-6 [&_.tiptap_p]:my-2 [&_.tiptap_ul]:list-disc [&_.tiptap_ul]:pl-6"
-        />
-      )}
+      <EditorContent
+        editor={editor}
+        onPaste={(event) => {
+          if (pasteMode !== 'plain' || !editor) return
+          const text = event.clipboardData.getData('text/plain')
+          if (!text) return
+          event.preventDefault()
+          const lines = text.split(/\r?\n/)
+          if (lines.length === 1) {
+            editor.chain().focus().insertContent({
+              type: 'text',
+              text,
+            }).run()
+            return
+          }
+          editor.chain().focus().insertContent(
+            lines.map((line) => ({
+              type: 'paragraph',
+              content: line ? [{ type: 'text', text: line }] : [],
+            }))
+          ).run()
+        }}
+        className="max-h-[36rem] min-h-72 overflow-auto [&_.tiptap_a]:font-bold [&_.tiptap_a]:text-blue-700 [&_.tiptap_a]:underline [&_.tiptap_blockquote]:border-l-4 [&_.tiptap_blockquote]:border-amber-400 [&_.tiptap_blockquote]:pl-4 [&_.tiptap_h2]:mb-3 [&_.tiptap_h2]:mt-5 [&_.tiptap_h2]:text-2xl [&_.tiptap_h2]:font-black [&_.tiptap_h3]:mb-2 [&_.tiptap_h3]:mt-4 [&_.tiptap_h3]:text-xl [&_.tiptap_h3]:font-black [&_.tiptap_hr]:my-5 [&_.tiptap_hr]:border-slate-300 [&_.tiptap_li]:my-1 [&_.tiptap_ol]:list-decimal [&_.tiptap_ol]:pl-6 [&_.tiptap_p]:my-2 [&_.tiptap_table]:my-4 [&_.tiptap_table]:w-full [&_.tiptap_table]:border-collapse [&_.tiptap_td]:min-w-24 [&_.tiptap_td]:border-2 [&_.tiptap_td]:border-slate-900 [&_.tiptap_td]:p-2 [&_.tiptap_th]:border-2 [&_.tiptap_th]:border-slate-900 [&_.tiptap_th]:bg-amber-100 [&_.tiptap_th]:p-2 [&_.tiptap_th]:text-left [&_.tiptap_ul]:list-disc [&_.tiptap_ul]:pl-6"
+      />
     </div>
   )
 }
