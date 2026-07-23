@@ -649,7 +649,9 @@ Bằng chứng tự động Phase 8 dùng 10 test PostgreSQL 17 Testcontainers q
 - [x] Runtime role chỉ có quyền cần thiết, không có `BYPASSRLS`; đã xác minh trực tiếp remote catalog ngày 2026-07-23.
 - [x] Không có secret trong Git history của Java repo hoặc commit MemoryLang liên quan; Gitleaks `--all --redact` quét 18 commit Java và 595 commit MemoryLang, không phát hiện leak.
 - [x] README mô tả local run, auth, database role, Docker, troubleshooting và trạng thái Cloud Run tùy chọn đang hoãn; cập nhật bằng commit Java `94b0e21`.
-- [ ] CV bullet chỉ nêu tính năng thực sự đã hoàn thành; không ghi Cloud Run, sealed classes hoặc endpoint chưa triển khai.
+- [x] CV bullet chỉ nêu tính năng thực sự đã hoàn thành; không ghi Cloud Run, sealed classes hoặc endpoint chưa triển khai.
+
+**CV bullet đã duyệt:** “Built a Java 21/Spring Boot analytics API with 19 authenticated endpoints, Supabase ES256 JWT verification, PostgreSQL RLS user isolation across pooled JDBC connections, 107 Testcontainers-backed tests, Docker hardening, and a React dashboard integration.”
 
 ---
 
