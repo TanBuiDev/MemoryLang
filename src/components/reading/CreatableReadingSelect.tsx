@@ -8,7 +8,7 @@ interface CreatableReadingSelectProps {
   value: string
   options: SelectOption[]
   onChange: (value: string) => void
-  onCreate: (value: string, label: string) => Promise<SelectOption>
+  onCreate: (name: string) => Promise<SelectOption>
 }
 
 export function CreatableReadingSelect({
@@ -18,8 +18,7 @@ export function CreatableReadingSelect({
   onCreate,
 }: CreatableReadingSelectProps) {
   const [adding, setAdding] = useState(false)
-  const [newValue, setNewValue] = useState('')
-  const [newLabel, setNewLabel] = useState('')
+  const [newName, setNewName] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -27,11 +26,10 @@ export function CreatableReadingSelect({
     setSaving(true)
     setMessage('')
     try {
-      const option = await onCreate(newValue, newLabel)
+      const option = await onCreate(newName)
       onChange(option.value)
       setMessage(`Đã thêm “${option.label}”`)
-      setNewValue('')
-      setNewLabel('')
+      setNewName('')
       setAdding(false)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Không thể thêm tùy chọn.')
@@ -57,22 +55,17 @@ export function CreatableReadingSelect({
       </div>
 
       {adding && (
-        <div className="grid grid-cols-1 gap-2 rounded-xl border-2 border-slate-900 bg-amber-50 p-3 shadow-[2px_2px_0px_0px_#000] sm:grid-cols-2">
+        <div className="space-y-2 rounded-xl border-2 border-slate-900 bg-amber-50 p-3 shadow-[2px_2px_0px_0px_#000]">
           <Input
-            value={newValue}
-            onChange={(event) => setNewValue(event.target.value)}
-            placeholder="Giá trị mới"
-          />
-          <Input
-            value={newLabel}
-            onChange={(event) => setNewLabel(event.target.value)}
-            placeholder="Tên hiển thị"
+            value={newName}
+            onChange={(event) => setNewName(event.target.value)}
+            placeholder="Tên tùy chọn mới"
           />
           <Button
             type="button"
             onClick={handleCreate}
-            disabled={saving || !newValue.trim()}
-            className="sm:col-span-2"
+            disabled={saving || !newName.trim()}
+            className="w-full"
           >
             {saving ? 'Đang lưu...' : 'Lưu tùy chọn'}
           </Button>

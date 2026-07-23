@@ -20,15 +20,12 @@ describe('CreatableReadingSelect', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Thêm tùy chọn mới' }))
-    fireEvent.change(screen.getByPlaceholderText('Giá trị mới'), {
-      target: { value: 'Exam Preparation' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('Tên hiển thị'), {
+    fireEvent.change(screen.getByPlaceholderText('Tên tùy chọn mới'), {
       target: { value: 'Luyện thi chuyên sâu' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Lưu tùy chọn' }))
 
-    expect(onCreate).toHaveBeenCalledWith('Exam Preparation', 'Luyện thi chuyên sâu')
+    expect(onCreate).toHaveBeenCalledWith('Luyện thi chuyên sâu')
     expect(await screen.findByText('Đã thêm “Luyện thi chuyên sâu”')).toBeInTheDocument()
     expect(onChange).toHaveBeenCalledWith('exam-preparation')
   })

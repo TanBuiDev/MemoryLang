@@ -348,7 +348,7 @@ export default function AdminReadingEditorPage() {
               value={cefrLevel}
               onChange={setCefrLevel}
               options={articleOptions.cefr_level}
-              onCreate={(value, label) => handleCreateOption('cefr_level', value, label)}
+              onCreate={(name) => handleCreateOption('cefr_level', name, name)}
             />
           </div>
 
@@ -360,7 +360,7 @@ export default function AdminReadingEditorPage() {
               value={difficulty}
               onChange={setDifficulty}
               options={articleOptions.difficulty}
-              onCreate={(value, label) => handleCreateOption('difficulty', value, label)}
+              onCreate={(name) => handleCreateOption('difficulty', name, name)}
             />
           </div>
 
@@ -372,7 +372,7 @@ export default function AdminReadingEditorPage() {
               value={purpose}
               onChange={setPurpose}
               options={articleOptions.purpose}
-              onCreate={(value, label) => handleCreateOption('purpose', value, label)}
+              onCreate={(name) => handleCreateOption('purpose', name, name)}
             />
           </div>
 
@@ -384,7 +384,7 @@ export default function AdminReadingEditorPage() {
               value={accessTier}
               onChange={setAccessTier}
               options={articleOptions.access_tier}
-              onCreate={(value, label) => handleCreateOption('access_tier', value, label)}
+              onCreate={(name) => handleCreateOption('access_tier', name, name)}
             />
             <p className="mt-1 text-[10px] font-bold text-slate-500">
               Tier tự tạo được xem là nội dung giới hạn, tương đương Pro.
