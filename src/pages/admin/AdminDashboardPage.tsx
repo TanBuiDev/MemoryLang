@@ -7,7 +7,12 @@ import {
   ShieldCheck,
   Users,
   Volume2,
+  LayoutDashboard,
+  ArrowRight,
+  Server,
+  Zap,
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { adminService } from '@/services/supabase/admin.service'
 import type { AdminUserStats } from '@/types/admin.types'
 
@@ -21,14 +26,14 @@ interface StatCardProps {
 
 function StatCard({ title, value, description, icon: Icon, colorClass }: StatCardProps) {
   return (
-    <div className={`neo-card p-5 bg-card border-2 border-border flex items-start justify-between shadow-[4px_4px_0_var(--border)] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all`}>
+    <div className="neo-card p-5 bg-white border-3 border-slate-900 flex items-start justify-between shadow-[5px_5px_0px_0px_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all rounded-2xl">
       <div className="flex flex-col gap-1">
-        <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">{title}</span>
-        <span className="text-3xl font-black text-foreground">{value}</span>
-        <span className="text-xs font-bold text-muted-foreground mt-1">{description}</span>
+        <span className="text-xs font-black text-slate-500 uppercase tracking-wider">{title}</span>
+        <span className="text-3xl font-black text-slate-900 mt-1">{value}</span>
+        <span className="text-xs font-bold text-slate-600 mt-1">{description}</span>
       </div>
-      <div className={`p-3 rounded-md border-2 border-border text-foreground shadow-[2px_2px_0_var(--border)] ${colorClass}`}>
-        <Icon size={20} />
+      <div className={`p-3 rounded-xl border-2 border-slate-900 text-slate-900 shadow-[2px_2px_0px_0px_#000] ${colorClass}`}>
+        <Icon size={22} />
       </div>
     </div>
   )
@@ -57,119 +62,123 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Title */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-foreground">BẢNG ĐIỀU KHIỂN</h1>
-          <p className="text-muted-foreground font-bold">Thống kê tổng quan hoạt động và nội dung của MemoryLang.</p>
+      {/* Title Banner Neobrutalism */}
+      <div className="neo-card p-6 bg-[#432dd7] text-white border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-[#fdc800] rounded-xl border-3 border-slate-900 flex items-center justify-center text-slate-900 shrink-0 shadow-[2px_2px_0px_0px_#000]">
+            <LayoutDashboard className="w-6 h-6 text-slate-900" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">BẢNG ĐIỀU KHIỂN QUẢN TRỊ</h1>
+            <p className="text-xs sm:text-sm font-bold text-indigo-100 mt-0.5">
+              Thống kê tổng quan hoạt động, dữ liệu và trạng thái hệ thống MemoryLang.
+            </p>
+          </div>
         </div>
       </div>
 
       {error && (
-        <div className="p-4 bg-rose-100 border-2 border-rose-400 text-rose-900 rounded-md font-bold text-sm">
+        <div className="p-4 bg-rose-100 border-3 border-slate-900 text-rose-900 rounded-xl font-black text-xs sm:text-sm shadow-[3px_3px_0px_0px_#000]">
           {error}
         </div>
       )}
 
-      {/* Grid Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Grid KPI Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <StatCard
           title="Người dùng hệ thống"
           value={loading ? '...' : stats?.totalUsers ?? 0}
           description={`Mới (7 ngày): ${stats?.newUsers7d ?? 0}`}
           icon={Users}
-          colorClass="bg-[#fdc800]" // Yellow
+          colorClass="bg-[#fdc800]"
         />
         <StatCard
           title="Hoạt động (30 ngày)"
           value={loading ? '...' : stats?.activeUsers30d ?? 0}
-          description="Người dùng học trong 30 ngày qua"
+          description="Người dùng tương tác trong 30 ngày qua"
           icon={Activity}
-          colorClass="bg-[#c084fc]" // Light Purple
+          colorClass="bg-purple-300"
         />
         <StatCard
           title="Thư viện từ vựng"
           value={loading ? '...' : stats?.globalVocab ?? 0}
           description={loading ? '...' : `Đang được học: ${stats?.totalVocab ?? 0}`}
           icon={BookOpen}
-          colorClass="bg-[#86efac]" // Light Green
+          colorClass="bg-emerald-300"
         />
         <StatCard
           title="Bộ từ vựng (Decks)"
           value={loading ? '...' : stats?.totalDecks ?? 0}
-          description="Bộ từ vựng được người dùng tạo"
+          description="Bộ từ vựng do người dùng tạo"
           icon={FolderKanban}
-          colorClass="bg-[#93c5fd]" // Light Blue
+          colorClass="bg-sky-300"
         />
         <StatCard
           title="Lượt học hôm nay"
           value={loading ? '...' : stats?.studySessionsToday ?? 0}
           description="Số phiên học flashcard đã bắt đầu"
           icon={ShieldCheck}
-          colorClass="bg-[#fda4af]" // Light Pink
+          colorClass="bg-rose-300"
         />
         <StatCard
           title="Cấu hình TTS"
           value={loading ? '...' : 8}
-          description="Ngôn ngữ được hỗ trợ TTS"
+          description="Ngôn ngữ hỗ trợ phát âm chuẩn"
           icon={Volume2}
-          colorClass="bg-[#fde047]" // Light Yellow
+          colorClass="bg-amber-200"
         />
       </div>
 
-      {/* Quick Action & System Health */}
+      {/* Quick Action & System Health Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
         {/* Quick Actions */}
-        <div className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex flex-col gap-4">
-          <h3 className="text-md font-black border-b-2 border-border pb-2 text-foreground">HÀNH ĐỘNG NHANH</h3>
+        <div className="neo-card p-5 bg-white border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] flex flex-col gap-4 rounded-2xl">
+          <h3 className="text-base font-black border-b-2 border-slate-900 pb-2 text-slate-900 flex items-center gap-2">
+            <Zap className="w-4 h-4 text-amber-500" />
+            <span>HÀNH ĐỘNG NHANH</span>
+          </h3>
           <div className="grid grid-cols-2 gap-3">
-            <Link
-              to="/app/admin/users"
-              className="px-4 py-2 border-2 border-border text-center rounded-md font-black text-sm bg-card hover:bg-muted transition-colors shadow-[2px_2px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
-            >
-              Quản lý Users
-            </Link>
-            <Link
-              to="/app/admin/tts"
-              className="px-4 py-2 border-2 border-border text-center rounded-md font-black text-sm bg-card hover:bg-muted transition-colors shadow-[2px_2px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
-            >
-              Cấu hình TTS
-            </Link>
-            <Link
-              to="/app/admin/features"
-              className="px-4 py-2 border-2 border-border text-center rounded-md font-black text-sm bg-card hover:bg-muted transition-colors shadow-[2px_2px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
-            >
-              Cấu hình & Tính năng
-            </Link>
-            <Link
-              to="/app/admin/secrets"
-              className="px-4 py-2 border-2 border-border text-center rounded-md font-black text-sm bg-card hover:bg-muted transition-colors shadow-[2px_2px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
-            >
-              API Secrets
-            </Link>
+            {[
+              { label: 'Quản lý Users', to: '/app/admin/users' },
+              { label: 'Cấu hình TTS', to: '/app/admin/tts' },
+              { label: 'Tính năng & Bảo trì', to: '/app/admin/features' },
+              { label: 'API Secrets', to: '/app/admin/secrets' },
+            ].map((item) => (
+              <Button
+                key={item.to}
+                asChild
+                variant="ghost"
+                className="neo-button py-2.5 px-3 border-2 border-slate-900 text-center rounded-xl font-black text-xs bg-white hover:bg-slate-50 text-slate-900 shadow-[2px_2px_0px_0px_#000] active:neo-button-active cursor-pointer"
+              >
+                <Link to={item.to} className="flex items-center justify-between">
+                  <span>{item.label}</span>
+                  <ArrowRight size={14} />
+                </Link>
+              </Button>
+            ))}
           </div>
         </div>
 
         {/* System Health Status */}
-        <div className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex flex-col gap-4">
-          <h3 className="text-md font-black border-b-2 border-border pb-2 text-foreground">TRẠNG THÁI HỆ THỐNG</h3>
+        <div className="neo-card p-5 bg-white border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] flex flex-col gap-4 rounded-2xl">
+          <h3 className="text-base font-black border-b-2 border-slate-900 pb-2 text-slate-900 flex items-center gap-2">
+            <Server className="w-4 h-4 text-purple-700" />
+            <span>TRẠNG THÁI HỆ THỐNG</span>
+          </h3>
           <div className="flex flex-col gap-3">
-            <div className="flex justify-between items-center text-sm font-bold">
-              <span className="text-muted-foreground">Supabase Database Connect</span>
-              <span className="px-2 py-0.5 rounded bg-green-100 text-green-800 border border-green-300 text-xs">ONLINE</span>
-            </div>
-            <div className="flex justify-between items-center text-sm font-bold">
-              <span className="text-muted-foreground">Edge Functions API</span>
-              <span className="px-2 py-0.5 rounded bg-green-100 text-green-800 border border-green-300 text-xs">ONLINE</span>
-            </div>
-            <div className="flex justify-between items-center text-sm font-bold">
-              <span className="text-muted-foreground">Google Cloud TTS Service</span>
-              <span className="px-2 py-0.5 rounded bg-green-100 text-green-800 border border-green-300 text-xs">CONNECTED</span>
-            </div>
-            <div className="flex justify-between items-center text-sm font-bold">
-              <span className="text-muted-foreground">Cloudflare R2 Storage</span>
-              <span className="px-2 py-0.5 rounded bg-green-100 text-green-800 border border-green-300 text-xs">ACTIVE</span>
-            </div>
+            {[
+              { label: 'Supabase Database Connect', status: 'ONLINE', bg: 'bg-emerald-100 text-emerald-900' },
+              { label: 'Edge Functions API', status: 'ONLINE', bg: 'bg-emerald-100 text-emerald-900' },
+              { label: 'Google Cloud TTS Service', status: 'CONNECTED', bg: 'bg-blue-100 text-blue-900' },
+              { label: 'Cloudflare R2 Storage', status: 'ACTIVE', bg: 'bg-purple-100 text-purple-900' },
+            ].map((srv) => (
+              <div key={srv.label} className="flex justify-between items-center text-xs font-bold">
+                <span className="text-slate-700">{srv.label}</span>
+                <span className={`px-2.5 py-0.5 rounded-lg border border-slate-900 text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_#000] ${srv.bg}`}>
+                  {srv.status}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

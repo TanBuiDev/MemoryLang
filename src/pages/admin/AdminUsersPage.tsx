@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Shield, ShieldAlert, User, UserX, Crown } from 'lucide-react'
+import { Shield, ShieldAlert, User, UserX, Crown, Users } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
 import { DataTable } from '@/components/admin/DataTable'
-import type { Profile } from '@/types/auth.types'
+import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
+import type { Profile } from '@/types/auth.types'
 
 interface AdminUserProfile extends Profile {
   subscriptions?: {
@@ -19,7 +20,7 @@ export default function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
-  // Custom ConfirmModal state
+  // ConfirmModal state
   const [confirmModal, setConfirmModal] = useState<{
     open: boolean
     title: string
@@ -75,19 +76,18 @@ export default function AdminUsersPage() {
     })
   }
 
-  // Định nghĩa các cột hiển thị
   const columns = [
     {
       header: 'Người dùng',
       className: 'w-[30%]',
       accessor: (row: AdminUserProfile) => (
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-md bg-muted border-2 border-border flex items-center justify-center text-muted-foreground font-black">
+          <div className="w-9 h-9 rounded-xl bg-[#fdc800] border-2 border-slate-900 shadow-[1.5px_1.5px_0px_0px_#000] flex items-center justify-center text-slate-900 font-black shrink-0">
             {row.display_name ? row.display_name[0].toUpperCase() : 'U'}
           </div>
-          <div>
-            <div className="font-black text-foreground text-sm">{row.display_name || 'Chưa đặt tên'}</div>
-            <div className="text-xs text-muted-foreground font-bold">{row.email || 'demo@memorylang.app'}</div>
+          <div className="min-w-0">
+            <div className="font-black text-slate-900 text-xs sm:text-sm truncate">{row.display_name || 'Chưa đặt tên'}</div>
+            <div className="text-[11px] text-slate-500 font-bold truncate">{row.email || 'demo@memorylang.app'}</div>
           </div>
         </div>
       ),
@@ -98,12 +98,12 @@ export default function AdminUsersPage() {
       accessor: (row: AdminUserProfile) => {
         const plan = row.subscriptions?.plan_type ?? 'free'
         return plan === 'pro' ? (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-amber-100 text-amber-800 border border-amber-300 text-xs font-black uppercase">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-100 text-amber-900 border border-slate-900 text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_#000]">
             <Crown size={12} className="text-amber-600 shrink-0" />
             Pro
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 text-slate-800 border border-slate-300 text-xs font-black uppercase">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-800 border border-slate-900 text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_#000]">
             Free
           </span>
         )
@@ -113,12 +113,12 @@ export default function AdminUsersPage() {
       header: 'Ngôn ngữ học',
       className: 'w-[20%]',
       accessor: (row: AdminUserProfile) => (
-        <div className="flex items-center gap-1.5 text-xs font-black">
-          <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-900 border border-blue-300 uppercase">
+        <div className="flex items-center gap-1 text-[11px] font-black">
+          <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-900 border border-slate-900 uppercase">
             {row.native_language}
           </span>
           <span>→</span>
-          <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300 uppercase">
+          <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-slate-900 uppercase">
             {row.current_target_language}
           </span>
         </div>
@@ -129,12 +129,12 @@ export default function AdminUsersPage() {
       className: 'w-[15%]',
       accessor: (row: AdminUserProfile) => {
         return row.is_admin ? (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-rose-100 text-rose-800 border border-rose-300 text-xs font-black uppercase">
-            <ShieldAlert size={12} />
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-rose-100 text-rose-900 border border-slate-900 text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_#000]">
+            <ShieldAlert size={12} className="text-rose-700" />
             Admin
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 text-slate-800 border border-slate-300 text-xs font-black uppercase">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-800 border border-slate-900 text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_#000]">
             <User size={12} />
             User
           </span>
@@ -146,7 +146,7 @@ export default function AdminUsersPage() {
       className: 'w-[15%]',
       accessor: (row: AdminUserProfile) => {
         const date = new Date(row.created_at)
-        return <span className="text-xs font-bold text-muted-foreground">{date.toLocaleDateString('vi-VN')}</span>
+        return <span className="text-xs font-bold text-slate-600">{date.toLocaleDateString('vi-VN')}</span>
       },
     },
     {
@@ -156,48 +156,46 @@ export default function AdminUsersPage() {
         const isPro = row.subscriptions?.plan_type === 'pro'
         return (
           <div className="flex justify-center gap-2">
-            {/* Toggle Pro Button */}
-            <Link
-              to={`/app/admin/subscriptions?user=${row.id}`}
-              className={`neo-button min-h-0 px-2.5 py-1.5 rounded-md border-2 border-border text-xs font-black flex items-center gap-1.5 transition-all ${
-                isPro ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 'bg-yellow-400 hover:bg-yellow-300 text-navy'
+            <Button
+              asChild
+              variant="ghost"
+              className={`neo-button min-h-0 px-2.5 py-1 h-8 rounded-lg border-2 border-slate-900 text-xs font-black flex items-center gap-1.5 shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer ${
+                isPro ? 'bg-amber-100 text-amber-900 hover:bg-amber-200' : 'bg-[#fdc800] hover:bg-amber-300 text-slate-900'
               }`}
             >
-              <Crown size={14} />
-              Quản lý gói
-            </Link>
+              <Link to={`/app/admin/subscriptions?user=${row.id}`}>
+                <Crown size={14} />
+                <span>Gói</span>
+              </Link>
+            </Button>
 
-            {/* Toggle Admin Button */}
-            <button
-              onClick={() => handleToggleAdmin(row.id, Boolean(row.is_admin))}
+            <Button
+              type="button"
+              variant={row.is_admin ? 'danger' : 'secondary'}
               disabled={actionLoading === row.id}
-              className={`neo-button min-h-0 px-2.5 py-1.5 rounded-md border-2 border-border text-xs font-black flex items-center gap-1.5 transition-all ${
-                row.is_admin
-                  ? 'bg-rose-100 text-rose-800 hover:bg-rose-200'
-                  : 'bg-[#432dd7] text-white hover:bg-[#523ceb]'
-              }`}
+              onClick={() => handleToggleAdmin(row.id, Boolean(row.is_admin))}
+              className="neo-button min-h-0 px-2.5 py-1 h-8 rounded-lg border-2 border-slate-900 text-xs font-black flex items-center gap-1.5 shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer"
             >
               {actionLoading === row.id ? (
                 <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
               ) : row.is_admin ? (
                 <>
                   <UserX size={14} />
-                  Gỡ Admin
+                  <span>Gỡ Admin</span>
                 </>
               ) : (
                 <>
                   <Shield size={14} />
-                  Cấp Admin
+                  <span>Cấp Admin</span>
                 </>
               )}
-            </button>
+            </Button>
           </div>
         )
       },
     },
   ]
 
-  // Hàm filter tìm kiếm
   const searchFilter = (row: AdminUserProfile, query: string) => {
     const term = query.toLowerCase()
     const nameMatch = row.display_name ? row.display_name.toLowerCase().includes(term) : false
@@ -208,13 +206,18 @@ export default function AdminUsersPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Title */}
-      <div>
-        <h1 className="text-2xl font-black tracking-tight text-foreground">QUẢN LÝ NGƯỜI DÙNG</h1>
-        <p className="text-muted-foreground font-bold">Danh sách tất cả người dùng trong hệ thống và phân quyền.</p>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-amber-200 rounded-xl border-2 border-slate-900 flex items-center justify-center text-slate-900 shrink-0 shadow-[2px_2px_0px_0px_#000]">
+          <Users className="w-5 h-5 text-slate-900" />
+        </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">QUẢN LÝ NGƯỜI DÙNG</h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-bold">Danh sách tất cả tài khoản trong hệ thống và phân quyền quản trị.</p>
+        </div>
       </div>
 
       {error && (
-        <div className="p-4 bg-rose-100 border-2 border-rose-400 text-rose-900 rounded-md font-bold text-sm">
+        <div className="p-4 bg-rose-100 border-2 border-slate-900 text-rose-900 rounded-xl font-bold text-xs sm:text-sm shadow-[2px_2px_0px_0px_#000]">
           {error}
         </div>
       )}
@@ -228,7 +231,7 @@ export default function AdminUsersPage() {
         isLoading={loading}
       />
 
-      {/* Custom ConfirmModal */}
+      {/* ConfirmModal */}
       {confirmModal && (
         <ConfirmModal
           open={confirmModal.open}

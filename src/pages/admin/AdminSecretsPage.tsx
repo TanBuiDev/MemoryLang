@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { CheckCircle2, AlertTriangle, HelpCircle, Play, ShieldAlert, KeyRound } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, HelpCircle, Play, KeyRound } from 'lucide-react'
 import { generateAudio } from '@/services/api/generateAudio.api'
 import { imageSearchService } from '@/services/api/imageSearch.api'
+import { Button } from '@/components/ui/button'
 
 interface SecretStatus {
   name: string
@@ -54,7 +55,6 @@ export default function AdminSecretsPage() {
   const [testResultMsg, setTestResultMsg] = useState<string | null>(null)
 
   const handleTestService = async (serviceName: string) => {
-    // Cập nhật trạng thái testing
     setSecrets((prev) =>
       prev.map((s) => (s.service === serviceName ? { ...s, tested: 'testing' } : s))
     )
@@ -62,7 +62,6 @@ export default function AdminSecretsPage() {
 
     try {
       if (serviceName === 'Google TTS' || serviceName === 'Cloudflare R2') {
-        // Test Google TTS + R2 bằng cách tạo một từ ngắn 'test'
         const res = await generateAudio('test connection', 'en-US')
         if (res.audioUrl) {
           setSecrets((prev) =>
@@ -77,9 +76,6 @@ export default function AdminSecretsPage() {
           throw new Error('TTS invoke không trả về URL âm thanh')
         }
       } else if (serviceName.includes('Images')) {
-        // Test các dịch vụ ảnh bằng cách gọi search-images Edge Function
-        // Unsplash là dịch vụ chính, Pexels/Pixabay dự phòng. 
-        // Edge Function search-images sẽ tự kiểm tra key phía server.
         let source: 'unsplash' | 'pexels' | 'pixabay' = 'unsplash'
         if (serviceName.includes('Pexels')) source = 'pexels'
         if (serviceName.includes('Pixabay')) source = 'pixabay'
@@ -89,7 +85,7 @@ export default function AdminSecretsPage() {
           setSecrets((prev) =>
             prev.map((s) => (s.service === serviceName ? { ...s, tested: 'success' } : s))
           )
-          setTestResultMsg(`Kết nối tới ${serviceName} THÀNH CÔNG! Tìm thấy ${res.total || res.results.length} hình ảnh.`);
+          setTestResultMsg(`Kết nối tới ${serviceName} THÀNH CÔNG! Tìm thấy ${res.total || res.results.length} hình ảnh.`)
         } else {
           throw new Error('Không nhận được kết quả tìm kiếm ảnh hợp lệ')
         }
@@ -98,132 +94,86 @@ export default function AdminSecretsPage() {
       console.error(err)
       const errorMsg = err.message || 'Kết nối thất bại. Lỗi không xác định.'
       setSecrets((prev) =>
-        prev.map((s) =>
-          s.service === serviceName || (serviceName === 'Google TTS' && s.service === 'Cloudflare R2')
-            ? { ...s, tested: 'failed', errorMessage: errorMsg }
-            : s
-        )
+        prev.map((s) => (s.service === serviceName ? { ...s, tested: 'failed', errorMessage: errorMsg } : s))
       )
-      setTestResultMsg(`Kết nối tới ${serviceName} THẤT BẠI: ${errorMsg}`);
-    }
-  }
-
-  const getStatusIcon = (status: SecretStatus['tested']) => {
-    switch (status) {
-      case 'success':
-        return <CheckCircle2 className="text-green-600" size={20} />
-      case 'failed':
-        return <AlertTriangle className="text-rose-600" size={20} />
-      case 'testing':
-        return <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      default:
-        return <HelpCircle className="text-muted-foreground" size={20} />
-    }
-  }
-
-  const getStatusBadge = (status: SecretStatus['tested']) => {
-    switch (status) {
-      case 'success':
-        return (
-          <span className="px-2 py-0.5 rounded bg-green-100 text-green-800 border border-green-300 text-xs font-black">
-            KẾT NỐI TỐT
-          </span>
-        )
-      case 'failed':
-        return (
-          <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300 text-xs font-black">
-            LỖI KẾT NỐI
-          </span>
-        )
-      case 'testing':
-        return (
-          <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-300 text-xs font-black">
-            ĐANG THỬ...
-          </span>
-        )
-      default:
-        return (
-          <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-300 text-xs font-black">
-            CHƯA KIỂM TRA
-          </span>
-        )
     }
   }
 
   return (
     <div className="flex flex-col gap-6">
       {/* Title */}
-      <div>
-        <h1 className="text-2xl font-black tracking-tight text-foreground">API KEYS & SECRETS</h1>
-        <p className="text-muted-foreground font-bold">
-          Kiểm tra trạng thái kết nối của các API Key và Service Secrets lưu tại Server.
-        </p>
-      </div>
-
-      {/* Security Banner */}
-      <div className="neo-card p-4 bg-amber-50 border-2 border-amber-400 text-amber-900 rounded-md flex gap-3 shadow-[4px_4px_0_var(--border)]">
-        <ShieldAlert className="shrink-0 text-amber-600 mt-0.5" size={20} />
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-emerald-200 rounded-xl border-2 border-slate-900 flex items-center justify-center text-slate-900 shrink-0 shadow-[2px_2px_0px_0px_#000]">
+          <KeyRound className="w-5 h-5 text-emerald-800" />
+        </div>
         <div>
-          <h4 className="font-black text-sm uppercase">Cảnh báo bảo mật</h4>
-          <p className="text-xs font-bold mt-1 leading-relaxed">
-            Các API Keys và Secrets được lưu trữ bảo mật trên môi trường chạy Edge Functions của Supabase. 
-            Để chỉnh sửa giá trị của các biến này, vui lòng thay đổi file <code className="bg-amber-100 px-1 py-0.5 border border-amber-300 rounded font-mono text-[11px]">.env</code> ở local và chạy lệnh 
-            <code className="bg-amber-100 px-1 py-0.5 border border-amber-300 rounded font-mono text-[11px] ml-1">pnpm sync:secrets</code>. Giao diện quản trị chỉ hỗ trợ Test Connection gián tiếp để đảm bảo an toàn tối đa.
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">API KEYS & SECRETS HỆ THỐNG</h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-bold">
+            Kiểm tra trạng thái cấu hình và thử nghiệm kết nối dịch vụ bên thứ 3.
           </p>
         </div>
       </div>
 
       {testResultMsg && (
-        <div className={`p-4 border-2 rounded-md font-bold text-sm ${
-          testResultMsg.includes('THÀNH CÔNG') 
-            ? 'bg-green-50 border-green-400 text-green-900' 
-            : 'bg-rose-50 border-rose-400 text-rose-900'
-        }`}>
+        <div className="p-4 bg-emerald-100 border-2 border-slate-900 text-emerald-900 rounded-xl font-black text-xs sm:text-sm shadow-[2px_2px_0px_0px_#000]">
           {testResultMsg}
         </div>
       )}
 
-      {/* Secrets List */}
-      <div className="flex flex-col gap-4">
-        {secrets.map((secret, idx) => (
+      {/* Secrets Cards List */}
+      <div className="grid grid-cols-1 gap-4">
+        {secrets.map((item) => (
           <div
-            key={idx}
-            className="neo-card p-5 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+            key={item.name}
+            className="neo-card p-5 bg-white border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4"
           >
-            <div className="flex items-start gap-4 flex-1">
-              <div className="p-3 bg-muted border-2 border-border text-foreground rounded shadow-[2px_2px_0_var(--border)] mt-0.5">
-                <KeyRound size={20} />
+            <div className="flex-1 min-w-0 space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-black text-slate-900 text-sm sm:text-base">{item.name}</h3>
+                <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-md bg-slate-100 border border-slate-900 text-slate-800">
+                  {item.envKey}
+                </span>
               </div>
-              <div className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-black text-sm text-foreground">{secret.name}</h3>
-                  {getStatusBadge(secret.tested)}
-                </div>
-                <p className="text-xs text-muted-foreground font-bold mt-1">{secret.description}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[10px] font-black text-muted-foreground uppercase">Server Key:</span>
-                  <code className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono font-bold text-foreground">
-                    {secret.envKey}
-                  </code>
-                </div>
-                {secret.errorMessage && (
-                  <div className="mt-2 text-xs font-bold text-rose-700 bg-rose-50 p-2 border border-rose-200 rounded">
-                    Lỗi: {secret.errorMessage}
-                  </div>
-                )}
-              </div>
+              <p className="text-xs font-bold text-slate-600">{item.description}</p>
+              {item.errorMessage && (
+                <p className="text-xs font-black text-rose-600 mt-1">{item.errorMessage}</p>
+              )}
             </div>
 
-            <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
-              <div className="shrink-0">{getStatusIcon(secret.tested)}</div>
-              <button
-                onClick={() => handleTestService(secret.service)}
-                disabled={secret.tested === 'testing'}
-                className="neo-button min-h-0 px-3 py-2 rounded-md border-2 border-border bg-[#fdc800] text-foreground text-xs font-black flex items-center gap-1 hover:bg-[#e0b000] active:neo-button-active transition-all disabled:opacity-50"
+            <div className="flex items-center gap-3 shrink-0">
+              {item.tested === 'success' && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-900 border border-slate-900 text-xs font-black uppercase shadow-[1px_1px_0px_0px_#000]">
+                  <CheckCircle2 size={14} className="text-emerald-700" />
+                  KẾT NỐI OK
+                </span>
+              )}
+              {item.tested === 'failed' && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-100 text-rose-900 border border-slate-900 text-xs font-black uppercase shadow-[1px_1px_0px_0px_#000]">
+                  <AlertTriangle size={14} className="text-rose-700" />
+                  THẤT BẠI
+                </span>
+              )}
+              {item.tested === 'idle' && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-900 text-xs font-black uppercase shadow-[1px_1px_0px_0px_#000]">
+                  <HelpCircle size={14} />
+                  CHƯA TEST
+                </span>
+              )}
+
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={item.tested === 'testing'}
+                onClick={() => handleTestService(item.service)}
+                className="neo-button px-3.5 py-1.5 h-9 bg-[#fdc800] hover:bg-amber-300 text-slate-900 font-black text-xs border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl flex items-center gap-1.5 cursor-pointer"
               >
-                <Play size={12} />
-                Test Connection
-              </button>
+                {item.tested === 'testing' ? (
+                  <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Play size={14} />
+                )}
+                <span>Test API</span>
+              </Button>
             </div>
           </div>
         ))}

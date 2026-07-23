@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
 
 interface Column<T> {
@@ -58,9 +59,9 @@ export function DataTable<T>({
               placeholder={searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border-2 border-border rounded-md bg-card text-sm font-bold placeholder:text-muted-foreground focus:outline-none focus:ring-0 focus:border-primary shadow-[2px_2px_0_var(--border)] focus:shadow-[4px_4px_0_var(--border)] transition-all"
+              className="w-full pl-10 pr-4 py-2 border-2 border-slate-900 rounded-xl bg-white text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-[2px_2px_0px_0px_#000] focus:shadow-[4px_4px_0px_0px_#000] transition-all"
             />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           </div>
         )}
         <div className="flex items-center gap-2 self-end sm:self-auto">
@@ -69,15 +70,15 @@ export function DataTable<T>({
       </div>
 
       {/* Table Body Container */}
-      <div className="neo-card bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] overflow-x-auto">
-        <table className="w-full border-collapse text-left text-sm">
+      <div className="neo-card bg-white border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] rounded-2xl overflow-hidden overflow-x-auto">
+        <table className="w-full border-collapse text-left text-sm min-w-[640px]">
           <thead>
-            <tr className="border-b-2 border-border bg-muted">
+            <tr className="border-b-3 border-slate-900 bg-amber-100">
               {columns.map((col, index) => (
                 <th
                   key={index}
                   className={cn(
-                    'px-4 py-3 font-black text-foreground uppercase tracking-wider select-none border-r border-border/30 last:border-r-0',
+                    'px-4 py-3 font-black text-slate-900 uppercase tracking-wider select-none border-r border-slate-300 last:border-r-0 text-xs',
                     col.className
                   )}
                 >
@@ -86,19 +87,19 @@ export function DataTable<T>({
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-200">
             {isLoading ? (
-              <tr style={{ height: `${itemsPerPage * 72}px` }}>
-                <td colSpan={columns.length} className="px-4 py-10 text-center font-bold text-muted-foreground align-middle">
-                  <div className="flex flex-col items-center gap-2 justify-center">
-                    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                    <span>Đang tải dữ liệu...</span>
+              <tr style={{ height: `${itemsPerPage * 64}px` }}>
+                <td colSpan={columns.length} className="px-4 py-10 text-center font-bold text-slate-500 align-middle">
+                  <div className="flex flex-col items-center gap-3 justify-center">
+                    <div className="w-8 h-8 border-4 border-slate-900 border-t-[#fdc800] rounded-full animate-spin" />
+                    <span className="text-xs font-black text-slate-700">Đang tải dữ liệu...</span>
                   </div>
                 </td>
               </tr>
             ) : paginatedData.length === 0 ? (
-              <tr style={{ height: `${itemsPerPage * 72}px` }}>
-                <td colSpan={columns.length} className="px-4 py-10 text-center font-bold text-muted-foreground align-middle">
+              <tr style={{ height: `${itemsPerPage * 64}px` }}>
+                <td colSpan={columns.length} className="px-4 py-10 text-center font-bold text-slate-500 align-middle">
                   Không tìm thấy dữ liệu phù hợp.
                 </td>
               </tr>
@@ -107,13 +108,13 @@ export function DataTable<T>({
                 {paginatedData.map((row, rowIndex) => (
                   <tr
                     key={rowIndex}
-                    className="border-b border-border/30 last:border-b-0 hover:bg-muted/40 odd:bg-card even:bg-muted/10 transition-colors h-[72px]"
+                    className="border-b border-slate-200 hover:bg-slate-50 odd:bg-white even:bg-slate-50/50 transition-colors h-[64px]"
                   >
                     {columns.map((col, colIndex) => (
                       <td
                         key={colIndex}
                         className={cn(
-                          'px-4 py-3.5 font-medium border-r border-border/30 last:border-r-0 align-middle',
+                          'px-4 py-3 font-bold text-slate-800 border-r border-slate-200 last:border-r-0 align-middle text-xs sm:text-sm',
                           col.className
                         )}
                       >
@@ -122,18 +123,18 @@ export function DataTable<T>({
                     ))}
                   </tr>
                 ))}
-                {/* Đệm các dòng trống để giữ chiều cao bảng ổn định không bị giật */}
+                {/* Pad empty rows */}
                 {paginatedData.length < itemsPerPage && (
                   Array.from({ length: itemsPerPage - paginatedData.length }).map((_, index) => (
                     <tr
                       key={`empty-${index}`}
-                      className="border-b border-border/30 last:border-b-0 opacity-0 pointer-events-none select-none h-[72px]"
+                      className="border-b border-slate-100 opacity-0 pointer-events-none select-none h-[64px]"
                     >
                       {columns.map((col, colIndex) => (
                         <td
                           key={`empty-cell-${colIndex}`}
                           className={cn(
-                            'px-4 py-3.5 border-r border-border/30 last:border-r-0 align-middle',
+                            'px-4 py-3 border-r border-slate-100 last:border-r-0 align-middle',
                             col.className
                           )}
                         >
@@ -151,10 +152,10 @@ export function DataTable<T>({
 
       {/* Pagination Controls */}
       <div className={cn(
-        "flex items-center justify-between mt-2 px-1 min-h-[40px] select-none",
+        "flex items-center justify-between mt-1 px-1 min-h-[40px] select-none",
         isLoading && "opacity-60 pointer-events-none"
       )}>
-        <span className="text-xs font-bold text-muted-foreground">
+        <span className="text-xs font-bold text-slate-600">
           {isLoading ? (
             "Đang tải dữ liệu..."
           ) : filteredData.length > 0 ? (
@@ -166,23 +167,27 @@ export function DataTable<T>({
         
         {totalPages > 0 && (
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              type="button"
+              variant="ghost"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={isLoading || currentPage === 1}
-              className="neo-button min-h-0 p-1.5 rounded bg-card border border-border disabled:opacity-50 disabled:shadow-none hover:bg-muted active:neo-button-active transition-all"
+              className="neo-button p-1.5 h-8 min-h-0 w-8 rounded-lg bg-white border-2 border-slate-900 disabled:opacity-40 disabled:shadow-none hover:bg-slate-100 shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer"
             >
               <ChevronLeft size={16} />
-            </button>
-            <span className="text-sm font-black px-2">
+            </Button>
+            <span className="text-xs font-black text-slate-900 px-2">
               {isLoading ? "-" : `${currentPage} / ${Math.max(1, totalPages)}`}
             </span>
-            <button
+            <Button
+              type="button"
+              variant="ghost"
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={isLoading || currentPage === totalPages || totalPages <= 1}
-              className="neo-button min-h-0 p-1.5 rounded bg-card border border-border disabled:opacity-50 disabled:shadow-none hover:bg-muted active:neo-button-active transition-all"
+              className="neo-button p-1.5 h-8 min-h-0 w-8 rounded-lg bg-white border-2 border-slate-900 disabled:opacity-40 disabled:shadow-none hover:bg-slate-100 shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer"
             >
               <ChevronRight size={16} />
-            </button>
+            </Button>
           </div>
         )}
       </div>

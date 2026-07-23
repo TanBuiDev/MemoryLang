@@ -359,17 +359,17 @@ export function StudySetupPage() {
             {/* 3 Stat Tiles */}
             <div className="grid grid-cols-3 gap-2">
               <div className="neo-card p-3 bg-amber-100 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl text-center">
-                <p className="text-xl sm:text-2xl font-black text-amber-950">{forecast.dueCount}</p>
+                <p className="text-sm sm:text-base font-black text-amber-950">{t('study.forecastDueCount', { count: forecast.dueCount })}</p>
                 <p className="text-[10px] font-black uppercase text-amber-800 mt-0.5">{t('study.forecastDue')}</p>
               </div>
 
               <div className="neo-card p-3 bg-sky-100 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl text-center">
-                <p className="text-xl sm:text-2xl font-black text-sky-950">{forecast.newCount}</p>
+                <p className="text-sm sm:text-base font-black text-sky-950">{t('study.forecastNewCount', { count: forecast.newCount })}</p>
                 <p className="text-[10px] font-black uppercase text-sky-800 mt-0.5">{t('study.forecastNew')}</p>
               </div>
 
               <div className="neo-card p-3 bg-rose-100 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl text-center">
-                <p className="text-xl sm:text-2xl font-black text-rose-950">{forecast.difficultCount}</p>
+                <p className="text-sm sm:text-base font-black text-rose-950">{t('study.forecastDifficultCount', { count: forecast.difficultCount })}</p>
                 <p className="text-[10px] font-black uppercase text-rose-800 mt-0.5">{t('study.forecastDifficult')}</p>
               </div>
             </div>
@@ -377,7 +377,7 @@ export function StudySetupPage() {
             {/* Estimate Badge */}
             <div className="neo-card p-3.5 bg-slate-900 text-white border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl space-y-1">
               <p className="text-xs font-black text-[#fdc800]">
-                ⏱️ {t('study.forecastEstimate', { minutes: forecast.estimatedMinutes })}
+                {t('study.forecastEstimate', { minutes: forecast.estimatedMinutes })}
               </p>
               <p className="text-xs font-semibold text-slate-300 leading-snug">{forecastAdvice}</p>
             </div>

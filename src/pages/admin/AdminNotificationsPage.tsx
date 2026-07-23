@@ -4,6 +4,7 @@ import { adminService } from '@/services/supabase/admin.service'
 import { notificationService } from '@/services/supabase/notification.service'
 import type { Notification, NotificationType, NotificationPriority, NotificationTarget } from '@/types/notification.types'
 import { Select } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 
 const typeOptions: { value: NotificationType; label: string }[] = [
@@ -14,10 +15,10 @@ const typeOptions: { value: NotificationType; label: string }[] = [
 ]
 
 const priorityOptions: { value: NotificationPriority; label: string; color: string }[] = [
-  { value: 'low', label: 'Thấp', color: 'bg-muted text-muted-foreground' },
-  { value: 'normal', label: 'Bình thường', color: 'bg-blue-100 text-blue-800' },
-  { value: 'high', label: 'Cao', color: 'bg-amber-100 text-amber-800' },
-  { value: 'urgent', label: 'Khẩn cấp', color: 'bg-rose-100 text-rose-800' },
+  { value: 'low', label: 'Thấp', color: 'bg-slate-100 text-slate-800 border-slate-300' },
+  { value: 'normal', label: 'Bình thường', color: 'bg-blue-100 text-blue-900 border-blue-300' },
+  { value: 'high', label: 'Cao', color: 'bg-amber-100 text-amber-900 border-amber-300' },
+  { value: 'urgent', label: 'Khẩn cấp', color: 'bg-rose-100 text-rose-900 border-rose-300' },
 ]
 
 const targetOptions: { value: NotificationTarget; label: string }[] = [
@@ -128,29 +129,35 @@ export default function AdminNotificationsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-black tracking-tight text-foreground">QUẢN LÝ THÔNG BÁO</h1>
-        <p className="text-muted-foreground font-bold">
-          Tạo và quản lý thông báo hệ thống gửi đến người dùng (Realtime).
-        </p>
+      {/* Title */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-blue-200 rounded-xl border-2 border-slate-900 flex items-center justify-center text-slate-900 shrink-0 shadow-[2px_2px_0px_0px_#000]">
+          <Bell className="w-5 h-5 text-blue-700" />
+        </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">QUẢN LÝ THÔNG BÁO</h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-bold">
+            Tạo và quản lý thông báo hệ thống gửi đến người dùng (Realtime).
+          </p>
+        </div>
       </div>
 
       {error && (
-        <div className="p-4 bg-rose-100 border-2 border-rose-400 text-rose-900 rounded-md font-bold text-sm">
+        <div className="p-4 bg-rose-100 border-2 border-slate-900 text-rose-900 rounded-xl font-bold text-xs sm:text-sm shadow-[2px_2px_0px_0px_#000]">
           {error}
         </div>
       )}
 
       {/* Create notification form */}
-      <div className="neo-card p-5 border-2 border-border bg-card shadow-[4px_4px_0_var(--border)] flex flex-col gap-4">
-        <h2 className="text-lg font-black flex items-center gap-2">
-          <Plus size={20} className="text-primary" />
-          TẠO THÔNG BÁO MỚI
+      <div className="neo-card p-5 border-3 border-slate-900 bg-white shadow-[5px_5px_0px_0px_#000] rounded-2xl flex flex-col gap-4">
+        <h2 className="text-base font-black text-slate-900 flex items-center gap-2 border-b-2 border-slate-900 pb-2">
+          <Plus size={20} className="text-blue-600" />
+          <span>TẠO THÔNG BÁO MỚI</span>
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">
+            <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
               Tiêu đề *
             </label>
             <input
@@ -158,13 +165,13 @@ export default function AdminNotificationsPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="VD: Tính năng mới: Luyện nghe TOEIC"
-              className="w-full p-2.5 text-sm font-semibold border-2 border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full p-2.5 text-xs sm:text-sm font-bold border-2 border-slate-900 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">
+              <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
                 Loại
               </label>
               <Select
@@ -175,7 +182,7 @@ export default function AdminNotificationsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">
+              <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
                 Độ ưu tiên
               </label>
               <Select
@@ -186,7 +193,7 @@ export default function AdminNotificationsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">
+              <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
                 Đối tượng
               </label>
               <Select
@@ -199,7 +206,7 @@ export default function AdminNotificationsPage() {
         </div>
 
         <div>
-          <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">
+          <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
             Nội dung thông báo *
           </label>
           <textarea
@@ -207,108 +214,110 @@ export default function AdminNotificationsPage() {
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Nội dung chi tiết của thông báo..."
             rows={3}
-            className="w-full p-2.5 text-sm font-semibold border-2 border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            className="w-full p-2.5 text-xs sm:text-sm font-bold border-2 border-slate-900 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
           />
         </div>
 
-        <div className="flex items-end gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-4 pt-1">
           <div className="flex-1 max-w-xs">
-            <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">
+            <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
               Hết hạn (tùy chọn)
             </label>
             <input
               type="datetime-local"
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
-              className="w-full p-2.5 text-sm font-semibold border-2 border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full p-2.5 text-xs font-bold border-2 border-slate-900 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
           </div>
 
-          <button
+          <Button
             type="button"
             onClick={handleSend}
             disabled={sending || !title.trim() || !message.trim()}
-            className="neo-button min-h-0 px-5 py-2.5 rounded bg-secondary text-secondary-foreground text-sm font-black border-2 border-border shadow-[3px_3px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none hover:bg-[#321fb0] transition-all disabled:opacity-50 flex items-center gap-2"
+            className="neo-button min-h-0 px-5 py-2.5 h-10 rounded-xl bg-[#432dd7] text-white text-xs sm:text-sm font-black border-2 border-slate-900 shadow-[3px_3px_0px_0px_#000] active:neo-button-active hover:bg-[#321fb0] transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
           >
             {sending ? (
               <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
               <Send size={16} />
             )}
-            Gửi thông báo
-          </button>
+            <span>Gửi thông báo</span>
+          </Button>
         </div>
       </div>
 
       {/* Notifications list */}
       <div className="flex flex-col gap-3">
-        <h2 className="text-lg font-black flex items-center gap-2 border-b-2 border-border pb-2">
-          <Bell size={20} className="text-secondary" />
-          DANH SÁCH THÔNG BÁO ({notifications.length})
+        <h2 className="text-base font-black flex items-center gap-2 border-b-2 border-slate-900 pb-2 text-slate-900">
+          <Bell size={18} className="text-blue-600" />
+          <span>DANH SÁCH THÔNG BÁO ({notifications.length})</span>
         </h2>
 
         {loading ? (
-          <div className="text-center font-bold text-muted-foreground py-10">
+          <div className="text-center font-bold text-slate-500 py-10">
             Đang tải thông báo...
           </div>
         ) : notifications.length === 0 ? (
-          <div className="text-center font-bold text-muted-foreground py-10">
+          <div className="text-center font-bold text-slate-500 py-10">
             Chưa có thông báo nào.
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             {notifications.map((notif) => {
               const priorityStyle = priorityOptions.find((p) => p.value === notif.priority)
               const isExpired = notif.expires_at && new Date(notif.expires_at) < new Date()
               return (
                 <div
                   key={notif.id}
-                  className={`neo-card p-4 border-2 border-border bg-card shadow-[3px_3px_0_var(--border)] flex items-start gap-4 ${!notif.is_active || isExpired ? 'opacity-50' : ''}`}
+                  className={`neo-card p-4 border-2 border-slate-900 bg-white rounded-xl shadow-[3px_3px_0px_0px_#000] flex items-start justify-between gap-4 ${!notif.is_active || isExpired ? 'opacity-60 bg-slate-50' : ''}`}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="font-black text-sm text-foreground">{notif.title}</h3>
-                      <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border ${priorityStyle?.color || ''}`}>
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <h3 className="font-black text-sm text-slate-900">{notif.title}</h3>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border border-slate-900 shadow-[1px_1px_0px_0px_#000] ${priorityStyle?.color || ''}`}>
                         {priorityStyle?.label}
                       </span>
-                      <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-900">
                         {typeOptions.find((t) => t.value === notif.type)?.label}
                       </span>
                       {!notif.is_active && (
-                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300">
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-slate-900">
                           ĐÃ TẮT
                         </span>
                       )}
                       {isExpired && (
-                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-300">
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 border border-slate-900">
                           HẾT HẠN
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground font-semibold line-clamp-2">{notif.message}</p>
-                    <p className="text-[10px] text-muted-foreground/60 font-bold mt-1">
+                    <p className="text-xs text-slate-700 font-semibold line-clamp-2">{notif.message}</p>
+                    <p className="text-[10px] text-slate-500 font-bold mt-1.5">
                       {new Date(notif.created_at).toLocaleString()} · {notif.target === 'all' ? 'Tất cả' : 'Chỉ admin'}
                       {notif.expires_at && ` · Hết hạn: ${new Date(notif.expires_at).toLocaleString()}`}
                     </p>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
                       onClick={() => handleToggle(notif.id, notif.is_active)}
-                      className="neo-button min-h-0 p-1.5 rounded border-2 border-border bg-card shadow-[2px_2px_0_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none hover:bg-muted transition-all"
+                      className="neo-button p-1.5 h-8 w-8 min-h-0 rounded-lg border-2 border-slate-900 bg-white shadow-[1.5px_1.5px_0px_0px_#000] hover:bg-slate-100 cursor-pointer"
                       title={notif.is_active ? 'Tắt thông báo' : 'Bật lại thông báo'}
                     >
-                      <ToggleLeft size={16} className={notif.is_active ? 'text-emerald-600' : 'text-muted-foreground'} />
-                    </button>
-                    <button
+                      <ToggleLeft size={16} className={notif.is_active ? 'text-emerald-600' : 'text-slate-400'} />
+                    </Button>
+                    <Button
                       type="button"
+                      variant="danger"
                       onClick={() => setPendingDeleteId(notif.id)}
-                      className="neo-button min-h-0 p-1.5 rounded border-2 border-border bg-card shadow-[2px_2px_0_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none hover:bg-rose-50 transition-all"
+                      className="neo-button p-1.5 h-8 w-8 min-h-0 rounded-lg border-2 border-slate-900 bg-rose-500 text-white shadow-[1.5px_1.5px_0px_0px_#000] hover:bg-rose-600 cursor-pointer"
                       title="Xóa thông báo"
                     >
-                      <Trash2 size={16} className="text-rose-500" />
-                    </button>
+                      <Trash2 size={16} />
+                    </Button>
                   </div>
                 </div>
               )
