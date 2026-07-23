@@ -130,7 +130,7 @@ export default function AdminGrammarLessonEditPage() {
   if (loading) return <AppLoading />
 
   return (
-    <div className="flex flex-col gap-4 p-6 max-w-4xl mx-auto">
+    <div className="flex flex-col gap-4 p-6 w-full">
       <div className="flex items-center justify-between">
         <Link
           to="/app/admin/grammar"

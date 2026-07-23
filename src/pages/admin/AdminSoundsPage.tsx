@@ -226,7 +226,7 @@ export default function AdminSoundsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12">
+    <div className="space-y-6 w-full pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 neo-card bg-amber-100 border-2 border-slate-900 rounded-xl">
         <div className="flex items-center gap-3">
