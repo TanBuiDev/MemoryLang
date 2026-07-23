@@ -27,6 +27,7 @@ import { ReadingProModal } from '@/components/reading/ReadingProModal'
 import { showToast } from '@/components/ui/toast'
 import { isRestrictedReadingTier } from '@/utils/readingContent'
 import { annotateReadingHtml } from '@/utils/readingVocabulary'
+import { fillReadingQuizBlanks } from '@/utils/readingQuizContent'
 
 const speedOptions = [
   { value: '0.5', label: '0.5x' },
@@ -134,10 +135,12 @@ export function ReadingDetailPage() {
     }
   }
 
-  const annotatedContentHtml = useMemo(
-    () => annotateReadingHtml(article?.content_html || '', articleTerms),
-    [article?.content_html, articleTerms]
-  )
+  const annotatedContentHtml = useMemo(() => {
+    const sourceHtml = quizSubmitted && article
+      ? fillReadingQuizBlanks(article.content_html, article.questions)
+      : article?.content_html || ''
+    return annotateReadingHtml(sourceHtml, articleTerms)
+  }, [article, articleTerms, quizSubmitted])
 
   const openTermPopover = (marker: HTMLElement) => {
     const termId = marker.dataset.readingTermId
@@ -171,6 +174,18 @@ export function ReadingDetailPage() {
   // Submit Quiz
   const handleSubmitQuiz = async () => {
     if (!article || !attempt || quizSubmitted) return
+
+    const unansweredCount = article.questions.filter(
+      (question) => !quizAnswers[question.id]
+    ).length
+    if (unansweredCount > 0) {
+      showToast({
+        type: 'warning',
+        title: 'Bạn chưa chọn hết đáp án',
+        message: `Vui lòng trả lời đầy đủ ${unansweredCount} câu hỏi trước khi nộp bài.`,
+      })
+      return
+    }
 
     const answersArray: QuizAnswer[] = Object.entries(quizAnswers).map(([question_id, selected_option]) => ({
       question_id,
@@ -327,7 +342,7 @@ export function ReadingDetailPage() {
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {q.options?.map((opt) => {
+                  {q.options?.map((opt, optionIndex) => {
                     const isSelected = quizAnswers[q.id] === opt.text
                     const isCorrect = opt.is_correct
 
@@ -340,14 +355,18 @@ export function ReadingDetailPage() {
                     }
 
                     return (
-                      <button
+                      <Button
                         key={opt.text}
                         type="button"
+                        variant="ghost"
                         onClick={() => handleSelectOption(q.id, opt.text)}
-                        className={`neo-button p-3 text-left text-xs font-bold border-2 rounded-xl transition-all shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer ${btnStyle}`}
+                        className={`h-auto min-h-11 justify-start whitespace-normal p-3 text-left text-xs font-bold border-2 rounded-xl transition-all shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer ${btnStyle}`}
                       >
-                        <span>{opt.text}</span>
-                      </button>
+                        <span className="mr-1 shrink-0 font-black">
+                          {String.fromCharCode(65 + optionIndex)}.
+                        </span>
+                        <span className="min-w-0 break-words">{opt.text}</span>
+                      </Button>
                     )
                   })}
                 </div>
@@ -359,8 +378,7 @@ export function ReadingDetailPage() {
             <Button
               type="button"
               onClick={handleSubmitQuiz}
-              disabled={Object.keys(quizAnswers).length < article.questions.length}
-              className="neo-button w-full py-3 h-11 bg-[#fdc800] hover:bg-amber-300 text-slate-900 font-black text-sm border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] rounded-xl flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="neo-button w-full py-3 h-11 bg-[#fdc800] hover:bg-amber-300 text-slate-900 font-black text-sm border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] rounded-xl flex items-center justify-center gap-2 cursor-pointer"
             >
               <CheckCircle2 size={18} />
               <span>Nộp Bài Đọc Hiểu</span>

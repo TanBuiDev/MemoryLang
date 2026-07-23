@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getArticleDetail: vi.fn(),
   getArticleTerms: vi.fn(),
   startAttempt: vi.fn(),
+  submitQuiz: vi.fn(),
 }))
 
 vi.mock('react-router-dom', () => ({
@@ -30,6 +31,7 @@ vi.mock('@/services/supabase/reading.service', () => ({
     getArticleDetail: mocks.getArticleDetail,
     getArticleTerms: mocks.getArticleTerms,
     startAttempt: mocks.startAttempt,
+    submitQuiz: mocks.submitQuiz,
   },
 }))
 
@@ -95,5 +97,90 @@ describe('ReadingDetailPage audio', () => {
       })
     })
     expect(mocks.generateAudio).not.toHaveBeenCalled()
+  })
+
+  it('warns when the reader has not answered every question', async () => {
+    mocks.getArticleDetail.mockResolvedValue({
+      ...(await mocks.getArticleDetail()),
+      content_html: '<p>Choose (1) ______ and (2) ______.</p>',
+      questions: [
+        {
+          id: 'q1',
+          article_id: 'article-1',
+          question_text: 'Blank 1',
+          question_type: 'multiple_choice',
+          options: [{ text: 'one', is_correct: true }],
+          order_index: 1,
+          points: 1,
+        },
+        {
+          id: 'q2',
+          article_id: 'article-1',
+          question_text: 'Blank 2',
+          question_type: 'multiple_choice',
+          options: [{ text: 'two', is_correct: true }],
+          order_index: 2,
+          points: 1,
+        },
+      ],
+    })
+
+    render(<ReadingDetailPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Nộp Bài Đọc Hiểu' }))
+
+    expect(mocks.showToast).toHaveBeenCalledWith({
+      type: 'warning',
+      title: 'Bạn chưa chọn hết đáp án',
+      message: 'Vui lòng trả lời đầy đủ 2 câu hỏi trước khi nộp bài.',
+    })
+    expect(mocks.submitQuiz).not.toHaveBeenCalled()
+  })
+
+  it('labels choices A-D and fills correct answers into the article after submission', async () => {
+    mocks.getArticleDetail.mockResolvedValue({
+      ...(await mocks.getArticleDetail()),
+      content_html: '<p>Choose (1) ______ and (2) ______.</p>',
+      questions: [
+        {
+          id: 'q1',
+          article_id: 'article-1',
+          question_text: 'Blank 1',
+          question_type: 'multiple_choice',
+          options: [
+            { text: 'one', is_correct: true },
+            { text: 'wrong', is_correct: false },
+          ],
+          order_index: 1,
+          points: 1,
+        },
+        {
+          id: 'q2',
+          article_id: 'article-1',
+          question_text: 'Blank 2',
+          question_type: 'multiple_choice',
+          options: [
+            { text: 'bad', is_correct: false },
+            { text: 'a very long correct answer', is_correct: true },
+          ],
+          order_index: 2,
+          points: 1,
+        },
+      ],
+    })
+    mocks.submitQuiz.mockResolvedValue({ score: 2, total: 2, percentage: 100 })
+
+    render(<ReadingDetailPage />)
+    const firstAnswer = (await screen.findByText('one')).closest('button')
+    const secondAnswer = screen.getByText('a very long correct answer').closest('button')
+    expect(firstAnswer).toHaveTextContent('A.')
+    expect(secondAnswer).toHaveTextContent('B.')
+    fireEvent.click(firstAnswer!)
+    fireEvent.click(secondAnswer!)
+    fireEvent.click(screen.getByRole('button', { name: 'Nộp Bài Đọc Hiểu' }))
+
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-reading-quiz-answer]')).toHaveLength(2)
+    })
+    expect(document.body).toHaveTextContent('Choose (1) one and (2) a very long correct answer.')
   })
 })
