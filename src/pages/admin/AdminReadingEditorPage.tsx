@@ -27,6 +27,8 @@ import {
 } from '@/utils/adminReadingPreview'
 import { readingService } from '@/services/supabase/reading.service'
 import { ReadingVocabularyPopover } from '@/components/reading/ReadingVocabularyPopover'
+import { ReadingAudioPreview } from '@/components/reading/ReadingAudioPreview'
+import { getReadingVocabularyMatchMessage } from '@/utils/readingAdminUi'
 import type {
   AccessTier,
   CEFRLevel,
@@ -253,7 +255,7 @@ export default function AdminReadingEditorPage() {
       showToast({
         type: 'success',
         title: 'Đã quét từ vựng',
-        message: `Tìm thấy ${count} từ có sẵn trong kho global_terms.`,
+        message: getReadingVocabularyMatchMessage(count),
       })
     } catch (scanError) {
       console.error(scanError)
@@ -560,11 +562,11 @@ export default function AdminReadingEditorPage() {
 
         <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1 text-xs font-bold text-slate-500">
-            <p>{audioUrl ? '✓ Đã có tệp Audio TTS' : 'Chưa có tệp Audio TTS'}</p>
+            <p>{audioUrl ? 'Audio đã sẵn sàng.' : 'Bài đọc chưa có audio.'}</p>
             <p>
               {matchedTermCount === null
-                ? 'Lưu bài rồi quét để đánh dấu từ có trong kho.'
-                : `Đã khớp ${matchedTermCount} từ trong global_terms.`}
+                ? 'Lưu bài rồi quét để đánh dấu các từ vựng có sẵn.'
+                : getReadingVocabularyMatchMessage(matchedTermCount)}
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -588,6 +590,7 @@ export default function AdminReadingEditorPage() {
               <ScanSearch size={15} className={scanningTerms ? 'animate-pulse' : ''} />
               <span>{scanningTerms ? 'Đang quét...' : 'Quét từ vựng'}</span>
             </Button>
+            {audioUrl && <ReadingAudioPreview audioUrl={audioUrl} />}
             <Button
               type="button"
               onClick={handleGenerateTts}
@@ -595,7 +598,7 @@ export default function AdminReadingEditorPage() {
               className="neo-button px-4 py-2 h-9 bg-purple-200 text-purple-950 font-black text-xs border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               <Volume2 size={15} className={generatingTts ? 'animate-pulse' : ''} />
-              <span>{generatingTts ? 'Đang tạo Audio...' : '🎧 Tạo Audio TTS'}</span>
+              <span>{generatingTts ? 'Đang tạo audio...' : 'Tạo Audio TTS'}</span>
             </Button>
           </div>
         </div>
