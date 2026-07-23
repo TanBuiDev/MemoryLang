@@ -19,7 +19,10 @@ import {
   Hash,
   AlertTriangle,
   Crown,
+  Play,
+  Sparkles,
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Select } from '@/components/ui/select'
 import { cn } from '@/utils/cn'
@@ -214,7 +217,7 @@ export default function GameHubPage() {
       id: 'matching',
       name: 'NỐI TỪ',
       icon: Rocket,
-      desc: 'Ghép từ tiếng Anh với nghĩa tiếng Việt đúng',
+      desc: 'Ghép từ tiếng Anh với nghĩa tiếng Việt tương ứng thật chính xác',
       duration: '5-10 phút',
       xp: '+50 XP',
       isAvailable: true,
@@ -224,7 +227,7 @@ export default function GameHubPage() {
       id: 'speed',
       name: 'TỐC ĐỘ',
       icon: Zap,
-      desc: 'Chọn đáp án nhanh trong 10s',
+      desc: 'Chọn đáp án đúng cực nhanh trong 10 giây phản xạ',
       duration: '3-5 phút',
       xp: '+80 XP',
       isAvailable: false,
@@ -234,25 +237,25 @@ export default function GameHubPage() {
       id: 'puzzle',
       name: 'PUZZLE',
       icon: Puzzle,
-      desc: 'Xếp hình từ vựng hoàn chỉnh',
+      desc: 'Xếp hình các mảnh từ vựng để tạo câu hoàn chỉnh',
       duration: '5-10 phút',
       xp: '+60 XP',
       isAvailable: false,
-      color: 'bg-blue-400',
+      color: 'bg-sky-400',
     },
     {
       id: 'listening',
-      name: 'NGHE',
+      name: 'NGHE LỰA CHỌN',
       icon: Headphones,
-      desc: 'Nghe phát âm và chọn nghĩa đúng',
+      desc: 'Nghe phát âm chuẩn và chọn nghĩa tiếng Việt chính xác',
       duration: '5 phút',
       xp: '+50 XP',
       isAvailable: false,
-      color: 'bg-green-400',
+      color: 'bg-emerald-400',
     },
   ]
 
-  // Filter allowed decks and sort them by path to avoid naming ambiguity for identical names (like Test 1, 2, 3...)
+  // Filter allowed decks and sort them by path
   const allowedDecksToShow = decks
     .filter((deck) => {
       const deckConf = getDeckConfig(deck.id)
@@ -308,24 +311,27 @@ export default function GameHubPage() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="neo-card p-6 md:p-8 bg-[#432dd7] text-white border-4 border-[#1c293c] shadow-[6px_6px_0px_0px_#1c293c] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-14 h-14 bg-yellow-400 rounded-full border-4 border-[#1c293c] flex items-center justify-center text-navy shrink-0 shadow-[2px_2px_0px_0px_#1c293c]">
-            <Gamepad2 className="w-8 h-8 text-[#1c293c]" />
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6 sm:space-y-8">
+      {/* Header Banner Neobrutalism */}
+      <div className="neo-card p-6 sm:p-8 bg-[#432dd7] text-white border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative overflow-hidden">
+        <div className="flex items-center gap-4 z-10">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 bg-[#fdc800] rounded-2xl border-3 border-slate-900 flex items-center justify-center text-slate-900 shrink-0 shadow-[3px_3px_0px_0px_#000]">
+            <Gamepad2 className="w-8 h-8 sm:w-9 sm:h-9 text-slate-900" />
           </div>
-          <div>
-            <h1 className="text-3xl font-black">TRÒ CHƠI</h1>
-            <p className="text-sm font-semibold text-[#e0e7ff] mt-0.5">
-              Chọn game và bắt đầu thử thách củng cố phản xạ từ vựng!
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 bg-yellow-300 border-2 border-slate-900 shadow-[1.5px_1.5px_0px_0px_#000] rounded-full text-slate-900 font-black text-xs uppercase">
+              <Sparkles className="w-3.5 h-3.5" /> Thử Thách Phản Xạ
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">TRÒ CHƠI & PHẢN XẠ</h1>
+            <p className="text-xs sm:text-sm font-bold text-indigo-100 max-w-xl leading-relaxed">
+              Luyện nhớ từ vựng qua các trò chơi tương tác thú vị, giúp khắc sâu ghi nhớ và tăng phản xạ ngôn ngữ nhanh chóng!
             </p>
           </div>
         </div>
       </div>
 
       {/* Grid of Games */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {games.map((game) => {
           const Icon = game.icon
           const gameConf = hubConfig.games[game.id as keyof typeof hubConfig.games] || { accessTier: 'free' }
@@ -335,48 +341,49 @@ export default function GameHubPage() {
           return (
             <div
               key={game.id}
-              className="neo-card bg-background p-6 border-4 border-[#1c293c] shadow-[6px_6px_0px_0px_#1c293c] hover:translate-y-[-4px] hover:shadow-[8px_8px_0px_0px_#1c293c] transition-all relative flex flex-col justify-between min-h-[320px]"
+              className="neo-card bg-white p-6 border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] hover:translate-y-[-4px] hover:shadow-[8px_8px_0px_0px_#000] transition-all relative flex flex-col justify-between min-h-[340px] rounded-2xl"
             >
               <div>
-                {/* Icon Game - Large */}
+                {/* Game Icon */}
                 <div
                   className={cn(
-                    'w-16 h-16 mx-auto mb-4 rounded-full border-4 border-[#1c293c] flex items-center justify-center shadow-[4px_4px_0px_0px_#1c293c]',
+                    'w-16 h-16 mx-auto mb-4 rounded-2xl border-3 border-slate-900 flex items-center justify-center shadow-[3px_3px_0px_0px_#000]',
                     game.color
                   )}
                 >
-                  <Icon className="w-8 h-8 text-[#1c293c]" />
+                  <Icon className="w-8 h-8 text-slate-900" />
                 </div>
 
-                {/* Title */}
-                <h3 className="text-xl font-black text-center mb-2 flex items-center justify-center gap-1">
-                  {game.name}
+                {/* Game Title */}
+                <h3 className="text-xl font-black text-center text-slate-900 mb-2 flex items-center justify-center gap-1.5">
+                  <span>{game.name}</span>
                   {isGameProGated && (
-                    <Crown size={16} className="text-amber-500 shrink-0" />
+                    <Crown size={18} className="text-amber-500 shrink-0" />
                   )}
                 </h3>
 
                 {/* Description */}
-                <p className="text-xs text-muted-foreground font-semibold text-center mb-4 leading-relaxed">
+                <p className="text-xs text-slate-600 font-bold text-center mb-5 leading-relaxed">
                   {game.desc}
                 </p>
 
-                {/* Stats */}
-                <div className="flex justify-center gap-4 mb-4 text-xs font-bold text-navy">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" />
+                {/* Duration & XP Badges */}
+                <div className="flex items-center justify-center gap-3 mb-5 text-xs font-black">
+                  <span className="neo-card px-2.5 py-1 bg-slate-100 border-2 border-slate-900 rounded-lg flex items-center gap-1 text-slate-700">
+                    <Clock className="w-3.5 h-3.5 text-slate-500" />
                     {game.duration}
                   </span>
-                  <span className="flex items-center gap-1 text-emerald-600">
-                    <Trophy className="w-3.5 h-3.5" />
+                  <span className="neo-card px-2.5 py-1 bg-emerald-100 border-2 border-slate-900 rounded-lg flex items-center gap-1 text-emerald-800">
+                    <Trophy className="w-3.5 h-3.5 text-amber-500" />
                     {game.xp}
                   </span>
                 </div>
               </div>
 
-              {/* Button */}
+              {/* Start Button */}
               {game.isAvailable ? (
-                <button
+                <Button
+                  type="button"
                   onClick={(e) => {
                     handleProOptionClick(
                       e,
@@ -388,26 +395,28 @@ export default function GameHubPage() {
                       'để chơi trò chơi này'
                     )
                   }}
-                  className="neo-button w-full bg-yellow-400 hover:bg-yellow-300 py-3 font-black text-navy border-2 border-border"
+                  className="neo-button w-full py-3 bg-[#fdc800] hover:bg-amber-300 text-slate-900 font-black text-sm border-2 border-slate-900 shadow-[3px_3px_0px_0px_#000] rounded-xl flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  Chơi ngay
-                </button>
+                  <Play className="w-4 h-4 fill-slate-900" />
+                  <span>Chơi ngay</span>
+                </Button>
               ) : (
-                <button
+                <Button
                   disabled
-                  className="neo-button w-full bg-muted text-muted-foreground py-3 font-bold border-2 border-border cursor-not-allowed opacity-60"
+                  variant="ghost"
+                  className="w-full py-3 bg-slate-100 text-slate-400 font-bold text-sm border-2 border-slate-300 rounded-xl cursor-not-allowed"
                 >
                   Sắp ra mắt
-                </button>
+                </Button>
               )}
 
-              {/* Pro / Coming Soon badge */}
+              {/* Pro / Coming Soon Badge */}
               {!game.isAvailable ? (
-                <div className="absolute -top-2 -right-2 bg-purple-600 text-white px-2 py-0.5 text-[9px] font-black rotate-12 border-2 border-[#1c293c] shadow-[2px_2px_0px_0px_#1c293c] uppercase">
+                <div className="absolute -top-2.5 -right-2.5 bg-purple-600 text-white px-2.5 py-0.5 text-[10px] font-black rotate-6 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-md uppercase">
                   Sớm ra mắt
                 </div>
               ) : isGameProGated ? (
-                <div className="absolute -top-2 -right-2 bg-amber-500 text-white px-2 py-0.5 text-[9px] font-black rotate-12 border-2 border-[#1c293c] shadow-[2px_2px_0px_0px_#1c293c] uppercase flex items-center gap-0.5">
+                <div className="absolute -top-2.5 -right-2.5 bg-amber-500 text-slate-900 px-2 py-0.5 text-[10px] font-black rotate-6 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-md uppercase flex items-center gap-1">
                   <Crown size={10} /> Pro
                 </div>
               ) : null}
@@ -418,40 +427,45 @@ export default function GameHubPage() {
 
       {/* Configuration Modal */}
       {isConfigOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="neo-card bg-background max-w-2xl w-full border-4 border-[#1c293c] shadow-[8px_8px_0px_0px_#1c293c] flex flex-col max-h-[90vh]">
-            {/* Header */}
-            <div className="p-4 border-b-4 border-[#1c293c] bg-primary text-primary-foreground flex justify-between items-center shrink-0">
-              <h2 className="text-xl font-black flex items-center gap-2">
-                <Rocket className="w-6 h-6" />
-                CẤU HÌNH TRÒ CHƠI NỐI TỪ
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 animate-in fade-in duration-200"
+        >
+          <div className="neo-card bg-white max-w-2xl w-full border-4 border-slate-900 shadow-[8px_8px_0px_0px_#000] rounded-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b-4 border-slate-900 bg-[#432dd7] text-white flex justify-between items-center shrink-0">
+              <h2 className="text-lg sm:text-xl font-black flex items-center gap-2">
+                <Rocket className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-300" />
+                <span>CẤU HÌNH TRÒ CHƠI NỐI TỪ</span>
               </h2>
               <button
+                type="button"
                 onClick={() => setIsConfigOpen(false)}
-                className="p-1 rounded-md hover:bg-white/20 transition-colors border border-transparent hover:border-white"
+                className="neo-button p-1.5 rounded-xl border-2 border-slate-900 bg-white/10 hover:bg-white/20 text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Scrollable Content */}
-            <div className="overflow-y-auto p-6 space-y-6">
-              {/* Validation Error Banner */}
+            {/* Scrollable Modal Body */}
+            <div className="overflow-y-auto p-4 sm:p-6 space-y-6">
+              {/* Validation Error Alert */}
               {validationError && (
-                <div className="p-4 border-4 border-rose-500 bg-rose-50 text-rose-900 rounded-md flex items-start gap-2.5 font-bold text-xs shadow-[3px_3px_0px_0px_#f43f5e]">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                <div className="p-4 border-3 border-rose-600 bg-rose-50 text-rose-900 rounded-xl flex items-start gap-3 font-bold text-xs shadow-[3px_3px_0px_0px_#000]">
+                  <AlertTriangle className="w-5 h-5 shrink-0 text-rose-600 mt-0.5" />
                   <span className="leading-relaxed">{validationError}</span>
                 </div>
               )}
 
               {/* Section 1: Vocabulary Source */}
               <section className="space-y-3">
-                <h3 className="text-sm font-black uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
-                  <BookOpen className="w-4 h-4" />
-                  📚 Chọn bộ từ vựng
+                <h3 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-purple-700" />
+                  <span>Chọn Bộ Từ Vựng</span>
                 </h3>
                 {allowedDecksToShow.length === 0 && !isAllVocabularyAllowed ? (
-                  <div className="p-4 border-2 border-dashed border-[#1c293c]/20 text-center text-xs text-muted-foreground font-bold rounded-md">
+                  <div className="p-4 border-2 border-dashed border-slate-400 text-center text-xs text-slate-500 font-bold rounded-xl bg-slate-50">
                     Không có bộ thẻ nào được phép chơi. Vui lòng liên hệ Admin cấu hình.
                   </div>
                 ) : (
@@ -469,11 +483,11 @@ export default function GameHubPage() {
 
               {/* Section 2: Question Count */}
               <section className="space-y-3">
-                <h3 className="text-sm font-black uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
-                  <Hash className="w-4 h-4" />
-                  📊 Số lượng câu hỏi
+                <h3 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-2">
+                  <Hash className="w-4 h-4 text-amber-600" />
+                  <span>Số Lượng Câu Hỏi</span>
                 </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 sm:gap-3">
                   {(() => {
                     const getCount = () => {
                       if (selectedSource === 'all') return allTermsCount
@@ -505,11 +519,11 @@ export default function GameHubPage() {
                             }
                           }}
                           className={cn(
-                            'p-3 border-2 border-[#1c293c] rounded-md text-center cursor-pointer transition-all hover:translate-y-[-2px] block relative',
+                            'p-3 border-2 border-slate-900 rounded-xl text-center cursor-pointer transition-all block relative select-none shadow-[2px_2px_0px_0px_#000]',
                             questionCountType === opt.value
-                              ? 'bg-yellow-100 border-yellow-500 shadow-[3px_3px_0px_0px_#eab308]'
-                              : 'bg-background',
-                            !hasAccess && 'opacity-85'
+                              ? 'bg-[#fdc800] text-slate-900 font-black shadow-[3px_3px_0px_0px_#000]'
+                              : 'bg-white text-slate-900 hover:bg-slate-50',
+                            !hasAccess && 'opacity-80'
                           )}
                         >
                           <input
@@ -522,15 +536,15 @@ export default function GameHubPage() {
                             className="sr-only"
                           />
                           <div className="font-black text-sm flex items-center justify-center gap-1">
-                            {opt.label}
+                            <span>{opt.label}</span>
                             {allRequiresPro && (
-                              <Crown size={12} className="text-amber-500 shrink-0" />
+                              <Crown size={14} className="text-amber-600 shrink-0" />
                             )}
                           </div>
-                          <div className="text-[10px] text-muted-foreground font-bold">{opt.time}</div>
+                          <div className="text-[10px] text-slate-600 font-bold mt-0.5">{opt.time}</div>
 
                           {allRequiresPro && !isPro && (
-                            <span className="absolute top-1 right-1 text-amber-600 bg-amber-50 px-1 border border-amber-300 rounded flex items-center gap-0.5 text-[8px] font-black uppercase">
+                            <span className="absolute top-1 right-1 text-amber-900 bg-amber-200 px-1 border border-slate-900 rounded flex items-center gap-0.5 text-[8px] font-black uppercase">
                               Pro
                             </span>
                           )}
@@ -540,18 +554,19 @@ export default function GameHubPage() {
                   })()}
                 </div>
 
-                {/* Custom questions input (Pro Gated) */}
+                {/* Custom questions input */}
                 {questionCountType === 'custom' && (
-                  <div className="mt-3 p-3 bg-muted/40 border-2 border-dashed border-[#1c293c] rounded-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="mt-3 p-4 bg-slate-50 border-2 border-slate-900 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[2px_2px_0px_0px_#000]">
                     <div className="space-y-0.5">
-                      <label className="text-xs font-black block">Nhập số câu hỏi:</label>
-                      <span className="text-[10px] text-muted-foreground font-bold block">
+                      <label htmlFor="custom-count-input" className="text-xs font-black block text-slate-900">Nhập số câu hỏi:</label>
+                      <span className="text-[10px] text-slate-600 font-bold block">
                         (Từ 5 đến 50 câu. Số lượng &gt; 20 yêu cầu PRO)
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <input
+                        id="custom-count-input"
                         type="number"
                         min="5"
                         max="50"
@@ -569,11 +584,11 @@ export default function GameHubPage() {
                             setCustomQuestionCount(val)
                           }
                         }}
-                        className="neo-input w-28 bg-background border-2 border-border font-bold text-center text-sm py-1"
+                        className="neo-input w-28 bg-white border-2 border-slate-900 font-black text-center text-sm py-1.5 rounded-xl shadow-[2px_2px_0px_0px_#000]"
                       />
                       {!isPro && (
-                        <span className="text-amber-600 bg-amber-50 px-1.5 py-1 border border-amber-300 rounded flex items-center gap-0.5 text-[10px] font-black uppercase">
-                          <Crown size={10} /> Pro
+                        <span className="text-amber-900 bg-amber-200 px-2 py-1 border border-slate-900 rounded-lg flex items-center gap-1 text-[10px] font-black uppercase">
+                          <Crown size={12} /> Pro
                         </span>
                       )}
                     </div>
@@ -583,28 +598,28 @@ export default function GameHubPage() {
 
               {/* Section 3: Review Settings */}
               <section className="space-y-3">
-                <h3 className="text-sm font-black uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
-                  <Gamepad2 className="w-4 h-4" />
-                  🔁 Chế độ ôn tập
+                <h3 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-2">
+                  <Gamepad2 className="w-4 h-4 text-emerald-700" />
+                  <span>Chế Độ Ôn Tập</span>
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {/* Option: Repeat wrong terms */}
-                  <label className="flex items-start gap-3 p-3 border-2 border-[#1c293c] rounded-md cursor-pointer hover:bg-muted/30 transition-colors">
+                  <label className="flex items-start gap-3 p-3.5 border-2 border-slate-900 rounded-xl cursor-pointer bg-white hover:bg-slate-50 transition-colors shadow-[2px_2px_0px_0px_#000] select-none">
                     <input
                       type="checkbox"
                       checked={repeatWrong}
                       onChange={(e) => setRepeatWrong(e.target.checked)}
-                      className="w-5 h-5 accent-emerald-500 rounded mt-0.5"
+                      className="w-5 h-5 accent-emerald-600 rounded border-2 border-slate-900 mt-0.5 cursor-pointer"
                     />
                     <div className="leading-tight">
-                      <div className="font-black text-sm">Lặp lại từ sai (Recommended)</div>
-                      <div className="text-[11px] text-muted-foreground font-bold mt-0.5">
+                      <div className="font-black text-sm text-slate-900">Lặp lại từ sai (Recommended)</div>
+                      <div className="text-[11px] text-slate-600 font-bold mt-0.5">
                         Từ bị nối sai sẽ tự động xuất hiện lại ở các vòng chơi sau cho tới khi bạn nối đúng.
                       </div>
                     </div>
                   </label>
 
-                  {/* Option: Complete Shuffle (Pro Gated) */}
+                  {/* Option: Complete Shuffle */}
                   <label
                     onClick={(e) =>
                       handleProOptionClick(
@@ -614,25 +629,25 @@ export default function GameHubPage() {
                         'để mở khóa tùy chọn Trộn ngẫu nhiên hoàn toàn'
                       )
                     }
-                    className="flex items-start gap-3 p-3 border-2 border-[#1c293c] rounded-md cursor-pointer hover:bg-muted/30 transition-colors relative"
+                    className="flex items-start gap-3 p-3.5 border-2 border-slate-900 rounded-xl cursor-pointer bg-white hover:bg-slate-50 transition-colors shadow-[2px_2px_0px_0px_#000] relative select-none"
                   >
                     <input
                       type="checkbox"
                       checked={shuffleCompletely}
                       disabled={!isPro}
                       onChange={(e) => setShuffleCompletely(e.target.checked)}
-                      className="w-5 h-5 accent-primary rounded mt-0.5 cursor-pointer disabled:opacity-50"
+                      className="w-5 h-5 accent-purple-600 rounded border-2 border-slate-900 mt-0.5 cursor-pointer disabled:opacity-50"
                     />
                     <div className="leading-tight">
-                      <div className="font-black text-sm flex items-center gap-1">
-                        Trộn ngẫu nhiên hoàn toàn
+                      <div className="font-black text-sm text-slate-900 flex items-center gap-1.5">
+                        <span>Trộn ngẫu nhiên hoàn toàn</span>
                         {!isPro && (
-                          <span className="text-amber-600 bg-amber-50 px-1 border border-amber-300 rounded flex items-center gap-0.5 text-[9px] font-black uppercase">
-                            <Crown size={8} /> Pro
+                          <span className="text-amber-900 bg-amber-200 px-1.5 py-0.5 border border-slate-900 rounded flex items-center gap-0.5 text-[9px] font-black uppercase">
+                            <Crown size={10} /> Pro
                           </span>
                         )}
                       </div>
-                      <div className="text-[11px] text-muted-foreground font-bold mt-0.5">
+                      <div className="text-[11px] text-slate-600 font-bold mt-0.5">
                         Trộn ngẫu nhiên hoàn toàn các câu hỏi mà không ưu tiên lặp lại các từ sai.
                       </div>
                     </div>
@@ -641,20 +656,24 @@ export default function GameHubPage() {
               </section>
             </div>
 
-            {/* Footer */}
-            <div className="p-4 border-t-4 border-[#1c293c] bg-muted/40 flex flex-col sm:flex-row gap-3 shrink-0">
-              <button
+            {/* Modal Footer */}
+            <div className="p-4 border-t-4 border-slate-900 bg-slate-50 flex flex-col sm:flex-row gap-3 shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
                 onClick={() => setIsConfigOpen(false)}
-                className="neo-button flex-1 py-3 font-black text-sm border-2 border-border text-center"
+                className="flex-1 py-3 font-black text-sm text-slate-700"
               >
                 Hủy
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
                 onClick={handleStartGame}
-                className="neo-button flex-[2] bg-yellow-400 hover:bg-yellow-300 py-3 font-black text-navy border-2 border-border shadow-[4px_4px_0px_0px_#1c293c] hover:shadow-[2px_2px_0px_0px_#1c293c] hover:translate-y-[2px] transition-all text-center"
+                className="neo-button flex-[2] bg-[#fdc800] hover:bg-amber-300 py-3.5 font-black text-slate-900 text-sm border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] rounded-xl flex items-center justify-center gap-2 cursor-pointer"
               >
-                🎮 BẮT ĐẦU CHƠI
-              </button>
+                <Play className="w-5 h-5 fill-slate-900" />
+                <span>BẮT ĐẦU CHƠI</span>
+              </Button>
             </div>
           </div>
         </div>

@@ -1,8 +1,9 @@
 import React from 'react'
-import { Navigate, createBrowserRouter } from 'react-router-dom'
+import { Navigate, Outlet, createBrowserRouter } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ProtectedRoute } from '@/app/ProtectedRoute'
 import { AdminRoute } from '@/app/AdminRoute'
+import { GlobalAiTutorModal } from '@/components/chat/GlobalAiTutorModal'
 import { AppLoading } from '@/components/common/AppLoading'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { DeckDetailPage } from '@/pages/decks/DeckDetailPage'
@@ -62,9 +63,19 @@ const MatchingGamePage = lazyWithChunkRecovery(() => import('@/pages/games/Match
 const AdminGamesPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminGamesPage'))
 const AdminSoundsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminSoundsPage'))
 
+function RootLayout() {
+  return (
+    <>
+      <Outlet />
+      <GlobalAiTutorModal />
+    </>
+  )
+}
+
 export const router = createBrowserRouter([
   {
     path: '/',
+    element: <RootLayout />,
     errorElement: <ErrorPage />,
     children: [
       { path: '/', element: <LandingPage /> },

@@ -1,5 +1,38 @@
 import type { TeaserConfig } from '@/types/subscription.types'
 
+export interface TranscriptSegment {
+  id: string
+  start: number
+  end: number
+  speaker?: string
+  textEn: string
+  textVi?: string
+}
+
+export interface ListeningQuestion {
+  id: string
+  partId: string
+  groupId?: string
+  order: number
+  questionText: string
+  options: string[]
+  correctIndex: number
+  explanation?: string
+  explanationVi?: string
+  vocabularyList?: { word: string; ipa?: string; meaning: string }[]
+}
+
+export interface ListeningGroup {
+  id: string
+  partId: string
+  order: number
+  audioSrc?: string
+  imageUrl?: string
+  graphicUrl?: string
+  transcriptSegments?: TranscriptSegment[]
+  questions: ListeningQuestion[]
+}
+
 export interface ListeningTopic {
   id: string
   title: string
@@ -23,17 +56,10 @@ export interface ListeningPart {
   directions: string
   audioSrc: string
   imageUrl?: string
+  graphicUrl?: string
   transcript?: string
-}
-
-export interface ListeningQuestion {
-  id: string
-  partId: string
-  order: number
-  questionText: string
-  options: string[]
-  correctIndex: number
-  explanation?: string
+  transcriptSegments?: TranscriptSegment[]
+  groups?: ListeningGroup[]
 }
 
 export interface DictationBlank {
@@ -42,7 +68,7 @@ export interface DictationBlank {
   answer: string
 }
 
-export type ListeningMode = 'test' | 'dictation'
+export type ListeningMode = 'test' | 'practice' | 'dictation'
 
 export interface ListeningSession {
   partId: string

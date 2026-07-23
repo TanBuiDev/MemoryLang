@@ -11,10 +11,10 @@ interface TestModeRendererProps {
   answers: Record<number, number>
   showResult?: boolean
   onAnswer: (questionOrder: number, answerIndex: number) => void
-  onNavigate: (index: number) => void
+  onNavigate?: (index: number) => void
 }
 
-export function TestModeRenderer({ part, questions, currentIndex, answers, showResult, onAnswer, onNavigate }: TestModeRendererProps) {
+export function TestModeRenderer({ part, questions, currentIndex, answers, showResult, onAnswer }: TestModeRendererProps) {
   if (questions.length === 0) {
     return <p className="text-sm text-muted-foreground">No questions available.</p>
   }
@@ -45,24 +45,20 @@ export function TestModeRenderer({ part, questions, currentIndex, answers, showR
   if (part.partNumber === 3) {
     return (
       <Part3Renderer
-        questions={questions}
-        currentIndex={currentIndex}
-        answers={answers}
+        question={questions[currentIndex]}
+        selectedAnswer={answers[questions[currentIndex]?.order]}
         showResult={showResult}
         onAnswer={onAnswer}
-        onNavigate={onNavigate}
       />
     )
   }
 
   return (
     <Part4Renderer
-      questions={questions}
-      currentIndex={currentIndex}
-      answers={answers}
+      question={questions[currentIndex]}
+      selectedAnswer={answers[questions[currentIndex]?.order]}
       showResult={showResult}
       onAnswer={onAnswer}
-      onNavigate={onNavigate}
     />
   )
 }
