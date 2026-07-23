@@ -25,7 +25,6 @@ import type {
 import { ReadingVocabularyPopover } from '@/components/reading/ReadingVocabularyPopover'
 import { ReadingProModal } from '@/components/reading/ReadingProModal'
 import { showToast } from '@/components/ui/toast'
-import { generateAudio } from '@/services/api/generateAudio.api'
 import { isRestrictedReadingTier } from '@/utils/readingContent'
 import { annotateReadingHtml } from '@/utils/readingVocabulary'
 
@@ -108,20 +107,12 @@ export function ReadingDetailPage() {
       return
     }
 
-    if (!audioUrl && article?.plain_text) {
-      try {
-        showToast({ type: 'info', title: 'Đang tạo âm thanh TTS...' })
-        const res = await generateAudio(article.plain_text.slice(0, 300), 'en-US')
-        if (res.audioUrl) {
-          setAudioUrl(res.audioUrl)
-          const newAudio = new Audio(res.audioUrl)
-          audioRef.current = newAudio
-          newAudio.play()
-          setIsPlayingAudio(true)
-        }
-      } catch (err) {
-        console.error(err)
-      }
+    if (!audioUrl) {
+      showToast({
+        type: 'warning',
+        title: 'Bài đọc chưa có audio',
+        message: 'Vui lòng quay lại sau khi quản trị viên tạo audio cho bài đọc này.',
+      })
       return
     }
 
