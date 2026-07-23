@@ -215,10 +215,11 @@ export function DashboardPage() {
         </div>
       ) : null}
 
-      {shouldUseRemoteData && isStatsApiConfigured ? (
+      {shouldUseRemoteData ? (
         <StatsInsightsWidget
           data={statsApiQuery.data}
           error={statsApiQuery.error}
+          isConfigured={isStatsApiConfigured}
           isLoading={statsApiQuery.isLoading}
         />
       ) : null}

@@ -588,7 +588,7 @@ Bằng chứng tự động Phase 8 dùng 10 test PostgreSQL 17 Testcontainers q
 ### Checklist Phase 13
 
 - [x] Thực hiện GitNexus impact trước khi sửa service/dashboard symbols; index không nhận diện `DashboardPage` nên kết quả là `UNKNOWN`, phạm vi sửa được giới hạn ở một query/widget độc lập.
-- [x] Thêm `VITE_STATS_API_URL` và không hardcode production URL; bỏ trống env sẽ giữ nguyên dashboard Supabase-only.
+- [x] Thêm `VITE_STATS_API_URL` và không hardcode production URL; bỏ trống env không gọi Java API nhưng vẫn hiển thị khối phân tích phiên học với trạng thái chờ kết nối và placeholder an toàn.
 - [x] HTTP client lấy access token hiện tại từ Supabase session, gửi Bearer token và không log/đưa token vào URL.
 - [x] Xử lý 401 bằng `supabase.auth.refreshSession()` đúng một lần; không tự lưu JWT bản sao.
 - [x] Thêm React Query key `['stats-api', 'dashboard-insights', userId]` theo convention dự án.
@@ -600,7 +600,7 @@ Bằng chứng tự động Phase 8 dùng 10 test PostgreSQL 17 Testcontainers q
 - [x] Chạy GitNexus detect changes trước commit; MCP không ánh xạ diff trong worktree và trả `No changes detected`, nên đã đối chiếu thêm bằng `git diff --check` và staged diff.
 - [x] Commit integration unit Phase 13: `455e6e5 feat: integrate Java statistics dashboard insights`.
 
-**Phạm vi đã chọn:** widget “Phân tích học tập” dùng `GET /api/v1/streaks/current` và `GET /api/v1/activity/summary?days=30` để hiển thị chuỗi hiện tại, chuỗi dài nhất, số phiên học và tỷ lệ ghi nhớ trong 30 ngày. Widget chỉ enable cho user Supabase đã đăng nhập và khi `VITE_STATS_API_URL` tồn tại.
+**Phạm vi đã chọn:** widget “Phân tích học tập” dùng `GET /api/v1/streaks/current` và `GET /api/v1/activity/summary?days=30` để hiển thị chuỗi hiện tại, chuỗi dài nhất, số phiên học, số thẻ đã học, lượt ghi nhớ, tỷ lệ ghi nhớ và ngày học gần nhất trong 30 ngày. Widget hiển thị cho user Supabase đã đăng nhập; query chỉ enable khi `VITE_STATS_API_URL` tồn tại. Nếu production chưa cấu hình URL, widget vẫn hiện trạng thái chờ kết nối và không hiển thị dữ liệu giả.
 
 **Trạng thái:** Phần triển khai Phase 13 đã hoàn thành và hoạt động ở mức build/test local. Checklist `pnpm lint` toàn repository còn mở vì lỗi baseline ngoài phạm vi; các file Phase 13 đã lint thành công.
 
