@@ -329,7 +329,7 @@ Bearer JWT
 - [x] Không dùng `user_metadata` cho authorization.
 - [x] Không ghi JWT hoặc claims nhạy cảm vào log.
 - [x] Chạy toàn bộ auth/controller tests.
-- [ ] Test thủ công một token Supabase thật mà không lưu token vào file/log.
+- [x] Test thủ công token Supabase thật từ hai browser session mà không lưu token vào file/log; protected endpoints trả 200 và unauthenticated request trả 401.
 - [x] Commit `feat: authenticate Supabase JWTs` (`abd6d51`).
 
 Bằng chứng tự động Phase 3 dùng JWKS server cục bộ và khóa EC P-256 sinh tạm thời trong bộ nhớ để chạy 13 test auth qua decoder/Nimbus/security chain thật, không gọi Supabase từ xa. Bộ test còn chứng minh RS256 bị từ chối dù public key tương ứng có trong JWKS, `user_metadata` không thể thay đổi danh tính từ `sub`, và authentication không được lưu trong HTTP session. Toàn bộ Java suite chạy 15 test thành công; executable JAR được package lại sau thay đổi.
@@ -641,11 +641,11 @@ Bằng chứng tự động Phase 8 dùng 10 test PostgreSQL 17 Testcontainers q
 
 ## 7. Definition of Done toàn dự án
 
-- [ ] Phase 0–11 hoàn thành; Phase 12–13 có thể để tùy chọn nhưng phải ghi rõ trạng thái.
+- [x] Phase 0–11 hoàn thành; Phase 12 đang hoãn có chủ đích và Phase 13 đã hoạt động local.
 - [x] 19 endpoint MVP xuất hiện trong OpenAPI và có controller tests; Phase 10–11 đã kiểm tra contract và đủ 19 protected routes.
 - [x] `./mvnw verify` exit 0; chạy mới ngày 2026-07-23 đạt 107 tests, 0 failure/error/skip.
 - [x] Docker image build và smoke test exit 0; smoke Phase 11 đã đạt, image `memorylang-stats-api:dod-local` được build lại ngày 2026-07-23 và chạy non-root `10001:10001` với healthcheck.
-- [ ] Cross-user isolation chạy trên Testcontainers và remote smoke environment.
+- [x] Cross-user isolation chạy trên Testcontainers và remote smoke environment; hai user thật nhận session totals riêng biệt 1/2 qua Java API và direct role verification khớp.
 - [x] Runtime role chỉ có quyền cần thiết, không có `BYPASSRLS`; đã xác minh trực tiếp remote catalog ngày 2026-07-23.
 - [x] Không có secret trong Git history của Java repo hoặc commit MemoryLang liên quan; Gitleaks `--all --redact` quét 18 commit Java và 595 commit MemoryLang, không phát hiện leak.
 - [x] README mô tả local run, auth, database role, Docker, troubleshooting và trạng thái Cloud Run tùy chọn đang hoãn; cập nhật bằng commit Java `94b0e21`.
