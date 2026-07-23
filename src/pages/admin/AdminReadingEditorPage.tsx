@@ -28,6 +28,7 @@ import {
 import { readingService } from '@/services/supabase/reading.service'
 import { ReadingVocabularyPopover } from '@/components/reading/ReadingVocabularyPopover'
 import { ReadingAudioPreview } from '@/components/reading/ReadingAudioPreview'
+import { ReadingRichTextEditor } from '@/components/reading/ReadingRichTextEditor'
 import { getReadingVocabularyMatchMessage } from '@/utils/readingAdminUi'
 import type {
   AccessTier,
@@ -529,18 +530,15 @@ export default function AdminReadingEditorPage() {
         {editorMode === 'edit' ? (
           <div>
             <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
-              Dán văn bản thường hoặc HTML *
+              Soạn thảo nội dung *
             </label>
-            <textarea
+            <ReadingRichTextEditor
               value={contentInput}
-              onChange={(e) => handleContentChange(e.target.value)}
-              rows={10}
-              placeholder={'Dán nguyên đoạn văn tại đây. Tách đoạn bằng một dòng trống.\n\nBạn cũng có thể dùng HTML như <p>, <h2>, <strong> nếu cần định dạng nâng cao.'}
-              className="w-full p-3 text-xs font-mono border-2 border-slate-900 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              onChange={handleContentChange}
             />
             <p className="mt-2 text-[11px] font-bold text-slate-600">
-              Văn bản thường sẽ tự chuyển thành các đoạn HTML. Plain text dùng cho TTS,
-              đếm từ và thời gian đọc được tạo tự động.
+              Dán văn bản trực tiếp rồi dùng thanh công cụ để định dạng. Chọn HTML nếu
+              cần chỉnh mã nâng cao; nội dung cho TTS và thời gian đọc được tạo tự động.
             </p>
           </div>
         ) : (
