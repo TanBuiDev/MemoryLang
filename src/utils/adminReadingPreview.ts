@@ -6,9 +6,7 @@ interface ReadingViewTarget {
 }
 
 export function getAdminReadingViewPath(article: ReadingViewTarget): string {
-  return article.is_published
-    ? `/app/reading/${article.id}`
-    : `/app/admin/reading/${article.id}/edit?preview=1`
+  return `/app/reading/${article.id}`
 }
 
 export function getInitialReadingEditorMode(search: string): ReadingEditorMode {

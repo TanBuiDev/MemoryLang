@@ -128,8 +128,10 @@ export default function AdminReadingListPage() {
             type="button"
             variant="ghost"
             onClick={() => navigate(getAdminReadingViewPath(row))}
-            className="neo-button p-1.5 h-8 w-8 min-h-0 rounded-lg border-2 border-slate-900 bg-white text-slate-900 shadow-[1.5px_1.5px_0px_0px_#000] hover:bg-slate-100 cursor-pointer"
-            title="Xem bài đọc"
+            disabled={!row.is_published}
+            className="neo-button p-1.5 h-8 w-8 min-h-0 rounded-lg border-2 border-slate-900 bg-white text-slate-900 shadow-[1.5px_1.5px_0px_0px_#000] hover:bg-slate-100 enabled:cursor-pointer"
+            title={row.is_published ? 'Xem bài đọc' : 'Xuất bản bài đọc để xem trên trang học viên'}
+            aria-label={row.is_published ? 'Xem bài đọc' : 'Bài đọc chưa xuất bản'}
           >
             <Eye size={15} />
           </Button>

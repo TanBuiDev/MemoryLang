@@ -10,9 +10,9 @@ describe('admin reading preview navigation', () => {
       .toBe('/app/reading/article-1')
   })
 
-  it('opens draft articles in the admin preview', () => {
+  it('uses the learner-facing route for every view action', () => {
     expect(getAdminReadingViewPath({ id: 'article-1', is_published: false }))
-      .toBe('/app/admin/reading/article-1/edit?preview=1')
+      .toBe('/app/reading/article-1')
   })
 
   it('starts the editor in preview mode from the preview query', () => {
