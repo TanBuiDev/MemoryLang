@@ -9,6 +9,7 @@ import {
   HelpCircle,
   ScanSearch,
   Eye,
+  ListPlus,
   Pencil,
 } from 'lucide-react'
 import {
@@ -29,6 +30,10 @@ import { readingService } from '@/services/supabase/reading.service'
 import { ReadingVocabularyPopover } from '@/components/reading/ReadingVocabularyPopover'
 import { ReadingAudioPreview } from '@/components/reading/ReadingAudioPreview'
 import { ReadingRichTextEditor } from '@/components/reading/ReadingRichTextEditor'
+import {
+  BulkQuestionImportModal,
+  type ImportedReadingQuestion,
+} from '@/components/reading/BulkQuestionImportModal'
 import { getReadingVocabularyMatchMessage } from '@/utils/readingAdminUi'
 import type {
   AccessTier,
@@ -96,6 +101,7 @@ export default function AdminReadingEditorPage() {
 
   // Questions state
   const [questions, setQuestions] = useState<LocalQuestion[]>([])
+  const [bulkImportOpen, setBulkImportOpen] = useState(false)
 
   useEffect(() => {
     void adminReadingService
@@ -193,6 +199,26 @@ export default function AdminReadingEditorPage() {
 
   const handleRemoveQuestion = (idx: number) => {
     setQuestions((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  const handleBulkQuestionImport = (importedQuestions: ImportedReadingQuestion[]) => {
+    const importedAt = Date.now()
+    setQuestions((prev) => [
+      ...prev,
+      ...importedQuestions.map((question, index) => ({
+        id: `temp-import-${importedAt}-${index}`,
+        question_text: question.questionText,
+        question_type: 'multiple_choice' as const,
+        options: question.options,
+        points: 1,
+      })),
+    ])
+    setBulkImportOpen(false)
+    showToast({
+      type: 'success',
+      title: 'Đã thêm câu hỏi',
+      message: `Đã thêm ${importedQuestions.length} câu hỏi vào bài đọc.`,
+    })
   }
 
   const handleQuestionChange = (idx: number, field: keyof LocalQuestion, val: any) => {
@@ -610,14 +636,25 @@ export default function AdminReadingEditorPage() {
             <span>BỘ CÂU HỎI ĐỌC HIỂU ({questions.length})</span>
           </h2>
 
-          <Button
-            type="button"
-            onClick={handleAddQuestion}
-            className="neo-button px-3 py-1.5 h-8 bg-[#fdc800] text-slate-900 font-black text-xs border-2 border-slate-900 shadow-[1.5px_1.5px_0px_0px_#000] rounded-lg flex items-center gap-1 cursor-pointer"
-          >
-            <Plus size={14} />
-            <span>Thêm câu hỏi</span>
-          </Button>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setBulkImportOpen(true)}
+              className="h-8 px-3 text-xs"
+            >
+              <ListPlus size={14} />
+              <span>Nhập hàng loạt</span>
+            </Button>
+            <Button
+              type="button"
+              onClick={handleAddQuestion}
+              className="neo-button px-3 py-1.5 h-8 bg-[#fdc800] text-slate-900 font-black text-xs border-2 border-slate-900 shadow-[1.5px_1.5px_0px_0px_#000] rounded-lg flex items-center gap-1 cursor-pointer"
+            >
+              <Plus size={14} />
+              <span>Thêm câu hỏi</span>
+            </Button>
+          </div>
         </div>
 
         {questions.length === 0 ? (
@@ -694,6 +731,12 @@ export default function AdminReadingEditorPage() {
           onClose={() => setSelectedTerm(null)}
         />
       )}
+
+      <BulkQuestionImportModal
+        open={bulkImportOpen}
+        onCancel={() => setBulkImportOpen(false)}
+        onImport={handleBulkQuestionImport}
+      />
     </div>
   )
 }
