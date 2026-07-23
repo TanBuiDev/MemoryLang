@@ -61,7 +61,7 @@ src/
   test/             # Vitest setup
 ```
 
-## Database (16 tables after applying pending migrations, all RLS-enabled)
+## Core database tables (RLS-enabled)
 | Table | Purpose |
 |---|---|
 | `profiles` | User profile (linked to auth.users) |
@@ -80,6 +80,11 @@ src/
 | `chat_sessions` | Per-user AI Tutor conversation sessions |
 | `chat_messages` | User and assistant messages; users can read only their own messages |
 | `chat_usage_events` | Server-written provider/model/token audit events used for daily AI quota enforcement |
+| `reading_articles` | Reading passages, classification, access tier, and publication state |
+| `reading_questions` | Reading-comprehension quiz questions |
+| `reading_attempts` | User reading progress and quiz attempts |
+| `reading_highlights` | User highlights saved from reading passages |
+| `reading_article_terms` | Persisted links between reading articles and existing `global_terms` vocabulary |
 
 ## Routing
 **Public:** `/` (full branded homepage with feature/workflow/product-preview sections), `/login`, `/register`, `/forgot-password`, `/onboarding`
@@ -134,7 +139,7 @@ Admin can toggle maintenance mode from `/app/admin/features`. When enabled, `Mai
 ### Content gating
 Grammar and Listening topics use `access_tier` (`free`/`pro`) plus optional `teaser_config`. List pages may show Pro topics and teaser UI for discovery, but direct route pages must gate before loading protected payloads. Free users opening Pro Grammar lessons see `ContentLockState` before `lesson_blocks` are fetched or view counts increment. Free users opening Pro Listening topic/test/session URLs see `ContentLockState` before tests, parts, audio, transcripts, or questions are fetched; bundled ETS demo routes bypass remote gating. DB-level child-payload RLS hardening is implemented by `20260716052954_harden_content_gating_rls.sql`, which adds `public.is_user_pro(uuid)`, makes quota RPCs period-aware, and restricts `lesson_blocks`, `grammar_exercises`, `listening_tests`, and `listening_parts` payload reads to Free topics, Pro users, or admins.
 
-Reading article classification options are stored in the `reading_article_options` `app_settings` row and admins can add CEFR, difficulty, purpose, or access-tier values from the article editor. Custom access tiers are restricted like Pro by default in both React and Reading RLS; only the literal `free` tier is public. The article editor accepts either pasted plain text, which is converted into escaped paragraph HTML, or intentional HTML; plain text for TTS and reading metrics is derived automatically.
+Reading article classification options are stored in the `reading_article_options` `app_settings` row and admins can add CEFR, difficulty, purpose, or access-tier values from the article editor. Custom access tiers are restricted like Pro by default in both React and Reading RLS; only the literal `free` tier is public. The article editor accepts either pasted plain text, which is converted into escaped paragraph HTML, or intentional HTML; plain text for TTS and reading metrics is derived automatically. After saving an article, admins can scan its content against existing `global_terms`; exact normalized word matches are persisted in `reading_article_terms` and rendered as dotted-underlined, single-click vocabulary popovers for readers.
 
 ### Subscription & Payment
 MemoryLang has a Free/Pro subscription system backed by `subscriptions` and `payment_logs`. The MVP PayOS flow uses one Edge Function, `process-payment`, for authenticated app actions and PayOS webhooks. User actions send an `action` field; PayOS webhooks are detected by `{ data, signature }` and verified with `PAYOS_CHECKSUM_KEY`. PayOS does not provide a separate sandbox, so end-to-end payment verification must use a small real transaction.
@@ -221,7 +226,7 @@ The authenticated `nav.study` sidebar link resumes an active stored flashcard se
 - CLI available via `npx supabase` (v2.98+, no global install needed)
 - Project ref: `brwvbpkgimhamivmaflu` (MemoryLang, Sydney region)
 - Org ID: `lwpjxmfjvvdiufbsrviu`
-- Remote DB migration history is aligned through `20260723115133_reading_schema.sql` (Sydney region). The Reading schema creates the four Reading tables with RLS and explicit Data API grants; its original short migration version was repaired to the standard 14-digit timestamp after deployment on 2026-07-23.
+- Remote DB migration history is aligned through `20260723152208_add_reading_article_terms.sql` (Sydney region). Reading vocabulary scans now persist exact matches from `global_terms` in `reading_article_terms`, with admin-only refresh and authenticated-reader lookup RPCs.
 - Remote catalog verification confirms `memorylang_stats_readonly` is login-only, `NOINHERIT`, `NOBYPASSRLS`, has zero memberships/routine/sequence privileges, exactly six `SELECT` grants, the six intended stats policies, and `default_transaction_read_only=on`.
 - The dedicated stats role password and Java runtime `.env` are now provisioned locally. Remote role verification with two real non-admin users proves no-context reads return zero rows, user A/B contexts return only their distinct `user_terms`/completed-session counts, commit and rollback both clear the GUC, and writes fail under the read-only transaction. Real-token HTTP/API cross-user smoke remains separate evidence.
 - Real Supabase ES256 tokens from two non-admin browser sessions now reach the local Java container through the React dashboard: both `/api/v1/streaks/current` and `/api/v1/activity/summary` return 200, while an unauthenticated request returns 401. The users receive isolated 30-day session totals of 1 and 2 respectively, matching direct remote role verification. Local Docker maps host port 8081 to the container's internal port 8080 because host port 8080 is occupied by another local service.

@@ -36,6 +36,15 @@ export const defaultReadingArticleOptions: ReadingArticleOptions = {
 }
 
 export const adminReadingService = {
+  async scanArticleTerms(articleId: string): Promise<number> {
+    const { data, error } = await supabase.rpc('scan_reading_article_terms', {
+      p_article_id: articleId,
+    })
+
+    if (error) throw error
+    return Number(data) || 0
+  },
+
   async getArticleOptions(): Promise<ReadingArticleOptions> {
     const { data, error } = await supabase
       .from('app_settings')

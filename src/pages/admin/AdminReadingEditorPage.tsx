@@ -7,6 +7,7 @@ import {
   Trash2,
   Volume2,
   HelpCircle,
+  ScanSearch,
 } from 'lucide-react'
 import {
   adminReadingService,
@@ -50,6 +51,8 @@ export default function AdminReadingEditorPage() {
 
   const [saving, setSaving] = useState(false)
   const [generatingTts, setGeneratingTts] = useState(false)
+  const [scanningTerms, setScanningTerms] = useState(false)
+  const [matchedTermCount, setMatchedTermCount] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // Basic Form state
@@ -205,6 +208,30 @@ export default function AdminReadingEditorPage() {
       showToast({ type: 'error', title: 'Lỗi tạo Audio TTS', message: err.message || 'Không thể tạo tệp âm thanh phát.' })
     } finally {
       setGeneratingTts(false)
+    }
+  }
+
+  const handleScanTerms = async () => {
+    if (!id) return
+
+    try {
+      setScanningTerms(true)
+      const count = await adminReadingService.scanArticleTerms(id)
+      setMatchedTermCount(count)
+      showToast({
+        type: 'success',
+        title: 'Đã quét từ vựng',
+        message: `Tìm thấy ${count} từ có sẵn trong kho global_terms.`,
+      })
+    } catch (scanError) {
+      console.error(scanError)
+      showToast({
+        type: 'error',
+        title: 'Không thể quét từ vựng',
+        message: scanError instanceof Error ? scanError.message : 'Vui lòng thử lại.',
+      })
+    } finally {
+      setScanningTerms(false)
     }
   }
 
@@ -435,19 +462,36 @@ export default function AdminReadingEditorPage() {
           </p>
         </div>
 
-        <div className="flex items-center justify-between pt-1">
-          <div className="text-xs font-bold text-slate-500">
-            {audioUrl ? '✓ Đã có tệp Audio TTS' : 'Chưa có tệp Audio TTS'}
+        <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1 text-xs font-bold text-slate-500">
+            <p>{audioUrl ? '✓ Đã có tệp Audio TTS' : 'Chưa có tệp Audio TTS'}</p>
+            <p>
+              {matchedTermCount === null
+                ? 'Lưu bài rồi quét để đánh dấu từ có trong kho.'
+                : `Đã khớp ${matchedTermCount} từ trong global_terms.`}
+            </p>
           </div>
-          <Button
-            type="button"
-            onClick={handleGenerateTts}
-            disabled={generatingTts || !isEditing}
-            className="neo-button px-4 py-2 h-9 bg-purple-200 text-purple-950 font-black text-xs border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-          >
-            <Volume2 size={15} className={generatingTts ? 'animate-pulse' : ''} />
-            <span>{generatingTts ? 'Đang tạo Audio...' : '🎧 Tạo Audio TTS'}</span>
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleScanTerms}
+              disabled={scanningTerms || !isEditing}
+              className="h-9"
+            >
+              <ScanSearch size={15} className={scanningTerms ? 'animate-pulse' : ''} />
+              <span>{scanningTerms ? 'Đang quét...' : 'Quét từ vựng'}</span>
+            </Button>
+            <Button
+              type="button"
+              onClick={handleGenerateTts}
+              disabled={generatingTts || !isEditing}
+              className="neo-button px-4 py-2 h-9 bg-purple-200 text-purple-950 font-black text-xs border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <Volume2 size={15} className={generatingTts ? 'animate-pulse' : ''} />
+              <span>{generatingTts ? 'Đang tạo Audio...' : '🎧 Tạo Audio TTS'}</span>
+            </Button>
+          </div>
         </div>
       </div>
 

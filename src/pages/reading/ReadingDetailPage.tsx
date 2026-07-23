@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -19,13 +19,15 @@ import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import type {
   QuizAnswer,
   ReadingArticleDetail,
+  ReadingArticleTerm,
   ReadingAttempt,
 } from '@/types/reading.types'
-import { VocabularyPopup } from '@/components/reading/VocabularyPopup'
+import { ReadingVocabularyPopover } from '@/components/reading/ReadingVocabularyPopover'
 import { ReadingProModal } from '@/components/reading/ReadingProModal'
 import { showToast } from '@/components/ui/toast'
 import { generateAudio } from '@/services/api/generateAudio.api'
 import { isRestrictedReadingTier } from '@/utils/readingContent'
+import { annotateReadingHtml } from '@/utils/readingVocabulary'
 
 const speedOptions = [
   { value: '0.5', label: '0.5x' },
@@ -45,10 +47,9 @@ export function ReadingDetailPage() {
   const [article, setArticle] = useState<ReadingArticleDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [attempt, setAttempt] = useState<ReadingAttempt | null>(null)
-  
-  // Vocabulary popup state
-  const [selectedWord, setSelectedWord] = useState<string | null>(null)
-  const [clickedWordsCount, setClickedWordsCount] = useState(0)
+  const [articleTerms, setArticleTerms] = useState<ReadingArticleTerm[]>([])
+  const [selectedTerm, setSelectedTerm] = useState<ReadingArticleTerm | null>(null)
+  const [termPopoverPosition, setTermPopoverPosition] = useState({ x: 0, y: 0 })
 
   // Pro Modal state
   const [proModalOpen, setProModalOpen] = useState(false)
@@ -75,6 +76,12 @@ export function ReadingDetailPage() {
         if (detail) {
           setArticle(detail)
           setAudioUrl(detail.audio_url || null)
+          try {
+            setArticleTerms(await readingService.getArticleTerms(articleId))
+          } catch (termError) {
+            console.error('Error loading reading vocabulary:', termError)
+            setArticleTerms([])
+          }
           // Start attempt
           try {
             const newAttempt = await readingService.startAttempt(articleId)
@@ -136,29 +143,32 @@ export function ReadingDetailPage() {
     }
   }
 
-  // Handle word click inside reading content
-  const handleContentClick = () => {
-    const selection = window.getSelection()
-    const text = selection?.toString().trim()
+  const annotatedContentHtml = useMemo(
+    () => annotateReadingHtml(article?.content_html || '', articleTerms),
+    [article?.content_html, articleTerms]
+  )
 
-    if (text && text.split(/\s+/).length === 1) {
-      // Free user limit check (max 5 word lookups per article)
-      if (!isPro && clickedWordsCount >= 5) {
-        setProModalReason('Bạn đã đạt giới hạn 5 lần tra từ trên bài đọc Free. Nâng cấp Pro để tra từ không giới hạn!')
-        setProModalOpen(true)
-        return
-      }
+  const openTermPopover = (marker: HTMLElement) => {
+    const termId = marker.dataset.readingTermId
+    const term = articleTerms.find((item) => item.global_term_id === termId)
+    if (!term) return
 
-      setSelectedWord(text)
-      setClickedWordsCount((prev) => prev + 1)
+    const rect = marker.getBoundingClientRect()
+    setSelectedTerm(term)
+    setTermPopoverPosition({ x: rect.left, y: rect.bottom })
+  }
 
-      // Update attempt clicked words
-      if (attempt) {
-        void readingService.updateAttempt(attempt.id, {
-          words_clicked: Array.from(new Set([...(attempt.words_clicked || []), text])),
-        })
-      }
-    }
+  const handleContentClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const marker = (event.target as HTMLElement).closest<HTMLElement>('[data-reading-term-id]')
+    if (marker) openTermPopover(marker)
+  }
+
+  const handleContentKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    const marker = (event.target as HTMLElement).closest<HTMLElement>('[data-reading-term-id]')
+    if (!marker) return
+    event.preventDefault()
+    openTermPopover(marker)
   }
 
   // Handle Quiz answer select
@@ -297,8 +307,9 @@ export function ReadingDetailPage() {
         {/* HTML Reader */}
         <div
           onClick={handleContentClick}
+          onKeyDown={handleContentKeyDown}
           className="prose max-w-none text-slate-900 leading-relaxed font-serif text-base sm:text-lg select-text space-y-4"
-          dangerouslySetInnerHTML={{ __html: article.content_html }}
+          dangerouslySetInnerHTML={{ __html: annotatedContentHtml }}
         />
       </div>
 
@@ -367,11 +378,11 @@ export function ReadingDetailPage() {
         </div>
       )}
 
-      {/* Vocabulary Popup */}
-      {selectedWord && (
-        <VocabularyPopup
-          word={selectedWord}
-          onClose={() => setSelectedWord(null)}
+      {selectedTerm && (
+        <ReadingVocabularyPopover
+          term={selectedTerm}
+          position={termPopoverPosition}
+          onClose={() => setSelectedTerm(null)}
         />
       )}
 

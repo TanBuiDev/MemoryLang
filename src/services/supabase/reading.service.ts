@@ -3,6 +3,7 @@ import type {
   QuizAnswer,
   ReadingArticle,
   ReadingArticleDetail,
+  ReadingArticleTerm,
   ReadingAttempt,
   ReadingFilters,
   ReadingHighlight,
@@ -11,6 +12,19 @@ import type {
 } from '@/types/reading.types'
 
 export const readingService = {
+  async getArticleTerms(articleId: string): Promise<ReadingArticleTerm[]> {
+    const { data, error } = await supabase.rpc('get_reading_article_terms', {
+      p_article_id: articleId,
+    })
+
+    if (error) {
+      console.error('Error fetching reading article terms:', error)
+      throw error
+    }
+
+    return (data as ReadingArticleTerm[]) || []
+  },
+
   /**
    * Lấy danh sách bài đọc công khai đã xuất bản kèm bộ lọc
    */

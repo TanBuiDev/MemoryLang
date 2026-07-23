@@ -1,3 +1,5 @@
+import type { Meaning } from '@/types/vocabulary.types'
+
 export type CEFRLevel = string
 export type ReadingDifficulty = string
 export type ReadingPurpose = string
@@ -55,6 +57,17 @@ export interface ReadingArticle {
 
 export interface ReadingArticleDetail extends ReadingArticle {
   questions: ReadingQuestion[]
+}
+
+export interface ReadingArticleTerm {
+  global_term_id: string
+  normalized_text: string
+  source_text: string
+  ipa: string | null
+  part_of_speech: string | null
+  audio_url: string | null
+  translation: string | null
+  meanings: Meaning[]
 }
 
 export interface QuizAnswer {
