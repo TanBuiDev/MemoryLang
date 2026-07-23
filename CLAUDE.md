@@ -219,7 +219,8 @@ The authenticated `nav.study` sidebar link resumes an active stored flashcard se
 - CLI available via `npx supabase` (v2.98+, no global install needed)
 - Project ref: `brwvbpkgimhamivmaflu` (MemoryLang, Sydney region)
 - Org ID: `lwpjxmfjvvdiufbsrviu`
-- Remote DB has applied migrations up to `20260627000000_add_soft_delete_to_global_terms.sql` (Sydney region).
+- Remote DB migration history is aligned through `20260719091202_add_ai_grammar_catalog_total.sql` (Sydney region).
+- Phase 13 closeout dry-run on 2026-07-23 showed the linked remote is still missing `20260722104550_add_stats_api_readonly_role.sql` and `20260722152210_add_stats_deck_engagement_index.sql`; do not use the Java API against production until these reviewed migrations are explicitly approved and pushed, the dedicated role password is provisioned out of band, and remote isolation is verified.
 - **CRITICAL:** When deploying new code that relies on database schema changes (such as new columns, tables, or policies), you must ensure that all corresponding SQL migrations under `supabase/migrations/` have been successfully run/applied to the remote production Supabase database. Otherwise, the live app will hit 400 Bad Request errors (`column table.column does not exist`). Use the Supabase MCP server or Supabase Dashboard to run DDL migrations.
 - Deploy edge functions: `npx supabase functions deploy <name> --project-ref brwvbpkgimhamivmaflu`
 - Edge functions source: `supabase/functions/<name>/index.ts`

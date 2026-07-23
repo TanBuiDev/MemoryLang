@@ -277,6 +277,8 @@ Bearer JWT
 - [ ] Xác minh lại trên remote bằng transaction read-only và rollback.
 - [x] Commit `feat: add read-only statistics database role` chỉ gồm migration, test và tài liệu xác minh liên quan.
 
+**Cập nhật 2026-07-23:** SQL đã được review và `npx supabase db push --dry-run --linked` exit 0. Remote đang chờ đúng hai migration `20260722104550_add_stats_api_readonly_role.sql` và `20260722152210_add_stats_deck_engagement_index.sql`. Checkbox vẫn mở vì chưa có phê duyệt push production và chưa thể chạy remote rollback/isolation verification.
+
 **Điều kiện hoàn thành:** Credential runtime chỉ đọc; thiếu user context không thấy dữ liệu; user A không thể đọc user B ngay cả khi repository query quên tenant filter.
 
 ---
@@ -638,13 +640,13 @@ Bằng chứng tự động Phase 8 dùng 10 test PostgreSQL 17 Testcontainers q
 ## 7. Definition of Done toàn dự án
 
 - [ ] Phase 0–11 hoàn thành; Phase 12–13 có thể để tùy chọn nhưng phải ghi rõ trạng thái.
-- [ ] 19 endpoint MVP xuất hiện trong OpenAPI và có controller tests.
-- [ ] `./mvnw verify` exit 0.
-- [ ] Docker image build và smoke test exit 0.
+- [x] 19 endpoint MVP xuất hiện trong OpenAPI và có controller tests; Phase 10–11 đã kiểm tra contract và đủ 19 protected routes.
+- [x] `./mvnw verify` exit 0; chạy mới ngày 2026-07-23 đạt 107 tests, 0 failure/error/skip.
+- [x] Docker image build và smoke test exit 0; smoke Phase 11 đã đạt, image `memorylang-stats-api:dod-local` được build lại ngày 2026-07-23 và chạy non-root `10001:10001` với healthcheck.
 - [ ] Cross-user isolation chạy trên Testcontainers và remote smoke environment.
 - [ ] Runtime role chỉ có quyền cần thiết, không có `BYPASSRLS`.
-- [ ] Không có secret trong Git history của Java repo hoặc commit MemoryLang liên quan.
-- [ ] README mô tả local run, auth, database role, Docker, troubleshooting và optional Cloud Run.
+- [x] Không có secret trong Git history của Java repo hoặc commit MemoryLang liên quan; Gitleaks `--all --redact` quét 18 commit Java và 595 commit MemoryLang, không phát hiện leak.
+- [x] README mô tả local run, auth, database role, Docker, troubleshooting và trạng thái Cloud Run tùy chọn đang hoãn; cập nhật bằng commit Java `94b0e21`.
 - [ ] CV bullet chỉ nêu tính năng thực sự đã hoàn thành; không ghi Cloud Run, sealed classes hoặc endpoint chưa triển khai.
 
 ---
