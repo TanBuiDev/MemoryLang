@@ -225,7 +225,7 @@ Bearer JWT
 - [x] Xác nhận `quiz_answers` chưa phù hợp cho translation-input analytics từ hành vi frontend hiện tại.
 - [x] Bật Docker Desktop và chạy `npx supabase db dump --linked --schema public --file "$env:TEMP\memorylang-schema-public.sql"` để lưu bằng chứng schema đầy đủ ngoài Git.
 - [x] Kiểm tra Dashboard → Connect và chọn connection mode: direct IPv6 cho local nếu khả dụng; Supavisor session mode tại `aws-1-ap-southeast-2.pooler.supabase.com:5432` cho runtime IPv4; không dùng transaction mode cho baseline.
-- [ ] Sau khi Phase 1 tạo dedicated stats role, ghi host, port và username runtime vào Java `.env` mà không ghi password vào Git; chưa thể hoàn tất khi role chuyên dụng chưa tồn tại.
+- [x] Sau khi Phase 1 tạo dedicated stats role, ghi host, port và username runtime vào Java `.env` mà không ghi password vào Git.
 - [x] Chốt yêu cầu fixture two-user cho kiểm thử local/Testcontainers, không sao chép dữ liệu người dùng thật; tạo file fixture ở Phase 11 sau khi Java repository tồn tại.
 - [x] Chạy `npx supabase db advisors --linked`: 11 cảnh báo liên quan bảng analytics, gồm 10 `auth_rls_initplan` và 1 `multiple_permissive_policies` trên `global_terms`.
 - [x] Commit tài liệu baseline bằng `docs: verify Supabase analytics baseline`.
@@ -274,10 +274,12 @@ Bearer JWT
 - [x] Test role không có effective `EXECUTE` trên current public routines, Supabase RPC ACL hiện hữu không đổi và replay xử lý được procedure bằng `ON ROUTINE`.
 - [x] Chạy `npx supabase db advisors --local` và xác nhận không có cảnh báo mới từ các policy stats.
 - [x] Review SQL, chạy `npx supabase db push --dry-run`, sau đó push remote khi được xác nhận; cả hai migration đã áp dụng và migration history khớp ngày 2026-07-23.
-- [ ] Xác minh lại trên remote bằng transaction read-only và rollback.
+- [x] Xác minh lại trên remote bằng transaction read-only và rollback; hai user thật có dữ liệu khác nhau, context không rò sau commit/rollback và `UPDATE` bị từ chối.
 - [x] Commit `feat: add read-only statistics database role` chỉ gồm migration, test và tài liệu xác minh liên quan.
 
 **Cập nhật 2026-07-23:** `20260722104550_add_stats_api_readonly_role.sql` và `20260722152210_add_stats_deck_engagement_index.sql` đã được push sau phê duyệt. Remote catalog xác nhận role có `LOGIN`, `NOINHERIT`, `NOBYPASSRLS`, `default_transaction_read_only=on`, zero membership/routine/sequence privilege, đúng sáu `SELECT` grant, sáu policy stats và index deck engagement. Remote transaction/RLS isolation vẫn chờ password riêng và smoke user A/B.
+
+**Bằng chứng remote sau khi provision password:** cùng một runtime role/session trả `0 user_terms / 0 study_sessions` khi thiếu GUC; user A trả `11 / 1`, commit xong trở lại `0 / 0`; user B trả `32 / 2`, rollback xong trở lại `0 / 0`. Thử `UPDATE user_terms` trả `cannot execute UPDATE in a read-only transaction`.
 
 **Điều kiện hoàn thành:** Credential runtime chỉ đọc; thiếu user context không thấy dữ liệu; user A không thể đọc user B ngay cả khi repository query quên tenant filter.
 
