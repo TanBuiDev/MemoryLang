@@ -10,9 +10,18 @@ import type {
   ReadingQuestion,
   ReadingStatsSummary,
 } from '@/types/reading.types'
+import {
+  createDemoAttempt,
+  getDemoArticleDetail,
+  getDemoArticleTerms,
+} from '@/utils/readingDemoArticles'
 
 export const readingService = {
   async getArticleTerms(articleId: string): Promise<ReadingArticleTerm[]> {
+    if (articleId.startsWith('demo-')) {
+      return getDemoArticleTerms(articleId)
+    }
+
     const { data, error } = await supabase.rpc('get_reading_article_terms', {
       p_article_id: articleId,
     })
@@ -97,6 +106,10 @@ export const readingService = {
    * Lấy chi tiết 1 bài đọc kèm câu hỏi kiểm tra
    */
   async getArticleDetail(id: string): Promise<ReadingArticleDetail | null> {
+    if (id.startsWith('demo-')) {
+      return getDemoArticleDetail(id)
+    }
+
     const { data: article, error: articleError } = await supabase
       .from('reading_articles')
       .select('*')
@@ -107,7 +120,7 @@ export const readingService = {
 
     if (articleError || !article) {
       if (articleError) console.error('Error fetching article detail:', articleError)
-      return null
+      return getDemoArticleDetail(id)
     }
 
     const { data: questions, error: questionsError } = await supabase
@@ -130,6 +143,10 @@ export const readingService = {
    * Bắt đầu một phiên đọc bài mới hoặc lấy phiên hiện có
    */
   async startAttempt(articleId: string): Promise<ReadingAttempt> {
+    if (articleId.startsWith('demo-')) {
+      return createDemoAttempt(articleId)
+    }
+
     const { data: session } = await supabase.auth.getSession()
     const userId = session?.session?.user?.id
     if (!userId) throw new Error('User not authenticated')
@@ -218,6 +235,10 @@ export const readingService = {
     })
 
     const percentage = total > 0 ? Math.round((score / total) * 100) : 0
+
+    if (attemptId.startsWith('attempt-demo-')) {
+      return { score, total, percentage }
+    }
 
     const { error } = await supabase
       .from('reading_attempts')

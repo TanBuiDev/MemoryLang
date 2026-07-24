@@ -20,6 +20,7 @@ import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import type { CEFRLevel, ReadingArticle, ReadingFilters, ReadingStatsSummary } from '@/types/reading.types'
 import { ReadingProModal } from '@/components/reading/ReadingProModal'
 import { isRestrictedReadingTier } from '@/utils/readingContent'
+import { DEMO_ARTICLES } from '@/utils/readingDemoArticles'
 
 const levelOptions = [
   { value: 'all', label: 'Tất cả Trình độ' },
@@ -43,69 +44,6 @@ const sortOptions = [
   { value: 'newest', label: 'Mới nhất' },
   { value: 'difficulty_asc', label: 'Độ khó: Dễ → Khó' },
   { value: 'difficulty_desc', label: 'Độ khó: Khó → Dễ' },
-]
-
-const DEMO_ARTICLES: ReadingArticle[] = [
-  {
-    id: 'demo-ai-future',
-    title: 'The Future of Artificial Intelligence',
-    subtitle: 'Exploring how AI will transform our world and daily work.',
-    content_html: '<p>Artificial intelligence (AI) is rapidly transforming the way we live and work...</p>',
-    plain_text: 'Artificial intelligence (AI) is rapidly transforming the way we live and work...',
-    cefr_level: 'B2',
-    difficulty: 'medium',
-    topics: ['Technology', 'AI', 'Future'],
-    purpose: 'IELTS',
-    word_count: 850,
-    estimated_reading_time: 7,
-    audio_url: 'https://example.com/audio.mp3',
-    audio_duration: 180,
-    is_published: true,
-    access_tier: 'free',
-    published_at: new Date().toISOString(),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: 'demo-climate-solutions',
-    title: 'Global Climate Change Solutions',
-    subtitle: 'Innovations in renewable energy and sustainability.',
-    content_html: '<p>Climate change poses unprecedented challenges to our global ecosystem...</p>',
-    plain_text: 'Climate change poses unprecedented challenges to our global ecosystem...',
-    cefr_level: 'C1',
-    difficulty: 'hard',
-    topics: ['Environment', 'Science'],
-    purpose: 'Academic',
-    word_count: 1200,
-    estimated_reading_time: 10,
-    audio_url: null,
-    audio_duration: null,
-    is_published: true,
-    access_tier: 'pro',
-    published_at: new Date().toISOString(),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: 'demo-daily-coffee',
-    title: 'The History of Coffee Culture',
-    subtitle: 'From ancient origins to modern espresso bars.',
-    content_html: '<p>Coffee is one of the most popular beverages in the world...</p>',
-    plain_text: 'Coffee is one of the most popular beverages in the world...',
-    cefr_level: 'A2',
-    difficulty: 'easy',
-    topics: ['Culture', 'Lifestyle'],
-    purpose: 'General',
-    word_count: 450,
-    estimated_reading_time: 4,
-    audio_url: null,
-    audio_duration: null,
-    is_published: true,
-    access_tier: 'free',
-    published_at: new Date().toISOString(),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
 ]
 
 export function ReadingHubPage() {
