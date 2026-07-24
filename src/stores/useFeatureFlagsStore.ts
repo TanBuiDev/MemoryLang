@@ -17,19 +17,35 @@ interface FeatureFlagsState {
 
 // Mặc định tất cả các flag chính đều bật (trừ các module chưa ra mắt)
 const DEFAULT_FLAGS: Record<string, boolean> = {
-  vocabulary_module: true,
+  // Main Nav Items
   grammar_module: true,
+  vocabulary_module: true,
   listening_module: true,
   speaking_module: true,
   reading_module: true,
   writing_module: true,
   games_module: true,
+
+  // More Dropdown Items
+  dashboard_nav: true,
+  decks_nav: true,
+  study_nav: true,
+  quiz_nav: true,
+  review_nav: true,
   roadmap_module: true,
   exams_module: true,
   videos_module: true,
   blog_module: true,
   community_module: true,
   contact_module: true,
+
+  // Header Action Controls
+  ai_tutor_button: true,
+  pro_upgrade_button: true,
+  notifications_button: true,
+  profile_menu_button: true,
+
+  // Unreleased & Feature Extensions
   template_builder: false,
   matching_quiz: false,
   fill_blank_quiz: false,

@@ -1,17 +1,31 @@
--- Migration: Seed navigation feature flags for all main modules
+-- Migration: Seed navigation feature flags for all navigation items and header controls
 INSERT INTO public.feature_flags (flag, enabled, description) VALUES
-  ('vocabulary_module', true, 'Bật/tắt phân hệ Từ vựng'),
-  ('grammar_module', true, 'Bật/tắt phân hệ Ngữ pháp'),
-  ('listening_module', true, 'Bật/tắt phân hệ Luyện nghe'),
-  ('speaking_module', true, 'Bật/tắt phân hệ Luyện nói'),
-  ('reading_module', true, 'Bật/tắt phân hệ Đọc hiểu'),
-  ('writing_module', true, 'Bật/tắt phân hệ Luyện viết'),
-  ('games_module', true, 'Bật/tắt phân hệ Trò chơi'),
-  ('roadmap_module', true, 'Bật/tắt phân hệ Lộ trình'),
-  ('exams_module', true, 'Bật/tắt phân hệ Luyện thi'),
-  ('videos_module', true, 'Bật/tắt phân hệ Video'),
-  ('blog_module', true, 'Bật/tắt phân hệ Bài viết / Tin tức'),
-  ('community_module', true, 'Bật/tắt phân hệ Cộng đồng'),
-  ('contact_module', true, 'Bật/tắt phân hệ Liên hệ / Trợ giúp')
+  -- 1. Main Navigation Items
+  ('grammar_module', true, 'Nút điều hướng: Ngữ pháp'),
+  ('vocabulary_module', true, 'Nút điều hướng: Từ vựng'),
+  ('listening_module', true, 'Nút điều hướng: Nghe'),
+  ('speaking_module', true, 'Nút điều hướng: Nói'),
+  ('reading_module', true, 'Nút điều hướng: Đọc'),
+  ('writing_module', true, 'Nút điều hướng: Viết'),
+  ('games_module', true, 'Nút điều hướng: Trò chơi'),
+
+  -- 2. More Dropdown Nav Items
+  ('dashboard_nav', true, 'Mục menu: Bảng điều khiển'),
+  ('decks_nav', true, 'Mục menu: Bộ thẻ'),
+  ('study_nav', true, 'Mục menu: Học tập'),
+  ('quiz_nav', true, 'Mục menu: Kiểm tra'),
+  ('review_nav', true, 'Mục menu: Ôn tập'),
+  ('roadmap_module', true, 'Mục menu: Lộ trình học'),
+  ('exams_module', true, 'Mục menu: Kỳ thi'),
+  ('videos_module', true, 'Mục menu: Video'),
+  ('blog_module', true, 'Mục menu: Blog / Bài viết'),
+  ('community_module', true, 'Mục menu: Cộng đồng'),
+  ('contact_module', true, 'Mục menu: Liên hệ'),
+
+  -- 3. Header Action Controls
+  ('ai_tutor_button', true, 'Nút bấm: Gia sư AI (Header)'),
+  ('pro_upgrade_button', true, 'Nút bấm: Nâng cấp Pro (Header)'),
+  ('notifications_button', true, 'Nút bấm: Thông báo quả chuông (Header)'),
+  ('profile_menu_button', true, 'Menu bấm: Hồ sơ cá nhân / Avatar (Header)')
 ON CONFLICT (flag) DO UPDATE SET
   description = EXCLUDED.description;

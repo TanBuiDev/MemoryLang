@@ -19,7 +19,7 @@ export interface FeatureFlag {
   flag: string
   enabled: boolean
   description: string | null
-  updated_at: string
+  updated_at?: string
 }
 
 export interface AdminAuditLog {

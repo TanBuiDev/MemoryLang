@@ -79,11 +79,11 @@ const mainNavItems: NavItem[] = [
 ]
 
 const moreDropdownItems: NavItem[] = [
-  { labelKey: 'nav.dashboard', to: '/app/dashboard', icon: LayoutDashboard },
-  { labelKey: 'nav.decks', to: '/app/decks', icon: LibraryBig, flag: 'vocabulary_module' },
-  { labelKey: 'nav.study', to: '/app/study', icon: Brain, flag: 'vocabulary_module' },
-  { labelKey: 'nav.quiz', to: '/app/quiz', icon: ClipboardCheck, flag: 'vocabulary_module' },
-  { labelKey: 'nav.review', to: '/app/review', icon: Gauge, flag: 'vocabulary_module' },
+  { labelKey: 'nav.dashboard', to: '/app/dashboard', icon: LayoutDashboard, flag: 'dashboard_nav' },
+  { labelKey: 'nav.decks', to: '/app/decks', icon: LibraryBig, flag: 'decks_nav' },
+  { labelKey: 'nav.study', to: '/app/study', icon: Brain, flag: 'study_nav' },
+  { labelKey: 'nav.quiz', to: '/app/quiz', icon: ClipboardCheck, flag: 'quiz_nav' },
+  { labelKey: 'nav.review', to: '/app/review', icon: Gauge, flag: 'review_nav' },
   { labelKey: 'header.roadmap', to: '/app/roadmap', icon: Map, flag: 'roadmap_module' },
   { labelKey: 'header.exams', to: '/app/exams', icon: ClipboardCheck, flag: 'exams_module' },
   { labelKey: 'header.videos', to: '/app/videos', icon: Video, flag: 'videos_module' },
@@ -235,203 +235,213 @@ export function Header() {
 
         <div className="flex items-center gap-2 flex-1 justify-end shrink-0 min-w-max">
           {/* AI Tutor Quick Modal Button */}
-          <button
-            type="button"
-            onClick={openAiModal}
-            title="Gia sư AI (Ctrl+K)"
-            className="inline-flex items-center gap-1.5 neo-button min-h-0 px-3 py-1.5 rounded-lg border-2 border-slate-900 text-sm font-black bg-[#432dd7] text-white hover:bg-purple-700 transition whitespace-nowrap active:neo-button-active shadow-[2px_2px_0px_0px_#000]"
-          >
-            <Bot size={16} />
-            <span className="hidden sm:inline">Gia sư AI</span>
-          </button>
+          {(flags['ai_tutor_button'] ?? true) && (
+            <button
+              type="button"
+              onClick={openAiModal}
+              title="Gia sư AI (Ctrl+K)"
+              className="inline-flex items-center gap-1.5 neo-button min-h-0 px-3 py-1.5 rounded-lg border-2 border-slate-900 text-sm font-black bg-[#432dd7] text-white hover:bg-purple-700 transition whitespace-nowrap active:neo-button-active shadow-[2px_2px_0px_0px_#000]"
+            >
+              <Bot size={16} />
+              <span className="hidden sm:inline">Gia sư AI</span>
+            </button>
+          )}
 
           {/* Pro Upgrade / Badge Button */}
-          <Link
-            to="/app/upgrade"
-            title={isPro ? "Tài khoản Pro" : t('header.upgrade')}
-            className={cn(
-              "hidden sm:inline-flex items-center gap-1.5 neo-button min-h-0 px-3 py-1.5 rounded-lg border-2 border-slate-900 text-sm font-black transition whitespace-nowrap active:neo-button-active shadow-[2px_2px_0px_0px_#000]",
-              isPro
-                ? "bg-[#dcfce7] text-[#15803d] hover:bg-emerald-200 border-slate-900"
-                : "bg-[#fdc800] text-slate-900 hover:bg-amber-400 border-slate-900"
-            )}
-          >
-            <Crown size={16} className={cn(isPro ? "text-amber-500 fill-amber-400" : "text-slate-900")} />
-            {isPro ? (
-              <span>Gói Pro</span>
-            ) : (
-              <span className="hidden md:inline">{t('header.upgrade')}</span>
-            )}
-          </Link>
-
-          <div ref={notifRef} className="relative">
-            <button
-              type="button"
-              onClick={() => { setNotifOpen(!notifOpen); setMoreOpen(false); setProfileOpen(false) }}
-              className="p-2 rounded-md border-2 border-transparent hover:border-border hover:bg-muted transition relative"
-              aria-label={t('header.notifications')}
-            >
-              <Bell size={20} />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-danger text-white text-[10px] font-black rounded-full border-2 border-background">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
+          {(flags['pro_upgrade_button'] ?? true) && (
+            <Link
+              to="/app/upgrade"
+              title={isPro ? "Tài khoản Pro" : t('header.upgrade')}
+              className={cn(
+                "hidden sm:inline-flex items-center gap-1.5 neo-button min-h-0 px-3 py-1.5 rounded-lg border-2 border-slate-900 text-sm font-black transition whitespace-nowrap active:neo-button-active shadow-[2px_2px_0px_0px_#000]",
+                isPro
+                  ? "bg-[#dcfce7] text-[#15803d] hover:bg-emerald-200 border-slate-900"
+                  : "bg-[#fdc800] text-slate-900 hover:bg-amber-400 border-slate-900"
               )}
-            </button>
-
-            {notifOpen && (
-              <div className="absolute top-full right-0 mt-2 w-80 neo-card p-0 z-40 max-h-[420px] flex flex-col">
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b-2 border-border">
-                  <p className="text-sm font-black">{t('header.notifications')}</p>
-                  {unreadCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => { if (user) void markAllAsRead(user.id) }}
-                      className="text-[10px] font-black text-secondary hover:underline"
-                    >
-                      {t('notifications.markAllRead')}
-                    </button>
-                  )}
-                </div>
-
-                {/* List */}
-                <div className="overflow-y-auto flex-1">
-                  {notifications.length === 0 ? (
-                    <div className="px-4 py-8 text-center">
-                      <Bell size={24} className="mx-auto text-muted-foreground/40 mb-2" />
-                      <p className="text-xs text-muted-foreground font-bold">{t('header.noNotifications')}</p>
-                    </div>
-                  ) : (
-                    notifications.map((notif) => {
-                      const isRead = readIds.has(notif.id)
-                      return (
-                        <button
-                          key={notif.id}
-                          type="button"
-                          onClick={() => { if (user && !isRead) void markAsRead(user.id, notif.id) }}
-                          className={cn(
-                            'w-full text-left px-4 py-3 flex gap-3 items-start hover:bg-muted/50 transition border-b border-border/50 last:border-b-0',
-                            !isRead && 'bg-primary/5',
-                          )}
-                        >
-                          {/* Unread dot */}
-                          <div className="pt-1.5 shrink-0">
-                            <div className={cn(
-                              'w-2 h-2 rounded-full',
-                              !isRead ? 'bg-secondary' : 'bg-transparent',
-                            )} />
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <p className={cn(
-                              'text-xs leading-tight',
-                              !isRead ? 'font-black text-foreground' : 'font-bold text-muted-foreground',
-                            )}>
-                              {notif.title}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground font-semibold mt-0.5 line-clamp-2 leading-snug">
-                              {notif.message}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground/60 font-bold mt-1">
-                              {formatRelativeTime(notif.created_at)}
-                            </p>
-                          </div>
-
-                          {/* Priority indicator */}
-                          {(notif.priority === 'high' || notif.priority === 'urgent') && (
-                            <div className={cn(
-                              'shrink-0 w-1.5 h-full rounded-full self-stretch',
-                              notif.priority === 'urgent' ? 'bg-danger' : 'bg-amber-400',
-                            )} />
-                          )}
-                        </button>
-                      )
-                    })
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div ref={profileRef} className="relative">
-            <button
-              type="button"
-              onClick={() => { setProfileOpen(!profileOpen); setMoreOpen(false); setNotifOpen(false) }}
-              className="p-0.5 rounded-md border-2 border-transparent hover:border-border hover:bg-muted transition"
             >
-              <div className="w-9 h-9 rounded-md bg-secondary text-secondary-foreground flex items-center justify-center text-sm font-black">
-                {profileInitial}
-              </div>
-            </button>
+              <Crown size={16} className={cn(isPro ? "text-amber-500 fill-amber-400" : "text-slate-900")} />
+              {isPro ? (
+                <span>Gói Pro</span>
+              ) : (
+                <span className="hidden md:inline">{t('header.upgrade')}</span>
+              )}
+            </Link>
+          )}
 
-            {profileOpen && (
-              <div className="absolute top-full right-0 mt-2 w-56 neo-card p-2 z-40 flex flex-col gap-0.5">
-                <div className="px-3 py-2">
-                  <p className="text-sm font-black truncate">{profile?.display_name ?? 'User'}</p>
-                  <p className="text-xs text-muted-foreground truncate">{user?.email ?? 'demo@memorylang.app'}</p>
-                </div>
-                <hr className="border-border" />
-                <NavLink
-                  to="/app/settings"
-                  onClick={() => setProfileOpen(false)}
-                  className={dropdownLinkClass}
-                >
-                  <Settings size={14} />
-                  {t('nav.settings')}
-                </NavLink>
-                <NavLink
-                  to="/"
-                  onClick={() => setProfileOpen(false)}
-                  className={dropdownLinkClass}
-                >
-                  <User size={14} />
-                  {t('nav.home')}
-                </NavLink>
-                {profile?.is_admin && (
-                  <NavLink
-                    to="/app/admin"
-                    onClick={() => setProfileOpen(false)}
-                    className={cn(dropdownLinkClass, 'text-rose-600 hover:bg-rose-50')}
-                  >
-                    <ShieldAlert size={14} />
-                    Quản trị hệ thống
-                  </NavLink>
+          {/* Notifications Bell Button */}
+          {(flags['notifications_button'] ?? true) && (
+            <div ref={notifRef} className="relative">
+              <button
+                type="button"
+                onClick={() => { setNotifOpen(!notifOpen); setMoreOpen(false); setProfileOpen(false) }}
+                className="p-2 rounded-md border-2 border-transparent hover:border-border hover:bg-muted transition relative"
+                aria-label={t('header.notifications')}
+              >
+                <Bell size={20} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-danger text-white text-[10px] font-black rounded-full border-2 border-background">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
                 )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProfileOpen(false)
-                    toggleTheme()
-                  }}
-                  className={cn(dropdownLinkClass, 'w-full text-left')}
-                >
-                  {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-                  {theme === 'dark' ? t('theme.light') : t('theme.dark')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProfileOpen(false)
-                    handleLanguageToggle()
-                  }}
-                  className={cn(dropdownLinkClass, 'w-full text-left')}
-                >
-                  <Globe size={14} />
-                  {effectiveUiLanguage === 'vi' ? 'English (EN)' : 'Tiếng Việt (VI)'}
-                </button>
-                <hr className="border-border" />
-                <button
-                  type="button"
-                  onClick={() => { setProfileOpen(false); handleLogout() }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-md text-xs font-bold hover:bg-danger hover:text-white transition text-left"
-                >
-                  <LogOut size={14} />
-                  {t('actions.logout')}
-                </button>
-              </div>
-            )}
-          </div>
+              </button>
+
+              {notifOpen && (
+                <div className="absolute top-full right-0 mt-2 w-80 neo-card p-0 z-40 max-h-[420px] flex flex-col">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b-2 border-border">
+                    <p className="text-sm font-black">{t('header.notifications')}</p>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => { if (user) void markAllAsRead(user.id) }}
+                        className="text-[10px] font-black text-secondary hover:underline"
+                      >
+                        {t('notifications.markAllRead')}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* List */}
+                  <div className="overflow-y-auto flex-1">
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center">
+                        <Bell size={24} className="mx-auto text-muted-foreground/40 mb-2" />
+                        <p className="text-xs text-muted-foreground font-bold">{t('header.noNotifications')}</p>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => {
+                        const isRead = readIds.has(notif.id)
+                        return (
+                          <button
+                            key={notif.id}
+                            type="button"
+                            onClick={() => { if (user && !isRead) void markAsRead(user.id, notif.id) }}
+                            className={cn(
+                              'w-full text-left px-4 py-3 flex gap-3 items-start hover:bg-muted/50 transition border-b border-border/50 last:border-b-0',
+                              !isRead && 'bg-primary/5',
+                            )}
+                          >
+                            {/* Unread dot */}
+                            <div className="pt-1.5 shrink-0">
+                              <div className={cn(
+                                'w-2 h-2 rounded-full',
+                                !isRead ? 'bg-secondary' : 'bg-transparent',
+                              )} />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <p className={cn(
+                                'text-xs leading-tight',
+                                !isRead ? 'font-black text-foreground' : 'font-bold text-muted-foreground',
+                              )}>
+                                {notif.title}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground font-semibold mt-0.5 line-clamp-2 leading-snug">
+                                {notif.message}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground/60 font-bold mt-1">
+                                {formatRelativeTime(notif.created_at)}
+                              </p>
+                            </div>
+
+                            {/* Priority indicator */}
+                            {(notif.priority === 'high' || notif.priority === 'urgent') && (
+                              <div className={cn(
+                                'shrink-0 w-1.5 h-full rounded-full self-stretch',
+                                notif.priority === 'urgent' ? 'bg-danger' : 'bg-amber-400',
+                              )} />
+                            )}
+                          </button>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Profile Menu Avatar Button */}
+          {(flags['profile_menu_button'] ?? true) && (
+            <div ref={profileRef} className="relative">
+              <button
+                type="button"
+                onClick={() => { setProfileOpen(!profileOpen); setMoreOpen(false); setNotifOpen(false) }}
+                className="p-0.5 rounded-md border-2 border-transparent hover:border-border hover:bg-muted transition"
+              >
+                <div className="w-9 h-9 rounded-md bg-secondary text-secondary-foreground flex items-center justify-center text-sm font-black">
+                  {profileInitial}
+                </div>
+              </button>
+
+              {profileOpen && (
+                <div className="absolute top-full right-0 mt-2 w-56 neo-card p-2 z-40 flex flex-col gap-0.5">
+                  <div className="px-3 py-2">
+                    <p className="text-sm font-black truncate">{profile?.display_name ?? 'User'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user?.email ?? 'demo@memorylang.app'}</p>
+                  </div>
+                  <hr className="border-border" />
+                  <NavLink
+                    to="/app/settings"
+                    onClick={() => setProfileOpen(false)}
+                    className={dropdownLinkClass}
+                  >
+                    <Settings size={14} />
+                    {t('nav.settings')}
+                  </NavLink>
+                  <NavLink
+                    to="/"
+                    onClick={() => setProfileOpen(false)}
+                    className={dropdownLinkClass}
+                  >
+                    <User size={14} />
+                    {t('nav.home')}
+                  </NavLink>
+                  {profile?.is_admin && (
+                    <NavLink
+                      to="/app/admin"
+                      onClick={() => setProfileOpen(false)}
+                      className={cn(dropdownLinkClass, 'text-rose-600 hover:bg-rose-50')}
+                    >
+                      <ShieldAlert size={14} />
+                      Quản trị hệ thống
+                    </NavLink>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileOpen(false)
+                      toggleTheme()
+                    }}
+                    className={cn(dropdownLinkClass, 'w-full text-left')}
+                  >
+                    {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+                    {theme === 'dark' ? t('theme.light') : t('theme.dark')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileOpen(false)
+                      handleLanguageToggle()
+                    }}
+                    className={cn(dropdownLinkClass, 'w-full text-left')}
+                  >
+                    <Globe size={14} />
+                    {effectiveUiLanguage === 'vi' ? 'English (EN)' : 'Tiếng Việt (VI)'}
+                  </button>
+                  <hr className="border-border" />
+                  <button
+                    type="button"
+                    onClick={() => { setProfileOpen(false); handleLogout() }}
+                    className="flex items-center gap-2 px-3 py-2 rounded-md text-xs font-bold hover:bg-danger hover:text-white transition text-left"
+                  >
+                    <LogOut size={14} />
+                    {t('actions.logout')}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

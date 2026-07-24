@@ -31,6 +31,48 @@ function SmoothToggle({ on, size = 48 }: { on: boolean; size?: number }) {
   )
 }
 
+const KNOWN_FEATURE_FLAGS: FeatureFlag[] = [
+  // 1. Thanh điều hướng chính (Main Nav Items)
+  { flag: 'grammar_module', enabled: true, description: 'Nút điều hướng: Ngữ pháp' },
+  { flag: 'vocabulary_module', enabled: true, description: 'Nút điều hướng: Từ vựng' },
+  { flag: 'listening_module', enabled: true, description: 'Nút điều hướng: Nghe' },
+  { flag: 'speaking_module', enabled: true, description: 'Nút điều hướng: Nói' },
+  { flag: 'reading_module', enabled: true, description: 'Nút điều hướng: Đọc' },
+  { flag: 'writing_module', enabled: true, description: 'Nút điều hướng: Viết' },
+  { flag: 'games_module', enabled: true, description: 'Nút điều hướng: Trò chơi' },
+
+  // 2. Menu Mở rộng (More Dropdown Items)
+  { flag: 'dashboard_nav', enabled: true, description: 'Mục menu: Bảng điều khiển' },
+  { flag: 'decks_nav', enabled: true, description: 'Mục menu: Bộ thẻ' },
+  { flag: 'study_nav', enabled: true, description: 'Mục menu: Học tập' },
+  { flag: 'quiz_nav', enabled: true, description: 'Mục menu: Kiểm tra' },
+  { flag: 'review_nav', enabled: true, description: 'Mục menu: Ôn tập' },
+  { flag: 'roadmap_module', enabled: true, description: 'Mục menu: Lộ trình học' },
+  { flag: 'exams_module', enabled: true, description: 'Mục menu: Kỳ thi' },
+  { flag: 'videos_module', enabled: true, description: 'Mục menu: Video' },
+  { flag: 'blog_module', enabled: true, description: 'Mục menu: Blog / Bài viết' },
+  { flag: 'community_module', enabled: true, description: 'Mục menu: Cộng đồng' },
+  { flag: 'contact_module', enabled: true, description: 'Mục menu: Liên hệ' },
+
+  // 3. Thao tác Header (Header Action Controls)
+  { flag: 'ai_tutor_button', enabled: true, description: 'Nút bấm: Gia sư AI (Header)' },
+  { flag: 'pro_upgrade_button', enabled: true, description: 'Nút bấm: Nâng cấp Pro (Header)' },
+  { flag: 'notifications_button', enabled: true, description: 'Nút bấm: Thông báo quả chuông (Header)' },
+  { flag: 'profile_menu_button', enabled: true, description: 'Menu bấm: Hồ sơ cá nhân / Avatar (Header)' },
+
+  // 4. Feature Extensions
+  { flag: 'template_builder', enabled: false, description: 'Bật/tắt chức năng tạo template thẻ học (MVP 2)' },
+  { flag: 'matching_quiz', enabled: false, description: 'Bật/tắt bài trắc nghiệm nối từ (MVP 3)' },
+  { flag: 'fill_blank_quiz', enabled: false, description: 'Bật/tắt bài trắc nghiệm điền từ (MVP 3)' },
+  { flag: 'learning_analytics_dashboard', enabled: true, description: 'Bật/tắt dashboard phân tích học tập nâng cao' },
+
+  // 5. System Integrations
+  { flag: 'google_oauth', enabled: true, description: 'Cho phép đăng nhập qua Google OAuth' },
+  { flag: 'image_search', enabled: true, description: 'Cho phép tìm kiếm hình ảnh minh họa' },
+  { flag: 'tts_auto_generate', enabled: true, description: 'Tự động tạo giọng đọc TTS khi làm giàu từ vựng' },
+  { flag: 'mascot_radial_fab', enabled: true, description: 'Bật/tắt linh vật trợ lý Mascot Radial FAB' },
+]
+
 export default function AdminFeaturesPage() {
   const [flags, setFlags] = useState<FeatureFlag[]>([])
   const [settings, setSettings] = useState<AppSetting[]>([])
@@ -65,7 +107,21 @@ export default function AdminFeaturesPage() {
         adminService.listFeatureFlags(),
         adminService.listSettings(),
       ])
-      setFlags(flagsData)
+      
+      // Hợp nhất dữ liệu từ DB với KNOWN_FEATURE_FLAGS để luôn hiển thị đủ 22 nút nav + feature flags
+      const mergedFlags = KNOWN_FEATURE_FLAGS.map((kf) => {
+        const dbRow = flagsData.find((f) => f.flag === kf.flag)
+        return dbRow ? { ...kf, enabled: dbRow.enabled, description: dbRow.description || kf.description } : kf
+      })
+      
+      // Thêm các flag lạ trong DB nếu có
+      flagsData.forEach((f) => {
+        if (!mergedFlags.some((m) => m.flag === f.flag)) {
+          mergedFlags.push(f)
+        }
+      })
+
+      setFlags(mergedFlags)
       setSettings(settingsData)
       
       const fabSetting = settingsData.find(s => s.key === 'mascot_radial_fab_device')
@@ -86,7 +142,6 @@ export default function AdminFeaturesPage() {
       // Khởi tạo form values
       const initialForm: Record<string, string> = {}
       settingsData.forEach((s) => {
-        // Đối với json value, hiển thị dạng chuỗi dễ chỉnh sửa
         initialForm[s.key] = typeof s.value === 'object' ? JSON.stringify(s.value) : String(s.value)
       })
       setSettingsForm(initialForm)
@@ -333,26 +388,25 @@ export default function AdminFeaturesPage() {
           <div className="flex flex-col gap-6">
             <h2 className="text-lg font-black border-b-2 border-border pb-2 text-foreground flex items-center gap-1.5">
               <PlugZap className="text-primary" size={20} />
-              FEATURE FLAGS (BẬT/TẮT TÍNH NĂNG & NAV ITEMS)
+              FEATURE FLAGS (QUẢN LÝ BẬT/TẮT NÚT ĐIỀU HƯỚNG & TÍNH NĂNG)
             </h2>
             
-            {/* Group 1: Navigation / Learning Modules */}
+            {/* Group 1: Main Navigation Items */}
             <div className="flex flex-col gap-3">
               <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
-                1. Phân hệ Học tập & Navigation Menu
+                1. Thanh điều hướng chính (Main Nav Bar)
               </span>
               {flags
-                .filter((f) => f.flag.endsWith('_module'))
+                .filter((f) => ['grammar_module', 'vocabulary_module', 'listening_module', 'speaking_module', 'reading_module', 'writing_module', 'games_module'].includes(f.flag))
                 .map((flag) => (
                   <div
                     key={flag.flag}
                     className="neo-card p-3.5 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex items-center justify-between gap-4"
                   >
                     <div className="flex flex-col gap-0.5">
-                      <h3 className="font-black text-sm text-foreground uppercase tracking-wider">
-                        {flag.flag.replace('_module', '').replace('_', ' ')}
+                      <h3 className="font-black text-sm text-foreground tracking-wide">
+                        {flag.description ? flag.description.replace('Nút điều hướng: ', '') : flag.flag}
                       </h3>
-                      <p className="text-xs text-muted-foreground font-bold">{flag.description || 'Không có mô tả.'}</p>
                       <span className="text-[9px] font-black text-muted-foreground font-mono">
                         KEY: {flag.flag}
                       </span>
@@ -369,23 +423,22 @@ export default function AdminFeaturesPage() {
                 ))}
             </div>
 
-            {/* Group 2: Features & Quiz Extensions */}
+            {/* Group 2: More Dropdown Items */}
             <div className="flex flex-col gap-3">
               <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
-                2. Chức năng Nâng cao & Trắc nghiệm
+                2. Menu Mở rộng (More Dropdown Items)
               </span>
               {flags
-                .filter((f) => !f.flag.endsWith('_module') && !['google_oauth', 'image_search', 'tts_auto_generate', 'mascot_radial_fab'].includes(f.flag))
+                .filter((f) => ['dashboard_nav', 'decks_nav', 'study_nav', 'quiz_nav', 'review_nav', 'roadmap_module', 'exams_module', 'videos_module', 'blog_module', 'community_module', 'contact_module'].includes(f.flag))
                 .map((flag) => (
                   <div
                     key={flag.flag}
                     className="neo-card p-3.5 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex items-center justify-between gap-4"
                   >
                     <div className="flex flex-col gap-0.5">
-                      <h3 className="font-black text-sm text-foreground uppercase tracking-wider">
-                        {flag.flag.replace(/_/g, ' ')}
+                      <h3 className="font-black text-sm text-foreground tracking-wide">
+                        {flag.description ? flag.description.replace('Mục menu: ', '') : flag.flag}
                       </h3>
-                      <p className="text-xs text-muted-foreground font-bold">{flag.description || 'Không có mô tả.'}</p>
                       <span className="text-[9px] font-black text-muted-foreground font-mono">
                         KEY: {flag.flag}
                       </span>
@@ -402,10 +455,74 @@ export default function AdminFeaturesPage() {
                 ))}
             </div>
 
-            {/* Group 3: System Integrations */}
+            {/* Group 3: Header Action Controls */}
             <div className="flex flex-col gap-3">
               <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
-                3. Tích hợp Hệ thống
+                3. Thao tác Header (Header Action Buttons)
+              </span>
+              {flags
+                .filter((f) => ['ai_tutor_button', 'pro_upgrade_button', 'notifications_button', 'profile_menu_button'].includes(f.flag))
+                .map((flag) => (
+                  <div
+                    key={flag.flag}
+                    className="neo-card p-3.5 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex items-center justify-between gap-4"
+                  >
+                    <div className="flex flex-col gap-0.5">
+                      <h3 className="font-black text-sm text-foreground tracking-wide">
+                        {flag.description || flag.flag}
+                      </h3>
+                      <span className="text-[9px] font-black text-muted-foreground font-mono">
+                        KEY: {flag.flag}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => handleToggleFlag(flag.flag, flag.enabled)}
+                      className="transition-transform active:scale-95 shrink-0"
+                      title={flag.enabled ? 'Tắt tính năng' : 'Bật tính năng'}
+                    >
+                      <SmoothToggle on={flag.enabled} size={44} />
+                    </button>
+                  </div>
+                ))}
+            </div>
+
+            {/* Group 4: Advanced Features */}
+            <div className="flex flex-col gap-3">
+              <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
+                4. Chức năng Nâng cao & Trắc nghiệm
+              </span>
+              {flags
+                .filter((f) => ['template_builder', 'matching_quiz', 'fill_blank_quiz', 'learning_analytics_dashboard'].includes(f.flag))
+                .map((flag) => (
+                  <div
+                    key={flag.flag}
+                    className="neo-card p-3.5 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex items-center justify-between gap-4"
+                  >
+                    <div className="flex flex-col gap-0.5">
+                      <h3 className="font-black text-sm text-foreground tracking-wide">
+                        {flag.description || flag.flag}
+                      </h3>
+                      <span className="text-[9px] font-black text-muted-foreground font-mono">
+                        KEY: {flag.flag}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => handleToggleFlag(flag.flag, flag.enabled)}
+                      className="transition-transform active:scale-95 shrink-0"
+                      title={flag.enabled ? 'Tắt tính năng' : 'Bật tính năng'}
+                    >
+                      <SmoothToggle on={flag.enabled} size={44} />
+                    </button>
+                  </div>
+                ))}
+            </div>
+
+            {/* Group 5: System Integrations */}
+            <div className="flex flex-col gap-3">
+              <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
+                5. Tích hợp Hệ thống
               </span>
               {flags
                 .filter((f) => ['google_oauth', 'image_search', 'tts_auto_generate', 'mascot_radial_fab'].includes(f.flag))
@@ -416,10 +533,9 @@ export default function AdminFeaturesPage() {
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex flex-col gap-0.5">
-                        <h3 className="font-black text-sm text-foreground uppercase tracking-wider">
-                          {flag.flag.replace(/_/g, ' ')}
+                        <h3 className="font-black text-sm text-foreground tracking-wide">
+                          {flag.description || flag.flag}
                         </h3>
-                        <p className="text-xs text-muted-foreground font-bold">{flag.description || 'Không có mô tả.'}</p>
                         <span className="text-[9px] font-black text-muted-foreground font-mono">
                           KEY: {flag.flag}
                         </span>
