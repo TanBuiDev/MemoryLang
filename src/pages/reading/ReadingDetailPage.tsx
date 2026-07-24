@@ -33,6 +33,7 @@ import { showToast } from '@/components/ui/toast'
 import { isRestrictedReadingTier } from '@/utils/readingContent'
 import { annotateReadingHtml } from '@/utils/readingVocabulary'
 import { fillReadingQuizBlanks } from '@/utils/readingQuizContent'
+import { cn } from '@/utils/cn'
 
 const speedOptions = [
   { value: '0.5', label: '0.5x' },
@@ -160,18 +161,13 @@ export function ReadingDetailPage() {
     if (audioRef.current) {
       if (isPlayingAudio) {
         audioRef.current.pause()
-        setIsPlayingAudio(false)
       } else {
         audioRef.current.playbackRate = audioSpeed
-        audioRef.current.play()
-        setIsPlayingAudio(true)
+        void audioRef.current.play().catch((playErr) => {
+          console.error('Audio play error:', playErr)
+          setIsPlayingAudio(false)
+        })
       }
-    } else if (audioUrl) {
-      const newAudio = new Audio(audioUrl)
-      audioRef.current = newAudio
-      newAudio.playbackRate = audioSpeed
-      newAudio.play()
-      setIsPlayingAudio(true)
     }
   }
 
@@ -280,9 +276,33 @@ export function ReadingDetailPage() {
 
   const hasQuestions = Boolean(article.questions && article.questions.length > 0)
   const answeredCount = Object.keys(quizAnswers).length
+  const isAudioDisabled = !audioUrl || (hasQuestions && !quizSubmitted)
 
   return (
     <div className="w-full py-2">
+      {audioUrl && (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          preload="metadata"
+          onPlay={() => setIsPlayingAudio(true)}
+          onPause={() => setIsPlayingAudio(false)}
+          onEnded={() => {
+            setIsPlayingAudio(false)
+            setAudioCurrentTime(0)
+          }}
+          onTimeUpdate={() => {
+            if (audioRef.current) {
+              setAudioCurrentTime(audioRef.current.currentTime)
+              if (audioRef.current.duration) setAudioDuration(audioRef.current.duration)
+            }
+          }}
+          onLoadedMetadata={() => {
+            if (audioRef.current?.duration) setAudioDuration(audioRef.current.duration)
+          }}
+        />
+      )}
+
       {/* Responsive Grid Layout: Stacked on mobile (< lg), 3 Columns on Desktop (>= lg: 3 - 5 - 4 ratio) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6 items-start">
         
@@ -343,11 +363,23 @@ export function ReadingDetailPage() {
               <Button
                 type="button"
                 onClick={handleToggleAudio}
-                className="neo-button p-2.5 h-11 w-11 min-h-0 bg-[#fdc800] hover:bg-amber-300 active:translate-y-0.5 text-slate-900 border-2 sm:border-3 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl flex items-center justify-center cursor-pointer shrink-0 transition-transform"
+                className={cn(
+                  'neo-button p-2.5 h-11 w-11 min-h-0 bg-[#fdc800] hover:bg-amber-300 active:translate-y-0.5 text-slate-900 border-2 sm:border-3 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl flex items-center justify-center cursor-pointer shrink-0 transition-transform',
+                  isAudioDisabled && 'opacity-60 cursor-not-allowed shadow-none active:translate-y-0 hover:bg-[#fdc800]'
+                )}
+                title={
+                  !audioUrl
+                    ? 'Bài đọc chưa có audio'
+                    : hasQuestions && !quizSubmitted
+                      ? 'Vui lòng nộp bài đọc hiểu trước khi nghe audio bài đọc'
+                      : isPlayingAudio
+                        ? 'Dừng audio'
+                        : 'Nghe audio'
+                }
               >
                 {isPlayingAudio ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
               </Button>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-black text-slate-900 flex items-center gap-2">
                   Âm thanh phát bài đọc (TTS)
                   {isPlayingAudio && (
@@ -358,7 +390,11 @@ export function ReadingDetailPage() {
                     </span>
                   )}
                 </p>
-                <p className="text-[10px] font-bold text-slate-600 truncate">Nghe kết hợp highlight câu đang đọc</p>
+                <p className="text-[10px] font-bold text-slate-600 truncate">
+                  {hasQuestions && !quizSubmitted
+                    ? 'Nộp bài để mở khóa audio bài đọc'
+                    : 'Nghe kết hợp highlight câu đang đọc'}
+                </p>
               </div>
             </div>
 
@@ -544,8 +580,6 @@ export function ReadingDetailPage() {
               {/* Questions List */}
               <div className="space-y-4">
                 {article.questions.map((q, idx) => {
-                  const isAnswered = Boolean(quizAnswers[q.id])
-
                   return (
                     <div
                       key={q.id}
@@ -556,15 +590,6 @@ export function ReadingDetailPage() {
                         <h3 className="font-black text-xs sm:text-sm text-slate-900 leading-snug">
                           Câu {idx + 1}: {q.question_text}
                         </h3>
-                        {quizSubmitted ? null : isAnswered ? (
-                          <span className="text-[10px] font-black uppercase px-1.5 py-0.5 bg-[#fdc800] text-slate-900 border border-slate-900 rounded shadow-[1px_1px_0px_0px_#000] shrink-0">
-                            Đã chọn
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 bg-slate-200 text-slate-600 border border-slate-300 rounded shrink-0">
-                            Chưa chọn
-                          </span>
-                        )}
                       </div>
 
                       <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
