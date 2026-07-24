@@ -330,65 +330,139 @@ export default function AdminFeaturesPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Section 1: Feature Flags */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-6">
             <h2 className="text-lg font-black border-b-2 border-border pb-2 text-foreground flex items-center gap-1.5">
               <PlugZap className="text-primary" size={20} />
-              FEATURE FLAGS (BẬT/TẮT TÍNH NĂNG)
+              FEATURE FLAGS (BẬT/TẮT TÍNH NĂNG & NAV ITEMS)
             </h2>
             
+            {/* Group 1: Navigation / Learning Modules */}
             <div className="flex flex-col gap-3">
-              {flags.map((flag) => (
-                <div
-                  key={flag.flag}
-                  className="neo-card p-4 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex flex-col gap-3"
-                >
-                  <div className="flex items-center justify-between gap-4">
+              <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
+                1. Phân hệ Học tập & Navigation Menu
+              </span>
+              {flags
+                .filter((f) => f.flag.endsWith('_module'))
+                .map((flag) => (
+                  <div
+                    key={flag.flag}
+                    className="neo-card p-3.5 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex items-center justify-between gap-4"
+                  >
                     <div className="flex flex-col gap-0.5">
-                      <h3 className="font-black text-sm text-foreground uppercase tracking-wider">{flag.flag.replace('_', ' ')}</h3>
+                      <h3 className="font-black text-sm text-foreground uppercase tracking-wider">
+                        {flag.flag.replace('_module', '').replace('_', ' ')}
+                      </h3>
                       <p className="text-xs text-muted-foreground font-bold">{flag.description || 'Không có mô tả.'}</p>
-                      <span className="text-[9px] font-black text-muted-foreground mt-1 font-mono">
+                      <span className="text-[9px] font-black text-muted-foreground font-mono">
                         KEY: {flag.flag}
                       </span>
                     </div>
 
                     <button
                       onClick={() => handleToggleFlag(flag.flag, flag.enabled)}
-                      className="transition-transform active:scale-95"
+                      className="transition-transform active:scale-95 shrink-0"
                       title={flag.enabled ? 'Tắt tính năng' : 'Bật tính năng'}
                     >
-                      <SmoothToggle on={flag.enabled} size={48} />
+                      <SmoothToggle on={flag.enabled} size={44} />
                     </button>
                   </div>
+                ))}
+            </div>
 
-                  {flag.flag === 'mascot_radial_fab' && (
-                    <div className={`flex items-center gap-4 pt-2 border-t-2 border-dashed border-border ${!flag.enabled ? 'opacity-50' : ''}`}>
-                      <span className="text-[11px] font-black text-muted-foreground uppercase">Thiết bị:</span>
-                      <div className="flex items-center gap-4">
-                        <button
-                          type="button"
-                          disabled={!flag.enabled}
-                          onClick={() => handleToggleFabDevice('desktop')}
-                          className="flex items-center gap-1.5 transition-transform active:scale-95 disabled:pointer-events-none"
-                          title={fabDevice.desktop ? 'Đang hiển thị trên desktop' : 'Đang ẩn trên desktop'}
-                        >
-                          <SmoothToggle on={flag.enabled && fabDevice.desktop} size={28} />
-                          <span className="text-xs font-bold">Desktop</span>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={!flag.enabled}
-                          onClick={() => handleToggleFabDevice('mobile')}
-                          className="flex items-center gap-1.5 transition-transform active:scale-95 disabled:pointer-events-none"
-                          title={fabDevice.mobile ? 'Đang hiển thị trên mobile' : 'Đang ẩn trên mobile'}
-                        >
-                          <SmoothToggle on={flag.enabled && fabDevice.mobile} size={28} />
-                          <span className="text-xs font-bold">Mobile</span>
-                        </button>
-                      </div>
+            {/* Group 2: Features & Quiz Extensions */}
+            <div className="flex flex-col gap-3">
+              <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
+                2. Chức năng Nâng cao & Trắc nghiệm
+              </span>
+              {flags
+                .filter((f) => !f.flag.endsWith('_module') && !['google_oauth', 'image_search', 'tts_auto_generate', 'mascot_radial_fab'].includes(f.flag))
+                .map((flag) => (
+                  <div
+                    key={flag.flag}
+                    className="neo-card p-3.5 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex items-center justify-between gap-4"
+                  >
+                    <div className="flex flex-col gap-0.5">
+                      <h3 className="font-black text-sm text-foreground uppercase tracking-wider">
+                        {flag.flag.replace(/_/g, ' ')}
+                      </h3>
+                      <p className="text-xs text-muted-foreground font-bold">{flag.description || 'Không có mô tả.'}</p>
+                      <span className="text-[9px] font-black text-muted-foreground font-mono">
+                        KEY: {flag.flag}
+                      </span>
                     </div>
-                  )}
-                </div>
-              ))}
+
+                    <button
+                      onClick={() => handleToggleFlag(flag.flag, flag.enabled)}
+                      className="transition-transform active:scale-95 shrink-0"
+                      title={flag.enabled ? 'Tắt tính năng' : 'Bật tính năng'}
+                    >
+                      <SmoothToggle on={flag.enabled} size={44} />
+                    </button>
+                  </div>
+                ))}
+            </div>
+
+            {/* Group 3: System Integrations */}
+            <div className="flex flex-col gap-3">
+              <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
+                3. Tích hợp Hệ thống
+              </span>
+              {flags
+                .filter((f) => ['google_oauth', 'image_search', 'tts_auto_generate', 'mascot_radial_fab'].includes(f.flag))
+                .map((flag) => (
+                  <div
+                    key={flag.flag}
+                    className="neo-card p-3.5 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex flex-col gap-3"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex flex-col gap-0.5">
+                        <h3 className="font-black text-sm text-foreground uppercase tracking-wider">
+                          {flag.flag.replace(/_/g, ' ')}
+                        </h3>
+                        <p className="text-xs text-muted-foreground font-bold">{flag.description || 'Không có mô tả.'}</p>
+                        <span className="text-[9px] font-black text-muted-foreground font-mono">
+                          KEY: {flag.flag}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => handleToggleFlag(flag.flag, flag.enabled)}
+                        className="transition-transform active:scale-95 shrink-0"
+                        title={flag.enabled ? 'Tắt tính năng' : 'Bật tính năng'}
+                      >
+                        <SmoothToggle on={flag.enabled} size={44} />
+                      </button>
+                    </div>
+
+                    {flag.flag === 'mascot_radial_fab' && (
+                      <div className={`flex items-center gap-4 pt-2 border-t-2 border-dashed border-border ${!flag.enabled ? 'opacity-50' : ''}`}>
+                        <span className="text-[11px] font-black text-muted-foreground uppercase">Thiết bị:</span>
+                        <div className="flex items-center gap-4">
+                          <button
+                            type="button"
+                            disabled={!flag.enabled}
+                            onClick={() => handleToggleFabDevice('desktop')}
+                            className="flex items-center gap-1.5 transition-transform active:scale-95 disabled:pointer-events-none"
+                            title={fabDevice.desktop ? 'Đang hiển thị trên desktop' : 'Đang ẩn trên desktop'}
+                          >
+                            <SmoothToggle on={flag.enabled && fabDevice.desktop} size={28} />
+                            <span className="text-xs font-bold">Desktop</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!flag.enabled}
+                            onClick={() => handleToggleFabDevice('mobile')}
+                            className="flex items-center gap-1.5 transition-transform active:scale-95 disabled:pointer-events-none"
+                            title={fabDevice.mobile ? 'Đang hiển thị trên mobile' : 'Đang ẩn trên mobile'}
+                          >
+                            <SmoothToggle on={flag.enabled && fabDevice.mobile} size={28} />
+                            <span className="text-xs font-bold">Mobile</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
             </div>
           </div>
 

@@ -41,6 +41,7 @@ import { useNotificationStore, useUnreadCount } from '@/stores/useNotificationSt
 import { useThemeStore } from '@/stores/useThemeStore'
 import { useUiLanguageStore } from '@/stores/useUiLanguageStore'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
+import { useFeatureFlagsStore } from '@/stores/useFeatureFlagsStore'
 import { cn } from '@/utils/cn'
 
 /**
@@ -60,29 +61,36 @@ function formatRelativeTime(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString()
 }
 
-const mainNavItems = [
-  { labelKey: 'header.grammar', to: '/app/grammar', icon: ScrollText },
-  { labelKey: 'header.vocabulary', to: '/app/vocabulary', icon: BookOpen },
-  { labelKey: 'header.listening', to: '/app/listening', icon: Headphones },
-  { labelKey: 'header.speaking', to: '/app/speaking', icon: Mic },
-  { labelKey: 'header.reading', to: '/app/reading', icon: FileText },
-  { labelKey: 'header.writing', to: '/app/writing', icon: PenLine },
-  { labelKey: 'header.games', to: '/app/games', icon: Gamepad2 },
-] as const
+interface NavItem {
+  labelKey: string
+  to: string
+  icon: any
+  flag?: string
+}
 
-const moreDropdownItems = [
+const mainNavItems: NavItem[] = [
+  { labelKey: 'header.grammar', to: '/app/grammar', icon: ScrollText, flag: 'grammar_module' },
+  { labelKey: 'header.vocabulary', to: '/app/vocabulary', icon: BookOpen, flag: 'vocabulary_module' },
+  { labelKey: 'header.listening', to: '/app/listening', icon: Headphones, flag: 'listening_module' },
+  { labelKey: 'header.speaking', to: '/app/speaking', icon: Mic, flag: 'speaking_module' },
+  { labelKey: 'header.reading', to: '/app/reading', icon: FileText, flag: 'reading_module' },
+  { labelKey: 'header.writing', to: '/app/writing', icon: PenLine, flag: 'writing_module' },
+  { labelKey: 'header.games', to: '/app/games', icon: Gamepad2, flag: 'games_module' },
+]
+
+const moreDropdownItems: NavItem[] = [
   { labelKey: 'nav.dashboard', to: '/app/dashboard', icon: LayoutDashboard },
-  { labelKey: 'nav.decks', to: '/app/decks', icon: LibraryBig },
-  { labelKey: 'nav.study', to: '/app/study', icon: Brain },
-  { labelKey: 'nav.quiz', to: '/app/quiz', icon: ClipboardCheck },
-  { labelKey: 'nav.review', to: '/app/review', icon: Gauge },
-  { labelKey: 'header.roadmap', to: '/app/roadmap', icon: Map },
-  { labelKey: 'header.exams', to: '/app/exams', icon: ClipboardCheck },
-  { labelKey: 'header.videos', to: '/app/videos', icon: Video },
-  { labelKey: 'header.blog', to: '/app/blog', icon: Rss },
-  { labelKey: 'header.community', to: '/app/community', icon: MessageSquare },
-  { labelKey: 'header.contact', to: '/app/contact', icon: Mail },
-] as const
+  { labelKey: 'nav.decks', to: '/app/decks', icon: LibraryBig, flag: 'vocabulary_module' },
+  { labelKey: 'nav.study', to: '/app/study', icon: Brain, flag: 'vocabulary_module' },
+  { labelKey: 'nav.quiz', to: '/app/quiz', icon: ClipboardCheck, flag: 'vocabulary_module' },
+  { labelKey: 'nav.review', to: '/app/review', icon: Gauge, flag: 'vocabulary_module' },
+  { labelKey: 'header.roadmap', to: '/app/roadmap', icon: Map, flag: 'roadmap_module' },
+  { labelKey: 'header.exams', to: '/app/exams', icon: ClipboardCheck, flag: 'exams_module' },
+  { labelKey: 'header.videos', to: '/app/videos', icon: Video, flag: 'videos_module' },
+  { labelKey: 'header.blog', to: '/app/blog', icon: Rss, flag: 'blog_module' },
+  { labelKey: 'header.community', to: '/app/community', icon: MessageSquare, flag: 'community_module' },
+  { labelKey: 'header.contact', to: '/app/contact', icon: Mail, flag: 'contact_module' },
+]
 
 export function Header() {
   const { t } = useI18n()
@@ -100,6 +108,25 @@ export function Header() {
   const markAsRead = useNotificationStore((s) => s.markAsRead)
   const markAllAsRead = useNotificationStore((s) => s.markAllAsRead)
   const unreadCount = useUnreadCount()
+
+  const flags = useFeatureFlagsStore((s) => s.flags)
+  const isLoaded = useFeatureFlagsStore((s) => s.isLoaded)
+  const loadFlags = useFeatureFlagsStore((s) => s.loadFlags)
+  const subscribeToRealtime = useFeatureFlagsStore((s) => s.subscribeToRealtime)
+
+  useEffect(() => {
+    if (!isLoaded) {
+      void loadFlags()
+    }
+    subscribeToRealtime()
+  }, [isLoaded, loadFlags, subscribeToRealtime])
+
+  const filteredMainNavItems = mainNavItems.filter(
+    (item) => !item.flag || (flags[item.flag] ?? true)
+  )
+  const filteredMoreDropdownItems = moreDropdownItems.filter(
+    (item) => !item.flag || (flags[item.flag] ?? true)
+  )
 
   const [moreOpen, setMoreOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -153,7 +180,7 @@ export function Header() {
         </div>
 
         <nav className="hidden xl:flex items-center gap-0.5 xl:gap-1 shrink-0">
-          {mainNavItems.map((item) => (
+          {filteredMainNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -171,37 +198,39 @@ export function Header() {
             </NavLink>
           ))}
 
-          <div ref={moreRef} className="relative">
-            <button
-              type="button"
-              onClick={() => { setMoreOpen(!moreOpen); setProfileOpen(false); setNotifOpen(false) }}
-              className={cn(
-                'px-2 py-1.5 xl:px-3 xl:py-2 rounded-md text-xs xl:text-sm font-bold transition border-2 border-transparent hover:bg-muted hover:border-border flex items-center gap-1',
-                moreOpen && 'bg-muted border-border',
-              )}
-            >
-              {t('header.more')}
-              <ChevronDown size={16} className={cn('transition', moreOpen && 'rotate-180')} />
-            </button>
+          {filteredMoreDropdownItems.length > 0 && (
+            <div ref={moreRef} className="relative">
+              <button
+                type="button"
+                onClick={() => { setMoreOpen(!moreOpen); setProfileOpen(false); setNotifOpen(false) }}
+                className={cn(
+                  'px-2 py-1.5 xl:px-3 xl:py-2 rounded-md text-xs xl:text-sm font-bold transition border-2 border-transparent hover:bg-muted hover:border-border flex items-center gap-1',
+                  moreOpen && 'bg-muted border-border',
+                )}
+              >
+                {t('header.more')}
+                <ChevronDown size={16} className={cn('transition', moreOpen && 'rotate-180')} />
+              </button>
 
-            {moreOpen && (
-              <div className={dropdownPanelClass}>
-                {moreDropdownItems.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    onClick={() => setMoreOpen(false)}
-                    className={({ isActive }) =>
-                      cn(dropdownLinkClass, isActive && 'bg-primary text-primary-foreground')
-                    }
-                  >
-                    <item.icon size={16} />
-                    {t(item.labelKey)}
-                  </NavLink>
-                ))}
-              </div>
-            )}
-          </div>
+              {moreOpen && (
+                <div className={dropdownPanelClass}>
+                  {filteredMoreDropdownItems.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMoreOpen(false)}
+                      className={({ isActive }) =>
+                        cn(dropdownLinkClass, isActive && 'bg-primary text-primary-foreground')
+                      }
+                    >
+                      <item.icon size={16} />
+                      {t(item.labelKey)}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </nav>
 
         <div className="flex items-center gap-2 flex-1 justify-end shrink-0 min-w-max">
@@ -411,71 +440,77 @@ export function Header() {
         <div className="xl:hidden fixed inset-x-0 top-16 z-20 bg-background/95 backdrop-blur border-b-2 border-border max-h-[calc(100vh-4rem)] overflow-y-auto animate-in slide-in-from-top duration-200">
           <div className="p-4 flex flex-col gap-4">
             {/* Học tập Section */}
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-black uppercase text-muted-foreground px-3 mb-1">Học tập</span>
-              {mainNavItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-bold transition border-2 border-transparent',
-                      isActive
-                        ? 'bg-primary text-primary-foreground border-border shadow-[2px_2px_0_var(--border)]'
-                        : 'hover:bg-muted hover:border-border',
-                    )
-                  }
-                >
-                  <item.icon size={18} />
-                  {t(item.labelKey)}
-                </NavLink>
-              ))}
-              
-              {isPro ? (
-                <NavLink
-                  to="/app/upgrade"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2.5 mt-2 rounded-md text-sm font-black border-2 border-border bg-[#dcfce7] text-[#166534] shadow-[2px_2px_0_var(--border)] active:translate-y-[2px] active:shadow-none transition-all"
-                >
-                  👑 Gói Pro hoạt động
-                </NavLink>
-              ) : (
-                <NavLink
-                  to="/app/upgrade"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2.5 mt-2 rounded-md text-sm font-black border-2 border-border bg-[#fdc800] text-[#1c293c] shadow-[2px_2px_0_var(--border)] active:translate-y-[2px] active:shadow-none transition-all"
-                >
-                  <Crown size={18} />
-                  Nâng cấp Pro 👑
-                </NavLink>
-              )}
-            </div>
+            {filteredMainNavItems.length > 0 && (
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-black uppercase text-muted-foreground px-3 mb-1">Học tập</span>
+                {filteredMainNavItems.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-bold transition border-2 border-transparent',
+                        isActive
+                          ? 'bg-primary text-primary-foreground border-border shadow-[2px_2px_0_var(--border)]'
+                          : 'hover:bg-muted hover:border-border',
+                      )
+                    }
+                  >
+                    <item.icon size={18} />
+                    {t(item.labelKey)}
+                  </NavLink>
+                ))}
+                
+                {isPro ? (
+                  <NavLink
+                    to="/app/upgrade"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2.5 mt-2 rounded-md text-sm font-black border-2 border-border bg-[#dcfce7] text-[#166534] shadow-[2px_2px_0_var(--border)] active:translate-y-[2px] active:shadow-none transition-all"
+                  >
+                    👑 Gói Pro hoạt động
+                  </NavLink>
+                ) : (
+                  <NavLink
+                    to="/app/upgrade"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2.5 mt-2 rounded-md text-sm font-black border-2 border-border bg-[#fdc800] text-[#1c293c] shadow-[2px_2px_0_var(--border)] active:translate-y-[2px] active:shadow-none transition-all"
+                  >
+                    <Crown size={18} />
+                    Nâng cấp Pro 👑
+                  </NavLink>
+                )}
+              </div>
+            )}
 
-            <hr className="border-border border-dashed" />
+            {filteredMoreDropdownItems.length > 0 && (
+              <>
+                <hr className="border-border border-dashed" />
 
-            {/* Mở rộng Section */}
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-black uppercase text-muted-foreground px-3 mb-1">Mở rộng</span>
-              {moreDropdownItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-bold transition border-2 border-transparent',
-                      isActive
-                        ? 'bg-primary text-primary-foreground border-border shadow-[2px_2px_0_var(--border)]'
-                        : 'hover:bg-muted hover:border-border',
-                    )
-                  }
-                >
-                  <item.icon size={18} />
-                  {t(item.labelKey)}
-                </NavLink>
-              ))}
-            </div>
+                {/* Mở rộng Section */}
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-black uppercase text-muted-foreground px-3 mb-1">Mở rộng</span>
+                  {filteredMoreDropdownItems.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-bold transition border-2 border-transparent',
+                          isActive
+                            ? 'bg-primary text-primary-foreground border-border shadow-[2px_2px_0_var(--border)]'
+                            : 'hover:bg-muted hover:border-border',
+                        )
+                      }
+                    >
+                      <item.icon size={18} />
+                      {t(item.labelKey)}
+                    </NavLink>
+                  ))}
+                </div>
+              </>
+            )}
 
             {profile?.is_admin && (
               <>

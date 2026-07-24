@@ -5,6 +5,7 @@ import { ProtectedRoute } from '@/app/ProtectedRoute'
 import { AdminRoute } from '@/app/AdminRoute'
 import { GlobalAiTutorModal } from '@/components/chat/GlobalAiTutorModal'
 import { AppLoading } from '@/components/common/AppLoading'
+import { FeatureGuard } from '@/components/auth/FeatureGuard'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { DeckDetailPage } from '@/pages/decks/DeckDetailPage'
 import { DeckListPage } from '@/pages/decks/DeckListPage'
@@ -97,27 +98,58 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <Navigate to="/app/dashboard" replace /> },
               { path: 'dashboard', element: <DashboardPage /> },
-              { path: 'vocabulary', element: <VocabularyListPage /> },
-              { path: 'vocabulary/new', element: <AddVocabularyPage /> },
-              { path: 'vocabulary/:id', element: <VocabularyDetailPage /> },
-              { path: 'decks', element: <DeckListPage /> },
-              { path: 'decks/:id', element: <DeckDetailPage /> },
-              { path: 'study', element: <StudySetupPage /> },
-              { path: 'study/session/:sessionId', element: <FlashcardStudyPage /> },
-              { path: 'study/result/:sessionId', element: <StudyResultPage /> },
-              { path: 'quiz', element: <QuizSetupPage /> },
-              { path: 'quiz/session/:sessionId', element: <QuizSessionPage /> },
-              { path: 'quiz/result/:resultId', element: <QuizResultPage /> },
-              { path: 'review', element: <ReviewTodayPage /> },
+              
+              /* Vocabulary Module */
+              {
+                element: <FeatureGuard flag="vocabulary_module" />,
+                children: [
+                  { path: 'vocabulary', element: <VocabularyListPage /> },
+                  { path: 'vocabulary/new', element: <AddVocabularyPage /> },
+                  { path: 'vocabulary/:id', element: <VocabularyDetailPage /> },
+                  { path: 'decks', element: <DeckListPage /> },
+                  { path: 'decks/:id', element: <DeckDetailPage /> },
+                  { path: 'study', element: <StudySetupPage /> },
+                  { path: 'study/session/:sessionId', element: <FlashcardStudyPage /> },
+                  { path: 'study/result/:sessionId', element: <StudyResultPage /> },
+                  { path: 'quiz', element: <QuizSetupPage /> },
+                  { path: 'quiz/session/:sessionId', element: <QuizSessionPage /> },
+                  { path: 'quiz/result/:resultId', element: <QuizResultPage /> },
+                  { path: 'review', element: <ReviewTodayPage /> },
+                ],
+              },
+
               { path: 'templates', element: <TemplateListPage /> },
               { path: 'templates/new', element: <TemplateBuilderPage /> },
               { path: 'templates/:id/edit', element: <TemplateBuilderPage /> },
-              { path: 'listening', element: <TopicSelectionPage /> },
-              { path: 'listening/:topicId', element: <TestSelectionPage /> },
-              { path: 'listening/:topicId/:testId', element: <PartSelectionPage /> },
-              { path: 'listening/session/:partId/:mode', element: <ListeningSessionPage /> },
-              { path: 'listening/result/:partId', element: <ListeningResultPage /> },
-              { path: 'grammar', element: <GrammarPage /> },
+
+              /* Listening Module */
+              {
+                element: <FeatureGuard flag="listening_module" />,
+                children: [
+                  { path: 'listening', element: <TopicSelectionPage /> },
+                  { path: 'listening/:topicId', element: <TestSelectionPage /> },
+                  { path: 'listening/:topicId/:testId', element: <PartSelectionPage /> },
+                  { path: 'listening/session/:partId/:mode', element: <ListeningSessionPage /> },
+                  { path: 'listening/result/:partId', element: <ListeningResultPage /> },
+                ],
+              },
+
+              /* Grammar Module */
+              {
+                element: <FeatureGuard flag="grammar_module" />,
+                children: [
+                  { path: 'grammar', element: <GrammarPage /> },
+                  {
+                    path: 'grammar/:topicId',
+                    element: (
+                      <React.Suspense fallback={<AppLoading />}>
+                        <GrammarLessonPage />
+                      </React.Suspense>
+                    ),
+                  },
+                ],
+              },
+
               {
                 path: 'chat',
                 element: (
@@ -126,47 +158,54 @@ export const router = createBrowserRouter([
                   </React.Suspense>
                 ),
               },
+
+              /* Reading Module */
               {
-                path: 'grammar/:topicId',
-                element: (
-                  <React.Suspense fallback={<AppLoading />}>
-                    <GrammarLessonPage />
-                  </React.Suspense>
-                ),
+                element: <FeatureGuard flag="reading_module" />,
+                children: [
+                  {
+                    path: 'reading',
+                    element: (
+                      <React.Suspense fallback={<AppLoading />}>
+                        <ReadingHubPage />
+                      </React.Suspense>
+                    ),
+                  },
+                  {
+                    path: 'reading/:articleId',
+                    element: (
+                      <React.Suspense fallback={<AppLoading />}>
+                        <ReadingDetailPage />
+                      </React.Suspense>
+                    ),
+                  },
+                ],
               },
-              {
-                path: 'reading',
-                element: (
-                  <React.Suspense fallback={<AppLoading />}>
-                    <ReadingHubPage />
-                  </React.Suspense>
-                ),
-              },
-              {
-                path: 'reading/:articleId',
-                element: (
-                  <React.Suspense fallback={<AppLoading />}>
-                    <ReadingDetailPage />
-                  </React.Suspense>
-                ),
-              },
+
               { path: 'upgrade', element: <UpgradePage /> },
               { path: 'upgrade/success', element: <UpgradeSuccessPage /> },
+
+              /* Games Module */
               {
-                path: 'games',
-                element: (
-                  <React.Suspense fallback={<AppLoading />}>
-                    <GameHubPage />
-                  </React.Suspense>
-                ),
-              },
-              {
-                path: 'games/matching',
-                element: (
-                  <React.Suspense fallback={<AppLoading />}>
-                    <MatchingGamePage />
-                  </React.Suspense>
-                ),
+                element: <FeatureGuard flag="games_module" />,
+                children: [
+                  {
+                    path: 'games',
+                    element: (
+                      <React.Suspense fallback={<AppLoading />}>
+                        <GameHubPage />
+                      </React.Suspense>
+                    ),
+                  },
+                  {
+                    path: 'games/matching',
+                    element: (
+                      <React.Suspense fallback={<AppLoading />}>
+                        <MatchingGamePage />
+                      </React.Suspense>
+                    ),
+                  },
+                ],
               },
               { path: 'statistics', element: <Navigate to="/app/dashboard" replace /> },
               { path: 'settings', element: <SettingsPage /> },
