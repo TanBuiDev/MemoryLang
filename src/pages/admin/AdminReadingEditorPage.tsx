@@ -12,6 +12,8 @@ import {
   ListPlus,
   Pencil,
   Sparkles,
+  CheckCircle2,
+  Check,
 } from 'lucide-react'
 import {
   adminReadingService,
@@ -24,6 +26,7 @@ import { showToast } from '@/components/ui/toast'
 import { buildReadingOption, normalizeReadingContent } from '@/utils/readingContent'
 import { annotateReadingHtml } from '@/utils/readingVocabulary'
 import { fillReadingQuizBlanks } from '@/utils/readingQuizContent'
+import { cn } from '@/utils/cn'
 import {
   getInitialReadingEditorMode,
   type ReadingEditorMode,
@@ -716,94 +719,181 @@ export default function AdminReadingEditorPage() {
       </div>
 
       {/* 3. Quiz Questions Builder */}
-      <div className="neo-card p-6 bg-white border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] rounded-2xl space-y-4">
-        <div className="flex items-center justify-between border-b-2 border-slate-900 pb-2">
-          <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
-            <HelpCircle size={18} className="text-amber-600" />
-            <span>BỘ CÂU HỎI ĐỌC HIỂU ({questions.length})</span>
-          </h2>
+      <div className="neo-card p-6 bg-white border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] rounded-2xl space-y-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b-2 border-slate-900 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-amber-200 border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_0px_#000]">
+              <HelpCircle size={20} className="text-slate-900" />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-slate-900 tracking-wide uppercase">
+                BỘ CÂU HỎI ĐỌC HIỂU ({questions.length})
+              </h2>
+              <p className="text-[11px] font-bold text-slate-500">
+                Tạo các câu hỏi trắc nghiệm và đánh dấu đáp án đúng cho ô trống bài đọc
+              </p>
+            </div>
+          </div>
 
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="secondary"
               onClick={() => setBulkImportOpen(true)}
-              className="h-8 px-3 text-xs"
+              className="neo-button h-9 px-3 text-xs bg-purple-100 hover:bg-purple-200 text-purple-950 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] font-black rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
-              <ListPlus size={14} />
+              <ListPlus size={15} />
               <span>Nhập hàng loạt</span>
             </Button>
+
             <Button
               type="button"
               onClick={handleAddQuestion}
-              className="neo-button px-3 py-1.5 h-8 bg-[#fdc800] text-slate-900 font-black text-xs border-2 border-slate-900 shadow-[1.5px_1.5px_0px_0px_#000] rounded-lg flex items-center gap-1 cursor-pointer"
+              className="neo-button h-9 px-4 bg-[#fdc800] hover:bg-amber-300 text-slate-900 font-black text-xs border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
-              <Plus size={14} />
+              <Plus size={15} />
               <span>Thêm câu hỏi</span>
             </Button>
           </div>
         </div>
 
         {questions.length === 0 ? (
-          <div className="text-center font-bold text-slate-500 py-6">
-            Chưa có câu hỏi kiểm tra nào. Bấm "Thêm câu hỏi" để bắt đầu.
+          <div className="p-8 text-center bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl space-y-2">
+            <p className="text-sm font-bold text-slate-600">
+              Chưa có câu hỏi kiểm tra nào cho bài đọc này.
+            </p>
+            <p className="text-xs text-slate-500">
+              Bấm <span className="font-black text-slate-900">"Thêm câu hỏi"</span> hoặc <span className="font-black text-purple-900">"Nhập hàng loạt"</span> để bắt đầu tạo bộ đề.
+            </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {questions.map((q, qIdx) => (
-              <div key={q.id} className="p-4 bg-slate-50 border-2 border-slate-900 rounded-xl space-y-3 shadow-[2px_2px_0px_0px_#000]">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase text-slate-700">Câu hỏi {qIdx + 1}</span>
-                  <Button
-                    type="button"
-                    variant="danger"
-                    onClick={() => handleRemoveQuestion(qIdx)}
-                    className="neo-button p-1 h-7 w-7 min-h-0 bg-rose-500 text-white rounded-lg border border-slate-900"
-                    title="Xóa câu hỏi"
-                  >
-                    <Trash2 size={13} />
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="md:col-span-2">
-                    <input
-                      type="text"
-                      value={q.question_text}
-                      onChange={(e) => handleQuestionChange(qIdx, 'question_text', e.target.value)}
-                      placeholder="Nội dung câu hỏi (ví dụ: What is the main concern...)"
-                      className="w-full p-2 text-xs font-bold border-2 border-slate-900 rounded-lg bg-white"
-                    />
+              <div
+                key={q.id}
+                className="p-5 bg-slate-50 border-3 border-slate-900 rounded-2xl space-y-4 shadow-[4px_4px_0px_0px_#000] transition-all"
+              >
+                {/* Header row: Question Badge, Type Selector & Delete */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-200 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="neo-button px-3 py-1 bg-[#fdc800] text-slate-900 font-black text-xs border-2 border-slate-900 shadow-[1.5px_1.5px_0px_0px_#000] rounded-lg">
+                      CÂU HỎI {qIdx + 1}
+                    </span>
+                    {q.options?.some((o) => o.is_correct) ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 border border-slate-900 text-emerald-950 text-[11px] font-black rounded-md">
+                        <CheckCircle2 size={13} className="text-emerald-600" />
+                        Đã chọn đáp án đúng
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-100 border border-slate-900 text-amber-950 text-[11px] font-bold rounded-md">
+                        Chưa chọn đáp án đúng
+                      </span>
+                    )}
                   </div>
-                  <div>
-                    <Select
-                      value={q.question_type}
-                      onChange={(val) => handleQuestionChange(qIdx, 'question_type', val)}
-                      options={questionTypeOptions}
-                    />
-                  </div>
-                </div>
 
-                {/* Options list */}
-                <div className="space-y-2 pt-1">
-                  <span className="text-[10px] font-black uppercase text-slate-500">Các lựa chọn & Đáp án đúng:</span>
-                  {q.options?.map((opt, optIdx) => (
-                    <div key={optIdx} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={opt.is_correct}
-                        onChange={(e) => handleOptionChange(qIdx, optIdx, opt.text, e.target.checked)}
-                        className="w-4 h-4 accent-amber-500 border-2 border-slate-900 rounded cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={opt.text}
-                        onChange={(e) => handleOptionChange(qIdx, optIdx, e.target.value)}
-                        placeholder={`Lựa chọn ${String.fromCharCode(65 + optIdx)}`}
-                        className="flex-1 p-1.5 text-xs font-bold border border-slate-900 rounded-lg bg-white"
+                  <div className="flex items-center gap-2">
+                    <div className="w-48">
+                      <Select
+                        value={q.question_type}
+                        onChange={(val) => handleQuestionChange(qIdx, 'question_type', val)}
+                        options={questionTypeOptions}
                       />
                     </div>
-                  ))}
+
+                    <Button
+                      type="button"
+                      variant="danger"
+                      onClick={() => handleRemoveQuestion(qIdx)}
+                      className="neo-button h-9 px-2.5 bg-rose-100 hover:bg-rose-200 text-rose-900 border-2 border-slate-900 shadow-[1.5px_1.5px_0px_0px_#000] rounded-xl flex items-center gap-1 cursor-pointer"
+                      title="Xóa câu hỏi này"
+                    >
+                      <Trash2 size={14} />
+                      <span className="text-xs font-black hidden sm:inline">Xóa</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Question Text Input */}
+                <div>
+                  <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
+                    Nội dung câu hỏi *
+                  </label>
+                  <input
+                    type="text"
+                    value={q.question_text}
+                    onChange={(e) => handleQuestionChange(qIdx, 'question_text', e.target.value)}
+                    placeholder="VD: William quickly rang (1) ______ an ambulance when he discovered..."
+                    className="w-full p-3 text-sm font-bold border-2 border-slate-900 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-[2px_2px_0px_0px_#000]"
+                  />
+                </div>
+
+                {/* Options Section with Neobrutalist Action Cards */}
+                <div className="space-y-2.5 pt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase text-slate-700 tracking-wider">
+                      CÁC LỰA CHỌN VÀ ĐÁP ÁN ĐÚNG
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-500">
+                      Bấm nút "Đáp án đúng" để đánh dấu lựa chọn chính xác
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {q.options?.map((opt, optIdx) => {
+                      const letterLabel = String.fromCharCode(65 + optIdx)
+                      const isCorrect = Boolean(opt.is_correct)
+
+                      return (
+                        <div
+                          key={optIdx}
+                          className={cn(
+                            'p-3 border-2 border-slate-900 rounded-xl flex flex-col gap-2 transition-all shadow-[2px_2px_0px_0px_#000]',
+                            isCorrect
+                              ? 'bg-emerald-50 border-emerald-950 ring-2 ring-emerald-400'
+                              : 'bg-white'
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="w-7 h-7 shrink-0 bg-slate-900 text-white font-black text-xs rounded-lg flex items-center justify-center border-2 border-slate-900 shadow-[1px_1px_0px_0px_#000]">
+                              {letterLabel}
+                            </span>
+                            <input
+                              type="text"
+                              value={opt.text}
+                              onChange={(e) => handleOptionChange(qIdx, optIdx, e.target.value)}
+                              placeholder={`Lựa chọn ${letterLabel}...`}
+                              className="flex-1 p-2 text-xs font-bold border-2 border-slate-900 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                            />
+                          </div>
+
+                          <div className="flex justify-end pt-0.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOptionChange(qIdx, optIdx, opt.text, !isCorrect)}
+                              className={cn(
+                                'neo-button px-3 py-1.5 text-xs font-black rounded-lg border-2 border-slate-900 transition-all flex items-center gap-1.5 cursor-pointer',
+                                isCorrect
+                                  ? 'bg-emerald-400 text-slate-900 shadow-[2px_2px_0px_0px_#000]'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 shadow-[1px_1px_0px_0px_#000]'
+                              )}
+                            >
+                              {isCorrect ? (
+                                <>
+                                  <CheckCircle2 size={14} className="text-slate-900" />
+                                  <span>ĐÁP ÁN ĐÚNG</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Check size={14} className="text-slate-400" />
+                                  <span>Chọn làm đáp án đúng</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             ))}
