@@ -1,10 +1,28 @@
 import { useEffect, useState } from 'react'
-import { Eye, Code, PlugZap, Wrench, Plus, Save, Construction, AlertTriangle } from 'lucide-react'
+import {
+  PlugZap,
+  Wrench,
+  Plus,
+  Trash2,
+  Save,
+  Construction,
+  AlertTriangle,
+  Search,
+  CheckCircle2,
+  Globe,
+  SlidersHorizontal,
+  Bot,
+  Sparkles,
+  Layers,
+  Volume2,
+  BookOpen,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { showToast } from '@/components/ui/toast'
 import { adminService } from '@/services/supabase/admin.service'
-import type { AppSetting, FeatureFlag } from '@/types/admin.types'
+import type { FeatureFlag } from '@/types/admin.types'
 
-function SmoothToggle({ on, size = 48 }: { on: boolean; size?: number }) {
+function SmoothToggle({ on, size = 44 }: { on: boolean; size?: number }) {
   const h = Math.round(size * 0.56)
   const w = size
   return (
@@ -31,67 +49,72 @@ function SmoothToggle({ on, size = 48 }: { on: boolean; size?: number }) {
   )
 }
 
-const KNOWN_FEATURE_FLAGS: FeatureFlag[] = [
+// 22 Navigation Flags + System Flags với Tên hiển thị và Mô tả thân thiện
+const KNOWN_FEATURE_FLAGS: Array<FeatureFlag & { category: 'main_nav' | 'more_nav' | 'header_actions' | 'features' | 'system'; label: string }> = [
   // 1. Thanh điều hướng chính (Main Nav Items)
-  { flag: 'grammar_module', enabled: true, description: 'Nút điều hướng: Ngữ pháp' },
-  { flag: 'vocabulary_module', enabled: true, description: 'Nút điều hướng: Từ vựng' },
-  { flag: 'listening_module', enabled: true, description: 'Nút điều hướng: Nghe' },
-  { flag: 'speaking_module', enabled: true, description: 'Nút điều hướng: Nói' },
-  { flag: 'reading_module', enabled: true, description: 'Nút điều hướng: Đọc' },
-  { flag: 'writing_module', enabled: true, description: 'Nút điều hướng: Viết' },
-  { flag: 'games_module', enabled: true, description: 'Nút điều hướng: Trò chơi' },
+  { flag: 'grammar_module', label: 'Ngữ pháp', category: 'main_nav', enabled: true, description: 'Bật/tắt nút điều hướng Ngữ pháp trên thanh Menu' },
+  { flag: 'vocabulary_module', label: 'Từ vựng', category: 'main_nav', enabled: true, description: 'Bật/tắt nút điều hướng Từ vựng trên thanh Menu' },
+  { flag: 'listening_module', label: 'Luyện nghe', category: 'main_nav', enabled: true, description: 'Bật/tắt nút điều hướng Luyện nghe trên thanh Menu' },
+  { flag: 'speaking_module', label: 'Luyện nói', category: 'main_nav', enabled: true, description: 'Bật/tắt nút điều hướng Luyện nói trên thanh Menu' },
+  { flag: 'reading_module', label: 'Đọc hiểu', category: 'main_nav', enabled: true, description: 'Bật/tắt nút điều hướng Đọc hiểu trên thanh Menu' },
+  { flag: 'writing_module', label: 'Luyện viết', category: 'main_nav', enabled: true, description: 'Bật/tắt nút điều hướng Luyện viết trên thanh Menu' },
+  { flag: 'games_module', label: 'Trò chơi', category: 'main_nav', enabled: true, description: 'Bật/tắt nút điều hướng Trò chơi trên thanh Menu' },
 
   // 2. Menu Mở rộng (More Dropdown Items)
-  { flag: 'dashboard_nav', enabled: true, description: 'Mục menu: Bảng điều khiển' },
-  { flag: 'decks_nav', enabled: true, description: 'Mục menu: Bộ thẻ' },
-  { flag: 'study_nav', enabled: true, description: 'Mục menu: Học tập' },
-  { flag: 'quiz_nav', enabled: true, description: 'Mục menu: Kiểm tra' },
-  { flag: 'review_nav', enabled: true, description: 'Mục menu: Ôn tập' },
-  { flag: 'roadmap_module', enabled: true, description: 'Mục menu: Lộ trình học' },
-  { flag: 'exams_module', enabled: true, description: 'Mục menu: Kỳ thi' },
-  { flag: 'videos_module', enabled: true, description: 'Mục menu: Video' },
-  { flag: 'blog_module', enabled: true, description: 'Mục menu: Blog / Bài viết' },
-  { flag: 'community_module', enabled: true, description: 'Mục menu: Cộng đồng' },
-  { flag: 'contact_module', enabled: true, description: 'Mục menu: Liên hệ' },
+  { flag: 'dashboard_nav', label: 'Bảng điều khiển', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Bảng điều khiển trong menu Xem thêm' },
+  { flag: 'decks_nav', label: 'Bộ thẻ từ vựng', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Bộ thẻ trong menu Xem thêm' },
+  { flag: 'study_nav', label: 'Học tập thẻ ghi nhớ', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Học tập trong menu Xem thêm' },
+  { flag: 'quiz_nav', label: 'Kiểm tra dịch thuật', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Kiểm tra trong menu Xem thêm' },
+  { flag: 'review_nav', label: 'Ôn tập thẻ cần học', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Ôn tập trong menu Xem thêm' },
+  { flag: 'roadmap_module', label: 'Lộ trình học tập', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Lộ trình học trong menu Xem thêm' },
+  { flag: 'exams_module', label: 'Luyện thi chứng chỉ', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Kỳ thi trong menu Xem thêm' },
+  { flag: 'videos_module', label: 'Bài học Video', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Video trong menu Xem thêm' },
+  { flag: 'blog_module', label: 'Blog / Bài viết', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Blog / Bài viết trong menu Xem thêm' },
+  { flag: 'community_module', label: 'Cộng đồng người học', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Cộng đồng trong menu Xem thêm' },
+  { flag: 'contact_module', label: 'Liên hệ & Trợ giúp', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Liên hệ trong menu Xem thêm' },
 
-  // 3. Thao tác Header (Header Action Controls)
-  { flag: 'ai_tutor_button', enabled: true, description: 'Nút bấm: Gia sư AI (Header)' },
-  { flag: 'pro_upgrade_button', enabled: true, description: 'Nút bấm: Nâng cấp Pro (Header)' },
-  { flag: 'notifications_button', enabled: true, description: 'Nút bấm: Thông báo quả chuông (Header)' },
-  { flag: 'profile_menu_button', enabled: true, description: 'Menu bấm: Hồ sơ cá nhân / Avatar (Header)' },
+  // 3. Nút thao tác trên Header (Header Action Controls)
+  { flag: 'ai_tutor_button', label: 'Nút Gia sư AI', category: 'header_actions', enabled: true, description: 'Bật/tắt nút bật nhanh Gia sư AI trên thanh Header' },
+  { flag: 'pro_upgrade_button', label: 'Nút Nâng cấp Pro', category: 'header_actions', enabled: true, description: 'Bật/tắt nút Nâng cấp Pro trên thanh Header' },
+  { flag: 'notifications_button', label: 'Nút Quả chuông Thông báo', category: 'header_actions', enabled: true, description: 'Bật/tắt nút Quả chuông thông báo trên thanh Header' },
+  { flag: 'profile_menu_button', label: 'Menu Hồ sơ cá nhân (Avatar)', category: 'header_actions', enabled: true, description: 'Bật/tắt menu góc đại diện Avatar trên thanh Header' },
 
   // 4. Feature Extensions
-  { flag: 'template_builder', enabled: false, description: 'Bật/tắt chức năng tạo template thẻ học (MVP 2)' },
-  { flag: 'matching_quiz', enabled: false, description: 'Bật/tắt bài trắc nghiệm nối từ (MVP 3)' },
-  { flag: 'fill_blank_quiz', enabled: false, description: 'Bật/tắt bài trắc nghiệm điền từ (MVP 3)' },
-  { flag: 'learning_analytics_dashboard', enabled: true, description: 'Bật/tắt dashboard phân tích học tập nâng cao' },
+  { flag: 'template_builder', label: 'Tạo mẫu thẻ học tùy chỉnh', category: 'features', enabled: false, description: 'Cho phép người dùng thiết kế mẫu thẻ ghi nhớ tùy chỉnh (MVP 2)' },
+  { flag: 'matching_quiz', label: 'Bài trắc nghiệm Nối từ', category: 'features', enabled: false, description: 'Cho phép học tập qua trò chơi nối từ vựng (MVP 3)' },
+  { flag: 'fill_blank_quiz', label: 'Bài trắc nghiệm Điền từ', category: 'features', enabled: false, description: 'Cho phép làm bài điền từ vào khoảng trống (MVP 3)' },
+  { flag: 'learning_analytics_dashboard', label: 'Phân tích học tập nâng cao', category: 'features', enabled: true, description: 'Hiển thị biểu đồ phân tích tần suất học tập Java API' },
 
   // 5. System Integrations
-  { flag: 'google_oauth', enabled: true, description: 'Cho phép đăng nhập qua Google OAuth' },
-  { flag: 'image_search', enabled: true, description: 'Cho phép tìm kiếm hình ảnh minh họa' },
-  { flag: 'tts_auto_generate', enabled: true, description: 'Tự động tạo giọng đọc TTS khi làm giàu từ vựng' },
-  { flag: 'mascot_radial_fab', enabled: true, description: 'Bật/tắt linh vật trợ lý Mascot Radial FAB' },
+  { flag: 'google_oauth', label: 'Đăng nhập Google OAuth', category: 'system', enabled: true, description: 'Cho phép người dùng đăng nhập tài khoản bằng Google' },
+  { flag: 'image_search', label: 'Tìm kiếm ảnh từ vựng', category: 'system', enabled: true, description: 'Tích hợp tra cứu ảnh minh họa từ Unsplash/Pexels' },
+  { flag: 'tts_auto_generate', label: 'Tự động tạo giọng đọc TTS', category: 'system', enabled: true, description: 'Tự động phát giọng đọc Google Cloud TTS khi thêm từ vựng' },
+  { flag: 'mascot_radial_fab', label: 'Linh vật trợ lý Mascot FAB', category: 'system', enabled: true, description: 'Bật/tắt nút linh vật trợ lý góc màn hình' },
 ]
 
 export default function AdminFeaturesPage() {
-  const [flags, setFlags] = useState<FeatureFlag[]>([])
-  const [settings, setSettings] = useState<AppSetting[]>([])
+  const [flags, setFlags] = useState<Array<FeatureFlag & { category?: string; label?: string }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
-  // Form editing settings
-  const [settingsForm, setSettingsForm] = useState<Record<string, string>>({})
+
+  // Search & Filter Category Tab state
+  const [searchTerm, setSearchTerm] = useState('')
+  const [activeCategory, setActiveCategory] = useState<'all' | 'main_nav' | 'more_nav' | 'header_actions' | 'features' | 'system'>('all')
+
+  // Form editing values per setting key
+  const [settingsForm, setSettingsForm] = useState<Record<string, any>>({})
   const [savingSetting, setSavingSetting] = useState<string | null>(null)
 
-  // Track expert (raw JSON/text) vs visual mode per setting key (default false = visual)
-  const [expertModes, setExpertModes] = useState<Record<string, boolean>>({})
-  
   // Form inputs for adding a new POS option
   const [newPosLabel, setNewPosLabel] = useState('')
   const [newPosValue, setNewPosValue] = useState('')
   const [posFormError, setPosFormError] = useState<string | null>(null)
 
-  // Mascot FAB device config (loaded from app_settings, persisted immediately on toggle)
+  // Form input for adding a new CORS domain
+  const [newCorsDomain, setNewCorsDomain] = useState('')
+  const [corsFormError, setCorsFormError] = useState<string | null>(null)
+
+  // Mascot FAB device config
   const [fabDevice, setFabDevice] = useState({ desktop: true, mobile: true })
 
   // Maintenance mode state
@@ -107,31 +130,34 @@ export default function AdminFeaturesPage() {
         adminService.listFeatureFlags(),
         adminService.listSettings(),
       ])
-      
-      // Hợp nhất dữ liệu từ DB với KNOWN_FEATURE_FLAGS để luôn hiển thị đủ 22 nút nav + feature flags
+
+      // Hợp nhất dữ liệu từ DB với KNOWN_FEATURE_FLAGS để luôn đầy đủ 22 nút nav + system flags
       const mergedFlags = KNOWN_FEATURE_FLAGS.map((kf) => {
         const dbRow = flagsData.find((f) => f.flag === kf.flag)
         return dbRow ? { ...kf, enabled: dbRow.enabled, description: dbRow.description || kf.description } : kf
       })
-      
-      // Thêm các flag lạ trong DB nếu có
+
+      // Giữ lại các flag lạ có sẵn trong DB nếu có
       flagsData.forEach((f) => {
         if (!mergedFlags.some((m) => m.flag === f.flag)) {
-          mergedFlags.push(f)
+          mergedFlags.push({
+            ...f,
+            label: f.flag.replace(/_/g, ' ').toUpperCase(),
+            category: 'features',
+          })
         }
       })
 
       setFlags(mergedFlags)
-      setSettings(settingsData)
-      
-      const fabSetting = settingsData.find(s => s.key === 'mascot_radial_fab_device')
+
+      const fabSetting = settingsData.find((s) => s.key === 'mascot_radial_fab_device')
       if (fabSetting?.value) {
         const v = fabSetting.value as { desktop?: boolean; mobile?: boolean }
         setFabDevice({ desktop: v.desktop ?? true, mobile: v.mobile ?? true })
       }
 
       // Load maintenance mode state
-      const maintenanceSetting = settingsData.find(s => s.key === 'maintenance_mode')
+      const maintenanceSetting = settingsData.find((s) => s.key === 'maintenance_mode')
       if (maintenanceSetting?.value) {
         const m = maintenanceSetting.value as { enabled?: boolean; message?: string; estimated_end?: string | null }
         setMaintenanceEnabled(Boolean(m.enabled))
@@ -140,9 +166,9 @@ export default function AdminFeaturesPage() {
       }
 
       // Khởi tạo form values
-      const initialForm: Record<string, string> = {}
+      const initialForm: Record<string, any> = {}
       settingsData.forEach((s) => {
-        initialForm[s.key] = typeof s.value === 'object' ? JSON.stringify(s.value) : String(s.value)
+        initialForm[s.key] = s.value
       })
       setSettingsForm(initialForm)
     } catch (err: any) {
@@ -167,17 +193,20 @@ export default function AdminFeaturesPage() {
         message: maintenanceMessage,
         estimated_end: maintenanceEstimatedEnd || null,
       }
-      const updated = await adminService.updateSetting(
+      await adminService.updateSetting(
         'maintenance_mode',
         value,
-        'Chế độ bảo trì: enabled (bật/tắt), message (thông báo cho người dùng), estimated_end (thời gian kết thúc dự kiến ISO 8601)',
+        'Chế độ bảo trì hệ thống',
       )
-      setSettings((prev) => prev.map((s) => (s.key === 'maintenance_mode' ? updated : s)))
       setMaintenanceEnabled(enabled)
+      showToast({
+        type: 'success',
+        title: 'Cập nhật Chế độ Bảo trì',
+        message: enabled ? 'Đã bật chế độ bảo trì hệ thống.' : 'Đã tắt chế độ bảo trì.',
+      })
     } catch (err: any) {
       console.error(err)
       setError(err.message || 'Lỗi khi cập nhật chế độ bảo trì')
-      // Rollback toggle if it was a toggle action
       if (newEnabled !== undefined) setMaintenanceEnabled(!newEnabled)
     } finally {
       setSavingMaintenance(false)
@@ -188,7 +217,12 @@ export default function AdminFeaturesPage() {
     try {
       setError(null)
       const updated = await adminService.updateFeatureFlag(flagName, !currentStatus)
-      setFlags((prev) => prev.map((f) => (f.flag === flagName ? updated : f)))
+      setFlags((prev) => prev.map((f) => (f.flag === flagName ? { ...f, enabled: updated.enabled } : f)))
+      showToast({
+        type: 'success',
+        title: 'Đã cập nhật tính năng',
+        message: `Đã ${!currentStatus ? 'bật' : 'tắt'} tính năng "${flagName}".`,
+      })
     } catch (err: any) {
       console.error(err)
       setError(err.message || 'Lỗi khi cập nhật Feature Flag')
@@ -200,46 +234,29 @@ export default function AdminFeaturesPage() {
     setFabDevice(updated)
     try {
       setError(null)
-      const updatedSetting = await adminService.updateSetting('mascot_radial_fab_device', updated)
-      setSettings((prev) => prev.map((s) => (s.key === 'mascot_radial_fab_device' ? updatedSetting : s)))
+      await adminService.updateSetting('mascot_radial_fab_device', updated)
+      showToast({
+        type: 'success',
+        title: 'Đã cập nhật thiết bị',
+        message: `Linh vật trợ lý đã ${updated[device] ? 'bật' : 'ẩn'} trên ${device}.`,
+      })
     } catch (err: any) {
       console.error(err)
       setError(err.message || 'Lỗi khi cập nhật cấu hình thiết bị mascot')
-      setFabDevice(fabDevice) // rollback
+      setFabDevice(fabDevice)
     }
   }
 
-  const handleSaveSetting = async (key: string) => {
-    const rawVal = settingsForm[key]
-    let parsedVal: any = rawVal
-
-    // Cố gắng parse JSON nếu nó trông giống object/array hoặc boolean hoặc number
-    try {
-      if (
-        (rawVal.startsWith('{') && rawVal.endsWith('}')) ||
-        (rawVal.startsWith('[') && rawVal.endsWith(']'))
-      ) {
-        parsedVal = JSON.parse(rawVal)
-      } else if (rawVal === 'true') {
-        parsedVal = true
-      } else if (rawVal === 'false') {
-        parsedVal = false
-      } else if (!isNaN(Number(rawVal)) && rawVal.trim() !== '') {
-        parsedVal = Number(rawVal)
-      }
-    } catch {
-      // Giữ nguyên là chuỗi nếu parse lỗi
-    }
-
+  const handleSaveSetting = async (key: string, valueToSave?: any) => {
+    const value = valueToSave !== undefined ? valueToSave : settingsForm[key]
     try {
       setSavingSetting(key)
       setError(null)
-      const updated = await adminService.updateSetting(key, parsedVal)
-      setSettings((prev) => prev.map((s) => (s.key === key ? updated : s)))
+      await adminService.updateSetting(key, value)
       showToast({
         type: 'success',
-        title: 'Đã lưu cấu hình',
-        message: `Cấu hình "${key}" đã được cập nhật.`,
+        title: 'Đã lưu cài đặt',
+        message: `Cài đặt "${key}" đã được lưu thành công.`,
       })
     } catch (err: any) {
       console.error(err)
@@ -249,78 +266,163 @@ export default function AdminFeaturesPage() {
     }
   }
 
-  const handleRemovePos = (valueToRemove: string) => {
-    let currentList: Array<{ value: string; label: string }> = []
-    try {
-      currentList = JSON.parse(settingsForm['vocabulary_pos_options'] || '[]')
-    } catch {
-      return
-    }
-    const updated = currentList.filter(item => item.value !== valueToRemove)
-    setSettingsForm(prev => ({ ...prev, vocabulary_pos_options: JSON.stringify(updated) }))
+  // Visual Builder: Xóa từ loại
+  const handleRemovePos = async (valueToRemove: string) => {
+    const currentList: Array<{ value: string; label: string }> = Array.isArray(settingsForm['vocabulary_pos_options'])
+      ? settingsForm['vocabulary_pos_options']
+      : typeof settingsForm['vocabulary_pos_options'] === 'string'
+      ? JSON.parse(settingsForm['vocabulary_pos_options'] || '[]')
+      : []
+
+    const updated = currentList.filter((item) => item.value !== valueToRemove)
+    setSettingsForm((prev) => ({ ...prev, vocabulary_pos_options: updated }))
+    await handleSaveSetting('vocabulary_pos_options', updated)
   }
 
-  const handleAddPos = () => {
+  // Visual Builder: Thêm từ loại mới
+  const handleAddPos = async () => {
     const label = newPosLabel.trim()
     const val = newPosValue.trim().toLowerCase().replace(/\s+/g, '_')
     if (!label || !val) {
-      setPosFormError('Vui lòng điền đầy đủ Tên hiển thị và Mã từ loại.')
+      setPosFormError('Vui lòng nhập đầy đủ Tên hiển thị và Mã từ loại.')
       return
     }
-    let currentList: Array<{ value: string; label: string }> = []
-    try {
-      currentList = JSON.parse(settingsForm['vocabulary_pos_options'] || '[]')
-    } catch {
-      setPosFormError('Dữ liệu JSON từ loại bị lỗi. Vui lòng chuyển sang Chế độ chuyên gia để sửa.')
-      return
-    }
-    if (currentList.some(item => item.value === val)) {
+    const currentList: Array<{ value: string; label: string }> = Array.isArray(settingsForm['vocabulary_pos_options'])
+      ? settingsForm['vocabulary_pos_options']
+      : typeof settingsForm['vocabulary_pos_options'] === 'string'
+      ? JSON.parse(settingsForm['vocabulary_pos_options'] || '[]')
+      : []
+
+    if (currentList.some((item) => item.value === val)) {
       setPosFormError('Mã từ loại này đã tồn tại.')
       return
     }
     setPosFormError(null)
     const updated = [...currentList, { value: val, label }]
-    setSettingsForm(prev => ({ ...prev, vocabulary_pos_options: JSON.stringify(updated) }))
+    setSettingsForm((prev) => ({ ...prev, vocabulary_pos_options: updated }))
     setNewPosLabel('')
     setNewPosValue('')
+    await handleSaveSetting('vocabulary_pos_options', updated)
   }
 
+  // Visual Builder: Xóa CORS Domain
+  const handleRemoveCorsDomain = async (domainToRemove: string) => {
+    const currentList: string[] = Array.isArray(settingsForm['cors_origins'])
+      ? settingsForm['cors_origins']
+      : typeof settingsForm['cors_origins'] === 'string'
+      ? JSON.parse(settingsForm['cors_origins'] || '[]')
+      : []
+
+    const updated = currentList.filter((domain) => domain !== domainToRemove)
+    setSettingsForm((prev) => ({ ...prev, cors_origins: updated }))
+    await handleSaveSetting('cors_origins', updated)
+  }
+
+  // Visual Builder: Thêm CORS Domain mới
+  const handleAddCorsDomain = async () => {
+    const domain = newCorsDomain.trim()
+    if (!domain) {
+      setCorsFormError('Vui lòng nhập tên miền CORS (VD: https://my-app.com).')
+      return
+    }
+    if (!domain.startsWith('http://') && !domain.startsWith('https://') && domain !== '*') {
+      setCorsFormError('Tên miền phải bắt đầu bằng http:// hoặc https://')
+      return
+    }
+    const currentList: string[] = Array.isArray(settingsForm['cors_origins'])
+      ? settingsForm['cors_origins']
+      : typeof settingsForm['cors_origins'] === 'string'
+      ? JSON.parse(settingsForm['cors_origins'] || '[]')
+      : []
+
+    if (currentList.includes(domain)) {
+      setCorsFormError('Tên miền này đã có trong danh sách.')
+      return
+    }
+
+    setCorsFormError(null)
+    const updated = [...currentList, domain]
+    setSettingsForm((prev) => ({ ...prev, cors_origins: updated }))
+    setNewCorsDomain('')
+    await handleSaveSetting('cors_origins', updated)
+  }
+
+  // Lọc Feature Flags theo từ khóa tìm kiếm & danh mục Tab
+  const filteredFlags = flags.filter((flag) => {
+    const labelMatch = (flag.label || '').toLowerCase().includes(searchTerm.toLowerCase())
+    const descMatch = (flag.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+    const flagKeyMatch = flag.flag.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = labelMatch || descMatch || flagKeyMatch
+
+    if (!matchesSearch) return false
+    if (activeCategory === 'all') return true
+    return flag.category === activeCategory
+  })
+
+  const activeFlagsCount = flags.filter((f) => f.enabled).length
+
   return (
-    <div className="flex flex-col gap-6">
-      {/* Title */}
-      <div>
-        <h1 className="text-2xl font-black tracking-tight text-foreground">FEATURE FLAGS & SETTINGS</h1>
-        <p className="text-muted-foreground font-bold">
-          Quản lý bật/tắt tính năng động (Feature Flags) và cài đặt mặc định của hệ thống.
-        </p>
+    <div className="flex flex-col gap-6 max-w-[1600px] mx-auto">
+      {/* Header Banner */}
+      <div className="neo-card p-6 bg-card border-3 border-border shadow-[4px_4px_0_var(--border)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 rounded-xl border-3 border-border bg-primary flex items-center justify-center shadow-[2px_2px_0_var(--border)]">
+            <SlidersHorizontal size={26} className="text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
+              QUẢN LÝ TÍNH NĂNG & CÀI ĐẶT
+            </h1>
+            <p className="text-sm font-bold text-muted-foreground mt-0.5">
+              Bật/Tắt tính năng hệ thống thời gian thực và quản lý cài đặt mặc định ứng dụng.
+            </p>
+          </div>
+        </div>
+
+        {/* Status badges summary */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="px-3.5 py-1.5 rounded-lg border-2 border-border bg-emerald-50 text-emerald-950 font-black text-xs flex items-center gap-1.5 shadow-[2px_2px_0_var(--border)]">
+            <CheckCircle2 size={14} className="text-emerald-600" />
+            <span>{activeFlagsCount} / {flags.length} tính năng hoạt động</span>
+          </div>
+        </div>
       </div>
 
       {error && (
-        <div className="p-4 bg-rose-100 border-2 border-rose-400 text-rose-900 rounded-md font-bold text-sm">
-          {error}
+        <div className="p-4 bg-rose-100 border-3 border-rose-400 text-rose-950 rounded-xl font-bold text-sm flex items-center gap-2">
+          <AlertTriangle size={18} className="text-rose-600 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
-      {/* Maintenance Mode Section — luôn hiển thị ở đầu trang */}
+      {/* Maintenance Mode Control Section */}
       {!loading && (
-        <div className={`neo-card p-5 border-3 ${maintenanceEnabled ? 'border-rose-500 bg-rose-50' : 'border-border bg-card'} shadow-[4px_4px_0_var(--border)] flex flex-col gap-4 transition-colors`}>
+        <div
+          className={`neo-card p-5 border-3 ${
+            maintenanceEnabled ? 'border-rose-500 bg-rose-50/90' : 'border-border bg-card'
+          } shadow-[4px_4px_0_var(--border)] flex flex-col gap-4 transition-colors`}
+        >
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className={`h-10 w-10 rounded-full border-3 ${maintenanceEnabled ? 'border-rose-500 bg-rose-100' : 'border-border bg-primary/20'} flex items-center justify-center shadow-[2px_2px_0_var(--border)]`}>
-                <Construction size={20} className={maintenanceEnabled ? 'text-rose-600' : 'text-foreground'} />
+              <div
+                className={`h-11 w-11 rounded-xl border-3 ${
+                  maintenanceEnabled ? 'border-rose-500 bg-rose-200' : 'border-border bg-amber-100'
+                } flex items-center justify-center shadow-[2px_2px_0_var(--border)]`}
+              >
+                <Construction size={22} className={maintenanceEnabled ? 'text-rose-700' : 'text-amber-800'} />
               </div>
               <div>
                 <h2 className="text-lg font-black tracking-tight text-foreground flex items-center gap-2">
-                  CHẾ ĐỘ BẢO TRÌ
+                  CHẾ ĐỘ BẢO TRÌ HỆ THỐNG
                   {maintenanceEnabled && (
-                    <span className="inline-flex items-center gap-1 text-xs font-black text-rose-600 bg-rose-100 border-2 border-rose-400 px-2 py-0.5 rounded-full animate-pulse">
+                    <span className="inline-flex items-center gap-1 text-xs font-black text-rose-700 bg-rose-100 border-2 border-rose-400 px-2.5 py-0.5 rounded-full animate-pulse">
                       <AlertTriangle size={12} />
                       ĐANG BẬT
                     </span>
                   )}
                 </h2>
                 <p className="text-xs font-bold text-muted-foreground">
-                  Chủ động đóng web để bảo trì. Khi bật, người dùng sẽ thấy trang thông báo bảo trì.
+                  Chủ động tạm ngưng ứng dụng để nâng cấp. Khi bật, toàn bộ học viên sẽ nhìn thấy trang bảo trì.
                 </p>
               </div>
             </div>
@@ -331,542 +433,537 @@ export default function AdminFeaturesPage() {
               className="transition-transform active:scale-95 disabled:opacity-50"
               title={maintenanceEnabled ? 'Tắt chế độ bảo trì' : 'Bật chế độ bảo trì'}
             >
-              <SmoothToggle on={maintenanceEnabled} size={56} />
+              <SmoothToggle on={maintenanceEnabled} size={54} />
             </button>
           </div>
 
-          {/* Expanded config when maintenance is ON or user wants to configure */}
           <div className="flex flex-col gap-3 pt-3 border-t-2 border-dashed border-border">
             <div>
-              <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">
-                Thông báo cho người dùng
+              <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1.5">
+                Thông báo hiển thị cho người học:
               </label>
-              <textarea
+
+              {/* Preset Quick Messages */}
+              <div className="flex flex-wrap gap-2 mb-2">
+                {[
+                  'Chúng tôi đang bảo trì hệ thống định kỳ. Vui lòng quay lại sau.',
+                  'Hệ thống đang được nâng cấp tính năng mới. Rất tiếc vì sự gián đoạn này.',
+                  'MemoryLang đang cập nhật dữ liệu bài học. Vui lòng thử lại sau ít phút.',
+                ].map((presetMsg) => (
+                  <button
+                    key={presetMsg}
+                    type="button"
+                    onClick={() => setMaintenanceMessage(presetMsg)}
+                    className="text-[11px] font-bold px-2.5 py-1 rounded border-2 border-border bg-background hover:bg-muted text-foreground transition-all"
+                  >
+                    + {presetMsg.slice(0, 35)}...
+                  </button>
+                ))}
+              </div>
+
+              <input
+                type="text"
                 value={maintenanceMessage}
                 onChange={(e) => setMaintenanceMessage(e.target.value)}
-                placeholder="VD: Chúng tôi đang nâng cấp hệ thống. Vui lòng quay lại sau 30 phút."
-                rows={2}
-                className="w-full p-2.5 text-sm font-semibold border-2 border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                placeholder="VD: Chúng tôi đang bảo trì hệ thống định kỳ. Vui lòng quay lại sau ít phút."
+                className="w-full p-2.5 text-sm font-semibold border-2 border-border rounded-lg bg-background focus:outline-none focus:border-primary"
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">
-                Thời gian hoàn thành dự kiến
-              </label>
-              <input
-                type="datetime-local"
-                value={maintenanceEstimatedEnd}
-                onChange={(e) => setMaintenanceEstimatedEnd(e.target.value)}
-                className="w-full max-w-xs p-2.5 text-sm font-semibold border-2 border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">
+                  Thời gian kết thúc dự kiến:
+                </label>
+                <input
+                  type="datetime-local"
+                  value={maintenanceEstimatedEnd}
+                  onChange={(e) => setMaintenanceEstimatedEnd(e.target.value)}
+                  className="p-2 text-xs font-bold border-2 border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+                />
+              </div>
 
-            <button
-              onClick={() => handleSaveMaintenance()}
-              disabled={savingMaintenance}
-              className="neo-button self-start min-h-0 px-4 py-2 rounded bg-secondary text-secondary-foreground text-xs font-black border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none hover:bg-[#321fb0] transition-all disabled:opacity-50 flex items-center gap-1.5"
-            >
-              {savingMaintenance ? (
-                <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Save size={12} />
-              )}
-              Lưu cấu hình bảo trì
-            </button>
+              <Button
+                variant="secondary"
+                onClick={() => handleSaveMaintenance()}
+                disabled={savingMaintenance}
+                className="min-h-9 px-4 text-xs"
+              >
+                <Save size={14} />
+                Lưu cấu hình bảo trì
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       {loading ? (
-        <div className="text-center font-bold text-muted-foreground py-10">
-          Đang tải cấu hình tính năng...
+        <div className="text-center font-black text-muted-foreground py-16 flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+          <span>Đang tải cấu hình tính năng hệ thống...</span>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Section 1: Feature Flags */}
-          <div className="flex flex-col gap-6">
-            <h2 className="text-lg font-black border-b-2 border-border pb-2 text-foreground flex items-center gap-1.5">
-              <PlugZap className="text-primary" size={20} />
-              FEATURE FLAGS (QUẢN LÝ BẬT/TẮT NÚT ĐIỀU HƯỚNG & TÍNH NĂNG)
-            </h2>
-            
-            {/* Group 1: Main Navigation Items */}
-            <div className="flex flex-col gap-3">
-              <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
-                1. Thanh điều hướng chính (Main Nav Bar)
-              </span>
-              {flags
-                .filter((f) => ['grammar_module', 'vocabulary_module', 'listening_module', 'speaking_module', 'reading_module', 'writing_module', 'games_module'].includes(f.flag))
-                .map((flag) => (
-                  <div
-                    key={flag.flag}
-                    className="neo-card p-3.5 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex items-center justify-between gap-4"
-                  >
-                    <div className="flex flex-col gap-0.5">
-                      <h3 className="font-black text-sm text-foreground tracking-wide">
-                        {flag.description ? flag.description.replace('Nút điều hướng: ', '') : flag.flag}
-                      </h3>
-                      <span className="text-[9px] font-black text-muted-foreground font-mono">
-                        KEY: {flag.flag}
-                      </span>
-                    </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Main Column 1: Feature Flags & Nav Items Management (7 Cols) */}
+          <div className="lg:col-span-7 flex flex-col gap-5">
+            <div className="flex flex-col gap-3 pb-2 border-b-3 border-border">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-lg font-black text-foreground flex items-center gap-2">
+                  <PlugZap className="text-primary" size={22} />
+                  QUẢN LÝ BẬT/TẮT TÍNH NĂNG
+                </h2>
+                <span className="text-xs font-bold text-muted-foreground">
+                  Hiển thị: {filteredFlags.length} mục
+                </span>
+              </div>
 
-                    <button
-                      onClick={() => handleToggleFlag(flag.flag, flag.enabled)}
-                      className="transition-transform active:scale-95 shrink-0"
-                      title={flag.enabled ? 'Tắt tính năng' : 'Bật tính năng'}
-                    >
-                      <SmoothToggle on={flag.enabled} size={44} />
-                    </button>
-                  </div>
+              {/* Search Bar */}
+              <div className="relative">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm tính năng, nút điều hướng..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 text-sm font-bold border-2 border-border rounded-xl bg-card focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              {/* Category Filter Tabs */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {[
+                  { id: 'all', label: 'Tất cả' },
+                  { id: 'main_nav', label: 'Menu chính' },
+                  { id: 'more_nav', label: 'Menu mở rộng' },
+                  { id: 'header_actions', label: 'Thao tác Header' },
+                  { id: 'features', label: 'Tính năng nâng cao' },
+                  { id: 'system', label: 'Tích hợp hệ thống' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveCategory(tab.id as any)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-black border-2 border-border transition-all shadow-[2px_2px_0_var(--border)] active:translate-y-[1px] active:shadow-none ${
+                      activeCategory === tab.id
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
                 ))}
+              </div>
             </div>
 
-            {/* Group 2: More Dropdown Items */}
+            {/* List of Feature Flags */}
             <div className="flex flex-col gap-3">
-              <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
-                2. Menu Mở rộng (More Dropdown Items)
-              </span>
-              {flags
-                .filter((f) => ['dashboard_nav', 'decks_nav', 'study_nav', 'quiz_nav', 'review_nav', 'roadmap_module', 'exams_module', 'videos_module', 'blog_module', 'community_module', 'contact_module'].includes(f.flag))
-                .map((flag) => (
+              {filteredFlags.length === 0 ? (
+                <div className="p-8 text-center neo-card bg-card border-2 border-border font-bold text-sm text-muted-foreground">
+                  Không tìm thấy tính năng nào phù hợp với từ khóa "{searchTerm}".
+                </div>
+              ) : (
+                filteredFlags.map((flag) => (
                   <div
                     key={flag.flag}
-                    className="neo-card p-3.5 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex items-center justify-between gap-4"
+                    className={`neo-card p-4 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex items-center justify-between gap-4 transition-all ${
+                      !flag.enabled ? 'bg-muted/30 opacity-75' : ''
+                    }`}
                   >
-                    <div className="flex flex-col gap-0.5">
-                      <h3 className="font-black text-sm text-foreground tracking-wide">
-                        {flag.description ? flag.description.replace('Mục menu: ', '') : flag.flag}
-                      </h3>
-                      <span className="text-[9px] font-black text-muted-foreground font-mono">
-                        KEY: {flag.flag}
-                      </span>
-                    </div>
-
-                    <button
-                      onClick={() => handleToggleFlag(flag.flag, flag.enabled)}
-                      className="transition-transform active:scale-95 shrink-0"
-                      title={flag.enabled ? 'Tắt tính năng' : 'Bật tính năng'}
-                    >
-                      <SmoothToggle on={flag.enabled} size={44} />
-                    </button>
-                  </div>
-                ))}
-            </div>
-
-            {/* Group 3: Header Action Controls */}
-            <div className="flex flex-col gap-3">
-              <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
-                3. Thao tác Header (Header Action Buttons)
-              </span>
-              {flags
-                .filter((f) => ['ai_tutor_button', 'pro_upgrade_button', 'notifications_button', 'profile_menu_button'].includes(f.flag))
-                .map((flag) => (
-                  <div
-                    key={flag.flag}
-                    className="neo-card p-3.5 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex items-center justify-between gap-4"
-                  >
-                    <div className="flex flex-col gap-0.5">
-                      <h3 className="font-black text-sm text-foreground tracking-wide">
-                        {flag.description || flag.flag}
-                      </h3>
-                      <span className="text-[9px] font-black text-muted-foreground font-mono">
-                        KEY: {flag.flag}
-                      </span>
-                    </div>
-
-                    <button
-                      onClick={() => handleToggleFlag(flag.flag, flag.enabled)}
-                      className="transition-transform active:scale-95 shrink-0"
-                      title={flag.enabled ? 'Tắt tính năng' : 'Bật tính năng'}
-                    >
-                      <SmoothToggle on={flag.enabled} size={44} />
-                    </button>
-                  </div>
-                ))}
-            </div>
-
-            {/* Group 4: Advanced Features */}
-            <div className="flex flex-col gap-3">
-              <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
-                4. Chức năng Nâng cao & Trắc nghiệm
-              </span>
-              {flags
-                .filter((f) => ['template_builder', 'matching_quiz', 'fill_blank_quiz', 'learning_analytics_dashboard'].includes(f.flag))
-                .map((flag) => (
-                  <div
-                    key={flag.flag}
-                    className="neo-card p-3.5 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex items-center justify-between gap-4"
-                  >
-                    <div className="flex flex-col gap-0.5">
-                      <h3 className="font-black text-sm text-foreground tracking-wide">
-                        {flag.description || flag.flag}
-                      </h3>
-                      <span className="text-[9px] font-black text-muted-foreground font-mono">
-                        KEY: {flag.flag}
-                      </span>
-                    </div>
-
-                    <button
-                      onClick={() => handleToggleFlag(flag.flag, flag.enabled)}
-                      className="transition-transform active:scale-95 shrink-0"
-                      title={flag.enabled ? 'Tắt tính năng' : 'Bật tính năng'}
-                    >
-                      <SmoothToggle on={flag.enabled} size={44} />
-                    </button>
-                  </div>
-                ))}
-            </div>
-
-            {/* Group 5: System Integrations */}
-            <div className="flex flex-col gap-3">
-              <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
-                5. Tích hợp Hệ thống
-              </span>
-              {flags
-                .filter((f) => ['google_oauth', 'image_search', 'tts_auto_generate', 'mascot_radial_fab'].includes(f.flag))
-                .map((flag) => (
-                  <div
-                    key={flag.flag}
-                    className="neo-card p-3.5 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex flex-col gap-3"
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex flex-col gap-0.5">
-                        <h3 className="font-black text-sm text-foreground tracking-wide">
-                          {flag.description || flag.flag}
-                        </h3>
-                        <span className="text-[9px] font-black text-muted-foreground font-mono">
-                          KEY: {flag.flag}
-                        </span>
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div
+                        className={`h-10 w-10 shrink-0 rounded-lg border-2 border-border flex items-center justify-center shadow-[2px_2px_0_var(--border)] ${
+                          flag.enabled ? 'bg-primary/20 text-foreground' : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {flag.category === 'main_nav' && <BookOpen size={18} />}
+                        {flag.category === 'more_nav' && <Layers size={18} />}
+                        {flag.category === 'header_actions' && <Bot size={18} />}
+                        {flag.category === 'features' && <Sparkles size={18} />}
+                        {flag.category === 'system' && <Globe size={18} />}
                       </div>
 
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-black text-sm text-foreground tracking-wide truncate">
+                            {flag.label || flag.description || flag.flag}
+                          </h3>
+                          {flag.enabled ? (
+                            <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 border border-emerald-300 px-1.5 py-0.2 rounded">
+                              HOẠT ĐỘNG
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-black text-slate-500 bg-slate-100 border border-slate-300 px-1.5 py-0.2 rounded">
+                              ĐÃ ẨN
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground font-bold mt-0.5 line-clamp-1">
+                          {flag.description || 'Không có mô tả.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
                       <button
                         onClick={() => handleToggleFlag(flag.flag, flag.enabled)}
-                        className="transition-transform active:scale-95 shrink-0"
-                        title={flag.enabled ? 'Tắt tính năng' : 'Bật tính năng'}
+                        className="transition-transform active:scale-95"
+                        title={flag.enabled ? 'Tắt tính năng này' : 'Bật tính năng này'}
                       >
-                        <SmoothToggle on={flag.enabled} size={44} />
+                        <SmoothToggle on={flag.enabled} size={46} />
                       </button>
                     </div>
 
                     {flag.flag === 'mascot_radial_fab' && (
-                      <div className={`flex items-center gap-4 pt-2 border-t-2 border-dashed border-border ${!flag.enabled ? 'opacity-50' : ''}`}>
-                        <span className="text-[11px] font-black text-muted-foreground uppercase">Thiết bị:</span>
+                      <div className={`w-full flex items-center gap-4 pt-2.5 mt-2 border-t-2 border-dashed border-border ${!flag.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <span className="text-xs font-black text-muted-foreground uppercase">Hiển thị trên thiết bị:</span>
                         <div className="flex items-center gap-4">
                           <button
                             type="button"
                             disabled={!flag.enabled}
                             onClick={() => handleToggleFabDevice('desktop')}
-                            className="flex items-center gap-1.5 transition-transform active:scale-95 disabled:pointer-events-none"
-                            title={fabDevice.desktop ? 'Đang hiển thị trên desktop' : 'Đang ẩn trên desktop'}
+                            className="flex items-center gap-2 text-xs font-bold hover:text-primary transition"
                           >
                             <SmoothToggle on={flag.enabled && fabDevice.desktop} size={28} />
-                            <span className="text-xs font-bold">Desktop</span>
+                            <span>Máy tính (Desktop)</span>
                           </button>
                           <button
                             type="button"
                             disabled={!flag.enabled}
                             onClick={() => handleToggleFabDevice('mobile')}
-                            className="flex items-center gap-1.5 transition-transform active:scale-95 disabled:pointer-events-none"
-                            title={fabDevice.mobile ? 'Đang hiển thị trên mobile' : 'Đang ẩn trên mobile'}
+                            className="flex items-center gap-2 text-xs font-bold hover:text-primary transition"
                           >
                             <SmoothToggle on={flag.enabled && fabDevice.mobile} size={28} />
-                            <span className="text-xs font-bold">Mobile</span>
+                            <span>Điện thoại (Mobile)</span>
                           </button>
                         </div>
                       </div>
                     )}
                   </div>
-                ))}
+                ))
+              )}
             </div>
           </div>
 
-          {/* Section 2: App Settings */}
-          <div className="flex flex-col gap-4">
-            <h2 className="text-lg font-black border-b-2 border-border pb-2 text-foreground flex items-center gap-1.5">
-              <Wrench className="text-secondary" size={20} />
-              CÀI ĐẶT MẶC ĐỊNH (APP SETTINGS)
-            </h2>
+          {/* Main Column 2: Visual App Settings Builders (5 Cols) */}
+          <div className="lg:col-span-5 flex flex-col gap-5">
+            <div className="flex items-center justify-between pb-2 border-b-3 border-border">
+              <h2 className="text-lg font-black text-foreground flex items-center gap-2">
+                <Wrench className="text-secondary" size={22} />
+                CÀI ĐẶT HỆ THỐNG MẶC ĐỊNH
+              </h2>
+            </div>
 
-            <div className="flex flex-col gap-4">
-              {settings.filter(s => s.key !== 'mascot_radial_fab_device' && s.key !== 'maintenance_mode').map((setting) => (
-                <div
-                  key={setting.key}
-                  className="neo-card p-4 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex flex-col gap-2"
-                >
-                  <div className="flex justify-between items-center gap-2">
-                    <h3 className="font-black text-sm text-foreground">{setting.key}</h3>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setExpertModes(prev => ({ ...prev, [setting.key]: !prev[setting.key] }))}
-                        className="neo-button min-h-0 px-2 py-1 rounded bg-card text-foreground text-xs font-black border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none hover:bg-muted transition-all flex items-center gap-1"
-                        title={expertModes[setting.key] ? "Chuyển sang Chỉnh sửa trực quan" : "Chuyển sang Chế độ chuyên gia (JSON/Raw)"}
-                      >
-                        {expertModes[setting.key] ? <Eye size={10} /> : <Code size={10} />}
-                        {expertModes[setting.key] ? "Giao diện" : "Mã"}
-                      </button>
-                      <button
-                        onClick={() => handleSaveSetting(setting.key)}
-                        disabled={savingSetting === setting.key}
-                        className="neo-button min-h-0 px-2 py-1 rounded bg-secondary text-secondary-foreground text-xs font-black border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none hover:bg-[#321fb0] transition-all disabled:opacity-50 flex items-center gap-1"
-                      >
-                        {savingSetting === setting.key ? (
-                          <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <Save size={10} />
-                            Lưu
-                          </>
+            <div className="flex flex-col gap-5">
+              {/* 1. Visual Builder: CORS Allowed Origins */}
+              <div className="neo-card p-4 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <Globe size={18} className="text-secondary" />
+                  <h3 className="font-black text-sm text-foreground">Tên miền CORS được phép (CORS Origins)</h3>
+                </div>
+                <p className="text-xs text-muted-foreground font-bold leading-normal">
+                  Danh sách domain được phép gọi API kết nối ứng dụng (VD: https://memorylang.app).
+                </p>
+
+                {/* Visual List of Domains */}
+                {(() => {
+                  const corsList: string[] = Array.isArray(settingsForm['cors_origins'])
+                    ? settingsForm['cors_origins']
+                    : typeof settingsForm['cors_origins'] === 'string'
+                    ? JSON.parse(settingsForm['cors_origins'] || '[]')
+                    : []
+
+                  return (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-wrap gap-2 p-2.5 border-2 border-dashed border-border rounded-xl bg-muted/20">
+                        {corsList.map((domain) => (
+                          <div
+                            key={domain}
+                            className="flex items-center gap-2 px-3 py-1.5 border-2 border-border bg-card shadow-[2px_2px_0_var(--border)] rounded-lg font-bold text-xs text-foreground"
+                          >
+                            <span>{domain}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCorsDomain(domain)}
+                              className="text-danger hover:text-rose-700 font-black p-0.5 rounded transition"
+                              title="Xóa tên miền này"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))}
+                        {corsList.length === 0 && (
+                          <span className="text-xs text-muted-foreground italic py-1">Chưa có tên miền nào.</span>
                         )}
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground font-bold leading-normal">{setting.description}</p>
-                  
-                  <div className="mt-1 flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-muted-foreground uppercase">
-                      {expertModes[setting.key] ? "Giá trị cấu hình (JSON/Text):" : "Giá trị cấu hình:"}
-                    </label>
+                      </div>
 
-                    {expertModes[setting.key] ? (
-                      /* Expert Mode - Raw Text / Textarea */
-                      (setting.key === 'vocabulary_pos_options' || 
-                       (settingsForm[setting.key] && 
-                        (settingsForm[setting.key].trim().startsWith('[') || settingsForm[setting.key].trim().startsWith('{'))) ? (
-                        <textarea
-                          value={settingsForm[setting.key] ?? ''}
-                          onChange={(e) =>
-                            setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
-                          }
-                          rows={4}
-                          className="w-full px-3 py-1.5 border-2 border-border rounded bg-muted font-mono font-bold text-xs focus:outline-none focus:bg-card focus:border-primary transition-all resize-y"
-                        />
-                      ) : (
+                      {/* Add new domain form */}
+                      {corsFormError && (
+                        <div className="text-xs font-bold text-rose-600 bg-rose-50 p-2 border border-rose-300 rounded-md">
+                          {corsFormError}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
                         <input
                           type="text"
-                          value={settingsForm[setting.key] ?? ''}
-                          onChange={(e) =>
-                            setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
-                          }
-                          className="w-full px-3 py-1.5 border-2 border-border rounded bg-muted font-mono font-bold text-xs focus:outline-none focus:bg-card focus:border-primary transition-all"
+                          placeholder="VD: https://subdomain.memorylang.app"
+                          value={newCorsDomain}
+                          onChange={(e) => setNewCorsDomain(e.target.value)}
+                          className="flex-1 px-3 py-1.5 border-2 border-border rounded-lg text-xs font-bold bg-background focus:outline-none focus:border-primary"
                         />
-                      ))
-                    ) : (
-                      /* Visual Mode - Custom UI controls */
-                      <>
-                        {setting.key === 'vocabulary_pos_options' && (() => {
-                          let posList: Array<{ value: string; label: string }> = []
-                          let hasError = false
-                          try {
-                            posList = JSON.parse(settingsForm['vocabulary_pos_options'] || '[]')
-                          } catch {
-                            hasError = true
-                          }
+                        <Button
+                          variant="secondary"
+                          onClick={handleAddCorsDomain}
+                          className="min-h-8 px-3 py-1 text-xs shrink-0"
+                        >
+                          <Plus size={14} />
+                          Thêm Domain
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
 
-                          if (hasError) {
-                            return (
-                              <div className="p-3 border-2 border-amber-300 bg-amber-50 text-amber-950 text-xs font-bold rounded">
-                                Lỗi định dạng JSON từ loại. Vui lòng chuyển sang Chế độ mã (nút "Mã" phía trên) để kiểm tra và sửa đổi.
-                              </div>
-                            )
-                          }
+              {/* 2. Visual Builder: Vocabulary POS Options */}
+              <div className="neo-card p-4 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <BookOpen size={18} className="text-primary" />
+                  <h3 className="font-black text-sm text-foreground">Danh mục Từ loại (POS Options)</h3>
+                </div>
+                <p className="text-xs text-muted-foreground font-bold leading-normal">
+                  Cấu hình từ loại lựa chọn khi thêm từ vựng mới (Danh từ, Động từ, Tính từ, v.v.).
+                </p>
 
-                          return (
-                            <div className="flex flex-col gap-3">
-                              {/* Tag list */}
-                              <div className="flex flex-wrap gap-2 p-2 border-2 border-dashed border-border rounded-md bg-muted/20">
-                                {posList.map((pos) => (
-                                  <div
-                                    key={pos.value}
-                                    className="flex items-center gap-1.5 px-2.5 py-1.5 border-2 border-border bg-card shadow-[2px_2px_0_var(--border)] rounded font-bold text-xs text-foreground"
-                                  >
-                                    <span>{pos.label} <span className="text-[10px] text-muted-foreground">({pos.value})</span></span>
-                                    {pos.value !== '__other__' && (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleRemovePos(pos.value)}
-                                        className="text-danger hover:text-red-700 font-black ml-1 text-sm leading-none"
-                                        title="Xóa từ loại này"
-                                      >
-                                        ×
-                                      </button>
-                                    )}
-                                  </div>
-                                ))}
-                                {posList.length === 0 && (
-                                  <span className="text-xs text-muted-foreground italic py-1 px-2">Chưa có cấu hình từ loại nào.</span>
-                                )}
-                              </div>
+                {(() => {
+                  const posList: Array<{ value: string; label: string }> = Array.isArray(settingsForm['vocabulary_pos_options'])
+                    ? settingsForm['vocabulary_pos_options']
+                    : typeof settingsForm['vocabulary_pos_options'] === 'string'
+                    ? JSON.parse(settingsForm['vocabulary_pos_options'] || '[]')
+                    : []
 
-                              {/* Form to add a new POS */}
-                              {posFormError && (
-                                <div className="p-3 border-2 border-rose-400 bg-rose-50 text-rose-900 text-xs font-bold rounded">
-                                  {posFormError}
-                                </div>
-                              )}
-                              <div className="flex flex-wrap gap-2 items-center">
-                                <input
-                                  type="text"
-                                  placeholder="Tên hiển thị (ví dụ: Danh từ)"
-                                  value={newPosLabel}
-                                  onChange={(e) => setNewPosLabel(e.target.value)}
-                                  className="px-3 py-1.5 border-2 border-border rounded text-xs font-bold bg-card focus:outline-none focus:border-primary flex-1 min-w-[150px]"
-                                />
-                                <input
-                                  type="text"
-                                  placeholder="Mã (ví dụ: noun)"
-                                  value={newPosValue}
-                                  onChange={(e) => setNewPosValue(e.target.value)}
-                                  className="px-3 py-1.5 border-2 border-border rounded text-xs font-bold bg-card focus:outline-none focus:border-primary w-32"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={handleAddPos}
-                                  className="neo-button min-h-0 px-3 py-1.5 rounded bg-secondary text-secondary-foreground text-xs font-black border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none hover:bg-[#321fb0] transition-all flex items-center gap-1"
-                                >
-                                  <Plus size={12} />
-                                  Thêm
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        })()}
-
-                        {setting.key === 'vocabulary_max_examples_count' && (
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="number"
-                              min={1}
-                              max={100}
-                              value={Number(settingsForm[setting.key]) || 10}
-                              onChange={(e) =>
-                                setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
-                              }
-                              className="w-32 px-3 py-1.5 border-2 border-border rounded bg-card font-bold text-xs focus:outline-none focus:border-primary transition-all"
-                            />
-                            <span className="text-xs text-muted-foreground font-bold">câu ví dụ tối đa</span>
-                          </div>
-                        )}
-
-                        {setting.key === 'default_daily_goal' && (
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="number"
-                              min={1}
-                              max={100}
-                              value={Number(settingsForm[setting.key]) || 10}
-                              onChange={(e) =>
-                                setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
-                              }
-                              className="w-32 px-3 py-1.5 border-2 border-border rounded bg-card font-bold text-xs focus:outline-none focus:border-primary transition-all"
-                            />
-                            <span className="text-xs text-muted-foreground font-bold">từ/ngày</span>
-                          </div>
-                        )}
-
-                        {(setting.key === 'quick_notes_max_count' || setting.key === 'quick_notes_max_length') && (
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="number"
-                              min={1}
-                              value={Number(settingsForm[setting.key]) || 0}
-                              onChange={(e) =>
-                                setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
-                              }
-                              className="w-32 px-3 py-1.5 border-2 border-border rounded bg-card font-bold text-xs focus:outline-none focus:border-primary transition-all"
-                            />
-                            <span className="text-xs text-muted-foreground font-bold">
-                              {setting.key === 'quick_notes_max_count' ? 'ghi chú tối đa' : 'ký tự tối đa'}
+                  return (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-wrap gap-2 p-2.5 border-2 border-dashed border-border rounded-xl bg-muted/20">
+                        {posList.map((pos) => (
+                          <div
+                            key={pos.value}
+                            className="flex items-center gap-2 px-3 py-1.5 border-2 border-border bg-card shadow-[2px_2px_0_var(--border)] rounded-lg font-bold text-xs text-foreground"
+                          >
+                            <span>
+                              {pos.label} <span className="text-[10px] text-muted-foreground">({pos.value})</span>
                             </span>
+                            {pos.value !== '__other__' && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemovePos(pos.value)}
+                                className="text-danger hover:text-rose-700 font-black p-0.5 rounded transition"
+                                title="Xóa từ loại này"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
                           </div>
-                        )}
+                        ))}
+                      </div>
 
-                        {setting.key === 'default_speech_rate' && (
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="range"
-                              min="0.5"
-                              max="2.0"
-                              step="0.1"
-                              value={Number(settingsForm[setting.key]) || 1.0}
-                              onChange={(e) =>
-                                setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
-                              }
-                              className="w-44 accent-primary"
-                            />
-                            <span className="font-bold text-xs font-mono">{settingsForm[setting.key] || '1.0'}x (Tốc độ đọc)</span>
-                          </div>
-                        )}
+                      {posFormError && (
+                        <div className="text-xs font-bold text-rose-600 bg-rose-50 p-2 border border-rose-300 rounded-md">
+                          {posFormError}
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-2 items-center">
+                        <input
+                          type="text"
+                          placeholder="Tên hiển thị (VD: Danh từ)"
+                          value={newPosLabel}
+                          onChange={(e) => setNewPosLabel(e.target.value)}
+                          className="flex-1 min-w-[140px] px-3 py-1.5 border-2 border-border rounded-lg text-xs font-bold bg-background focus:outline-none focus:border-primary"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Mã (VD: noun)"
+                          value={newPosValue}
+                          onChange={(e) => setNewPosValue(e.target.value)}
+                          className="w-28 px-3 py-1.5 border-2 border-border rounded-lg text-xs font-bold bg-background focus:outline-none focus:border-primary"
+                        />
+                        <Button
+                          variant="secondary"
+                          onClick={handleAddPos}
+                          className="min-h-8 px-3 py-1 text-xs shrink-0"
+                        >
+                          <Plus size={14} />
+                          Thêm từ loại
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
 
-                        {setting.key === 'default_speech_pitch' && (
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="range"
-                              min="-20"
-                              max="20"
-                              step="1"
-                              value={Number(settingsForm[setting.key]) || 0}
-                              onChange={(e) =>
-                                setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
-                              }
-                              className="w-44 accent-primary"
-                            />
-                            <span className="font-bold text-xs font-mono">{settingsForm[setting.key] || '0'} (Độ cao giọng)</span>
-                          </div>
-                        )}
+              {/* 3. Visual Builder: Numeric System Limits */}
+              <div className="neo-card p-4 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex flex-col gap-4">
+                <h3 className="font-black text-sm text-foreground pb-1 border-b-2 border-border">
+                  Giới hạn & Mục tiêu mặc định
+                </h3>
 
-                        {/* Fallback visual view if it's none of the recognized keys */}
-                        {!['vocabulary_pos_options', 'vocabulary_max_examples_count', 'default_daily_goal', 'default_speech_rate', 'default_speech_pitch'].includes(setting.key) && (
-                          (settingsForm[setting.key] && 
-                           (settingsForm[setting.key].trim().startsWith('[') || settingsForm[setting.key].trim().startsWith('{'))) ? (
-                            <textarea
-                              value={settingsForm[setting.key] ?? ''}
-                              onChange={(e) =>
-                                setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
-                              }
-                              rows={4}
-                              className="w-full px-3 py-1.5 border-2 border-border rounded bg-muted font-mono font-bold text-xs focus:outline-none focus:bg-card focus:border-primary transition-all resize-y"
-                            />
-                          ) : (
-                            <input
-                              type="text"
-                              value={settingsForm[setting.key] ?? ''}
-                              onChange={(e) =>
-                                setSettingsForm((prev) => ({ ...prev, [setting.key]: e.target.value }))
-                              }
-                              className="w-full px-3 py-1.5 border-2 border-border rounded bg-muted font-mono font-bold text-xs focus:outline-none focus:bg-card focus:border-primary transition-all"
-                            />
-                          )
-                        )}
-                      </>
-                    )}
-
-                    {/* Helper text display (underneath both modes) */}
-                    {setting.key === 'vocabulary_pos_options' && (
-                      <span className="text-[10px] text-blue-600 font-bold mt-0.5">
-                        {"* Định dạng: Danh sách đối tượng dạng JSON gồm \"value\" và \"label\". Nên giữ lại {\"value\": \"__other__\", \"label\": \"Khác...\"}."}
-                      </span>
-                    )}
-                    {setting.key === 'vocabulary_max_examples_count' && (
-                      <span className="text-[10px] text-blue-600 font-bold mt-0.5">
-                        * Định dạng: Nhập một số nguyên dương đại diện cho giới hạn số lượng ví dụ tối đa của mỗi từ vựng.
-                      </span>
-                    )}
-                    {setting.key === 'quick_notes_max_count' && (
-                      <span className="text-[10px] text-blue-600 font-bold mt-0.5">
-                        * Định dạng: Nhập một số nguyên dương đại diện cho số lượng ghi chú tối đa mỗi người dùng được phép lưu.
-                      </span>
-                    )}
-                    {setting.key === 'quick_notes_max_length' && (
-                      <span className="text-[10px] text-blue-600 font-bold mt-0.5">
-                        * Định dạng: Nhập một số nguyên dương đại diện cho số lượng ký tự tối đa được viết trong mỗi ghi chú.
-                      </span>
-                    )}
+                {/* Daily Goal */}
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <label className="text-xs font-black text-foreground block">Mục tiêu học hàng ngày</label>
+                    <span className="text-[11px] font-bold text-muted-foreground">Số từ vựng mục tiêu mặc định cho tài khoản mới</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={Number(settingsForm['default_daily_goal']) || 10}
+                      onChange={(e) => {
+                        const val = Number(e.target.value)
+                        setSettingsForm((prev) => ({ ...prev, default_daily_goal: val }))
+                      }}
+                      className="w-20 px-3 py-1.5 border-2 border-border rounded-lg bg-background font-black text-xs text-center focus:outline-none focus:border-primary"
+                    />
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSaveSetting('default_daily_goal')}
+                      disabled={savingSetting === 'default_daily_goal'}
+                      className="min-h-8 px-2.5 py-1 text-xs"
+                    >
+                      <Save size={12} />
+                    </Button>
                   </div>
                 </div>
-              ))}
+
+                {/* Max Examples Count */}
+                <div className="flex items-center justify-between gap-4 pt-2 border-t border-border/60">
+                  <div>
+                    <label className="text-xs font-black text-foreground block">Ví dụ tối đa mỗi từ vựng</label>
+                    <span className="text-[11px] font-bold text-muted-foreground">Giới hạn số câu ví dụ hiển thị khi tra cứu từ</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={Number(settingsForm['vocabulary_max_examples_count']) || 10}
+                      onChange={(e) => {
+                        const val = Number(e.target.value)
+                        setSettingsForm((prev) => ({ ...prev, vocabulary_max_examples_count: val }))
+                      }}
+                      className="w-20 px-3 py-1.5 border-2 border-border rounded-lg bg-background font-black text-xs text-center focus:outline-none focus:border-primary"
+                    />
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSaveSetting('vocabulary_max_examples_count')}
+                      disabled={savingSetting === 'vocabulary_max_examples_count'}
+                      className="min-h-8 px-2.5 py-1 text-xs"
+                    >
+                      <Save size={12} />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Quick Notes Limits */}
+                <div className="flex items-center justify-between gap-4 pt-2 border-t border-border/60">
+                  <div>
+                    <label className="text-xs font-black text-foreground block">Số ghi chú nhanh tối đa</label>
+                    <span className="text-[11px] font-bold text-muted-foreground">Giới hạn số lượng ghi chú tối đa mỗi học viên</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <input
+                      type="number"
+                      min={1}
+                      value={Number(settingsForm['quick_notes_max_count']) || 20}
+                      onChange={(e) => {
+                        const val = Number(e.target.value)
+                        setSettingsForm((prev) => ({ ...prev, quick_notes_max_count: val }))
+                      }}
+                      className="w-20 px-3 py-1.5 border-2 border-border rounded-lg bg-background font-black text-xs text-center focus:outline-none focus:border-primary"
+                    />
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSaveSetting('quick_notes_max_count')}
+                      disabled={savingSetting === 'quick_notes_max_count'}
+                      className="min-h-8 px-2.5 py-1 text-xs"
+                    >
+                      <Save size={12} />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Visual Builder: Voice TTS Audio Settings */}
+              <div className="neo-card p-4 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex flex-col gap-4">
+                <div className="flex items-center gap-2 pb-1 border-b-2 border-border">
+                  <Volume2 size={18} className="text-primary" />
+                  <h3 className="font-black text-sm text-foreground">Giọng đọc TTS Mặc định</h3>
+                </div>
+
+                {/* Speech Rate */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-foreground">Tốc độ đọc giọng TTS:</label>
+                    <span className="text-xs font-black font-mono px-2 py-0.5 rounded border border-border bg-primary/20">
+                      {settingsForm['default_speech_rate'] || 1.0}x
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="2.0"
+                      step="0.1"
+                      value={Number(settingsForm['default_speech_rate']) || 1.0}
+                      onChange={(e) => {
+                        const val = Number(e.target.value)
+                        setSettingsForm((prev) => ({ ...prev, default_speech_rate: val }))
+                      }}
+                      className="flex-1 accent-primary cursor-pointer"
+                    />
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSaveSetting('default_speech_rate')}
+                      disabled={savingSetting === 'default_speech_rate'}
+                      className="min-h-8 px-2.5 py-1 text-xs shrink-0"
+                    >
+                      <Save size={12} />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Speech Pitch */}
+                <div className="flex flex-col gap-2 pt-2 border-t border-border/60">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-foreground">Độ cao giọng đọc (Pitch):</label>
+                    <span className="text-xs font-black font-mono px-2 py-0.5 rounded border border-border bg-secondary/20">
+                      {settingsForm['default_speech_pitch'] || 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="-20"
+                      max="20"
+                      step="1"
+                      value={Number(settingsForm['default_speech_pitch']) || 0}
+                      onChange={(e) => {
+                        const val = Number(e.target.value)
+                        setSettingsForm((prev) => ({ ...prev, default_speech_pitch: val }))
+                      }}
+                      className="flex-1 accent-secondary cursor-pointer"
+                    />
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSaveSetting('default_speech_pitch')}
+                      disabled={savingSetting === 'default_speech_pitch'}
+                      className="min-h-8 px-2.5 py-1 text-xs shrink-0"
+                    >
+                      <Save size={12} />
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
