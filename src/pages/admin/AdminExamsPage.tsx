@@ -4,7 +4,6 @@ import {
   FileText,
   Plus,
   Search,
-  Clock,
   CheckCircle2,
   AlertCircle,
   Pencil,
@@ -12,7 +11,6 @@ import {
   Layers,
   Sparkles,
   ChevronRight,
-  HelpCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -32,16 +30,12 @@ export default function AdminExamsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [newCategory, setNewCategory] = useState<ExamCategory>('TOEIC')
-  const [newTimeLimit, setNewTimeLimit] = useState<number>(75)
-  const [newTotalQuestions, setNewTotalQuestions] = useState<number>(100)
   const [creating, setCreating] = useState(false)
 
   // Edit Modal state
   const [editingExam, setEditingExam] = useState<Exam | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editCategory, setEditCategory] = useState<ExamCategory>('TOEIC')
-  const [editTimeLimit, setEditTimeLimit] = useState<number>(75)
-  const [editTotalQuestions, setEditTotalQuestions] = useState<number>(100)
   const [updating, setUpdating] = useState(false)
 
   // Delete state
@@ -69,8 +63,6 @@ export default function AdminExamsPage() {
     setEditingExam(exam)
     setEditTitle(exam.title)
     setEditCategory(exam.category)
-    setEditTimeLimit(exam.time_limit_minutes)
-    setEditTotalQuestions(exam.total_questions)
   }
 
   const handleUpdateExam = async (e: React.FormEvent) => {
@@ -81,8 +73,6 @@ export default function AdminExamsPage() {
       const updated = await adminExamService.updateExam(editingExam.id, {
         title: editTitle.trim(),
         category: editCategory,
-        time_limit_minutes: editTimeLimit,
-        total_questions: editTotalQuestions,
       })
       setExams((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
       setEditingExam(null)
@@ -111,8 +101,6 @@ export default function AdminExamsPage() {
       const created = await adminExamService.createExam({
         title: newTitle.trim(),
         category: newCategory,
-        time_limit_minutes: newTimeLimit,
-        total_questions: newTotalQuestions,
         is_published: false,
       })
 
@@ -264,17 +252,6 @@ export default function AdminExamsPage() {
                 <h2 className="text-base font-black text-foreground tracking-tight leading-snug line-clamp-2">
                   {exam.title}
                 </h2>
-
-                <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground pt-1 border-t border-border/60">
-                  <span className="flex items-center gap-1">
-                    <Clock size={14} className="text-primary" />
-                    {exam.time_limit_minutes} phút
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <HelpCircle size={14} className="text-secondary" />
-                    {exam.total_questions} câu hỏi
-                  </span>
-                </div>
               </div>
 
               {/* Action buttons */}
@@ -339,45 +316,19 @@ export default function AdminExamsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-black text-foreground">Loại bài thi / Thể loại</label>
-                  <Select
-                    value={newCategory}
-                    onChange={(val) => setNewCategory(val as ExamCategory)}
-                    options={[
-                      { value: 'TOEIC', label: 'TOEIC' },
-                      { value: 'IELTS', label: 'IELTS' },
-                      { value: 'TOEFL', label: 'TOEFL' },
-                      { value: 'THPTQG', label: 'THPT Quốc Gia' },
-                      { value: 'CAMBRIDGE', label: 'Cambridge' },
-                      { value: 'GENERAL', label: 'Tổng hợp / Khác' },
-                    ]}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-black text-foreground">Thời gian (phút)</label>
-                  <input
-                    type="number"
-                    min={10}
-                    max={200}
-                    value={newTimeLimit}
-                    onChange={(e) => setNewTimeLimit(Number(e.target.value))}
-                    className="px-3.5 py-2 border-2 border-border rounded-xl bg-background text-xs font-bold focus:outline-none focus:border-primary"
-                  />
-                </div>
-              </div>
-
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-foreground">Tổng số câu hỏi mặc định</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={300}
-                  value={newTotalQuestions}
-                  onChange={(e) => setNewTotalQuestions(Number(e.target.value))}
-                  className="px-3.5 py-2 border-2 border-border rounded-xl bg-background text-xs font-bold focus:outline-none focus:border-primary"
+                <label className="text-xs font-black text-foreground">Loại bài thi / Thể loại</label>
+                <Select
+                  value={newCategory}
+                  onChange={(val) => setNewCategory(val as ExamCategory)}
+                  options={[
+                    { value: 'TOEIC', label: 'TOEIC' },
+                    { value: 'IELTS', label: 'IELTS' },
+                    { value: 'TOEFL', label: 'TOEFL' },
+                    { value: 'THPTQG', label: 'THPT Quốc Gia' },
+                    { value: 'CAMBRIDGE', label: 'Cambridge' },
+                    { value: 'GENERAL', label: 'Tổng hợp / Khác' },
+                  ]}
                 />
               </div>
 
@@ -425,45 +376,19 @@ export default function AdminExamsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-black text-foreground">Loại bài thi / Thể loại</label>
-                  <Select
-                    value={editCategory}
-                    onChange={(val) => setEditCategory(val as ExamCategory)}
-                    options={[
-                      { value: 'TOEIC', label: 'TOEIC' },
-                      { value: 'IELTS', label: 'IELTS' },
-                      { value: 'TOEFL', label: 'TOEFL' },
-                      { value: 'THPTQG', label: 'THPT Quốc Gia' },
-                      { value: 'CAMBRIDGE', label: 'Cambridge' },
-                      { value: 'GENERAL', label: 'Tổng hợp / Khác' },
-                    ]}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-black text-foreground">Thời gian (phút)</label>
-                  <input
-                    type="number"
-                    min={10}
-                    max={200}
-                    value={editTimeLimit}
-                    onChange={(e) => setEditTimeLimit(Number(e.target.value))}
-                    className="px-3.5 py-2 border-2 border-border rounded-xl bg-background text-xs font-bold focus:outline-none focus:border-primary"
-                  />
-                </div>
-              </div>
-
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-foreground">Tổng số câu hỏi</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={300}
-                  value={editTotalQuestions}
-                  onChange={(e) => setEditTotalQuestions(Number(e.target.value))}
-                  className="px-3.5 py-2 border-2 border-border rounded-xl bg-background text-xs font-bold focus:outline-none focus:border-primary"
+                <label className="text-xs font-black text-foreground">Loại bài thi / Thể loại</label>
+                <Select
+                  value={editCategory}
+                  onChange={(val) => setEditCategory(val as ExamCategory)}
+                  options={[
+                    { value: 'TOEIC', label: 'TOEIC' },
+                    { value: 'IELTS', label: 'IELTS' },
+                    { value: 'TOEFL', label: 'TOEFL' },
+                    { value: 'THPTQG', label: 'THPT Quốc Gia' },
+                    { value: 'CAMBRIDGE', label: 'Cambridge' },
+                    { value: 'GENERAL', label: 'Tổng hợp / Khác' },
+                  ]}
                 />
               </div>
 

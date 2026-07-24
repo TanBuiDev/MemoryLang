@@ -52,8 +52,6 @@ export default function AdminExamBuilderPage() {
   const [showEditExamModal, setShowEditExamModal] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editCategory, setEditCategory] = useState<ExamCategory>('TOEIC')
-  const [editTimeLimit, setEditTimeLimit] = useState(75)
-  const [editTotalQuestions, setEditTotalQuestions] = useState(100)
   const [updatingExam, setUpdatingExam] = useState(false)
 
   // Bulk Question Import State
@@ -116,8 +114,6 @@ export default function AdminExamBuilderPage() {
     if (!exam) return
     setEditTitle(exam.title)
     setEditCategory(exam.category)
-    setEditTimeLimit(exam.time_limit_minutes)
-    setEditTotalQuestions(exam.total_questions)
     setShowEditExamModal(true)
   }
 
@@ -129,8 +125,6 @@ export default function AdminExamBuilderPage() {
       const updated = await adminExamService.updateExam(exam.id, {
         title: editTitle.trim(),
         category: editCategory,
-        time_limit_minutes: editTimeLimit,
-        total_questions: editTotalQuestions,
       })
       setExam((prev) => (prev ? { ...prev, ...updated } : null))
       setShowEditExamModal(false)
@@ -143,10 +137,10 @@ export default function AdminExamBuilderPage() {
     }
   }
 
-  const loadExam = async () => {
+  const loadExam = async (targetSetId?: string | null, silent: boolean = false) => {
     if (!id) return
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       setError(null)
       const data = await adminExamService.getExamDetail(id)
       if (!data) {
@@ -155,18 +149,27 @@ export default function AdminExamBuilderPage() {
       }
       setExam(data)
 
-      // Select first set if available
-      if (data.passage_sets.length > 0) {
-        selectPassageSet(data.passage_sets[0])
+      if (targetSetId) {
+        const found = data.passage_sets.find((s) => s.id === targetSetId)
+        if (found) {
+          selectPassageSet(found)
+        } else if (data.passage_sets.length > 0) {
+          selectPassageSet(data.passage_sets[0])
+        }
+      } else if (targetSetId === null) {
+        // Do nothing to keep current form
       } else {
-        // Init empty set for Part 5
-        initNewSet(5)
+        if (data.passage_sets.length > 0) {
+          selectPassageSet(data.passage_sets[0])
+        } else {
+          initNewSet(5)
+        }
       }
     } catch (err: any) {
       console.error(err)
       setError(err.message || 'Không thể tải đề thi')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
@@ -199,7 +202,7 @@ export default function AdminExamBuilderPage() {
 
     setQuestions([
       {
-        question_number: 1,
+        question_number: 101,
         question_text: '',
         question_type: 'multiple_choice',
         options: [
@@ -218,23 +221,23 @@ export default function AdminExamBuilderPage() {
     if (type === 'none') {
       setPassages([])
     } else if (type === 'single') {
-      setPassages([{ id: 'p1', type: 'email', title: 'Đoạn văn 1', content_html: '' }])
+      setPassages([{ id: 'p1', type: 'article', title: 'Đoạn văn 1', content_html: passages[0]?.content_html || '' }])
     } else if (type === 'double') {
       setPassages([
-        { id: 'p1', type: 'email', title: 'Đoạn 1 (Email)', content_html: '' },
-        { id: 'p2', type: 'invoice', title: 'Đoạn 2 (Hóa đơn/Phản hồi)', content_html: '' },
+        { id: 'p1', type: 'article', title: 'Đoạn văn 1 (Bài đọc 1)', content_html: passages[0]?.content_html || '' },
+        { id: 'p2', type: 'article', title: 'Đoạn văn 2 (Bài đọc 2)', content_html: passages[1]?.content_html || '' },
       ])
     } else if (type === 'triple') {
       setPassages([
-        { id: 'p1', type: 'email', title: 'Đoạn 1 (Email)', content_html: '' },
-        { id: 'p2', type: 'article', title: 'Đoạn 2 (Bài báo/Thông báo)', content_html: '' },
-        { id: 'p3', type: 'chat', title: 'Đoạn 3 (Phản hồi)', content_html: '' },
+        { id: 'p1', type: 'article', title: 'Đoạn văn 1 (Bài đọc 1)', content_html: passages[0]?.content_html || '' },
+        { id: 'p2', type: 'article', title: 'Đoạn văn 2 (Bài đọc 2)', content_html: passages[1]?.content_html || '' },
+        { id: 'p3', type: 'article', title: 'Đoạn văn 3 (Bài đọc 3)', content_html: passages[2]?.content_html || '' },
       ])
     }
   }
 
   const handleAddQuestion = () => {
-    const nextQNum = questions.length > 0 ? (questions[questions.length - 1].question_number || 100) + 1 : 101
+    const nextQNum = (questions.length > 0 ? (questions[questions.length - 1].question_number || 100) : 100) + 1
     setQuestions((prev) => [
       ...prev,
       {
@@ -293,8 +296,7 @@ export default function AdminExamBuilderPage() {
       )
 
       showToast({ type: 'success', title: 'Đã lưu Cụm bài đọc', message: 'Dữ liệu cụm bài đọc và câu hỏi đã lưu thành công.' })
-      await loadExam()
-      setSelectedSetId(savedSet.id)
+      await loadExam(savedSet.id, true)
     } catch (err: any) {
       console.error(err)
       showToast({ type: 'error', title: 'Lỗi', message: err.message || 'Không thể lưu cụm bài đọc' })
@@ -376,14 +378,11 @@ export default function AdminExamBuilderPage() {
                 type="button"
                 onClick={openEditExamModal}
                 className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition"
-                title="Sửa tên / thời gian / số câu của đề thi"
+                title="Sửa tên hoặc thể loại của đề thi"
               >
                 <Pencil size={14} />
               </button>
             </div>
-            <span className="text-xs font-bold text-muted-foreground">
-              Thời gian: {exam.time_limit_minutes}p · Tổng câu: {exam.total_questions} câu
-            </span>
           </div>
         </div>
 
@@ -412,13 +411,13 @@ export default function AdminExamBuilderPage() {
             <div className="flex items-center justify-between border-b-2 border-border pb-2">
               <h2 className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
                 <Layers size={16} className="text-primary" />
-                CẤU TRÚC BÀI THI ({exam.passage_sets.length} CỤM)
+                CẤU TRÚC BÀI THI ({(exam.passage_sets || []).length} CỤM)
               </h2>
             </div>
 
             {/* Quick Create New Set Button */}
             <div className="flex items-center justify-between p-2 bg-primary/10 border-2 border-primary/30 rounded-xl">
-              <span className="text-xs font-black text-primary">Tạo Cụm bài đọc / Câu hỏi mới:</span>
+              <span className="text-xs font-black text-primary">Tạo Cụm mới:</span>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5, 6, 7].map((pNum) => (
                   <button
@@ -435,63 +434,68 @@ export default function AdminExamBuilderPage() {
             </div>
 
             {/* Dynamic Part Groups */}
-            {(() => {
-              const setsByPart = (exam.passage_sets || []).reduce((acc, set) => {
-                const p = set.part_number || 1
-                if (!acc[p]) acc[p] = []
-                acc[p].push(set)
-                return acc
-              }, {} as Record<number, typeof exam.passage_sets>)
+            {(!exam.passage_sets || exam.passage_sets.length === 0) ? (
+              <div className="p-4 text-center bg-muted/20 border-2 border-dashed border-border rounded-xl flex flex-col items-center gap-2 my-1">
+                <Layers size={28} className="text-muted-foreground opacity-60" />
+                <span className="text-xs font-black text-foreground">Chưa có cụm bài thi nào</span>
+                <p className="text-[11px] font-bold text-muted-foreground leading-relaxed">
+                  Cấu trúc hiện đang trống. Hãy soạn thảo bên <strong>"SOẠN THẢO CỤM BÀI ĐỌC"</strong> và bấm <strong>"Lưu Cụm bài đang chọn"</strong> để hiển thị cụm bài tại đây!
+                </p>
+              </div>
+            ) : (
+              (() => {
+                const setsByPart = (exam.passage_sets || []).reduce((acc, set) => {
+                  const p = set.part_number || 1
+                  if (!acc[p]) acc[p] = []
+                  acc[p].push(set)
+                  return acc
+                }, {} as Record<number, typeof exam.passage_sets>)
 
-              const sortedPartNumbers = Array.from(
-                new Set([1, 2, 3, ...Object.keys(setsByPart).map(Number)])
-              ).sort((a, b) => a - b)
+                const sortedPartNumbers = Object.keys(setsByPart).map(Number).sort((a, b) => a - b)
 
-              return sortedPartNumbers.map((partNum) => {
-                const partSets = setsByPart[partNum] || []
-                return (
-                  <div key={partNum} className="flex flex-col gap-2 p-2.5 bg-muted/30 border-2 border-border rounded-xl">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-foreground">PHẦN {partNum} (PART {partNum})</span>
-                      <button
-                        type="button"
-                        onClick={() => initNewSet(partNum)}
-                        className="text-[11px] font-black text-primary hover:underline flex items-center gap-0.5"
-                      >
-                        <Plus size={12} /> Thêm Cụm P{partNum}
-                      </button>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      {partSets.map((s) => (
-                        <div
-                          key={s.id}
-                          onClick={() => selectPassageSet(s)}
-                          className={`p-2 rounded-lg border-2 border-border text-xs font-bold flex items-center justify-between cursor-pointer transition ${
-                            selectedSetId === s.id
-                              ? 'bg-primary/20 border-primary shadow-[2px_2px_0_var(--border)]'
-                              : 'bg-card hover:bg-muted/50'
-                          }`}
+                return sortedPartNumbers.map((partNum) => {
+                  const partSets = setsByPart[partNum] || []
+                  return (
+                    <div key={partNum} className="flex flex-col gap-2 p-2.5 bg-muted/30 border-2 border-border rounded-xl">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-foreground">PHẦN {partNum} (PART {partNum})</span>
+                        <button
+                          type="button"
+                          onClick={() => initNewSet(partNum)}
+                          className="text-[11px] font-black text-primary hover:underline flex items-center gap-0.5"
                         >
-                          <div className="flex items-center gap-1.5 truncate">
-                            <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded border bg-secondary/15 text-secondary">
-                              {s.passage_type}
+                          <Plus size={12} /> Thêm Cụm P{partNum}
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        {partSets.map((s) => (
+                          <div
+                            key={s.id}
+                            onClick={() => selectPassageSet(s)}
+                            className={`p-2 rounded-lg border-2 border-border text-xs font-bold flex items-center justify-between cursor-pointer transition ${
+                              selectedSetId === s.id
+                                ? 'bg-primary/20 border-primary shadow-[2px_2px_0_var(--border)]'
+                                : 'bg-card hover:bg-muted/50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded border bg-secondary/15 text-secondary">
+                                {s.passage_type}
+                              </span>
+                              <span className="truncate">{s.title || `Part ${partNum} Set`}</span>
+                            </div>
+                            <span className="text-[10px] font-mono font-black text-muted-foreground shrink-0 pl-2">
+                              {(s.questions || []).length} câu
                             </span>
-                            <span className="truncate">{s.title || `Part ${partNum} Set`}</span>
                           </div>
-                          <span className="text-[10px] font-mono font-black text-muted-foreground shrink-0 pl-2">
-                            {(s.questions || []).length} câu
-                          </span>
-                        </div>
-                      ))}
-                      {partSets.length === 0 && (
-                        <span className="text-[11px] text-muted-foreground italic py-0.5">Chưa có cụm bài Phần {partNum}.</span>
-                      )}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )
-              })
-            })()}
+                  )
+                })
+              })()
+            )}
           </div>
         </div>
 
@@ -755,42 +759,19 @@ export default function AdminExamBuilderPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-black text-foreground">Loại chứng chỉ</label>
-                  <Select
-                    value={editCategory}
-                    onChange={(val) => setEditCategory(val as ExamCategory)}
-                    options={[
-                      { value: 'TOEIC', label: 'TOEIC Reading' },
-                      { value: 'IELTS', label: 'IELTS Reading' },
-                      { value: 'TOEFL', label: 'TOEFL' },
-                    ]}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-black text-foreground">Thời gian (phút)</label>
-                  <input
-                    type="number"
-                    min={10}
-                    max={200}
-                    value={editTimeLimit}
-                    onChange={(e) => setEditTimeLimit(Number(e.target.value))}
-                    className="px-3.5 py-2 border-2 border-border rounded-xl bg-background text-xs font-bold focus:outline-none focus:border-primary"
-                  />
-                </div>
-              </div>
-
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-foreground">Tổng số câu hỏi</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={300}
-                  value={editTotalQuestions}
-                  onChange={(e) => setEditTotalQuestions(Number(e.target.value))}
-                  className="px-3.5 py-2 border-2 border-border rounded-xl bg-background text-xs font-bold focus:outline-none focus:border-primary"
+                <label className="text-xs font-black text-foreground">Loại chứng chỉ / Thể loại</label>
+                <Select
+                  value={editCategory}
+                  onChange={(val) => setEditCategory(val as ExamCategory)}
+                  options={[
+                    { value: 'TOEIC', label: 'TOEIC' },
+                    { value: 'IELTS', label: 'IELTS' },
+                    { value: 'TOEFL', label: 'TOEFL' },
+                    { value: 'THPTQG', label: 'THPT Quốc Gia' },
+                    { value: 'CAMBRIDGE', label: 'Cambridge' },
+                    { value: 'GENERAL', label: 'Tổng hợp / Khác' },
+                  ]}
                 />
               </div>
 
