@@ -227,7 +227,7 @@ export function ReadingRichTextEditor({
           </button>
 
           {showStyleMenu && (
-            <div className="absolute left-0 top-full mt-1 z-30 w-36 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_#000] py-1 flex flex-col">
+            <div className="absolute left-0 top-full mt-1 z-30 w-44 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_#000] overflow-hidden flex flex-col">
               <button
                 type="button"
                 onClick={() => {
@@ -235,7 +235,7 @@ export function ReadingRichTextEditor({
                   setShowStyleMenu(false)
                 }}
                 className={cn(
-                  'px-3 py-1.5 text-xs text-left font-bold hover:bg-amber-100 transition-colors',
+                  'px-3 py-2 text-xs text-left font-bold hover:bg-amber-100 transition-colors border-b border-slate-100 last:border-b-0',
                   (toolbarState?.block || 'paragraph') === 'paragraph' && 'font-black bg-amber-200'
                 )}
               >
@@ -248,7 +248,7 @@ export function ReadingRichTextEditor({
                   setShowStyleMenu(false)
                 }}
                 className={cn(
-                  'px-3 py-1.5 text-xs text-left font-bold hover:bg-amber-100 transition-colors',
+                  'px-3 py-2 text-xs text-left font-bold hover:bg-amber-100 transition-colors border-b border-slate-100 last:border-b-0',
                   toolbarState?.block === 'heading-2' && 'font-black bg-amber-200'
                 )}
               >
@@ -261,7 +261,7 @@ export function ReadingRichTextEditor({
                   setShowStyleMenu(false)
                 }}
                 className={cn(
-                  'px-3 py-1.5 text-xs text-left font-bold hover:bg-amber-100 transition-colors',
+                  'px-3 py-2 text-xs text-left font-bold hover:bg-amber-100 transition-colors border-b border-slate-100 last:border-b-0',
                   toolbarState?.block === 'heading-3' && 'font-black bg-amber-200'
                 )}
               >
@@ -370,7 +370,7 @@ export function ReadingRichTextEditor({
           </button>
 
           {showAlignMenu && (
-            <div className="absolute left-0 top-full mt-1 z-30 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_#000] p-1 flex items-center gap-1">
+            <div className="absolute left-0 top-full mt-1 z-30 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_#000] p-1 flex items-center gap-1 overflow-hidden">
               <ToolbarButton
                 label="Căn trái"
                 active={toolbarState?.alignLeft}
@@ -504,7 +504,7 @@ export function ReadingRichTextEditor({
           </button>
 
           {showPasteMenu && (
-            <div className="absolute right-0 top-full mt-1 z-30 w-40 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_#000] py-1 flex flex-col">
+            <div className="absolute right-0 top-full mt-1 z-30 w-44 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_#000] overflow-hidden flex flex-col">
               <button
                 type="button"
                 onClick={() => {
@@ -512,7 +512,7 @@ export function ReadingRichTextEditor({
                   setShowPasteMenu(false)
                 }}
                 className={cn(
-                  'px-3 py-1.5 text-xs text-left font-bold hover:bg-amber-100 transition-colors',
+                  'px-3 py-2 text-xs text-left font-bold hover:bg-amber-100 transition-colors border-b border-slate-100 last:border-b-0',
                   pasteMode === 'formatted' && 'font-black bg-amber-200'
                 )}
               >
@@ -525,7 +525,7 @@ export function ReadingRichTextEditor({
                   setShowPasteMenu(false)
                 }}
                 className={cn(
-                  'px-3 py-1.5 text-xs text-left font-bold hover:bg-amber-100 transition-colors',
+                  'px-3 py-2 text-xs text-left font-bold hover:bg-amber-100 transition-colors border-b border-slate-100 last:border-b-0',
                   pasteMode === 'plain' && 'font-black bg-amber-200'
                 )}
               >
