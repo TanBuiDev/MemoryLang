@@ -5,6 +5,7 @@ import {
   Play,
   Pause,
   CheckCircle2,
+  XCircle,
   Lock,
   BookOpen,
   HelpCircle,
@@ -346,8 +347,17 @@ export function ReadingDetailPage() {
               >
                 {isPlayingAudio ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
               </Button>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-black text-slate-900">Âm thanh phát bài đọc (TTS)</p>
+              <div>
+                <p className="text-xs font-black text-slate-900 flex items-center gap-2">
+                  Âm thanh phát bài đọc (TTS)
+                  {isPlayingAudio && (
+                    <span className="inline-flex items-end gap-0.5 h-3 px-1 shrink-0" title="Đang phát audio">
+                      <span className="w-0.5 bg-slate-900 rounded-full animate-bounce h-full" style={{ animationDuration: '600ms', animationDelay: '0ms' }} />
+                      <span className="w-0.5 bg-slate-900 rounded-full animate-bounce h-2/3" style={{ animationDuration: '600ms', animationDelay: '200ms' }} />
+                      <span className="w-0.5 bg-slate-900 rounded-full animate-bounce h-5/6" style={{ animationDuration: '600ms', animationDelay: '400ms' }} />
+                    </span>
+                  )}
+                </p>
                 <p className="text-[10px] font-bold text-slate-600 truncate">Nghe kết hợp highlight câu đang đọc</p>
               </div>
             </div>
@@ -468,10 +478,10 @@ export function ReadingDetailPage() {
         {/* ================= COLUMN 3 (RIGHT): Comprehension Quiz Section ================= */}
         {hasQuestions && (
           <div className="lg:col-span-4 xl:col-span-4 space-y-4 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pl-1">
-            <div className="neo-card p-5 bg-white border-3 sm:border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] rounded-2xl space-y-5">
+            <div className="neo-card p-5 bg-white border-3 sm:border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] rounded-2xl space-y-4">
               
               {/* Quiz Header & Score Info */}
-              <div className="space-y-2 border-b-2 border-slate-900 pb-3">
+              <div className="space-y-2.5 border-b-2 border-slate-900 pb-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
                     <HelpCircle size={20} className="text-purple-700 shrink-0" />
@@ -480,6 +490,37 @@ export function ReadingDetailPage() {
                   <span className="text-xs font-black px-2.5 py-0.5 bg-purple-100 text-purple-900 border border-slate-900 rounded-md">
                     {article.questions.length} câu
                   </span>
+                </div>
+
+                {/* Question Mini-Map Navigator */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                  <span className="text-[10px] font-black uppercase text-slate-500 mr-1">Chuyển nhanh:</span>
+                  {article.questions.map((q, idx) => {
+                    const isAns = Boolean(quizAnswers[q.id])
+                    let dotStyle = 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-900'
+                    if (quizSubmitted) {
+                      const selectedOpt = quizAnswers[q.id]
+                      const correctOpt = q.options?.find((o) => o.is_correct)?.text
+                      if (selectedOpt === correctOpt) dotStyle = 'bg-emerald-300 text-emerald-950 border-slate-900 font-black'
+                      else dotStyle = 'bg-rose-300 text-rose-950 border-slate-900 font-black'
+                    } else if (isAns) {
+                      dotStyle = 'bg-[#fdc800] text-slate-900 border-slate-900 font-black'
+                    }
+
+                    return (
+                      <button
+                        key={q.id}
+                        type="button"
+                        onClick={() => {
+                          document.getElementById(`question-card-${q.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+                        }}
+                        className={`w-6 h-6 rounded-md border text-[11px] font-bold flex items-center justify-center transition-all cursor-pointer shadow-[1px_1px_0px_0px_#000] active:translate-y-0.5 ${dotStyle}`}
+                        title={`Chuyển đến Câu ${idx + 1}`}
+                      >
+                        {idx + 1}
+                      </button>
+                    )
+                  })}
                 </div>
 
                 {/* Progress or Final Result */}
@@ -502,43 +543,69 @@ export function ReadingDetailPage() {
 
               {/* Questions List */}
               <div className="space-y-4">
-                {article.questions.map((q, idx) => (
-                  <div key={q.id} className="p-3.5 bg-slate-50 border-2 border-slate-900 rounded-xl space-y-3 shadow-[2px_2px_0px_0px_#000]">
-                    <h3 className="font-black text-xs sm:text-sm text-slate-900 leading-snug">
-                      Câu {idx + 1}: {q.question_text}
-                    </h3>
+                {article.questions.map((q, idx) => {
+                  const isAnswered = Boolean(quizAnswers[q.id])
 
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
-                      {q.options?.map((opt, optionIndex) => {
-                        const isSelected = quizAnswers[q.id] === opt.text
-                        const isCorrect = opt.is_correct
+                  return (
+                    <div
+                      key={q.id}
+                      id={`question-card-${q.id}`}
+                      className="p-3.5 bg-slate-50 border-2 border-slate-900 rounded-xl space-y-3 shadow-[2px_2px_0px_0px_#000] scroll-mt-20"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-black text-xs sm:text-sm text-slate-900 leading-snug">
+                          Câu {idx + 1}: {q.question_text}
+                        </h3>
+                        {quizSubmitted ? null : isAnswered ? (
+                          <span className="text-[10px] font-black uppercase px-1.5 py-0.5 bg-[#fdc800] text-slate-900 border border-slate-900 rounded shadow-[1px_1px_0px_0px_#000] shrink-0">
+                            Đã chọn
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 bg-slate-200 text-slate-600 border border-slate-300 rounded shrink-0">
+                            Chưa chọn
+                          </span>
+                        )}
+                      </div>
 
-                        let btnStyle = 'bg-white text-slate-900 border-slate-900 hover:bg-slate-100'
-                        if (quizSubmitted) {
-                          if (isCorrect) btnStyle = 'bg-emerald-200 text-emerald-950 border-slate-900 font-black'
-                          else if (isSelected && !isCorrect) btnStyle = 'bg-rose-200 text-rose-950 border-slate-900'
-                        } else if (isSelected) {
-                          btnStyle = 'bg-[#fdc800] text-slate-900 border-slate-900 font-black'
-                        }
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+                        {q.options?.map((opt, optionIndex) => {
+                          const isSelected = quizAnswers[q.id] === opt.text
+                          const isCorrect = opt.is_correct
 
-                        return (
-                          <Button
-                            key={opt.text}
-                            type="button"
-                            variant="ghost"
-                            onClick={() => handleSelectOption(q.id, opt.text)}
-                            className={`w-full h-auto min-h-10 justify-start whitespace-normal p-2 text-left text-xs font-bold border-2 rounded-xl transition-all shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer ${btnStyle}`}
-                          >
-                            <span className="mr-1 shrink-0 font-black">
-                              {String.fromCharCode(65 + optionIndex)}.
-                            </span>
-                            <span className="min-w-0 break-words">{opt.text}</span>
-                          </Button>
-                        )
-                      })}
+                          let btnStyle = 'bg-white text-slate-900 border-slate-900 hover:bg-amber-100/70 hover:border-slate-900'
+                          if (quizSubmitted) {
+                            if (isCorrect) btnStyle = 'bg-emerald-200 hover:bg-emerald-200 text-emerald-950 border-slate-900 font-black'
+                            else if (isSelected && !isCorrect) btnStyle = 'bg-rose-200 hover:bg-rose-200 text-rose-950 border-slate-900 font-black'
+                          } else if (isSelected) {
+                            btnStyle = 'bg-[#fdc800] hover:bg-[#fdc800] text-slate-900 border-slate-900 font-black shadow-[2px_2px_0px_0px_#000]'
+                          }
+
+                          return (
+                            <Button
+                              key={opt.text}
+                              type="button"
+                              variant="ghost"
+                              onClick={() => handleSelectOption(q.id, opt.text)}
+                              className={`w-full h-auto min-h-10 justify-start whitespace-normal p-2.5 text-left text-xs font-bold border-2 rounded-xl transition-all shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer ${btnStyle}`}
+                            >
+                              <div className="flex items-center gap-1.5 w-full min-w-0">
+                                {quizSubmitted && isCorrect ? (
+                                  <CheckCircle2 size={15} className="text-emerald-900 shrink-0" />
+                                ) : quizSubmitted && isSelected && !isCorrect ? (
+                                  <XCircle size={15} className="text-rose-900 shrink-0" />
+                                ) : null}
+                                <span className="shrink-0 font-black">
+                                  {String.fromCharCode(65 + optionIndex)}.
+                                </span>
+                                <span className="min-w-0 break-words">{opt.text}</span>
+                              </div>
+                            </Button>
+                          )
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               {/* Submit Quiz Action Button */}
@@ -577,4 +644,3 @@ export function ReadingDetailPage() {
 }
 
 export default ReadingDetailPage
-
