@@ -97,7 +97,7 @@ Return ONLY a valid JSON array of objects with this exact format:
 
     // 4. Securely invoke Google Gemini Vision API from Backend
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
