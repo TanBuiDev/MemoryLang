@@ -792,7 +792,7 @@ export default function AdminReadingEditorPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <div className="w-48">
+                    <div className="w-72 sm:w-80">
                       <Select
                         value={q.question_type}
                         onChange={(val) => handleQuestionChange(qIdx, 'question_type', val)}
@@ -804,7 +804,7 @@ export default function AdminReadingEditorPage() {
                       type="button"
                       variant="danger"
                       onClick={() => handleRemoveQuestion(qIdx)}
-                      className="neo-button h-9 px-2.5 bg-rose-100 hover:bg-rose-200 text-rose-900 border-2 border-slate-900 shadow-[1.5px_1.5px_0px_0px_#000] rounded-xl flex items-center gap-1 cursor-pointer"
+                      className="neo-button h-9 px-2.5 bg-rose-100 hover:bg-rose-200 text-rose-900 border-2 border-slate-900 shadow-[1.5px_1.5px_0px_0px_#000] rounded-xl flex items-center gap-1 cursor-pointer shrink-0"
                       title="Xóa câu hỏi này"
                     >
                       <Trash2 size={14} />
@@ -882,6 +882,18 @@ export default function AdminReadingEditorPage() {
                 </div>
               </div>
             ))}
+
+            {/* Bottom Add Question Action Bar */}
+            <div className="pt-2 flex justify-center">
+              <Button
+                type="button"
+                onClick={handleAddQuestion}
+                className="neo-button w-full sm:w-auto px-6 py-3 h-11 bg-[#fdc800] hover:bg-amber-300 text-slate-900 font-black text-xs sm:text-sm border-3 border-slate-900 shadow-[3px_3px_0px_0px_#000] rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Plus size={18} />
+                <span>Thêm câu hỏi mới</span>
+              </Button>
+            </div>
           </div>
         )}
       </div>
