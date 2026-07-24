@@ -834,7 +834,7 @@ export default function AdminReadingEditorPage() {
                       CÁC LỰA CHỌN VÀ ĐÁP ÁN ĐÚNG
                     </span>
                     <span className="text-[11px] font-bold text-slate-500">
-                      Bấm nút "Đáp án đúng" để đánh dấu lựa chọn chính xác
+                      Click trực tiếp vào nút <span className="font-black text-slate-900">A, B, C, D</span> để chọn đáp án đúng
                     </span>
                   </div>
 
@@ -847,49 +847,34 @@ export default function AdminReadingEditorPage() {
                         <div
                           key={optIdx}
                           className={cn(
-                            'p-3 border-2 border-slate-900 rounded-xl flex flex-col gap-2 transition-all shadow-[2px_2px_0px_0px_#000]',
+                            'p-2.5 border-2 border-slate-900 rounded-xl flex items-center gap-2.5 transition-all shadow-[2px_2px_0px_0px_#000]',
                             isCorrect
-                              ? 'bg-emerald-50 border-emerald-950 ring-2 ring-emerald-400'
+                              ? 'bg-emerald-100/80 border-emerald-950 ring-2 ring-emerald-500'
                               : 'bg-white'
                           )}
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="w-7 h-7 shrink-0 bg-slate-900 text-white font-black text-xs rounded-lg flex items-center justify-center border-2 border-slate-900 shadow-[1px_1px_0px_0px_#000]">
-                              {letterLabel}
-                            </span>
-                            <input
-                              type="text"
-                              value={opt.text}
-                              onChange={(e) => handleOptionChange(qIdx, optIdx, e.target.value)}
-                              placeholder={`Lựa chọn ${letterLabel}...`}
-                              className="flex-1 p-2 text-xs font-bold border-2 border-slate-900 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-                            />
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleOptionChange(qIdx, optIdx, opt.text, !isCorrect)}
+                            className={cn(
+                              'neo-button h-9 px-3 shrink-0 rounded-lg border-2 border-slate-900 font-black text-xs transition-all flex items-center justify-center gap-1 cursor-pointer',
+                              isCorrect
+                                ? 'bg-emerald-400 hover:bg-emerald-300 text-slate-900 shadow-[2px_2px_0px_0px_#000]'
+                                : 'bg-slate-900 hover:bg-slate-800 text-white shadow-[1px_1px_0px_0px_#000]'
+                            )}
+                            title={isCorrect ? `Đã chọn ${letterLabel} là đáp án đúng` : `Bấm để chọn ${letterLabel} làm đáp án đúng`}
+                          >
+                            <span>{letterLabel}</span>
+                            {isCorrect && <Check size={14} className="stroke-[3]" />}
+                          </button>
 
-                          <div className="flex justify-end pt-0.5">
-                            <button
-                              type="button"
-                              onClick={() => handleOptionChange(qIdx, optIdx, opt.text, !isCorrect)}
-                              className={cn(
-                                'neo-button px-3 py-1.5 text-xs font-black rounded-lg border-2 border-slate-900 transition-all flex items-center gap-1.5 cursor-pointer',
-                                isCorrect
-                                  ? 'bg-emerald-400 text-slate-900 shadow-[2px_2px_0px_0px_#000]'
-                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 shadow-[1px_1px_0px_0px_#000]'
-                              )}
-                            >
-                              {isCorrect ? (
-                                <>
-                                  <CheckCircle2 size={14} className="text-slate-900" />
-                                  <span>ĐÁP ÁN ĐÚNG</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Check size={14} className="text-slate-400" />
-                                  <span>Chọn làm đáp án đúng</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
+                          <input
+                            type="text"
+                            value={opt.text}
+                            onChange={(e) => handleOptionChange(qIdx, optIdx, e.target.value)}
+                            placeholder={`Lựa chọn ${letterLabel}...`}
+                            className="flex-1 p-2 text-xs font-bold border-2 border-slate-900 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                          />
                         </div>
                       )
                     })}
