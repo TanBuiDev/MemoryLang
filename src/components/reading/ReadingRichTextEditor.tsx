@@ -25,6 +25,7 @@ import {
   Undo2,
   Unlink,
   Rows3,
+  ChevronDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
@@ -91,6 +92,9 @@ export function ReadingRichTextEditor({
   const [showLinkEditor, setShowLinkEditor] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
   const [pasteMode, setPasteMode] = useState('formatted')
+  const [showStyleMenu, setShowStyleMenu] = useState(false)
+  const [showAlignMenu, setShowAlignMenu] = useState(false)
+  const [showPasteMenu, setShowPasteMenu] = useState(false)
 
   const editor = useEditor({
     extensions: [
@@ -187,8 +191,8 @@ export function ReadingRichTextEditor({
   return (
     <div className="overflow-hidden rounded-xl border-2 border-slate-900 bg-white shadow-[3px_3px_0px_0px_#000]">
       <div className="flex flex-wrap items-center gap-1.5 border-b-2 border-slate-900 bg-slate-100 p-2">
-        {/* Paragraph Style Segmented Buttons */}
-        <div className="flex items-center p-0.5 bg-slate-200 border border-slate-900 rounded-lg shadow-[1px_1px_0px_0px_#000]" role="group" aria-label="Kiểu đoạn văn">
+        {/* Paragraph Style Dropdown Menu */}
+        <div className="relative">
           <label htmlFor="reading-block-style" className="sr-only">Kiểu đoạn văn</label>
           <select
             id="reading-block-style"
@@ -204,40 +208,67 @@ export function ReadingRichTextEditor({
 
           <button
             type="button"
-            onClick={() => handleBlockChange('paragraph')}
-            className={cn(
-              'px-2.5 py-1 text-xs font-bold rounded transition-colors cursor-pointer',
-              (toolbarState?.block || 'paragraph') === 'paragraph'
-                ? 'bg-[#fdc800] text-slate-900 font-black shadow-[1px_1px_0px_0px_#000]'
-                : 'text-slate-700 hover:bg-slate-300'
-            )}
+            onClick={() => {
+              setShowStyleMenu(!showStyleMenu)
+              setShowAlignMenu(false)
+              setShowPasteMenu(false)
+            }}
+            className="neo-button h-8 px-2.5 bg-white hover:bg-slate-100 text-slate-900 border-2 border-slate-900 shadow-[1px_1px_0px_0px_#000] font-black text-xs rounded-lg flex items-center gap-1.5 cursor-pointer"
+            title="Kiểu đoạn văn"
           >
-            Đoạn văn
+            <span>
+              {toolbarState?.block === 'heading-2'
+                ? 'Tiêu đề lớn (H2)'
+                : toolbarState?.block === 'heading-3'
+                  ? 'Tiêu đề nhỏ (H3)'
+                  : 'Đoạn văn'}
+            </span>
+            <ChevronDown size={14} />
           </button>
-          <button
-            type="button"
-            onClick={() => handleBlockChange('heading-2')}
-            className={cn(
-              'px-2.5 py-1 text-xs font-bold rounded transition-colors cursor-pointer',
-              toolbarState?.block === 'heading-2'
-                ? 'bg-[#fdc800] text-slate-900 font-black shadow-[1px_1px_0px_0px_#000]'
-                : 'text-slate-700 hover:bg-slate-300'
-            )}
-          >
-            H2
-          </button>
-          <button
-            type="button"
-            onClick={() => handleBlockChange('heading-3')}
-            className={cn(
-              'px-2.5 py-1 text-xs font-bold rounded transition-colors cursor-pointer',
-              toolbarState?.block === 'heading-3'
-                ? 'bg-[#fdc800] text-slate-900 font-black shadow-[1px_1px_0px_0px_#000]'
-                : 'text-slate-700 hover:bg-slate-300'
-            )}
-          >
-            H3
-          </button>
+
+          {showStyleMenu && (
+            <div className="absolute left-0 top-full mt-1 z-30 w-36 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_#000] py-1 flex flex-col">
+              <button
+                type="button"
+                onClick={() => {
+                  handleBlockChange('paragraph')
+                  setShowStyleMenu(false)
+                }}
+                className={cn(
+                  'px-3 py-1.5 text-xs text-left font-bold hover:bg-amber-100 transition-colors',
+                  (toolbarState?.block || 'paragraph') === 'paragraph' && 'font-black bg-amber-200'
+                )}
+              >
+                Đoạn văn
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleBlockChange('heading-2')
+                  setShowStyleMenu(false)
+                }}
+                className={cn(
+                  'px-3 py-1.5 text-xs text-left font-bold hover:bg-amber-100 transition-colors',
+                  toolbarState?.block === 'heading-2' && 'font-black bg-amber-200'
+                )}
+              >
+                Tiêu đề lớn (H2)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleBlockChange('heading-3')
+                  setShowStyleMenu(false)
+                }}
+                className={cn(
+                  'px-3 py-1.5 text-xs text-left font-bold hover:bg-amber-100 transition-colors',
+                  toolbarState?.block === 'heading-3' && 'font-black bg-amber-200'
+                )}
+              >
+                Tiêu đề nhỏ (H3)
+              </button>
+            </div>
+          )}
         </div>
 
         <span className="mx-1 h-7 w-px bg-slate-300" aria-hidden="true" />
@@ -311,38 +342,82 @@ export function ReadingRichTextEditor({
 
         <span className="mx-1 h-7 w-px bg-slate-300" aria-hidden="true" />
 
-        <ToolbarButton
-          label="Căn trái"
-          active={toolbarState?.alignLeft}
-          disabled={!editor}
-          onClick={() => editor?.chain().focus().setTextAlign('left').run()}
-        >
-          <AlignLeft size={15} />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Căn giữa"
-          active={toolbarState?.alignCenter}
-          disabled={!editor}
-          onClick={() => editor?.chain().focus().setTextAlign('center').run()}
-        >
-          <AlignCenter size={15} />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Căn phải"
-          active={toolbarState?.alignRight}
-          disabled={!editor}
-          onClick={() => editor?.chain().focus().setTextAlign('right').run()}
-        >
-          <AlignRight size={15} />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Căn đều"
-          active={toolbarState?.alignJustify}
-          disabled={!editor}
-          onClick={() => editor?.chain().focus().setTextAlign('justify').run()}
-        >
-          <AlignJustify size={15} />
-        </ToolbarButton>
+        {/* Alignment Dropdown Menu Button */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setShowAlignMenu(!showAlignMenu)
+              setShowStyleMenu(false)
+              setShowPasteMenu(false)
+            }}
+            className={cn(
+              'neo-button h-8 px-2 bg-white hover:bg-slate-100 text-slate-900 border-2 border-slate-900 shadow-[1px_1px_0px_0px_#000] rounded-lg flex items-center gap-1 cursor-pointer',
+              (toolbarState?.alignCenter || toolbarState?.alignRight || toolbarState?.alignJustify) && 'bg-amber-200'
+            )}
+            title="Căn lề văn bản"
+          >
+            {toolbarState?.alignCenter ? (
+              <AlignCenter size={15} />
+            ) : toolbarState?.alignRight ? (
+              <AlignRight size={15} />
+            ) : toolbarState?.alignJustify ? (
+              <AlignJustify size={15} />
+            ) : (
+              <AlignLeft size={15} />
+            )}
+            <ChevronDown size={13} />
+          </button>
+
+          {showAlignMenu && (
+            <div className="absolute left-0 top-full mt-1 z-30 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_#000] p-1 flex items-center gap-1">
+              <ToolbarButton
+                label="Căn trái"
+                active={toolbarState?.alignLeft}
+                disabled={!editor}
+                onClick={() => {
+                  editor?.chain().focus().setTextAlign('left').run()
+                  setShowAlignMenu(false)
+                }}
+              >
+                <AlignLeft size={15} />
+              </ToolbarButton>
+              <ToolbarButton
+                label="Căn giữa"
+                active={toolbarState?.alignCenter}
+                disabled={!editor}
+                onClick={() => {
+                  editor?.chain().focus().setTextAlign('center').run()
+                  setShowAlignMenu(false)
+                }}
+              >
+                <AlignCenter size={15} />
+              </ToolbarButton>
+              <ToolbarButton
+                label="Căn phải"
+                active={toolbarState?.alignRight}
+                disabled={!editor}
+                onClick={() => {
+                  editor?.chain().focus().setTextAlign('right').run()
+                  setShowAlignMenu(false)
+                }}
+              >
+                <AlignRight size={15} />
+              </ToolbarButton>
+              <ToolbarButton
+                label="Căn đều"
+                active={toolbarState?.alignJustify}
+                disabled={!editor}
+                onClick={() => {
+                  editor?.chain().focus().setTextAlign('justify').run()
+                  setShowAlignMenu(false)
+                }}
+              >
+                <AlignJustify size={15} />
+              </ToolbarButton>
+            </div>
+          )}
+        </div>
 
         <span className="mx-1 h-7 w-px bg-slate-300" aria-hidden="true" />
 
@@ -400,49 +475,64 @@ export function ReadingRichTextEditor({
           <Table2 size={15} />
         </ToolbarButton>
 
-        {/* Paste Mode Segmented Buttons */}
-        <div className="ml-auto flex items-center gap-1.5 flex-wrap">
-          <label htmlFor="reading-paste-mode" className="text-xs font-black shrink-0">
-            Khi dán:
-          </label>
-          <div className="flex items-center p-0.5 bg-slate-200 border border-slate-900 rounded-lg shadow-[1px_1px_0px_0px_#000]">
-            <select
-              id="reading-paste-mode"
-              aria-label="Khi dán"
-              value={pasteMode}
-              onChange={(e) => setPasteMode(e.target.value)}
-              className="sr-only"
-            >
-              {pasteOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
+        {/* Paste Mode Dropdown Menu Button */}
+        <div className="relative ml-auto">
+          <select
+            id="reading-paste-mode"
+            aria-label="Khi dán"
+            value={pasteMode}
+            onChange={(e) => setPasteMode(e.target.value)}
+            className="sr-only"
+          >
+            {pasteOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
 
-            <button
-              type="button"
-              onClick={() => setPasteMode('formatted')}
-              className={cn(
-                'px-2.5 py-1 text-xs font-bold rounded transition-colors cursor-pointer',
-                pasteMode === 'formatted'
-                  ? 'bg-[#fdc800] text-slate-900 font-black shadow-[1px_1px_0px_0px_#000]'
-                  : 'text-slate-700 hover:bg-slate-300'
-              )}
-            >
-              Giữ định dạng
-            </button>
-            <button
-              type="button"
-              onClick={() => setPasteMode('plain')}
-              className={cn(
-                'px-2.5 py-1 text-xs font-bold rounded transition-colors cursor-pointer',
-                pasteMode === 'plain'
-                  ? 'bg-[#fdc800] text-slate-900 font-black shadow-[1px_1px_0px_0px_#000]'
-                  : 'text-slate-700 hover:bg-slate-300'
-              )}
-            >
-              Chỉ giữ văn bản
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setShowPasteMenu(!showPasteMenu)
+              setShowStyleMenu(false)
+              setShowAlignMenu(false)
+            }}
+            className="neo-button h-8 px-2.5 bg-white hover:bg-slate-100 text-slate-900 border-2 border-slate-900 shadow-[1px_1px_0px_0px_#000] font-black text-xs rounded-lg flex items-center gap-1.5 cursor-pointer"
+            title="Chế độ dán văn bản"
+          >
+            <span>Khi dán: {pasteMode === 'plain' ? 'Chỉ giữ văn bản' : 'Giữ định dạng'}</span>
+            <ChevronDown size={14} />
+          </button>
+
+          {showPasteMenu && (
+            <div className="absolute right-0 top-full mt-1 z-30 w-40 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_#000] py-1 flex flex-col">
+              <button
+                type="button"
+                onClick={() => {
+                  setPasteMode('formatted')
+                  setShowPasteMenu(false)
+                }}
+                className={cn(
+                  'px-3 py-1.5 text-xs text-left font-bold hover:bg-amber-100 transition-colors',
+                  pasteMode === 'formatted' && 'font-black bg-amber-200'
+                )}
+              >
+                Giữ định dạng
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPasteMode('plain')
+                  setShowPasteMenu(false)
+                }}
+                className={cn(
+                  'px-3 py-1.5 text-xs text-left font-bold hover:bg-amber-100 transition-colors',
+                  pasteMode === 'plain' && 'font-black bg-amber-200'
+                )}
+              >
+                Chỉ giữ văn bản
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

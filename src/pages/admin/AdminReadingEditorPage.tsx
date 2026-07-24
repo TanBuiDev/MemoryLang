@@ -76,7 +76,6 @@ export default function AdminReadingEditorPage() {
   const [saving, setSaving] = useState(false)
   const [generatingTts, setGeneratingTts] = useState(false)
   const [scanningTerms, setScanningTerms] = useState(false)
-  const [matchedTermCount, setMatchedTermCount] = useState<number | null>(null)
   const [editorMode, setEditorMode] = useState<ReadingEditorMode>(
     () => getInitialReadingEditorMode(location.search)
   )
@@ -140,7 +139,6 @@ export default function AdminReadingEditorPage() {
           setPlainText(detail.plain_text)
           setAudioUrl(detail.audio_url || null)
           setArticleTerms(terms)
-          setMatchedTermCount(terms.length)
 
           if (detail.questions && detail.questions.length > 0) {
             setQuestions(
@@ -320,7 +318,6 @@ export default function AdminReadingEditorPage() {
       setScanningTerms(true)
       const count = await adminReadingService.scanArticleTerms(id)
       const terms = await readingService.getArticleTerms(id)
-      setMatchedTermCount(count)
       setArticleTerms(terms)
       setEditorMode('preview')
       showToast({
@@ -642,79 +639,58 @@ export default function AdminReadingEditorPage() {
           </div>
         )}
 
-        <div className="flex flex-col gap-3 pt-3 border-t-2 border-slate-900 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            {audioUrl ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 border-2 border-slate-900 rounded-xl text-xs font-black text-emerald-950 shadow-[2px_2px_0px_0px_#000]">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                Audio TTS đã sẵn sàng
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 border-2 border-slate-900 rounded-xl text-xs font-black text-amber-950 shadow-[2px_2px_0px_0px_#000]">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                Chưa có Audio TTS
-              </span>
-            )}
-
-            {matchedTermCount !== null ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 border-2 border-slate-900 rounded-xl text-xs font-black text-purple-950 shadow-[2px_2px_0px_0px_#000]">
-                <Sparkles size={14} className="text-purple-700" />
-                {getReadingVocabularyMatchMessage(matchedTermCount)}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 border-2 border-slate-900 rounded-xl text-xs font-bold text-slate-700 shadow-[2px_2px_0px_0px_#000]">
-                Lưu bài để quét từ vựng
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center justify-between pt-3 border-t-2 border-slate-900">
+          <div className="flex items-center gap-2">
+            {/* 1. Icon-only Save Draft Button */}
             <Button
               type="button"
               variant="ghost"
               onClick={() => handleSave(false)}
               disabled={saving}
-              className="neo-button h-10 px-4 bg-white hover:bg-slate-50 text-slate-900 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] font-black text-xs rounded-xl flex items-center gap-1.5 cursor-pointer"
+              className="neo-button h-10 w-10 min-h-0 p-0 bg-white hover:bg-slate-50 text-slate-900 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl flex items-center justify-center cursor-pointer"
+              title="Lưu Nháp"
             >
               {saving ? (
                 <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
               ) : (
-                <Save size={15} />
+                <Save size={16} />
               )}
-              <span>{saving ? 'Đang lưu...' : 'Lưu Nháp'}</span>
             </Button>
 
+            {/* 2. Icon-only Scan Vocab Terms Button */}
             <Button
               type="button"
               variant="secondary"
               onClick={handleScanTerms}
               disabled={scanningTerms || !isEditing}
-              className="neo-button h-10 px-4 bg-blue-100 hover:bg-blue-200 text-blue-950 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] font-black text-xs rounded-xl flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="neo-button h-10 w-10 min-h-0 p-0 bg-blue-100 hover:bg-blue-200 text-blue-950 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl flex items-center justify-center cursor-pointer disabled:opacity-40"
+              title="Quét từ vựng bài đọc"
             >
               {scanningTerms ? (
                 <div className="w-4 h-4 border-2 border-blue-950 border-t-transparent rounded-full animate-spin" />
               ) : (
-                <ScanSearch size={15} />
+                <ScanSearch size={16} />
               )}
-              <span>{scanningTerms ? 'Đang quét...' : 'Quét từ vựng'}</span>
             </Button>
 
-            {audioUrl && <ReadingAudioPreview audioUrl={audioUrl} />}
-
-            <Button
-              type="button"
-              onClick={handleGenerateTts}
-              disabled={generatingTts || !isEditing}
-              className="neo-button h-10 px-4 bg-purple-200 hover:bg-purple-300 text-purple-950 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] font-black text-xs rounded-xl flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              {generatingTts ? (
-                <div className="w-4 h-4 border-2 border-purple-950 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Volume2 size={15} />
-              )}
-              <span>{generatingTts ? 'Đang tạo Audio...' : 'Tạo Audio TTS'}</span>
-            </Button>
+            {/* 3. Icon-only Audio Preview Button (Disabled when no audio) */}
+            <ReadingAudioPreview audioUrl={audioUrl} />
           </div>
+
+          {/* 4. Generate TTS Audio Button */}
+          <Button
+            type="button"
+            onClick={handleGenerateTts}
+            disabled={generatingTts || !isEditing}
+            className="neo-button h-10 px-4 bg-purple-200 hover:bg-purple-300 text-purple-950 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] font-black text-xs rounded-xl flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+          >
+            {generatingTts ? (
+              <div className="w-4 h-4 border-2 border-purple-950 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Volume2 size={16} />
+            )}
+            <span>{generatingTts ? 'Đang tạo Audio...' : 'Tạo Audio TTS'}</span>
+          </Button>
         </div>
       </div>
 
