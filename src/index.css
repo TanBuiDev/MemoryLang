@@ -251,17 +251,27 @@ html {
 .reading-vocabulary-term {
   position: relative;
   text-decoration: none;
+  transition: color 150ms ease;
 }
 
 .reading-vocabulary-term::after {
   position: absolute;
-  right: 2px;
-  bottom: -2px;
-  left: 2px;
-  border-bottom: 2px dotted currentColor;
+  right: 1px;
+  bottom: -1px;
+  left: 1px;
+  border-bottom: 1.5px dotted rgba(67, 45, 215, 0.38);
   content: '';
-  opacity: 0.8;
   pointer-events: none;
+  transition: border-color 150ms ease, opacity 150ms ease;
+}
+
+.reading-vocabulary-term:hover::after {
+  border-bottom-color: #432dd7;
+  border-bottom-width: 2px;
+}
+
+.reading-vocabulary-term:hover {
+  color: #432dd7;
 }
 
 @keyframes neo-wobble {
