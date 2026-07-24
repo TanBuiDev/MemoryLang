@@ -128,22 +128,22 @@ export default function AdminExamBuilderPage() {
     setQuestions(set.questions || [])
   }
 
-  const initNewSet = (partNum: number = 7) => {
+  const initNewSet = (partNum: number = 1, type: PassageType = 'single') => {
     setSelectedSetId(null)
     setPartNumber(partNum)
-    setPassageType(partNum === 5 ? 'none' : 'single')
-    setSetTitle(partNum === 5 ? 'Questions 101-130' : 'Questions 147-148 refer to the following email.')
+    setPassageType(type)
+    setSetTitle(`Phần ${partNum} - Cụm câu hỏi`)
     setInstructionText('')
 
-    if (partNum === 5) {
+    if (type === 'none') {
       setPassages([])
     } else {
-      setPassages([{ id: 'p1', type: 'email', title: 'Email 1', content_html: '' }])
+      setPassages([{ id: 'p1', type: 'article', title: 'Đoạn văn 1', content_html: '' }])
     }
 
     setQuestions([
       {
-        question_number: partNum === 5 ? 101 : 147,
+        question_number: 1,
         question_text: '',
         question_type: 'multiple_choice',
         options: [
@@ -298,10 +298,6 @@ export default function AdminExamBuilderPage() {
     )
   }
 
-  const part5Sets = (exam.passage_sets || []).filter((s) => s.part_number === 5)
-  const part6Sets = (exam.passage_sets || []).filter((s) => s.part_number === 6)
-  const part7Sets = (exam.passage_sets || []).filter((s) => s.part_number === 7)
-
   return (
     <div className="flex flex-col gap-6 max-w-[1700px] mx-auto pb-10">
       {/* Top Action Bar */}
@@ -360,122 +356,86 @@ export default function AdminExamBuilderPage() {
             <div className="flex items-center justify-between border-b-2 border-border pb-2">
               <h2 className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
                 <Layers size={16} className="text-primary" />
-                CẤU TRÚC ĐỀ THI ({exam.passage_sets.length} CỤM)
+                CẤU TRÚC BÀI THI ({exam.passage_sets.length} CỤM)
               </h2>
             </div>
 
-            {/* PART 5 */}
-            <div className="flex flex-col gap-2 p-2.5 bg-muted/30 border-2 border-border rounded-xl">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-foreground">PART 5: Incomplete Sentences</span>
-                <button
-                  type="button"
-                  onClick={() => initNewSet(5)}
-                  className="text-[11px] font-black text-primary hover:underline flex items-center gap-0.5"
-                >
-                  <Plus size={12} /> Thêm Cụm
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                {part5Sets.map((s) => (
-                  <div
-                    key={s.id}
-                    onClick={() => selectPassageSet(s)}
-                    className={`p-2 rounded-lg border-2 border-border text-xs font-bold flex items-center justify-between cursor-pointer transition ${
-                      selectedSetId === s.id
-                        ? 'bg-primary/20 border-primary shadow-[2px_2px_0_var(--border)]'
-                        : 'bg-card hover:bg-muted/50'
-                    }`}
+            {/* Quick Create New Set Button */}
+            <div className="flex items-center justify-between p-2 bg-primary/10 border-2 border-primary/30 rounded-xl">
+              <span className="text-xs font-black text-primary">Tạo Cụm bài đọc / Câu hỏi mới:</span>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5, 6, 7].map((pNum) => (
+                  <button
+                    key={pNum}
+                    type="button"
+                    onClick={() => initNewSet(pNum)}
+                    className="px-2 py-0.5 rounded text-[11px] font-black border border-primary bg-card hover:bg-primary hover:text-white transition"
+                    title={`Tạo cụm mới cho Part ${pNum}`}
                   >
-                    <span className="truncate">{s.title || 'Part 5 Questions'}</span>
-                    <span className="text-[10px] font-mono font-black text-muted-foreground shrink-0 pl-2">
-                      {(s.questions || []).length} câu
-                    </span>
-                  </div>
+                    P{pNum}
+                  </button>
                 ))}
-                {part5Sets.length === 0 && (
-                  <span className="text-[11px] text-muted-foreground italic py-1">Chưa có câu hỏi Part 5.</span>
-                )}
               </div>
             </div>
 
-            {/* PART 6 */}
-            <div className="flex flex-col gap-2 p-2.5 bg-muted/30 border-2 border-border rounded-xl">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-foreground">PART 6: Text Completion</span>
-                <button
-                  type="button"
-                  onClick={() => initNewSet(6)}
-                  className="text-[11px] font-black text-primary hover:underline flex items-center gap-0.5"
-                >
-                  <Plus size={12} /> Thêm Cụm
-                </button>
-              </div>
+            {/* Dynamic Part Groups */}
+            {(() => {
+              const setsByPart = (exam.passage_sets || []).reduce((acc, set) => {
+                const p = set.part_number || 1
+                if (!acc[p]) acc[p] = []
+                acc[p].push(set)
+                return acc
+              }, {} as Record<number, typeof exam.passage_sets>)
 
-              <div className="flex flex-col gap-1.5">
-                {part6Sets.map((s) => (
-                  <div
-                    key={s.id}
-                    onClick={() => selectPassageSet(s)}
-                    className={`p-2 rounded-lg border-2 border-border text-xs font-bold flex items-center justify-between cursor-pointer transition ${
-                      selectedSetId === s.id
-                        ? 'bg-primary/20 border-primary shadow-[2px_2px_0_var(--border)]'
-                        : 'bg-card hover:bg-muted/50'
-                    }`}
-                  >
-                    <span className="truncate">{s.title || 'Part 6 Passage'}</span>
-                    <span className="text-[10px] font-mono font-black text-muted-foreground shrink-0 pl-2">
-                      {(s.questions || []).length} câu
-                    </span>
-                  </div>
-                ))}
-                {part6Sets.length === 0 && (
-                  <span className="text-[11px] text-muted-foreground italic py-1">Chưa có cụm Part 6.</span>
-                )}
-              </div>
-            </div>
+              const sortedPartNumbers = Array.from(
+                new Set([1, 2, 3, ...Object.keys(setsByPart).map(Number)])
+              ).sort((a, b) => a - b)
 
-            {/* PART 7 */}
-            <div className="flex flex-col gap-2 p-2.5 bg-muted/30 border-2 border-border rounded-xl">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-foreground">PART 7: Reading Comprehension</span>
-                <button
-                  type="button"
-                  onClick={() => initNewSet(7)}
-                  className="text-[11px] font-black text-primary hover:underline flex items-center gap-0.5"
-                >
-                  <Plus size={12} /> Thêm Cụm
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                {part7Sets.map((s) => (
-                  <div
-                    key={s.id}
-                    onClick={() => selectPassageSet(s)}
-                    className={`p-2 rounded-lg border-2 border-border text-xs font-bold flex items-center justify-between cursor-pointer transition ${
-                      selectedSetId === s.id
-                        ? 'bg-primary/20 border-primary shadow-[2px_2px_0_var(--border)]'
-                        : 'bg-card hover:bg-muted/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 truncate">
-                      <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded border bg-secondary/15 text-secondary">
-                        {s.passage_type}
-                      </span>
-                      <span className="truncate">{s.title || 'Part 7 Passage Set'}</span>
+              return sortedPartNumbers.map((partNum) => {
+                const partSets = setsByPart[partNum] || []
+                return (
+                  <div key={partNum} className="flex flex-col gap-2 p-2.5 bg-muted/30 border-2 border-border rounded-xl">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-foreground">PHẦN {partNum} (PART {partNum})</span>
+                      <button
+                        type="button"
+                        onClick={() => initNewSet(partNum)}
+                        className="text-[11px] font-black text-primary hover:underline flex items-center gap-0.5"
+                      >
+                        <Plus size={12} /> Thêm Cụm P{partNum}
+                      </button>
                     </div>
-                    <span className="text-[10px] font-mono font-black text-muted-foreground shrink-0 pl-2">
-                      {(s.questions || []).length} câu
-                    </span>
+
+                    <div className="flex flex-col gap-1.5">
+                      {partSets.map((s) => (
+                        <div
+                          key={s.id}
+                          onClick={() => selectPassageSet(s)}
+                          className={`p-2 rounded-lg border-2 border-border text-xs font-bold flex items-center justify-between cursor-pointer transition ${
+                            selectedSetId === s.id
+                              ? 'bg-primary/20 border-primary shadow-[2px_2px_0_var(--border)]'
+                              : 'bg-card hover:bg-muted/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded border bg-secondary/15 text-secondary">
+                              {s.passage_type}
+                            </span>
+                            <span className="truncate">{s.title || `Part ${partNum} Set`}</span>
+                          </div>
+                          <span className="text-[10px] font-mono font-black text-muted-foreground shrink-0 pl-2">
+                            {(s.questions || []).length} câu
+                          </span>
+                        </div>
+                      ))}
+                      {partSets.length === 0 && (
+                        <span className="text-[11px] text-muted-foreground italic py-0.5">Chưa có cụm bài Phần {partNum}.</span>
+                      )}
+                    </div>
                   </div>
-                ))}
-                {part7Sets.length === 0 && (
-                  <span className="text-[11px] text-muted-foreground italic py-1">Chưa có cụm Part 7.</span>
-                )}
-              </div>
-            </div>
+                )
+              })
+            })()}
           </div>
         </div>
 
@@ -506,9 +466,16 @@ export default function AdminExamBuilderPage() {
                   value={String(partNumber)}
                   onChange={(val) => setPartNumber(Number(val))}
                   options={[
-                    { value: '5', label: 'Part 5 (30 câu ngắn)' },
-                    { value: '6', label: 'Part 6 (Điền từ đoạn)' },
-                    { value: '7', label: 'Part 7 (Đọc hiểu)' },
+                    { value: '1', label: 'Phần 1 (Part 1)' },
+                    { value: '2', label: 'Phần 2 (Part 2)' },
+                    { value: '3', label: 'Phần 3 (Part 3)' },
+                    { value: '4', label: 'Phần 4 (Part 4)' },
+                    { value: '5', label: 'Phần 5 (Part 5)' },
+                    { value: '6', label: 'Phần 6 (Part 6)' },
+                    { value: '7', label: 'Phần 7 (Part 7)' },
+                    { value: '8', label: 'Phần 8 (Part 8)' },
+                    { value: '9', label: 'Phần 9 (Part 9)' },
+                    { value: '10', label: 'Phần 10 (Part 10)' },
                   ]}
                 />
               </div>
@@ -519,10 +486,10 @@ export default function AdminExamBuilderPage() {
                   value={passageType}
                   onChange={(val) => handlePassageTypeChange(val as PassageType)}
                   options={[
-                    { value: 'none', label: 'Không đoạn văn (Part 5)' },
-                    { value: 'single', label: 'Đoạn văn đơn (Single)' },
-                    { value: 'double', label: 'Đoạn văn kép (Double)' },
-                    { value: 'triple', label: 'Đoạn văn ba (Triple)' },
+                    { value: 'none', label: 'Không có đoạn văn (Chỉ có câu hỏi)' },
+                    { value: 'single', label: '1 Đoạn văn (Single Passage)' },
+                    { value: 'double', label: '2 Đoạn văn (Double Passages)' },
+                    { value: 'triple', label: '3 Đoạn văn (Triple Passages)' },
                   ]}
                 />
               </div>

@@ -162,10 +162,10 @@ export default function AdminExamsPage() {
           </div>
           <div>
             <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-              QUẢN LÝ ĐỀ THI CHUẨN HÓA (TOEIC / IELTS)
+              QUẢN LÝ THƯ VIỆN ĐỀ THI & BỘ ĐỀ
             </h1>
             <p className="text-sm font-bold text-muted-foreground mt-0.5">
-              Quản lý cấu trúc đề thi phân cấp (Part 5, 6, 7 & Đoạn văn đơn/kép/ba) phục vụ làm đề thi thử 75 phút.
+              Tạo và quản lý linh hoạt mọi loại đề thi (TOEIC, IELTS, TOEFL, THPTQG, Cambridge, General...) với cấu trúc phân cấp Phần thi (Parts) & Đoạn văn linh hoạt.
             </p>
           </div>
         </div>
@@ -189,9 +189,12 @@ export default function AdminExamsPage() {
         <div className="flex flex-wrap gap-1.5 w-full sm:w-auto">
           {[
             { id: 'all', label: 'Tất cả đề' },
-            { id: 'TOEIC', label: 'TOEIC Reading' },
-            { id: 'IELTS', label: 'IELTS Reading' },
+            { id: 'TOEIC', label: 'TOEIC' },
+            { id: 'IELTS', label: 'IELTS' },
             { id: 'TOEFL', label: 'TOEFL' },
+            { id: 'THPTQG', label: 'THPTQG' },
+            { id: 'CAMBRIDGE', label: 'Cambridge' },
+            { id: 'GENERAL', label: 'Tổng hợp / Khác' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -338,14 +341,17 @@ export default function AdminExamsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-black text-foreground">Loại chứng chỉ</label>
+                  <label className="text-xs font-black text-foreground">Loại bài thi / Thể loại</label>
                   <Select
                     value={newCategory}
                     onChange={(val) => setNewCategory(val as ExamCategory)}
                     options={[
-                      { value: 'TOEIC', label: 'TOEIC Reading' },
-                      { value: 'IELTS', label: 'IELTS Reading' },
+                      { value: 'TOEIC', label: 'TOEIC' },
+                      { value: 'IELTS', label: 'IELTS' },
                       { value: 'TOEFL', label: 'TOEFL' },
+                      { value: 'THPTQG', label: 'THPT Quốc Gia' },
+                      { value: 'CAMBRIDGE', label: 'Cambridge' },
+                      { value: 'GENERAL', label: 'Tổng hợp / Khác' },
                     ]}
                   />
                 </div>
@@ -421,14 +427,17 @@ export default function AdminExamsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-black text-foreground">Loại chứng chỉ</label>
+                  <label className="text-xs font-black text-foreground">Loại bài thi / Thể loại</label>
                   <Select
                     value={editCategory}
                     onChange={(val) => setEditCategory(val as ExamCategory)}
                     options={[
-                      { value: 'TOEIC', label: 'TOEIC Reading' },
-                      { value: 'IELTS', label: 'IELTS Reading' },
+                      { value: 'TOEIC', label: 'TOEIC' },
+                      { value: 'IELTS', label: 'IELTS' },
                       { value: 'TOEFL', label: 'TOEFL' },
+                      { value: 'THPTQG', label: 'THPT Quốc Gia' },
+                      { value: 'CAMBRIDGE', label: 'Cambridge' },
+                      { value: 'GENERAL', label: 'Tổng hợp / Khác' },
                     ]}
                   />
                 </div>
