@@ -222,4 +222,53 @@ export const adminExamService = {
     const { error } = await supabase.from('exam_passage_sets').delete().eq('id', setId)
     if (error) throw error
   },
+
+  // 8. Duplicate a Passage Set
+  async duplicatePassageSet(setId: string): Promise<ExamPassageSet> {
+    const { data: set, error: setErr } = await supabase
+      .from('exam_passage_sets')
+      .select('*')
+      .eq('id', setId)
+      .single()
+
+    if (setErr || !set) throw setErr || new Error('Passage set not found')
+
+    const { data: questions } = await supabase
+      .from('exam_questions')
+      .select('*')
+      .eq('passage_set_id', setId)
+      .order('question_number', { ascending: true })
+
+    const { data: newSet, error: insertSetErr } = await supabase
+      .from('exam_passage_sets')
+      .insert({
+        exam_id: set.exam_id,
+        part_number: set.part_number,
+        passage_type: set.passage_type,
+        title: `${set.title || 'Cụm câu hỏi'} (Bản sao)`,
+        instruction_text: set.instruction_text,
+        passages: set.passages || [],
+        order_index: set.order_index + 1,
+      })
+      .select()
+      .single()
+
+    if (insertSetErr || !newSet) throw insertSetErr || new Error('Failed to duplicate set')
+
+    if (questions && questions.length > 0) {
+      const qInserts = questions.map((q: any) => ({
+        passage_set_id: newSet.id,
+        question_number: q.question_number,
+        question_text: q.question_text,
+        question_type: q.question_type,
+        options: q.options,
+        points: q.points,
+        explanation_html: q.explanation_html,
+        order_index: q.order_index,
+      }))
+      await supabase.from('exam_questions').insert(qInserts)
+    }
+
+    return newSet as ExamPassageSet
+  },
 }

@@ -11,6 +11,10 @@ import {
   Sparkles,
   Pencil,
   ClipboardPaste,
+  Copy,
+  ChevronDown,
+  ChevronUp,
+  FileText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -47,6 +51,14 @@ export default function AdminExamBuilderPage() {
   const [instructionText, setInstructionText] = useState<string>('')
   const [passages, setPassages] = useState<ExamPassage[]>([])
   const [questions, setQuestions] = useState<Partial<ExamQuestion>[]>([])
+
+  // UI UX enhancement states
+  const [isDirty, setIsDirty] = useState<boolean>(false)
+  const [activePassageTab, setActivePassageTab] = useState<number>(0)
+  const [collapsedQuestions, setCollapsedQuestions] = useState<Record<number, boolean>>({})
+  const [allCollapsed, setAllCollapsed] = useState<boolean>(false)
+  const [pendingSelectSet, setPendingSelectSet] = useState<ExamPassageSet | null>(null)
+  const [showUnsavedConfirmModal, setShowUnsavedConfirmModal] = useState<boolean>(false)
 
   // Edit Exam Metadata Modal State
   const [showEditExamModal, setShowEditExamModal] = useState(false)
@@ -177,6 +189,18 @@ export default function AdminExamBuilderPage() {
     void loadExam()
   }, [id])
 
+  // Ctrl + S Keyboard Shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        void handleSavePassageSet()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedSetId, partNumber, passageType, setTitle, instructionText, passages, questions, id, exam])
+
   const selectPassageSet = (set: ExamPassageSet) => {
     setSelectedSetId(set.id)
     setPartNumber(set.part_number)
@@ -185,14 +209,32 @@ export default function AdminExamBuilderPage() {
     setInstructionText(set.instruction_text || '')
     setPassages(set.passages || [])
     setQuestions(set.questions || [])
+    setActivePassageTab(0)
+    setCollapsedQuestions({})
+    setAllCollapsed(false)
+    setIsDirty(false)
+  }
+
+  const handleAttemptSelectSet = (set: ExamPassageSet) => {
+    if (selectedSetId === set.id) return
+    if (isDirty) {
+      setPendingSelectSet(set)
+      setShowUnsavedConfirmModal(true)
+    } else {
+      selectPassageSet(set)
+    }
   }
 
   const initNewSet = (partNum: number = 1, type: PassageType = 'single') => {
     setSelectedSetId(null)
     setPartNumber(partNum)
     setPassageType(type)
-    setSetTitle(`Phần ${partNum} - Cụm câu hỏi`)
+    setSetTitle(`Phần ${partNum} - Cụm câu hỏi mới`)
     setInstructionText('')
+    setActivePassageTab(0)
+    setCollapsedQuestions({})
+    setAllCollapsed(false)
+    setIsDirty(false)
 
     if (type === 'none') {
       setPassages([])
@@ -214,6 +256,42 @@ export default function AdminExamBuilderPage() {
         explanation_html: '',
       },
     ])
+  }
+
+  const handleDuplicatePassageSet = async (setId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    try {
+      setSaving(true)
+      const dup = await adminExamService.duplicatePassageSet(setId)
+      showToast({
+        type: 'success',
+        title: 'Đã nhân bản',
+        message: 'Đã nhân bản thành công cụm bài thi mới.',
+      })
+      await loadExam(dup.id, true)
+    } catch (err: any) {
+      console.error(err)
+      showToast({ type: 'error', title: 'Lỗi', message: err.message || 'Không thể nhân bản cụm bài' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleToggleQuestionCollapse = (index: number) => {
+    setCollapsedQuestions((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }))
+  }
+
+  const handleToggleAllCollapse = () => {
+    const nextState = !allCollapsed
+    setAllCollapsed(nextState)
+    const updated: Record<number, boolean> = {}
+    questions.forEach((_, idx) => {
+      updated[idx] = nextState
+    })
+    setCollapsedQuestions(updated)
   }
 
   const handlePassageTypeChange = (type: PassageType) => {
@@ -296,6 +374,7 @@ export default function AdminExamBuilderPage() {
       )
 
       showToast({ type: 'success', title: 'Đã lưu Cụm bài đọc', message: 'Dữ liệu cụm bài đọc và câu hỏi đã lưu thành công.' })
+      setIsDirty(false)
       await loadExam(savedSet.id, true)
     } catch (err: any) {
       console.error(err)
@@ -472,22 +551,44 @@ export default function AdminExamBuilderPage() {
                         {partSets.map((s) => (
                           <div
                             key={s.id}
-                            onClick={() => selectPassageSet(s)}
-                            className={`p-2 rounded-lg border-2 border-border text-xs font-bold flex items-center justify-between cursor-pointer transition ${
+                            onClick={() => handleAttemptSelectSet(s)}
+                            className={`group relative p-2.5 rounded-lg border-2 border-border text-xs font-bold flex items-center justify-between cursor-pointer transition ${
                               selectedSetId === s.id
-                                ? 'bg-primary/20 border-primary shadow-[2px_2px_0_var(--border)]'
+                                ? 'bg-primary/20 border-primary shadow-[2px_2px_0_var(--border)] font-black'
                                 : 'bg-card hover:bg-muted/50'
                             }`}
                           >
-                            <div className="flex items-center gap-1.5 truncate">
-                              <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded border bg-secondary/15 text-secondary">
+                            <div className="flex items-center gap-1.5 truncate pr-14">
+                              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded border bg-secondary/15 text-secondary shrink-0">
                                 {s.passage_type}
                               </span>
                               <span className="truncate">{s.title || `Part ${partNum} Set`}</span>
                             </div>
-                            <span className="text-[10px] font-mono font-black text-muted-foreground shrink-0 pl-2">
-                              {(s.questions || []).length} câu
-                            </span>
+
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span className="text-[10px] font-mono font-black text-muted-foreground group-hover:hidden pr-1">
+                                {(s.questions || []).length} câu
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => handleDuplicatePassageSet(s.id, e)}
+                                className="hidden group-hover:flex items-center p-1 rounded hover:bg-card border border-border text-foreground transition"
+                                title="Nhân bản cụm này"
+                              >
+                                <Copy size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setPendingDeleteSetId(s.id)
+                                }}
+                                className="hidden group-hover:flex items-center p-1 rounded hover:bg-rose-100 text-rose-600 border border-rose-200 transition"
+                                title="Xóa cụm này"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -502,11 +603,30 @@ export default function AdminExamBuilderPage() {
         {/* Right Column: Visual Passage & Questions Editor (8 Cols) */}
         <div className="lg:col-span-8 flex flex-col gap-6">
           <div className="neo-card p-6 bg-card border-3 border-border shadow-[4px_4px_0_var(--border)] flex flex-col gap-5 rounded-2xl">
-            <div className="flex items-center justify-between border-b-2 border-border pb-3">
-              <h2 className="text-base font-black text-foreground flex items-center gap-2">
+            {/* Status Header Banner */}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-border pb-3">
+              <div className="flex items-center gap-2">
                 <Sparkles size={18} className="text-primary" />
-                SOẠN THẢO CỤM BÀI ĐỌC ({selectedSetId ? 'Đang sửa' : 'Tạo mới'})
-              </h2>
+                <h2 className="text-base font-black text-foreground">
+                  SOẠN THẢO CỤM BÀI ĐỌC
+                </h2>
+                {selectedSetId ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black border border-emerald-400 bg-emerald-100 text-emerald-900 flex items-center gap-1">
+                    <CheckCircle2 size={12} className="text-emerald-600" />
+                    Đang sửa Cụm (Đã lưu DB)
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black border border-amber-400 bg-amber-100 text-amber-900">
+                    + Tạo Cụm mới (Chưa lưu)
+                  </span>
+                )}
+                {isDirty && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 border border-rose-300 text-rose-700 animate-pulse">
+                    ● Có thay đổi chưa lưu
+                  </span>
+                )}
+              </div>
+
               {selectedSetId && (
                 <button
                   type="button"
@@ -524,7 +644,10 @@ export default function AdminExamBuilderPage() {
                 <label className="text-xs font-black text-foreground">Thuộc Phần thi (Part)</label>
                 <Select
                   value={String(partNumber)}
-                  onChange={(val) => setPartNumber(Number(val))}
+                  onChange={(val) => {
+                    setPartNumber(Number(val))
+                    setIsDirty(true)
+                  }}
                   options={[
                     { value: '1', label: 'Phần 1 (Part 1)' },
                     { value: '2', label: 'Phần 2 (Part 2)' },
@@ -544,7 +667,10 @@ export default function AdminExamBuilderPage() {
                 <label className="text-xs font-black text-foreground">Loại đoạn văn (Passage Type)</label>
                 <Select
                   value={passageType}
-                  onChange={(val) => handlePassageTypeChange(val as PassageType)}
+                  onChange={(val) => {
+                    handlePassageTypeChange(val as PassageType)
+                    setIsDirty(true)
+                  }}
                   options={[
                     { value: 'none', label: 'Không có đoạn văn (Chỉ có câu hỏi)' },
                     { value: 'single', label: '1 Đoạn văn (Single Passage)' },
@@ -560,48 +686,100 @@ export default function AdminExamBuilderPage() {
                   type="text"
                   placeholder="VD: Questions 147-148 refer to..."
                   value={setTitle}
-                  onChange={(e) => setSetTitle(e.target.value)}
+                  onChange={(e) => {
+                    setSetTitle(e.target.value)
+                    setIsDirty(true)
+                  }}
                   className="px-3 py-1.5 border-2 border-border rounded-lg text-xs font-bold bg-background focus:outline-none focus:border-primary"
                 />
               </div>
             </div>
 
-            {/* Passages Editor (Single/Double/Triple) */}
+            {/* Passages Tab Editor (Single/Double/Triple) */}
             {passageType !== 'none' && (
-              <div className="flex flex-col gap-4 pt-3 border-t-2 border-dashed border-border">
-                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-wider">
-                  Nội dung đoạn văn ({passages.length} đoạn)
-                </h3>
+              <div className="flex flex-col gap-3 pt-3 border-t-2 border-dashed border-border">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <FileText size={14} className="text-primary" />
+                    NỘI DUNG ĐOẠN VĂN ({passages.length} ĐOẠN)
+                  </h3>
 
-                {passages.map((p, pIdx) => (
-                  <div key={p.id || pIdx} className="flex flex-col gap-2 p-3.5 border-2 border-border rounded-xl bg-muted/20">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-black text-foreground">Đoạn {pIdx + 1}: {p.title}</span>
+                  {passages.length > 1 && (
+                    <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border">
+                      {passages.map((p, idx) => (
+                        <button
+                          key={p.id || idx}
+                          type="button"
+                          onClick={() => setActivePassageTab(idx)}
+                          className={`px-3 py-1 rounded text-xs font-black transition ${
+                            activePassageTab === idx
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Đoạn {idx + 1}
+                        </button>
+                      ))}
                     </div>
+                  )}
+                </div>
 
-                    <textarea
-                      rows={6}
-                      value={p.content_html}
-                      onChange={(e) => {
-                        const updated = [...passages]
-                        updated[pIdx].content_html = e.target.value
-                        setPassages(updated)
-                      }}
-                      placeholder="Nhập nội dung HTML/Văn bản đoạn văn (Email, Notice, Article...)"
-                      className="w-full px-3 py-2 border-2 border-border rounded-lg bg-card text-xs font-bold focus:outline-none focus:border-primary font-mono"
-                    />
-                  </div>
-                ))}
+                {passages.map((p, pIdx) => {
+                  if (passages.length > 1 && activePassageTab !== pIdx) return null
+                  return (
+                    <div key={p.id || pIdx} className="flex flex-col gap-2 p-3.5 border-2 border-border rounded-xl bg-muted/20">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-black text-foreground">
+                          Đoạn {pIdx + 1}: {p.title || `Văn bản ${pIdx + 1}`}
+                        </span>
+                        <input
+                          type="text"
+                          value={p.title || ''}
+                          onChange={(e) => {
+                            const updated = [...passages]
+                            updated[pIdx].title = e.target.value
+                            setPassages(updated)
+                            setIsDirty(true)
+                          }}
+                          placeholder="Tiêu đề đoạn (VD: Email, Notice...)"
+                          className="w-48 px-2 py-0.5 text-xs font-bold border border-border rounded bg-background"
+                        />
+                      </div>
+
+                      <textarea
+                        rows={7}
+                        value={p.content_html}
+                        onChange={(e) => {
+                          const updated = [...passages]
+                          updated[pIdx].content_html = e.target.value
+                          setPassages(updated)
+                          setIsDirty(true)
+                        }}
+                        placeholder="Nhập nội dung HTML/Văn bản đoạn văn (Email, Notice, Article...)"
+                        className="w-full px-3 py-2 border-2 border-border rounded-lg bg-card text-xs font-bold focus:outline-none focus:border-primary font-mono leading-relaxed"
+                      />
+                    </div>
+                  )
+                })}
               </div>
             )}
 
             {/* Questions List Editor */}
             <div className="flex flex-col gap-4 pt-3 border-t-2 border-dashed border-border">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-wider">
-                  Danh sách câu hỏi ({questions.length} câu)
+                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <Layers size={14} className="text-primary" />
+                  DANH SÁCH CÂU HỎI ({questions.length} CÂU)
                 </h3>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleToggleAllCollapse}
+                    className="text-xs font-bold text-muted-foreground hover:text-foreground px-2 py-1 rounded border border-border bg-card flex items-center gap-1"
+                  >
+                    {allCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                    {allCollapsed ? 'Mở rộng tất cả' : 'Thu gọn tất cả'}
+                  </button>
                   <Button
                     variant="secondary"
                     type="button"
@@ -609,122 +787,201 @@ export default function AdminExamBuilderPage() {
                     className="min-h-8 px-3 text-xs font-black bg-amber-300 text-slate-950 border-2 border-border shadow-[2px_2px_0_var(--border)] hover:bg-amber-400"
                   >
                     <ClipboardPaste size={14} />
-                    ⚡ Nhập hàng loạt từ Copy / Paste
+                    ⚡ Nhập hàng loạt Copy / Paste
                   </Button>
-                  <Button variant="ghost" type="button" onClick={handleAddQuestion} className="min-h-8 px-3 text-xs">
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    onClick={() => {
+                      handleAddQuestion()
+                      setIsDirty(true)
+                    }}
+                    className="min-h-8 px-3 text-xs"
+                  >
                     <Plus size={14} /> Thêm câu hỏi
                   </Button>
                 </div>
               </div>
 
-              {questions.map((q, qIdx) => (
-                <div key={qIdx} className="flex flex-col gap-3 p-4 border-2 border-border rounded-xl bg-card shadow-[2px_2px_0_var(--border)]">
-                  <div className="flex items-center justify-between gap-2 border-b-2 border-border/40 pb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-primary">Câu {qIdx + 1}</span>
-                      <span className="text-xs font-bold text-muted-foreground">(Số thứ tự trong đề:</span>
-                      <input
-                        type="number"
-                        value={q.question_number || 101}
-                        onChange={(e) => {
-                          const updated = [...questions]
-                          updated[qIdx].question_number = Number(e.target.value)
-                          setQuestions(updated)
-                        }}
-                        className="w-16 px-2 py-0.5 border border-border rounded text-xs font-black text-center"
-                      />
-                      <span className="text-xs font-bold text-muted-foreground">)</span>
-                    </div>
+              {questions.map((q, qIdx) => {
+                const isCollapsed = Boolean(collapsedQuestions[qIdx])
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleSmartPasteSingleQuestion(qIdx)}
-                        className="text-xs text-primary font-black hover:underline flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded border border-primary/20"
-                        title="Tự động đọc Clipboard và tách nội dung + 4 đáp án A, B, C, D"
-                      >
-                        <ClipboardPaste size={12} /> Smart Dán
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveQuestion(qIdx)}
-                        className="text-xs text-rose-600 font-bold hover:underline"
-                      >
-                        Xóa câu này
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Question Text */}
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-black text-foreground">Nội dung câu hỏi</label>
-                    <input
-                      type="text"
-                      placeholder="VD: What is the main purpose of the email?"
-                      value={q.question_text || ''}
-                      onChange={(e) => {
-                        const updated = [...questions]
-                        updated[qIdx].question_text = e.target.value
-                        setQuestions(updated)
-                      }}
-                      className="px-3 py-1.5 border-2 border-border rounded-lg text-xs font-bold bg-background focus:outline-none focus:border-primary"
-                    />
-                  </div>
-
-                  {/* Options A, B, C, D */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                    {(q.options || []).map((opt) => (
-                      <div
-                        key={opt.key}
-                        className={`flex items-center gap-2 p-2 border-2 rounded-lg ${
-                          opt.is_correct ? 'border-emerald-500 bg-emerald-50/50' : 'border-border bg-background'
-                        }`}
-                      >
+                return (
+                  <div
+                    key={qIdx}
+                    className="flex flex-col gap-3 p-4 border-2 border-border rounded-xl bg-card shadow-[2px_2px_0_var(--border)] transition-all"
+                  >
+                    <div className="flex items-center justify-between gap-2 border-b-2 border-border/40 pb-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleQuestionCollapse(qIdx)}
+                          className="p-1 rounded hover:bg-muted text-muted-foreground transition"
+                        >
+                          {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                        </button>
+                        <span className="text-xs font-black text-primary">Câu {qIdx + 1}</span>
+                        <span className="text-xs font-bold text-muted-foreground">(STT:</span>
                         <input
-                          type="radio"
-                          name={`correct_opt_${qIdx}`}
-                          checked={opt.is_correct}
-                          onChange={() => handleOptionChange(qIdx, opt.key, 'is_correct', true)}
-                          className="accent-emerald-600 cursor-pointer"
+                          type="number"
+                          value={q.question_number || 101}
+                          onChange={(e) => {
+                            const updated = [...questions]
+                            updated[qIdx].question_number = Number(e.target.value)
+                            setQuestions(updated)
+                            setIsDirty(true)
+                          }}
+                          className="w-16 px-1.5 py-0.5 border border-border rounded text-xs font-black text-center"
                         />
-                        <span className="text-xs font-black w-4">{opt.key}.</span>
-                        <input
-                          type="text"
-                          placeholder={`Đáp án ${opt.key}`}
-                          value={opt.text}
-                          onChange={(e) => handleOptionChange(qIdx, opt.key, 'text', e.target.value)}
-                          className="flex-1 px-2 py-1 text-xs font-bold bg-transparent border-b border-border/50 focus:outline-none focus:border-primary"
-                        />
+                        <span className="text-xs font-bold text-muted-foreground">)</span>
+
+                        {isCollapsed && (
+                          <span className="text-xs font-bold text-foreground truncate max-w-xs pl-2">
+                            {q.question_text || 'Chưa nhập nội dung câu hỏi'}
+                          </span>
+                        )}
                       </div>
-                    ))}
-                  </div>
 
-                  {/* Explanation */}
-                  <div className="flex flex-col gap-1 pt-1">
-                    <label className="text-[11px] font-black text-muted-foreground">Lời giải chi tiết (Explanation)</label>
-                    <textarea
-                      rows={2}
-                      placeholder="Giải thích lý do chọn đáp án đúng..."
-                      value={q.explanation_html || ''}
-                      onChange={(e) => {
-                        const updated = [...questions]
-                        updated[qIdx].explanation_html = e.target.value
-                        setQuestions(updated)
-                      }}
-                      className="px-3 py-1.5 border border-border rounded-lg text-xs font-semibold bg-background focus:outline-none focus:border-primary"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSmartPasteSingleQuestion(qIdx)}
+                          className="text-xs text-primary font-black hover:underline flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded border border-primary/20"
+                          title="Tự động đọc Clipboard và tách nội dung + 4 đáp án A, B, C, D"
+                        >
+                          <ClipboardPaste size={12} /> Smart Dán
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleRemoveQuestion(qIdx)
+                            setIsDirty(true)
+                          }}
+                          className="text-xs text-rose-600 font-bold hover:underline"
+                        >
+                          Xóa câu
+                        </button>
+                      </div>
+                    </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t-2 border-border">
-              <Button variant="primary" onClick={handleSavePassageSet} disabled={saving} className="px-6 text-xs font-black">
-                <Save size={14} />
-                {saving ? 'Đang lưu...' : 'Lưu Cụm bài đọc này'}
-              </Button>
+                    {!isCollapsed && (
+                      <>
+                        {/* Question Text */}
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-black text-foreground">Nội dung câu hỏi</label>
+                          <input
+                            type="text"
+                            placeholder="VD: What is the main purpose of the email?"
+                            value={q.question_text || ''}
+                            onChange={(e) => {
+                              const updated = [...questions]
+                              updated[qIdx].question_text = e.target.value
+                              setQuestions(updated)
+                              setIsDirty(true)
+                            }}
+                            className="px-3 py-1.5 border-2 border-border rounded-lg text-xs font-bold bg-background focus:outline-none focus:border-primary"
+                          />
+                        </div>
+
+                        {/* Options A, B, C, D */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                          {(q.options || []).map((opt) => (
+                            <div
+                              key={opt.key}
+                              className={`flex items-center gap-2 p-2 border-2 rounded-lg cursor-pointer transition ${
+                                opt.is_correct
+                                  ? 'border-emerald-500 bg-emerald-50/70 font-black'
+                                  : 'border-border bg-background hover:bg-muted/30'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`correct_opt_${qIdx}`}
+                                checked={opt.is_correct}
+                                onChange={() => {
+                                  handleOptionChange(qIdx, opt.key, 'is_correct', true)
+                                  setIsDirty(true)
+                                }}
+                                className="accent-emerald-600 cursor-pointer"
+                              />
+                              <span className="text-xs font-black w-4">{opt.key}.</span>
+                              <input
+                                type="text"
+                                placeholder={`Đáp án ${opt.key}`}
+                                value={opt.text}
+                                onChange={(e) => {
+                                  handleOptionChange(qIdx, opt.key, 'text', e.target.value)
+                                  setIsDirty(true)
+                                }}
+                                className="flex-1 px-2 py-1 text-xs font-bold bg-transparent border-b border-border/50 focus:outline-none focus:border-primary"
+                              />
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Explanation */}
+                        <div className="flex flex-col gap-1 pt-1">
+                          <label className="text-[11px] font-black text-muted-foreground">Lời giải chi tiết (Explanation)</label>
+                          <textarea
+                            rows={2}
+                            placeholder="Giải thích lý do chọn đáp án đúng..."
+                            value={q.explanation_html || ''}
+                            onChange={(e) => {
+                              const updated = [...questions]
+                              updated[qIdx].explanation_html = e.target.value
+                              setQuestions(updated)
+                              setIsDirty(true)
+                            }}
+                            className="px-3 py-1.5 border border-border rounded-lg text-xs font-semibold bg-background focus:outline-none focus:border-primary"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Sticky Bottom Save Bar */}
+      <div className="sticky bottom-4 z-40 neo-card p-3 bg-card border-3 border-border shadow-[6px_6px_0_var(--border)] rounded-2xl flex items-center justify-between gap-4 max-w-[1700px] mx-auto">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-black text-foreground flex items-center gap-1.5">
+            <Sparkles size={16} className="text-primary" />
+            {setTitle || 'Cụm bài đọc'}
+          </span>
+          {isDirty ? (
+            <span className="text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">
+              Có thay đổi chưa lưu (Ctrl + S)
+            </span>
+          ) : (
+            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+              Đã đồng bộ với DB
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isDirty && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (selectedSetId && exam) {
+                  const set = exam.passage_sets.find((s) => s.id === selectedSetId)
+                  if (set) selectPassageSet(set)
+                }
+              }}
+              className="min-h-9 text-xs"
+            >
+              Hủy thay đổi
+            </Button>
+          )}
+          <Button variant="primary" onClick={handleSavePassageSet} disabled={saving} className="min-h-9 text-xs font-black px-6">
+            <Save size={14} />
+            {saving ? 'Đang lưu...' : 'LƯU CỤM BÀI ĐỌC (Ctrl + S)'}
+          </Button>
         </div>
       </div>
 
@@ -792,10 +1049,32 @@ export default function AdminExamBuilderPage() {
       <BulkExamQuestionImportModal
         open={showBulkImportModal}
         onClose={() => setShowBulkImportModal(false)}
-        onImport={handleBulkImport}
+        onImport={(imported) => {
+          handleBulkImport(imported)
+          setIsDirty(true)
+        }}
       />
 
-      {/* Confirmation Modal */}
+      {/* Unsaved Changes Confirmation Modal */}
+      <ConfirmModal
+        open={showUnsavedConfirmModal}
+        title="Dữ liệu chưa được lưu!"
+        description="Bạn đang có thay đổi chưa lưu ở cụm hiện tại. Chuyển sang cụm khác sẽ làm mất các thay đổi chưa lưu."
+        confirmLabel="Bỏ qua & Chuyển cụm"
+        cancelLabel="Ở lại lưu"
+        variant="primary"
+        onConfirm={() => {
+          if (pendingSelectSet) selectPassageSet(pendingSelectSet)
+          setShowUnsavedConfirmModal(false)
+          setPendingSelectSet(null)
+        }}
+        onCancel={() => {
+          setShowUnsavedConfirmModal(false)
+          setPendingSelectSet(null)
+        }}
+      />
+
+      {/* Delete Passage Set Confirmation Modal */}
       <ConfirmModal
         open={!!pendingDeleteSetId}
         title="Xóa Cụm bài đọc này?"
