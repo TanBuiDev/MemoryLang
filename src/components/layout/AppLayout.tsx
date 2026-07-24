@@ -48,7 +48,7 @@ export function AppLayout() {
     <div className="brand-grid-bg min-h-screen bg-background text-foreground">
       <NotificationBootstrap />
       <Header />
-      <main className="w-full max-w-7xl mx-auto px-4 py-6">
+      <main className="w-full max-w-[1760px] mx-auto px-3 sm:px-6 lg:px-8 py-6">
         <Outlet />
       </main>
       {showFab && <MascotRadialFab />}

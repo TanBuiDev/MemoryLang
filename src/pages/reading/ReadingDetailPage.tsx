@@ -281,9 +281,9 @@ export function ReadingDetailPage() {
   const answeredCount = Object.keys(quizAnswers).length
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Responsive Grid Layout: Stacked on mobile (< lg), 3 Columns on Desktop (>= lg) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <div className="w-full py-2">
+      {/* Responsive Grid Layout: Stacked on mobile (< lg), 3 Columns on Desktop (>= lg: 3 - 5 - 4 ratio) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6 items-start">
         
         {/* ================= COLUMN 1 (LEFT): Nav, Article Title Card, Audio Card, Vocab Chips ================= */}
         <div className="lg:col-span-3 xl:col-span-3 space-y-4 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-1">
@@ -322,7 +322,7 @@ export function ReadingDetailPage() {
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
               {article.title}
             </h1>
-            {article.subtitle && <p className="text-xs font-bold text-slate-600">{article.subtitle}</p>}
+            {article.subtitle && <p className="text-xs font-bold text-slate-600 leading-relaxed">{article.subtitle}</p>}
 
             <div className="pt-2 flex items-center justify-between text-xs font-bold text-slate-500 border-t border-slate-200">
               <span className="flex items-center gap-1">
@@ -392,7 +392,7 @@ export function ReadingDetailPage() {
                   Từ vựng bài đọc ({articleTerms.length})
                 </span>
               </div>
-              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+              <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
                 {articleTerms.map((term) => (
                   <button
                     key={term.global_term_id}
@@ -413,8 +413,8 @@ export function ReadingDetailPage() {
         </div>
 
         {/* ================= COLUMN 2 (CENTER): Reading Passage Content ================= */}
-        <div className={`${hasQuestions ? 'lg:col-span-5 xl:col-span-6' : 'lg:col-span-9 xl:col-span-9'} space-y-4`}>
-          <div className="neo-card p-5 sm:p-8 bg-white border-3 sm:border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] rounded-2xl space-y-5">
+        <div className={`${hasQuestions ? 'lg:col-span-5 xl:col-span-5' : 'lg:col-span-9 xl:col-span-9'} space-y-4`}>
+          <div className="neo-card p-6 sm:p-8 bg-white border-3 sm:border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] rounded-2xl space-y-5">
             
             {/* Content Header Toolbar */}
             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 gap-2 flex-wrap">
@@ -467,7 +467,7 @@ export function ReadingDetailPage() {
 
         {/* ================= COLUMN 3 (RIGHT): Comprehension Quiz Section ================= */}
         {hasQuestions && (
-          <div className="lg:col-span-4 xl:col-span-3 space-y-4 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pl-1">
+          <div className="lg:col-span-4 xl:col-span-4 space-y-4 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pl-1">
             <div className="neo-card p-5 bg-white border-3 sm:border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] rounded-2xl space-y-5">
               
               {/* Quiz Header & Score Info */}
@@ -477,7 +477,7 @@ export function ReadingDetailPage() {
                     <HelpCircle size={20} className="text-purple-700 shrink-0" />
                     <span>BÀI TẬP ĐỌC HIỂU</span>
                   </h2>
-                  <span className="text-xs font-black px-2 py-0.5 bg-purple-100 text-purple-900 border border-slate-900 rounded-md">
+                  <span className="text-xs font-black px-2.5 py-0.5 bg-purple-100 text-purple-900 border border-slate-900 rounded-md">
                     {article.questions.length} câu
                   </span>
                 </div>
@@ -501,14 +501,14 @@ export function ReadingDetailPage() {
               </div>
 
               {/* Questions List */}
-              <div className="space-y-5">
+              <div className="space-y-4">
                 {article.questions.map((q, idx) => (
                   <div key={q.id} className="p-3.5 bg-slate-50 border-2 border-slate-900 rounded-xl space-y-3 shadow-[2px_2px_0px_0px_#000]">
                     <h3 className="font-black text-xs sm:text-sm text-slate-900 leading-snug">
                       Câu {idx + 1}: {q.question_text}
                     </h3>
 
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
                       {q.options?.map((opt, optionIndex) => {
                         const isSelected = quizAnswers[q.id] === opt.text
                         const isCorrect = opt.is_correct
@@ -527,9 +527,9 @@ export function ReadingDetailPage() {
                             type="button"
                             variant="ghost"
                             onClick={() => handleSelectOption(q.id, opt.text)}
-                            className={`w-full h-auto min-h-10 justify-start whitespace-normal p-2.5 text-left text-xs font-bold border-2 rounded-xl transition-all shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer ${btnStyle}`}
+                            className={`w-full h-auto min-h-10 justify-start whitespace-normal p-2 text-left text-xs font-bold border-2 rounded-xl transition-all shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer ${btnStyle}`}
                           >
-                            <span className="mr-1.5 shrink-0 font-black">
+                            <span className="mr-1 shrink-0 font-black">
                               {String.fromCharCode(65 + optionIndex)}.
                             </span>
                             <span className="min-w-0 break-words">{opt.text}</span>
