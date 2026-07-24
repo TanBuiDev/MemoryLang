@@ -10,12 +10,15 @@ import {
   Layers,
   Sparkles,
   Pencil,
+  ClipboardPaste,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Select } from '@/components/ui/select'
 import { showToast } from '@/components/ui/toast'
 import { adminExamService } from '@/services/supabase/adminExam.service'
+import { BulkExamQuestionImportModal } from '@/components/exam/BulkExamQuestionImportModal'
+import { parseSingleQuestionText } from '@/utils/examQuestionImport'
 import type {
   ExamCategory,
   ExamDetail,
@@ -53,8 +56,61 @@ export default function AdminExamBuilderPage() {
   const [editTotalQuestions, setEditTotalQuestions] = useState(100)
   const [updatingExam, setUpdatingExam] = useState(false)
 
+  // Bulk Question Import State
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false)
+
   // Delete modal state
   const [pendingDeleteSetId, setPendingDeleteSetId] = useState<string | null>(null)
+
+  const handleBulkImport = (imported: Partial<ExamQuestion>[]) => {
+    setQuestions((prev) => [...prev, ...imported])
+    showToast({
+      type: 'success',
+      title: 'Đã nhập câu hỏi',
+      message: `Đã nhập thành công ${imported.length} câu hỏi vào cụm hiện tại.`,
+    })
+  }
+
+  const handleSmartPasteSingleQuestion = async (qIdx: number) => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (!text || !text.trim()) {
+        showToast({ type: 'error', title: 'Lỗi', message: 'Bộ nhớ tạm (Clipboard) đang trống.' })
+        return
+      }
+
+      const parsed = parseSingleQuestionText(text)
+      if (!parsed) {
+        showToast({ type: 'error', title: 'Lỗi', message: 'Không thể tách câu hỏi từ văn bản trong Clipboard.' })
+        return
+      }
+
+      setQuestions((prev) =>
+        prev.map((q, idx) => {
+          if (idx !== qIdx) return q
+          return {
+            ...q,
+            question_number: parsed.questionNumber || q.question_number || qIdx + 101,
+            question_text: parsed.questionText,
+            options: parsed.options,
+          }
+        })
+      )
+
+      showToast({
+        type: 'success',
+        title: 'Đã tách xong',
+        message: 'Đã tự động điền Câu hỏi và 4 Lựa chọn A, B, C, D từ Clipboard!',
+      })
+    } catch (err: any) {
+      console.error(err)
+      showToast({
+        type: 'error',
+        title: 'Lỗi',
+        message: 'Không thể đọc Clipboard. Vui lòng bấm nút "Nhập hàng loạt từ Copy / Paste".',
+      })
+    }
+  }
 
   const openEditExamModal = () => {
     if (!exam) return
@@ -537,13 +593,24 @@ export default function AdminExamBuilderPage() {
 
             {/* Questions List Editor */}
             <div className="flex flex-col gap-4 pt-3 border-t-2 border-dashed border-border">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-xs font-black text-muted-foreground uppercase tracking-wider">
                   Danh sách câu hỏi ({questions.length} câu)
                 </h3>
-                <Button variant="ghost" type="button" onClick={handleAddQuestion} className="min-h-8 px-3 text-xs">
-                  <Plus size={14} /> Thêm câu hỏi
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={() => setShowBulkImportModal(true)}
+                    className="min-h-8 px-3 text-xs font-black bg-amber-300 text-slate-950 border-2 border-border shadow-[2px_2px_0_var(--border)] hover:bg-amber-400"
+                  >
+                    <ClipboardPaste size={14} />
+                    ⚡ Nhập hàng loạt từ Copy / Paste
+                  </Button>
+                  <Button variant="ghost" type="button" onClick={handleAddQuestion} className="min-h-8 px-3 text-xs">
+                    <Plus size={14} /> Thêm câu hỏi
+                  </Button>
+                </div>
               </div>
 
               {questions.map((q, qIdx) => (
@@ -565,13 +632,23 @@ export default function AdminExamBuilderPage() {
                       <span className="text-xs font-bold text-muted-foreground">)</span>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveQuestion(qIdx)}
-                      className="text-xs text-rose-600 font-bold hover:underline"
-                    >
-                      Xóa câu này
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSmartPasteSingleQuestion(qIdx)}
+                        className="text-xs text-primary font-black hover:underline flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded border border-primary/20"
+                        title="Tự động đọc Clipboard và tách nội dung + 4 đáp án A, B, C, D"
+                      >
+                        <ClipboardPaste size={12} /> Smart Dán
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveQuestion(qIdx)}
+                        className="text-xs text-rose-600 font-bold hover:underline"
+                      >
+                        Xóa câu này
+                      </button>
+                    </div>
                   </div>
 
                   {/* Question Text */}
@@ -729,6 +806,13 @@ export default function AdminExamBuilderPage() {
           </div>
         </div>
       )}
+
+      {/* Bulk Question Import Modal */}
+      <BulkExamQuestionImportModal
+        open={showBulkImportModal}
+        onClose={() => setShowBulkImportModal(false)}
+        onImport={handleBulkImport}
+      />
 
       {/* Confirmation Modal */}
       <ConfirmModal
