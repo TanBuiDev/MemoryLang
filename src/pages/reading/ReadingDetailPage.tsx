@@ -97,6 +97,25 @@ export function ReadingDetailPage() {
           try {
             const newAttempt = await readingService.startAttempt(articleId)
             setAttempt(newAttempt)
+            if (newAttempt.is_completed) {
+              setQuizSubmitted(true)
+              if (newAttempt.score !== null && newAttempt.total_questions) {
+                setQuizScore({
+                  score: newAttempt.score,
+                  total: newAttempt.total_questions,
+                  percentage: Math.round((newAttempt.score / newAttempt.total_questions) * 100),
+                })
+              }
+              if (newAttempt.answers && Array.isArray(newAttempt.answers)) {
+                const restoredAnswers: Record<string, string> = {}
+                newAttempt.answers.forEach((ans) => {
+                  if (ans.question_id && ans.selected_option) {
+                    restoredAnswers[ans.question_id] = ans.selected_option
+                  }
+                })
+                setQuizAnswers(restoredAnswers)
+              }
+            }
           } catch (err) {
             console.error('Start attempt error:', err)
           }
@@ -154,6 +173,16 @@ export function ReadingDetailPage() {
         type: 'warning',
         title: 'Bài đọc chưa có audio',
         message: 'Vui lòng quay lại sau khi quản trị viên tạo audio cho bài đọc này.',
+      })
+      return
+    }
+
+    const hasQuestions = Boolean(article?.questions && article.questions.length > 0)
+    if (hasQuestions && !quizSubmitted) {
+      showToast({
+        type: 'warning',
+        title: 'Chưa nộp bài đọc hiểu',
+        message: 'Vui lòng nộp bài đọc hiểu trước khi nghe audio bài đọc.',
       })
       return
     }

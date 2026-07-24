@@ -134,18 +134,25 @@ export const readingService = {
     const userId = session?.session?.user?.id
     if (!userId) throw new Error('User not authenticated')
 
-    // Upsert attempt for (user_id, article_id)
+    const { data: existing } = await supabase
+      .from('reading_attempts')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('article_id', articleId)
+      .maybeSingle()
+
+    if (existing) {
+      return existing as ReadingAttempt
+    }
+
     const { data, error } = await supabase
       .from('reading_attempts')
-      .upsert(
-        {
-          user_id: userId,
-          article_id: articleId,
-          started_at: new Date().toISOString(),
-          is_completed: false,
-        },
-        { onConflict: 'user_id,article_id' }
-      )
+      .insert({
+        user_id: userId,
+        article_id: articleId,
+        started_at: new Date().toISOString(),
+        is_completed: false,
+      })
       .select('*')
       .single()
 
