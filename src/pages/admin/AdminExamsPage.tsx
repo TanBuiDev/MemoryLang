@@ -7,6 +7,7 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
+  Pencil,
   Trash2,
   Layers,
   Sparkles,
@@ -35,6 +36,14 @@ export default function AdminExamsPage() {
   const [newTotalQuestions, setNewTotalQuestions] = useState<number>(100)
   const [creating, setCreating] = useState(false)
 
+  // Edit Modal state
+  const [editingExam, setEditingExam] = useState<Exam | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editCategory, setEditCategory] = useState<ExamCategory>('TOEIC')
+  const [editTimeLimit, setEditTimeLimit] = useState<number>(75)
+  const [editTotalQuestions, setEditTotalQuestions] = useState<number>(100)
+  const [updating, setUpdating] = useState(false)
+
   // Delete state
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
@@ -55,6 +64,40 @@ export default function AdminExamsPage() {
   useEffect(() => {
     void loadExams()
   }, [])
+
+  const openEditModal = (exam: Exam) => {
+    setEditingExam(exam)
+    setEditTitle(exam.title)
+    setEditCategory(exam.category)
+    setEditTimeLimit(exam.time_limit_minutes)
+    setEditTotalQuestions(exam.total_questions)
+  }
+
+  const handleUpdateExam = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingExam || !editTitle.trim()) return
+    try {
+      setUpdating(true)
+      const updated = await adminExamService.updateExam(editingExam.id, {
+        title: editTitle.trim(),
+        category: editCategory,
+        time_limit_minutes: editTimeLimit,
+        total_questions: editTotalQuestions,
+      })
+      setExams((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+      setEditingExam(null)
+      showToast({
+        type: 'success',
+        title: 'Đã cập nhật',
+        message: `Đã lưu thông tin mới cho đề "${updated.title}".`,
+      })
+    } catch (err: any) {
+      console.error(err)
+      showToast({ type: 'error', title: 'Lỗi', message: err.message || 'Không thể cập nhật đề thi' })
+    } finally {
+      setUpdating(false)
+    }
+  }
 
   const handleCreateExam = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -242,6 +285,14 @@ export default function AdminExamsPage() {
                 </Button>
                 <Button
                   variant="ghost"
+                  onClick={() => openEditModal(exam)}
+                  className="min-h-9 px-3 text-xs"
+                  title="Chỉnh sửa thông tin đề thi"
+                >
+                  <Pencil size={14} />
+                </Button>
+                <Button
+                  variant="ghost"
                   onClick={() => setPendingDeleteId(exam.id)}
                   className="min-h-9 px-3 text-xs text-rose-600 hover:text-white hover:bg-rose-600"
                   title="Xóa đề thi này"
@@ -330,6 +381,89 @@ export default function AdminExamsPage() {
                 </Button>
                 <Button variant="primary" type="submit" disabled={creating}>
                   {creating ? 'Đang tạo...' : 'Tạo Đề & Vào Builder'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Edit Exam */}
+      {editingExam && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="neo-card p-6 bg-card border-3 border-border shadow-[6px_6px_0_var(--border)] rounded-2xl w-full max-w-lg flex flex-col gap-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b-2 border-border pb-3">
+              <h2 className="text-lg font-black text-foreground flex items-center gap-2">
+                <Pencil size={20} className="text-primary" />
+                CHỈNH SỬA THÔNG TIN ĐỀ THI
+              </h2>
+              <button
+                type="button"
+                onClick={() => setEditingExam(null)}
+                className="text-xs font-bold text-muted-foreground hover:text-foreground"
+              >
+                ✕ Đóng
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateExam} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-foreground">Tên đề thi *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="VD: ETS TOEIC Reading 2026 - Test 1"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="px-3.5 py-2.5 border-2 border-border rounded-xl bg-background text-xs font-bold focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-black text-foreground">Loại chứng chỉ</label>
+                  <Select
+                    value={editCategory}
+                    onChange={(val) => setEditCategory(val as ExamCategory)}
+                    options={[
+                      { value: 'TOEIC', label: 'TOEIC Reading' },
+                      { value: 'IELTS', label: 'IELTS Reading' },
+                      { value: 'TOEFL', label: 'TOEFL' },
+                    ]}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-black text-foreground">Thời gian (phút)</label>
+                  <input
+                    type="number"
+                    min={10}
+                    max={200}
+                    value={editTimeLimit}
+                    onChange={(e) => setEditTimeLimit(Number(e.target.value))}
+                    className="px-3.5 py-2 border-2 border-border rounded-xl bg-background text-xs font-bold focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-foreground">Tổng số câu hỏi</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={300}
+                  value={editTotalQuestions}
+                  onChange={(e) => setEditTotalQuestions(Number(e.target.value))}
+                  className="px-3.5 py-2 border-2 border-border rounded-xl bg-background text-xs font-bold focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t-2 border-border">
+                <Button variant="ghost" type="button" onClick={() => setEditingExam(null)}>
+                  Hủy
+                </Button>
+                <Button variant="primary" type="submit" disabled={updating}>
+                  {updating ? 'Đang lưu...' : 'Lưu Thay Đổi'}
                 </Button>
               </div>
             </form>

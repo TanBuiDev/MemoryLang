@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Layers,
   Sparkles,
+  Pencil,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -16,6 +17,7 @@ import { Select } from '@/components/ui/select'
 import { showToast } from '@/components/ui/toast'
 import { adminExamService } from '@/services/supabase/adminExam.service'
 import type {
+  ExamCategory,
   ExamDetail,
   ExamPassage,
   ExamPassageSet,
@@ -43,8 +45,47 @@ export default function AdminExamBuilderPage() {
   const [passages, setPassages] = useState<ExamPassage[]>([])
   const [questions, setQuestions] = useState<Partial<ExamQuestion>[]>([])
 
+  // Edit Exam Metadata Modal State
+  const [showEditExamModal, setShowEditExamModal] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editCategory, setEditCategory] = useState<ExamCategory>('TOEIC')
+  const [editTimeLimit, setEditTimeLimit] = useState(75)
+  const [editTotalQuestions, setEditTotalQuestions] = useState(100)
+  const [updatingExam, setUpdatingExam] = useState(false)
+
   // Delete modal state
   const [pendingDeleteSetId, setPendingDeleteSetId] = useState<string | null>(null)
+
+  const openEditExamModal = () => {
+    if (!exam) return
+    setEditTitle(exam.title)
+    setEditCategory(exam.category)
+    setEditTimeLimit(exam.time_limit_minutes)
+    setEditTotalQuestions(exam.total_questions)
+    setShowEditExamModal(true)
+  }
+
+  const handleUpdateExamInfo = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!exam || !editTitle.trim()) return
+    try {
+      setUpdatingExam(true)
+      const updated = await adminExamService.updateExam(exam.id, {
+        title: editTitle.trim(),
+        category: editCategory,
+        time_limit_minutes: editTimeLimit,
+        total_questions: editTotalQuestions,
+      })
+      setExam((prev) => (prev ? { ...prev, ...updated } : null))
+      setShowEditExamModal(false)
+      showToast({ type: 'success', title: 'Đã lưu', message: 'Cập nhật thông tin đề thi thành công.' })
+    } catch (err: any) {
+      console.error(err)
+      showToast({ type: 'error', title: 'Lỗi', message: err.message || 'Không thể cập nhật đề thi' })
+    } finally {
+      setUpdatingExam(false)
+    }
+  }
 
   const loadExam = async () => {
     if (!id) return
@@ -279,6 +320,14 @@ export default function AdminExamBuilderPage() {
                 {exam.category}
               </span>
               <h1 className="text-base font-black text-foreground tracking-tight line-clamp-1">{exam.title}</h1>
+              <button
+                type="button"
+                onClick={openEditExamModal}
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition"
+                title="Sửa tên / thời gian / số câu của đề thi"
+              >
+                <Pencil size={14} />
+              </button>
             </div>
             <span className="text-xs font-bold text-muted-foreground">
               Thời gian: {exam.time_limit_minutes}p · Tổng câu: {exam.total_questions} câu
@@ -630,6 +679,89 @@ export default function AdminExamBuilderPage() {
           </div>
         </div>
       </div>
+
+      {/* Edit Exam Metadata Modal */}
+      {showEditExamModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="neo-card p-6 bg-card border-3 border-border shadow-[6px_6px_0_var(--border)] rounded-2xl w-full max-w-lg flex flex-col gap-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b-2 border-border pb-3">
+              <h2 className="text-lg font-black text-foreground flex items-center gap-2">
+                <Pencil size={20} className="text-primary" />
+                CHỈNH SỬA THÔNG TIN ĐỀ THI
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowEditExamModal(false)}
+                className="text-xs font-bold text-muted-foreground hover:text-foreground"
+              >
+                ✕ Đóng
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateExamInfo} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-foreground">Tên đề thi *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="VD: ETS TOEIC Reading 2026 - Test 1"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="px-3.5 py-2.5 border-2 border-border rounded-xl bg-background text-xs font-bold focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-black text-foreground">Loại chứng chỉ</label>
+                  <Select
+                    value={editCategory}
+                    onChange={(val) => setEditCategory(val as ExamCategory)}
+                    options={[
+                      { value: 'TOEIC', label: 'TOEIC Reading' },
+                      { value: 'IELTS', label: 'IELTS Reading' },
+                      { value: 'TOEFL', label: 'TOEFL' },
+                    ]}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-black text-foreground">Thời gian (phút)</label>
+                  <input
+                    type="number"
+                    min={10}
+                    max={200}
+                    value={editTimeLimit}
+                    onChange={(e) => setEditTimeLimit(Number(e.target.value))}
+                    className="px-3.5 py-2 border-2 border-border rounded-xl bg-background text-xs font-bold focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-foreground">Tổng số câu hỏi</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={300}
+                  value={editTotalQuestions}
+                  onChange={(e) => setEditTotalQuestions(Number(e.target.value))}
+                  className="px-3.5 py-2 border-2 border-border rounded-xl bg-background text-xs font-bold focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t-2 border-border">
+                <Button variant="ghost" type="button" onClick={() => setShowEditExamModal(false)}>
+                  Hủy
+                </Button>
+                <Button variant="primary" type="submit" disabled={updatingExam}>
+                  {updatingExam ? 'Đang lưu...' : 'Lưu Thay Đổi'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       <ConfirmModal
