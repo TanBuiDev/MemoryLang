@@ -1,3 +1,4 @@
+import { supabase } from '@/services/supabase/client'
 import type { ParsedExamQuestion } from '@/utils/examQuestionImport'
 
 const GEMINI_KEY_STORAGE = 'memorylang_gemini_api_key'
@@ -39,15 +40,54 @@ export function fileToBase64(file: File | Blob): Promise<string> {
 }
 
 /**
- * Calls Gemini Vision API to analyze exam image, parse questions, choices, and correct answers
+ * Parses questions using Supabase Edge Function Proxy (100% Enterprise Security)
+ * with direct client fallback.
  */
 export async function parseQuestionsWithGeminiVision(
   imageBase64: string,
   apiKey?: string
 ): Promise<ParsedExamQuestion[]> {
-  const keyToUse = apiKey || getGeminiApiKey()
-  if (!keyToUse) {
-    throw new Error('Chưa cấu hình Gemini API Key. Vui lòng nhập Key tại tab AI Vision hoặc trang Cấu hình Secrets.')
+  const customApiKey = apiKey || getGeminiApiKey()
+
+  // 1. First attempt: Invoke Supabase Edge Function Proxy (Zero Client API Key Leakage)
+  try {
+    const { data, error } = await supabase.functions.invoke<{
+      ok: boolean
+      questions: any[]
+      error?: string
+    }>('parse-exam-vision', {
+      body: {
+        imageBase64,
+        customApiKey: customApiKey || undefined,
+      },
+    })
+
+    if (!error && data && data.ok && Array.isArray(data.questions)) {
+      return data.questions.map((q: any) => ({
+        questionNumber: q.questionNumber || null,
+        questionText: q.questionText || '',
+        options: (q.options || []).map((opt: any) => ({
+          key: opt.key,
+          text: opt.text,
+          is_correct: Boolean(opt.is_correct),
+        })),
+        explanationHtml: q.explanationHtml || '',
+        rawBlock: q.questionText,
+      }))
+    }
+
+    if (error && error.message && !error.message.includes('Failed to send request')) {
+      console.warn('Edge Function returned error, trying fallback:', error.message)
+    }
+  } catch (edgeErr) {
+    console.warn('Edge function invoke skipped, falling back to direct client call:', edgeErr)
+  }
+
+  // 2. Direct Client Fallback (If Edge Function is not deployed locally)
+  if (!customApiKey) {
+    throw new Error(
+      'Chưa cấu hình Gemini API Key. Vui lòng nhập Key tại tab AI Vision hoặc trang Cấu hình Secrets.'
+    )
   }
 
   const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '')
@@ -55,7 +95,7 @@ export async function parseQuestionsWithGeminiVision(
   const mimeType = isPng ? 'image/png' : 'image/jpeg'
 
   const prompt = `You are an expert TOEIC / English exam parsing assistant.
-Analyze this exam image. Extract ALL questions and choices (A, B, C, D) visible in the image, even if they are arranged in 2 columns.
+Analyze this exam image. Extract ALL questions and choices (A, B, C, D) visible in the image, even if arranged in 2 columns.
 Also determine the CORRECT answer choice (A, B, C, or D) for each question based on English grammar and context.
 
 Return ONLY a valid JSON array of objects with this exact format:
@@ -74,7 +114,7 @@ Return ONLY a valid JSON array of objects with this exact format:
 ]`
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${keyToUse}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${customApiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
