@@ -41,7 +41,14 @@ export function fillReadingQuizBlanks(
       if (!answer) return
 
       replaced = true
-      fragment.append(source.slice(lastIndex, start))
+      const prevSlice = source.slice(lastIndex, start)
+      fragment.append(prevSlice)
+
+      // Ensure space before (1) if preceding text ends with a word/number character
+      if (/[a-zA-Z0-9]$/.test(prevSlice)) {
+        fragment.append(' ')
+      }
+
       fragment.append(`${match[1]} `)
 
       const marker = doc.createElement('span')
@@ -52,7 +59,14 @@ export function fillReadingQuizBlanks(
       )
       marker.textContent = answer
       fragment.append(marker)
+
       lastIndex = start + match[0].length
+
+      // Ensure space after answer marker if following text starts with a word/number character
+      const nextSlice = source.slice(lastIndex)
+      if (/^[a-zA-Z0-9]/.test(nextSlice)) {
+        fragment.append(' ')
+      }
     })
 
     if (replaced) {

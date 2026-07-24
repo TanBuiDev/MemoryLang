@@ -50,4 +50,14 @@ describe('fillReadingQuizBlanks', () => {
     expect(fillReadingQuizBlanks('<p>Unknown (3) ________.</p>', questions))
       .toContain('(3) ________')
   })
+
+  it('inserts space after answer marker when adjacent text has no leading space', () => {
+    const result = fillReadingQuizBlanks(
+      '<p>he (1) ____________the emergency services</p>',
+      questions
+    )
+    const doc = new DOMParser().parseFromString(result, 'text/html')
+    expect(doc.body.textContent).toBe('he (1) to the emergency services')
+  })
 })
+
