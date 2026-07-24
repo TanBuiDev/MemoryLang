@@ -14,7 +14,6 @@ import {
   Bot,
   Sparkles,
   Layers,
-  Volume2,
   BookOpen,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -886,78 +885,6 @@ export default function AdminFeaturesPage() {
                       onClick={() => handleSaveSetting('quick_notes_max_count')}
                       disabled={savingSetting === 'quick_notes_max_count'}
                       className="min-h-8 px-2.5 py-1 text-xs"
-                    >
-                      <Save size={12} />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* 4. Visual Builder: Voice TTS Audio Settings */}
-              <div className="neo-card p-4 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex flex-col gap-4">
-                <div className="flex items-center gap-2 pb-1 border-b-2 border-border">
-                  <Volume2 size={18} className="text-primary" />
-                  <h3 className="font-black text-sm text-foreground">Giọng đọc TTS Mặc định</h3>
-                </div>
-
-                {/* Speech Rate */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-black text-foreground">Tốc độ đọc giọng TTS:</label>
-                    <span className="text-xs font-black font-mono px-2 py-0.5 rounded border border-border bg-primary/20">
-                      {settingsForm['default_speech_rate'] || 1.0}x
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min="0.5"
-                      max="2.0"
-                      step="0.1"
-                      value={Number(settingsForm['default_speech_rate']) || 1.0}
-                      onChange={(e) => {
-                        const val = Number(e.target.value)
-                        setSettingsForm((prev) => ({ ...prev, default_speech_rate: val }))
-                      }}
-                      className="flex-1 accent-primary cursor-pointer"
-                    />
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSaveSetting('default_speech_rate')}
-                      disabled={savingSetting === 'default_speech_rate'}
-                      className="min-h-8 px-2.5 py-1 text-xs shrink-0"
-                    >
-                      <Save size={12} />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Speech Pitch */}
-                <div className="flex flex-col gap-2 pt-2 border-t border-border/60">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-black text-foreground">Độ cao giọng đọc (Pitch):</label>
-                    <span className="text-xs font-black font-mono px-2 py-0.5 rounded border border-border bg-secondary/20">
-                      {settingsForm['default_speech_pitch'] || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min="-20"
-                      max="20"
-                      step="1"
-                      value={Number(settingsForm['default_speech_pitch']) || 0}
-                      onChange={(e) => {
-                        const val = Number(e.target.value)
-                        setSettingsForm((prev) => ({ ...prev, default_speech_pitch: val }))
-                      }}
-                      className="flex-1 accent-secondary cursor-pointer"
-                    />
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSaveSetting('default_speech_pitch')}
-                      disabled={savingSetting === 'default_speech_pitch'}
-                      className="min-h-8 px-2.5 py-1 text-xs shrink-0"
                     >
                       <Save size={12} />
                     </Button>
