@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeft,
   Save,
@@ -39,6 +39,7 @@ import {
   BulkQuestionImportModal,
   type ImportedReadingQuestion,
 } from '@/components/reading/BulkQuestionImportModal'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { getReadingVocabularyMatchMessage } from '@/utils/readingAdminUi'
 import type {
   AccessTier,
@@ -107,6 +108,31 @@ export default function AdminReadingEditorPage() {
   const [questions, setQuestions] = useState<LocalQuestion[]>([])
   const [bulkImportOpen, setBulkImportOpen] = useState(false)
 
+  // Unsaved changes tracking
+  const [isDirty, setIsDirty] = useState(false)
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const [pendingNavigationPath, setPendingNavigationPath] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isDirty])
+
+  const handleNavigateBack = (path: string = '/app/admin/reading') => {
+    if (isDirty) {
+      setPendingNavigationPath(path)
+      setShowLeaveConfirm(true)
+    } else {
+      navigate(path)
+    }
+  }
+
   useEffect(() => {
     void adminReadingService
       .getArticleOptions()
@@ -151,6 +177,7 @@ export default function AdminReadingEditorPage() {
               }))
             )
           }
+          setIsDirty(false)
         }
       } catch (err: any) {
         console.error(err)
@@ -170,6 +197,7 @@ export default function AdminReadingEditorPage() {
     setContentInput(value)
     setContentHtml(normalized.contentHtml)
     setPlainText(normalized.plainText)
+    setIsDirty(true)
   }
 
   const handleCreateOption = async (
@@ -198,10 +226,12 @@ export default function AdminReadingEditorPage() {
       points: 1,
     }
     setQuestions((prev) => [...prev, newQ])
+    setIsDirty(true)
   }
 
   const handleRemoveQuestion = (idx: number) => {
     setQuestions((prev) => prev.filter((_, i) => i !== idx))
+    setIsDirty(true)
   }
 
   const handleFillCorrectAnswers = () => {
@@ -255,6 +285,7 @@ export default function AdminReadingEditorPage() {
         points: 1,
       })),
     ])
+    setIsDirty(true)
     setBulkImportOpen(false)
     showToast({
       type: 'success',
@@ -267,6 +298,7 @@ export default function AdminReadingEditorPage() {
     setQuestions((prev) =>
       prev.map((q, i) => (i === idx ? { ...q, [field]: val } : q))
     )
+    setIsDirty(true)
   }
 
   const handleOptionChange = (qIdx: number, optIdx: number, text: string, isCorrect?: boolean) => {
@@ -289,6 +321,7 @@ export default function AdminReadingEditorPage() {
         return { ...q, options: newOpts }
       })
     )
+    setIsDirty(true)
   }
 
   // Generate TTS Audio
@@ -404,6 +437,7 @@ export default function AdminReadingEditorPage() {
       if (isEditing && id) {
         await adminReadingService.updateArticle(id, payload)
         setIsPublished(Boolean(payload.is_published))
+        setIsDirty(false)
         showToast({ type: 'success', title: 'Đã cập nhật bài đọc' })
         if (!payload.is_published) {
           setEditorMode('preview')
@@ -412,6 +446,7 @@ export default function AdminReadingEditorPage() {
       } else {
         const created = await adminReadingService.createArticle(payload)
         setIsPublished(created.is_published)
+        setIsDirty(false)
         showToast({ type: 'success', title: 'Đã tạo bài đọc mới' })
         navigate(
           `/app/admin/reading/${created.id}/edit${created.is_published ? '' : '?preview=1'}`,
@@ -434,14 +469,13 @@ export default function AdminReadingEditorPage() {
       {/* Navigation Header */}
       <div className="flex items-center justify-between">
         <Button
-          asChild
+          type="button"
           variant="ghost"
-          className="neo-button px-3 py-1.5 h-9 bg-white text-slate-900 font-black text-xs border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl"
+          onClick={() => handleNavigateBack('/app/admin/reading')}
+          className="neo-button px-3 py-1.5 h-9 bg-white text-slate-900 font-black text-xs border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl flex items-center gap-1.5 cursor-pointer"
         >
-          <Link to="/app/admin/reading" className="flex items-center gap-1.5">
-            <ArrowLeft size={16} />
-            <span>Danh sách bài đọc</span>
-          </Link>
+          <ArrowLeft size={16} />
+          <span>Danh sách bài đọc</span>
         </Button>
 
         <div className="flex items-center gap-2">
@@ -481,7 +515,10 @@ export default function AdminReadingEditorPage() {
             <input
               type="text"
               value={title}
-              onChange={(e) => setTitle(cleanPastedText(e.target.value))}
+              onChange={(e) => {
+                setTitle(cleanPastedText(e.target.value))
+                setIsDirty(true)
+              }}
               onBlur={() => setTitle((prev) => prev.trim())}
               placeholder="VD: The Future of Artificial Intelligence"
               className="w-full p-2.5 text-sm font-bold border-2 border-slate-900 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -495,7 +532,10 @@ export default function AdminReadingEditorPage() {
             <input
               type="text"
               value={subtitle}
-              onChange={(e) => setSubtitle(cleanPastedText(e.target.value))}
+              onChange={(e) => {
+                setSubtitle(cleanPastedText(e.target.value))
+                setIsDirty(true)
+              }}
               onBlur={() => setSubtitle((prev) => prev.trim())}
               placeholder="VD: Exploring how AI will transform our world and daily work."
               className="w-full p-2.5 text-xs font-bold border-2 border-slate-900 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -508,7 +548,10 @@ export default function AdminReadingEditorPage() {
             </label>
             <CreatableReadingSelect
               value={cefrLevel}
-              onChange={setCefrLevel}
+              onChange={(val) => {
+                setCefrLevel(val)
+                setIsDirty(true)
+              }}
               options={articleOptions.cefr_level}
               onCreate={(name) => handleCreateOption('cefr_level', name, name)}
             />
@@ -520,7 +563,10 @@ export default function AdminReadingEditorPage() {
             </label>
             <CreatableReadingSelect
               value={difficulty}
-              onChange={setDifficulty}
+              onChange={(val) => {
+                setDifficulty(val)
+                setIsDirty(true)
+              }}
               options={articleOptions.difficulty}
               onCreate={(name) => handleCreateOption('difficulty', name, name)}
             />
@@ -532,7 +578,10 @@ export default function AdminReadingEditorPage() {
             </label>
             <CreatableReadingSelect
               value={purpose}
-              onChange={setPurpose}
+              onChange={(val) => {
+                setPurpose(val)
+                setIsDirty(true)
+              }}
               options={articleOptions.purpose}
               onCreate={(name) => handleCreateOption('purpose', name, name)}
             />
@@ -544,7 +593,10 @@ export default function AdminReadingEditorPage() {
             </label>
             <CreatableReadingSelect
               value={accessTier}
-              onChange={setAccessTier}
+              onChange={(val) => {
+                setAccessTier(val)
+                setIsDirty(true)
+              }}
               options={articleOptions.access_tier}
               onCreate={(name) => handleCreateOption('access_tier', name, name)}
             />
@@ -560,7 +612,10 @@ export default function AdminReadingEditorPage() {
             <input
               type="text"
               value={topicsInput}
-              onChange={(e) => setTopicsInput(cleanPastedText(e.target.value))}
+              onChange={(e) => {
+                setTopicsInput(cleanPastedText(e.target.value))
+                setIsDirty(true)
+              }}
               onBlur={() => setTopicsInput((prev) => prev.trim())}
               placeholder="Technology, AI, Future"
               className="w-full p-2.5 text-xs font-bold border-2 border-slate-900 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -889,6 +944,26 @@ export default function AdminReadingEditorPage() {
         open={bulkImportOpen}
         onCancel={() => setBulkImportOpen(false)}
         onImport={handleBulkQuestionImport}
+      />
+
+      <ConfirmModal
+        open={showLeaveConfirm}
+        title="Rời khỏi trang?"
+        description="Bài đọc có sự thay đổi chưa được lưu. Nếu rời đi lúc này, các thay đổi sẽ bị mất."
+        confirmLabel="Rời đi (Không lưu)"
+        cancelLabel="Hủy"
+        variant="danger"
+        onConfirm={() => {
+          setShowLeaveConfirm(false)
+          setIsDirty(false)
+          if (pendingNavigationPath) {
+            navigate(pendingNavigationPath)
+          }
+        }}
+        onCancel={() => {
+          setShowLeaveConfirm(false)
+          setPendingNavigationPath(null)
+        }}
       />
     </div>
   )
