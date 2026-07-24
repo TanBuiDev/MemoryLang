@@ -90,3 +90,10 @@ export function prepareTextForTts(
     .trim()
 }
 
+export function cleanPastedText(value: string): string {
+  return value
+    .replace(/[\u00A0\u1680\u180E\u2000-\u200B\u202F\u205F\u3000\uFEFF\u00AD]/g, ' ')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/ {2,}/g, ' ')
+}
+

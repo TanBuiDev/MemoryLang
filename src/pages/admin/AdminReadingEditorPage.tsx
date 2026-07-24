@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { CreatableReadingSelect } from '@/components/reading/CreatableReadingSelect'
 import { showToast } from '@/components/ui/toast'
-import { buildReadingOption, normalizeReadingContent } from '@/utils/readingContent'
+import { buildReadingOption, cleanPastedText, normalizeReadingContent } from '@/utils/readingContent'
 import { annotateReadingHtml } from '@/utils/readingVocabulary'
 import { fillReadingQuizBlanks } from '@/utils/readingQuizContent'
 import { cn } from '@/utils/cn'
@@ -126,12 +126,12 @@ export default function AdminReadingEditorPage() {
           }),
         ])
         if (detail) {
-          setTitle(detail.title)
-          setSubtitle(detail.subtitle || '')
+          setTitle(cleanPastedText(detail.title))
+          setSubtitle(cleanPastedText(detail.subtitle || ''))
           setCefrLevel(detail.cefr_level)
           setDifficulty(detail.difficulty)
           setPurpose(detail.purpose)
-          setTopicsInput((detail.topics || []).join(', '))
+          setTopicsInput(cleanPastedText((detail.topics || []).join(', ')))
           setAccessTier(detail.access_tier)
           setIsPublished(detail.is_published)
           setContentInput(detail.content_html)
@@ -481,7 +481,8 @@ export default function AdminReadingEditorPage() {
             <input
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => setTitle(cleanPastedText(e.target.value))}
+              onBlur={() => setTitle((prev) => prev.trim())}
               placeholder="VD: The Future of Artificial Intelligence"
               className="w-full p-2.5 text-sm font-bold border-2 border-slate-900 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
@@ -494,7 +495,8 @@ export default function AdminReadingEditorPage() {
             <input
               type="text"
               value={subtitle}
-              onChange={(e) => setSubtitle(e.target.value)}
+              onChange={(e) => setSubtitle(cleanPastedText(e.target.value))}
+              onBlur={() => setSubtitle((prev) => prev.trim())}
               placeholder="VD: Exploring how AI will transform our world and daily work."
               className="w-full p-2.5 text-xs font-bold border-2 border-slate-900 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
@@ -558,7 +560,8 @@ export default function AdminReadingEditorPage() {
             <input
               type="text"
               value={topicsInput}
-              onChange={(e) => setTopicsInput(e.target.value)}
+              onChange={(e) => setTopicsInput(cleanPastedText(e.target.value))}
+              onBlur={() => setTopicsInput((prev) => prev.trim())}
               placeholder="Technology, AI, Future"
               className="w-full p-2.5 text-xs font-bold border-2 border-slate-900 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
