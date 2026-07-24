@@ -1,4 +1,6 @@
 import type { SelectOption } from '@/components/ui/select'
+import type { ReadingQuestion } from '@/types/reading.types'
+import { fillReadingQuizBlanks } from '@/utils/readingQuizContent'
 
 const HTML_TAG_PATTERN = /<\/?(?:p|div|h[1-6]|ul|ol|li|blockquote|pre|strong|em|b|i|u|a|br|span)(?:\s[^>]*)?>/i
 
@@ -65,3 +67,26 @@ export function buildReadingOption(value: string, label: string): SelectOption {
 export function isRestrictedReadingTier(tier: string): boolean {
   return tier !== 'free'
 }
+
+export function prepareTextForTts(
+  htmlOrText: string,
+  questions?: ReadingQuestion[]
+): string {
+  let source = htmlOrText || ''
+
+  if (questions && questions.length > 0) {
+    source = fillReadingQuizBlanks(source, questions)
+  }
+
+  const container = document.createElement('div')
+  container.innerHTML = source.replace(/<\/(?:p|div|h[1-6]|li|blockquote|pre)>/gi, '$& ')
+  let text = (container.textContent || '').replace(/\s+/g, ' ').trim()
+
+  return text
+    .replace(/\(\s*\d+\s*\)/g, '')
+    .replace(/\[\s*\d+\s*\]/g, '')
+    .replace(/_{2,}/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+

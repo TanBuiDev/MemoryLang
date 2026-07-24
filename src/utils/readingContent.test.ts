@@ -3,6 +3,7 @@ import {
   buildReadingOption,
   isRestrictedReadingTier,
   normalizeReadingContent,
+  prepareTextForTts,
 } from '@/utils/readingContent'
 
 describe('normalizeReadingContent', () => {
@@ -41,3 +42,39 @@ describe('isRestrictedReadingTier', () => {
     expect(isRestrictedReadingTier('enterprise')).toBe(true)
   })
 })
+
+describe('prepareTextForTts', () => {
+  it('fills correct answers into blanks and strips question markers (1), (2) for smooth TTS reading', () => {
+    const html = '<p>William quickly rang (1) ____________ an ambulance when he discovered (2) ____________.</p>'
+    const questions = [
+      {
+        id: 'q1',
+        article_id: 'art-1',
+        question_text: 'Blank 1',
+        question_type: 'multiple_choice' as const,
+        options: [
+          { text: 'called', is_correct: true },
+          { text: 'texted', is_correct: false },
+        ],
+        order_index: 1,
+        points: 1,
+      },
+      {
+        id: 'q2',
+        article_id: 'art-1',
+        question_text: 'Blank 2',
+        question_type: 'multiple_choice' as const,
+        options: [
+          { text: 'her leg was broken', is_correct: true },
+        ],
+        order_index: 2,
+        points: 1,
+      },
+    ]
+
+    expect(prepareTextForTts(html, questions)).toBe(
+      'William quickly rang called an ambulance when he discovered her leg was broken.'
+    )
+  })
+})
+

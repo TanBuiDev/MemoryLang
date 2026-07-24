@@ -11,6 +11,7 @@ import {
   Eye,
   ListPlus,
   Pencil,
+  Sparkles,
 } from 'lucide-react'
 import {
   adminReadingService,
@@ -22,6 +23,7 @@ import { CreatableReadingSelect } from '@/components/reading/CreatableReadingSel
 import { showToast } from '@/components/ui/toast'
 import { buildReadingOption, normalizeReadingContent } from '@/utils/readingContent'
 import { annotateReadingHtml } from '@/utils/readingVocabulary'
+import { fillReadingQuizBlanks } from '@/utils/readingQuizContent'
 import {
   getInitialReadingEditorMode,
   type ReadingEditorMode,
@@ -199,6 +201,45 @@ export default function AdminReadingEditorPage() {
 
   const handleRemoveQuestion = (idx: number) => {
     setQuestions((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  const handleFillCorrectAnswers = () => {
+    if (!questions || questions.length === 0) {
+      showToast({
+        type: 'warning',
+        title: 'Chưa có câu hỏi',
+        message: 'Vui lòng thêm các câu hỏi đọc hiểu bên dưới trước khi điền đáp án.',
+      })
+      return
+    }
+
+    const hasCorrectAnswer = questions.some((q) => q.options?.some((o) => o.is_correct))
+    if (!hasCorrectAnswer) {
+      showToast({
+        type: 'warning',
+        title: 'Chưa chọn đáp án đúng',
+        message: 'Vui lòng đánh dấu đáp án đúng cho các câu hỏi bên dưới.',
+      })
+      return
+    }
+
+    const formattedQuestions = questions.map((q, idx) => ({
+      id: q.id,
+      article_id: id || '',
+      question_text: q.question_text,
+      question_type: q.question_type,
+      options: q.options,
+      order_index: idx + 1,
+      points: q.points,
+    }))
+
+    const filledHtml = fillReadingQuizBlanks(contentHtml || contentInput, formattedQuestions)
+    handleContentChange(filledHtml)
+    showToast({
+      type: 'success',
+      title: 'Đã điền đáp án đúng',
+      message: 'Các ô trống trong bài đọc đã được tự động điền bằng đáp án đúng.',
+    })
   }
 
   const handleBulkQuestionImport = (importedQuestions: ImportedReadingQuestion[]) => {
@@ -532,6 +573,16 @@ export default function AdminReadingEditorPage() {
               <span>{wordCount} từ</span>
               <span>~{estReadingTime} phút đọc</span>
             </div>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleFillCorrectAnswers}
+              className="neo-button h-8 min-h-0 px-3 text-xs bg-amber-100 hover:bg-amber-200 text-slate-900 border-2 border-slate-900 shadow-[1.5px_1.5px_0px_0px_#000] flex items-center gap-1.5 cursor-pointer"
+              title="Tự động điền các đáp án đúng của câu hỏi bên dưới vào ô trống bài đọc"
+            >
+              <Sparkles size={14} className="text-amber-800" />
+              <span>Điền đáp án đúng</span>
+            </Button>
             <Button
               type="button"
               variant={editorMode === 'edit' ? 'secondary' : 'ghost'}

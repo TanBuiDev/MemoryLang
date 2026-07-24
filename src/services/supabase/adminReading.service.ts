@@ -1,6 +1,6 @@
 import { generateAudio as callGenerateAudioApi } from '@/services/api/generateAudio.api'
 import { supabase } from '@/services/supabase/client'
-import { buildReadingOption } from '@/utils/readingContent'
+import { buildReadingOption, prepareTextForTts } from '@/utils/readingContent'
 import type {
   CreateArticleInput,
   ReadingArticle,
@@ -288,16 +288,21 @@ export const adminReadingService = {
   },
 
   /**
-   * Admin: Tạo tệp Audio TTS từ văn bản plain_text của bài đọc
+   * Admin: Tạo tệp Audio TTS từ văn bản plain_text của bài đọc (đã điền đáp án & xóa mốc câu hỏi)
    */
   async generateTtsAudio(articleId: string): Promise<{ audio_url: string; duration: number }> {
     const article = await this.getArticleDetail(articleId)
-    if (!article || !article.plain_text) {
+    if (!article || (!article.content_html && !article.plain_text)) {
       throw new Error('Bài đọc không tồn tại hoặc chưa có nội dung văn bản.')
     }
 
+    const ttsText = prepareTextForTts(article.content_html || article.plain_text, article.questions)
+    if (!ttsText) {
+      throw new Error('Không thể trích xuất nội dung văn bản để tạo audio.')
+    }
+
     // Call generateAudio Edge Function
-    const res = await callGenerateAudioApi(article.plain_text, 'en-US')
+    const res = await callGenerateAudioApi(ttsText, 'en-US')
     if (!res.audioUrl) {
       throw new Error('Không thể tạo file phát âm thanh TTS.')
     }
