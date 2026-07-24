@@ -278,12 +278,21 @@ export default function AdminFeaturesPage() {
     await handleSaveSetting('vocabulary_pos_options', updated)
   }
 
+function slugifyPosLabel(label: string): string {
+  return label
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'pos_item'
+}
+
   // Visual Builder: Thêm từ loại mới
   const handleAddPos = async () => {
     const label = newPosLabel.trim()
-    const val = newPosValue.trim().toLowerCase().replace(/\s+/g, '_')
-    if (!label || !val) {
-      setPosFormError('Vui lòng nhập đầy đủ Tên hiển thị và Mã từ loại.')
+    if (!label) {
+      setPosFormError('Vui lòng nhập Tên loại từ vựng (VD: Thán từ).')
       return
     }
     const currentList: Array<{ value: string; label: string }> = Array.isArray(settingsForm['vocabulary_pos_options'])
@@ -292,12 +301,17 @@ export default function AdminFeaturesPage() {
       ? JSON.parse(settingsForm['vocabulary_pos_options'] || '[]')
       : []
 
-    if (currentList.some((item) => item.value === val)) {
-      setPosFormError('Mã từ loại này đã tồn tại.')
-      return
+    // Tự sinh mã slug từ label hoặc mã nhập tay, kiểm tra chống trùng lặp tự động bằng suffix _1, _2...
+    const baseValue = newPosValue.trim() ? slugifyPosLabel(newPosValue) : slugifyPosLabel(label)
+    let finalValue = baseValue
+    let counter = 1
+    while (currentList.some((item) => item.value === finalValue)) {
+      finalValue = `${baseValue}_${counter}`
+      counter++
     }
+
     setPosFormError(null)
-    const updated = [...currentList, { value: val, label }]
+    const updated = [...currentList, { value: finalValue, label }]
     setSettingsForm((prev) => ({ ...prev, vocabulary_pos_options: updated }))
     setNewPosLabel('')
     setNewPosValue('')
@@ -770,29 +784,33 @@ export default function AdminFeaturesPage() {
                           {posFormError}
                         </div>
                       )}
-                      <div className="flex flex-wrap gap-2 items-center">
-                        <input
-                          type="text"
-                          placeholder="Tên hiển thị (VD: Danh từ)"
-                          value={newPosLabel}
-                          onChange={(e) => setNewPosLabel(e.target.value)}
-                          className="flex-1 min-w-[140px] px-3 py-1.5 border-2 border-border rounded-lg text-xs font-bold bg-background focus:outline-none focus:border-primary"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Mã (VD: noun)"
-                          value={newPosValue}
-                          onChange={(e) => setNewPosValue(e.target.value)}
-                          className="w-28 px-3 py-1.5 border-2 border-border rounded-lg text-xs font-bold bg-background focus:outline-none focus:border-primary"
-                        />
-                        <Button
-                          variant="secondary"
-                          onClick={handleAddPos}
-                          className="min-h-8 px-3 py-1 text-xs shrink-0"
-                        >
-                          <Plus size={14} />
-                          Thêm từ loại
-                        </Button>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <input
+                            type="text"
+                            placeholder="Tên loại từ vựng mới (VD: Thán từ, Cụm từ...)"
+                            value={newPosLabel}
+                            onChange={(e) => setNewPosLabel(e.target.value)}
+                            className="flex-1 min-w-[200px] px-3 py-1.5 border-2 border-border rounded-lg text-xs font-bold bg-background focus:outline-none focus:border-primary"
+                          />
+                          <Button
+                            variant="secondary"
+                            onClick={handleAddPos}
+                            className="min-h-8 px-4 py-1 text-xs shrink-0"
+                          >
+                            <Plus size={14} />
+                            Thêm từ loại
+                          </Button>
+                        </div>
+
+                        {newPosLabel.trim() && (
+                          <div className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5 pl-1">
+                            <span>Mã hệ thống tự sinh:</span>
+                            <span className="font-mono font-black text-secondary bg-secondary/10 px-2 py-0.5 rounded border border-secondary/20">
+                              {slugifyPosLabel(newPosLabel)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )
