@@ -14,7 +14,19 @@ interface SecretStatus {
 }
 
 export default function AdminSecretsPage() {
+  const [geminiKeyInput, setGeminiKeyInput] = useState(() => {
+    return localStorage.getItem('memorylang_gemini_api_key') || ''
+  })
+  const [geminiSaved, setGeminiSaved] = useState(false)
+
   const [secrets, setSecrets] = useState<SecretStatus[]>([
+    {
+      name: 'Google Gemini Vision AI Key',
+      envKey: 'VITE_GEMINI_API_KEY (hoặc lưu qua Admin UI bên dưới)',
+      description: 'Khóa Google AI Studio API dùng để quét câu hỏi từ ảnh 2 cột và tự động chọn đáp án đúng.',
+      service: 'Gemini AI Vision',
+      tested: 'idle',
+    },
     {
       name: 'Google Cloud TTS Credentials',
       envKey: 'GOOGLE_TTS_CREDENTIALS_B64',
@@ -61,7 +73,33 @@ export default function AdminSecretsPage() {
     setTestResultMsg(null)
 
     try {
-      if (serviceName === 'Google TTS' || serviceName === 'Cloudflare R2') {
+      if (serviceName === 'Gemini AI Vision') {
+        const apiKey = geminiKeyInput.trim() || import.meta.env.VITE_GEMINI_API_KEY
+        if (!apiKey) {
+          throw new Error('Chưa nhập Gemini API Key. Hãy dán Key bên dưới và bấm Lưu.')
+        }
+
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: 'Hello, respond with OK' }] }],
+            }),
+          }
+        )
+
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}))
+          throw new Error(errJson?.error?.message || `Lỗi Gemini API (${res.status})`)
+        }
+
+        setSecrets((prev) =>
+          prev.map((s) => (s.service === serviceName ? { ...s, tested: 'success' } : s))
+        )
+        setTestResultMsg('Kết nối tới Google Gemini Vision API THÀNH CÔNG! Sẵn sàng quét đề thi.')
+      } else if (serviceName === 'Google TTS' || serviceName === 'Cloudflare R2') {
         const res = await generateAudio('test connection', 'en-US')
         if (res.audioUrl) {
           setSecrets((prev) =>
@@ -177,6 +215,62 @@ export default function AdminSecretsPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Direct Gemini API Key Management Box */}
+      <div className="neo-card p-5 bg-card border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] rounded-2xl flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h3 className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-primary" />
+            Cấu hình nhanh Google Gemini API Key (Không cần sửa file .env)
+          </h3>
+          {geminiSaved && (
+            <span className="text-xs font-black text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded">
+              ✓ Đã lưu thành công
+            </span>
+          )}
+        </div>
+        <p className="text-xs font-bold text-slate-600">
+          Nhập Google AI Studio Key miễn phí từ{' '}
+          <a
+            href="https://aistudio.google.com/app/apikey"
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary underline hover:text-primary/80"
+          >
+            Google AI Studio
+          </a>{' '}
+          để dùng tính năng Quét câu hỏi từ ảnh 2 cột bằng AI Vision.
+        </p>
+
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            type="password"
+            value={geminiKeyInput}
+            onChange={(e) => {
+              setGeminiKeyInput(e.target.value)
+              setGeminiSaved(false)
+            }}
+            placeholder="Dán AIzaSy... API key của bạn vào đây"
+            className="flex-1 px-3 py-2 border-2 border-slate-900 rounded-xl bg-background text-xs font-mono font-bold focus:outline-none focus:border-primary"
+          />
+          <Button
+            variant="primary"
+            type="button"
+            onClick={() => {
+              if (geminiKeyInput.trim()) {
+                localStorage.setItem('memorylang_gemini_api_key', geminiKeyInput.trim())
+              } else {
+                localStorage.removeItem('memorylang_gemini_api_key')
+              }
+              setGeminiSaved(true)
+              setTimeout(() => setGeminiSaved(false), 3000)
+            }}
+            className="px-5 text-xs font-black"
+          >
+            Lưu Gemini Key
+          </Button>
+        </div>
       </div>
     </div>
   )

@@ -11,6 +11,9 @@ import {
   Upload,
   Loader2,
   ImageIcon,
+  Sparkles,
+  KeyRound,
+  Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,6 +24,12 @@ import {
   parseQuestionsFromImage,
   type OcrProgressInfo,
 } from '@/utils/imageOcrQuestionParser'
+import {
+  parseQuestionsWithGeminiVision,
+  getGeminiApiKey,
+  setGeminiApiKey,
+  fileToBase64,
+} from '@/utils/geminiVisionParser'
 import type { ExamQuestion } from '@/types/exam.types'
 
 interface BulkExamQuestionImportModalProps {
@@ -29,7 +38,7 @@ interface BulkExamQuestionImportModalProps {
   onImport: (parsedQuestions: Partial<ExamQuestion>[]) => void
 }
 
-type ImportMode = 'text' | 'image'
+type ImportMode = 'text' | 'ocr' | 'ai_vision'
 
 export function BulkExamQuestionImportModal({
   open,
@@ -46,6 +55,13 @@ export function BulkExamQuestionImportModal({
   const [ocrProgress, setOcrProgress] = useState<OcrProgressInfo | null>(null)
   const [ocrError, setOcrError] = useState<string | null>(null)
 
+  // AI Vision state
+  const [apiKeyInput, setApiKeyInput] = useState(() => getGeminiApiKey())
+  const [showKeyEdit, setShowKeyEdit] = useState(false)
+  const [aiVisionLoading, setAiVisionLoading] = useState(false)
+  const [aiVisionError, setAiVisionError] = useState<string | null>(null)
+  const [keySavedBadge, setKeySavedBadge] = useState(false)
+
   useEffect(() => {
     if (!open) {
       setRawInput('')
@@ -54,12 +70,16 @@ export function BulkExamQuestionImportModal({
       setOcrLoading(false)
       setOcrProgress(null)
       setOcrError(null)
+      setAiVisionLoading(false)
+      setAiVisionError(null)
+    } else {
+      setApiKeyInput(getGeminiApiKey())
     }
   }, [open])
 
   // Listen to Global Paste Event inside modal for pasting screenshots (Ctrl + V)
   useEffect(() => {
-    if (!open || mode !== 'image') return
+    if (!open || (mode !== 'ocr' && mode !== 'ai_vision')) return
 
     const handlePaste = async (e: ClipboardEvent) => {
       const items = e.clipboardData?.items
@@ -70,7 +90,11 @@ export function BulkExamQuestionImportModal({
         if (item.type.indexOf('image') !== -1) {
           const file = item.getAsFile()
           if (file) {
-            void processImageFile(file)
+            if (mode === 'ocr') {
+              void processOcrImageFile(file)
+            } else if (mode === 'ai_vision') {
+              void processAiVisionImageFile(file)
+            }
             break
           }
         }
@@ -79,7 +103,7 @@ export function BulkExamQuestionImportModal({
 
     window.addEventListener('paste', handlePaste)
     return () => window.removeEventListener('paste', handlePaste)
-  }, [open, mode])
+  }, [open, mode, apiKeyInput])
 
   if (!open) return null
 
@@ -89,7 +113,7 @@ export function BulkExamQuestionImportModal({
     setParsedList(results)
   }
 
-  const processImageFile = async (file: File) => {
+  const processOcrImageFile = async (file: File) => {
     try {
       setOcrLoading(true)
       setOcrError(null)
@@ -107,17 +131,49 @@ export function BulkExamQuestionImportModal({
     } catch (err: any) {
       console.error(err)
       setOcrError('Không thể nhận diện chữ từ tệp ảnh này. Vui lòng thử lại với ảnh rõ nét hơn.')
-    } fontally: {
+    } finally {
       setOcrLoading(false)
       setOcrProgress(null)
     }
   }
 
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const processAiVisionImageFile = async (file: File) => {
+    try {
+      setAiVisionLoading(true)
+      setAiVisionError(null)
+
+      const base64 = await fileToBase64(file)
+      setImagePreview(base64)
+
+      const questions = await parseQuestionsWithGeminiVision(base64, apiKeyInput.trim() || undefined)
+      setParsedList(questions)
+    } catch (err: any) {
+      console.error(err)
+      setAiVisionError(err.message || 'Không thể bóc tách ảnh bằng AI Vision. Vui lòng kiểm tra lại API Key.')
+    } finally {
+      setAiVisionLoading(false)
+    }
+  }
+
+  const handleOcrFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      void processImageFile(file)
+      void processOcrImageFile(file)
     }
+  }
+
+  const handleAiVisionFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      void processAiVisionImageFile(file)
+    }
+  }
+
+  const handleSaveApiKey = () => {
+    setGeminiApiKey(apiKeyInput.trim())
+    setKeySavedBadge(true)
+    setTimeout(() => setKeySavedBadge(false), 2500)
+    setShowKeyEdit(false)
   }
 
   const handleSelectCorrectOption = (qIdx: number, optKey: string) => {
@@ -143,7 +199,7 @@ export function BulkExamQuestionImportModal({
       question_type: 'multiple_choice',
       options: item.options,
       points: 1,
-      explanation_html: '',
+      explanation_html: item.explanationHtml || '',
     }))
 
     onImport(formatted)
@@ -151,6 +207,8 @@ export function BulkExamQuestionImportModal({
     setRawInput('')
     setParsedList(null)
   }
+
+  const activeKey = apiKeyInput.trim() || getGeminiApiKey()
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -163,7 +221,7 @@ export function BulkExamQuestionImportModal({
               NHẬP CÂU HỎI & ĐÁP ÁN THÔNG MINH
             </h2>
             <p className="text-xs font-bold text-muted-foreground mt-0.5">
-              Dán văn bản hoặc Tải ảnh chụp đề thi (PDF / ETS / Sách). AI sẽ tự động phân tích và tách câu hỏi.
+              Dán văn bản, Quét OCR địa phương hoặc Dùng AI Vision bóc tách ảnh 2 cột tự động.
             </p>
           </div>
           <button
@@ -177,30 +235,42 @@ export function BulkExamQuestionImportModal({
 
         {/* Mode Switcher Tabs */}
         {parsedList === null && (
-          <div className="flex items-center gap-2 bg-muted/40 p-1 rounded-xl border border-border shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5 bg-muted/40 p-1 rounded-xl border border-border shrink-0">
             <button
               type="button"
               onClick={() => setMode('text')}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition flex items-center justify-center gap-2 ${
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition flex items-center justify-center gap-1.5 ${
                 mode === 'text'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <FileText size={14} />
-              Dán Văn bản (Text Copy)
+              1. Dán Văn bản (Text Copy)
             </button>
             <button
               type="button"
-              onClick={() => setMode('image')}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition flex items-center justify-center gap-2 ${
-                mode === 'image'
+              onClick={() => setMode('ocr')}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition flex items-center justify-center gap-1.5 ${
+                mode === 'ocr'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Camera size={14} />
-              Quét chữ từ Ảnh chụp / Screenshot (AI OCR)
+              2. Quét OCR 1 cột (Local Free)
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('ai_vision')}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition flex items-center justify-center gap-1.5 ${
+                mode === 'ai_vision'
+                  ? 'bg-amber-400 text-slate-950 shadow-sm font-black'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Sparkles size={14} className="text-amber-700" />
+              3. AI Vision 2 Cột + Tự giải (Gemini)
             </button>
           </div>
         )}
@@ -247,15 +317,15 @@ export function BulkExamQuestionImportModal({
                   </Button>
                 </div>
               </div>
-            ) : (
-              /* Image OCR Mode */
+            ) : mode === 'ocr' ? (
+              /* OCR Image Mode */
               <div className="flex flex-col gap-4">
                 <div className="p-3.5 bg-blue-50 border-2 border-blue-300 rounded-xl flex flex-col gap-1 text-xs font-bold text-blue-950">
                   <span className="font-black text-blue-900 flex items-center gap-1">
-                    <Camera size={14} /> Quét chữ tự động từ Ảnh chụp (Web Worker OCR):
+                    <Camera size={14} /> Quét chữ tự động từ Ảnh 1 Cột (Local Web Worker OCR):
                   </span>
                   <p className="text-[11px] text-blue-800 leading-relaxed mt-0.5">
-                    Hệ thống chạy luồng ngầm Web Worker siêu nhẹ, <strong>chụp ảnh màn hình (Win + Shift + S) rồi bấm Ctrl + V</strong> trực tiếp tại đây hoặc tải tệp ảnh câu hỏi lên!
+                    Phù hợp cho ảnh chụp 1 cột câu hỏi. Chụp ảnh màn hình (<strong>Win + Shift + S</strong>) rồi bấm <strong>Ctrl + V</strong> dán vào đây!
                   </p>
                 </div>
 
@@ -264,7 +334,7 @@ export function BulkExamQuestionImportModal({
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={handleFileInputChange}
+                    onChange={handleOcrFileInputChange}
                     className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                   />
                   <div className="w-12 h-12 rounded-2xl bg-primary/10 border-2 border-primary/30 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -306,6 +376,114 @@ export function BulkExamQuestionImportModal({
                   </div>
                 )}
               </div>
+            ) : (
+              /* AI Vision Gemini Mode */
+              <div className="flex flex-col gap-4">
+                <div className="p-3.5 bg-amber-50 border-2 border-amber-300 rounded-xl flex flex-col gap-2 text-xs font-bold text-amber-950">
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-amber-900 flex items-center gap-1.5">
+                      <Sparkles size={16} className="text-amber-600" />
+                      AI Vision Google Gemini 1.5 Flash (Quét đề 2 Cột + Tự động Giải thích)
+                    </span>
+
+                    {activeKey ? (
+                      <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1">
+                        <Check size={12} /> Đã có Gemini API Key
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-black text-rose-700 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded">
+                        ⚠ Chưa cài API Key
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    Xử lý hoàn hảo bức ảnh có <strong>2 cột song song (101-104 & 105-108)</strong>, tự chọn luôn đáp án đúng và viết Lời giải chi tiết bằng Tiếng Việt!
+                  </p>
+                </div>
+
+                {/* API Key Config Banner */}
+                {(!activeKey || showKeyEdit) ? (
+                  <div className="p-3.5 bg-card border-2 border-border rounded-xl flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black text-foreground flex items-center gap-1.5">
+                        <KeyRound size={14} className="text-primary" />
+                        Nhập Google Gemini API Key (Miễn phí từ Google AI Studio):
+                      </label>
+                      {keySavedBadge && (
+                        <span className="text-[11px] font-black text-emerald-600">✓ Đã lưu Key!</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="password"
+                        value={apiKeyInput}
+                        onChange={(e) => setApiKeyInput(e.target.value)}
+                        placeholder="Dán AIzaSy... API Key của bạn vào đây"
+                        className="flex-1 px-3 py-1.5 border-2 border-border rounded-lg text-xs font-mono font-bold bg-background focus:outline-none focus:border-primary"
+                      />
+                      <Button variant="primary" type="button" onClick={handleSaveApiKey} className="text-xs font-black px-4">
+                        Lưu Key
+                      </Button>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-bold">
+                      * Key được lưu an toàn trên trình duyệt của Admin. Bạn cũng có thể cài trong file `.env` với biến `VITE_GEMINI_API_KEY`.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-xs font-bold text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-lg border border-border">
+                    <span className="font-mono">API Key: ••••••••••••••••{activeKey.slice(-4)}</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowKeyEdit(true)}
+                      className="text-primary font-black hover:underline"
+                    >
+                      Đổi Key khác
+                    </button>
+                  </div>
+                )}
+
+                {/* Dropzone Box for AI Vision */}
+                <div className="relative border-3 border-dashed border-amber-300 rounded-2xl p-8 bg-amber-50/20 hover:bg-amber-50/40 transition flex flex-col items-center justify-center gap-3 text-center cursor-pointer group">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAiVisionFileInputChange}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    disabled={!activeKey || aiVisionLoading}
+                  />
+                  <div className="w-12 h-12 rounded-2xl bg-amber-100 border-2 border-amber-300 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Sparkles size={24} className="text-amber-600" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-black text-foreground block">
+                      {activeKey ? 'Bấm để chọn tệp ảnh 2 Cột hoặc Kéo & Thả ảnh vào đây' : 'Hãy nhập API Key ở trên trước khi chọn ảnh'}
+                    </span>
+                    <span className="text-[11px] font-bold text-amber-700 mt-1 block">
+                      Hoặc bấm Ctrl + V để Dán trực tiếp ảnh chụp từ Clipboard!
+                    </span>
+                  </div>
+                </div>
+
+                {/* AI Vision Loading Status */}
+                {aiVisionLoading && (
+                  <div className="p-4 bg-amber-100/60 border-2 border-amber-400 rounded-xl flex items-center gap-3 text-amber-950 text-xs font-black">
+                    <Loader2 size={20} className="animate-spin text-amber-600 shrink-0" />
+                    <div className="flex flex-col gap-0.5">
+                      <span>AI Vision đang phân tích hình ảnh 2 cột...</span>
+                      <span className="text-[11px] font-bold text-amber-800">
+                        Đang tách từng câu hỏi, lập mảng lựa chọn A/B/C/D và tự giải lời giải chi tiết.
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {aiVisionError && (
+                  <div className="p-3.5 bg-rose-50 border-2 border-rose-300 rounded-xl text-xs font-bold text-rose-700 flex items-center gap-2">
+                    <AlertCircle size={16} />
+                    {aiVisionError}
+                  </div>
+                )}
+              </div>
             )
           ) : (
             /* Parsed Preview List */
@@ -313,7 +491,7 @@ export function BulkExamQuestionImportModal({
               <div className="flex items-center justify-between bg-emerald-50 border-2 border-emerald-300 p-3 rounded-xl">
                 <span className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
                   <CheckCircle2 size={16} className="text-emerald-600" />
-                  Đã tách thành công {parsedList.length} câu hỏi. Hãy chọn Đáp án đúng (A/B/C/D) cho mỗi câu!
+                  Đã bóc tách thành công {parsedList.length} câu hỏi. Kiểm tra & bấm Nhập vào cụm bài!
                 </span>
                 <button
                   type="button"
@@ -327,7 +505,7 @@ export function BulkExamQuestionImportModal({
                 </button>
               </div>
 
-              {/* Show image preview thumbnail if OCR was used */}
+              {/* Show image preview thumbnail if image was used */}
               {imagePreview && (
                 <div className="flex items-center gap-3 p-3 bg-card border-2 border-border rounded-xl">
                   <img
@@ -337,7 +515,7 @@ export function BulkExamQuestionImportModal({
                   />
                   <div className="flex flex-col gap-1">
                     <span className="text-xs font-black text-foreground flex items-center gap-1">
-                      <ImageIcon size={14} className="text-primary" /> Ảnh đề thi vừa quét
+                      <ImageIcon size={14} className="text-primary" /> Ảnh đề thi gốc đã quét
                     </span>
                     <span className="text-[11px] font-bold text-muted-foreground">
                       Dữ liệu chữ đã được AI trích xuất và tự động điền vào bên dưới.
@@ -425,6 +603,15 @@ export function BulkExamQuestionImportModal({
                         </div>
                       ))}
                     </div>
+
+                    {item.explanationHtml && (
+                      <div className="flex flex-col gap-1 pt-1 border-t border-border/40">
+                        <label className="text-[11px] font-black text-muted-foreground">Lời giải AI:</label>
+                        <p className="text-xs font-bold text-foreground bg-muted/30 p-2 rounded border border-border">
+                          {item.explanationHtml}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
