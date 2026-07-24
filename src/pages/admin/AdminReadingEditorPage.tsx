@@ -430,7 +430,7 @@ export default function AdminReadingEditorPage() {
   const estReadingTime = Math.max(1, Math.ceil(wordCount / 120))
 
   return (
-    <div className="flex flex-col gap-6 max-w-5xl mx-auto pb-12">
+    <div className="flex flex-col gap-6 w-full pb-12">
       {/* Navigation Header */}
       <div className="flex items-center justify-between">
         <Button
@@ -451,7 +451,11 @@ export default function AdminReadingEditorPage() {
             disabled={saving}
             className="neo-button px-4 py-2 h-10 bg-[#fdc800] hover:bg-amber-300 text-slate-900 font-black text-xs sm:text-sm border-2 border-slate-900 shadow-[3px_3px_0px_0px_#000] rounded-xl flex items-center gap-1.5 cursor-pointer"
           >
-            <Save size={16} />
+            {saving ? (
+              <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Save size={16} />
+            )}
             <span>{saving ? 'Đang lưu...' : 'Xuất Bản Ngay'}</span>
           </Button>
         </div>
@@ -469,8 +473,8 @@ export default function AdminReadingEditorPage() {
           THÔNG TIN CƠ BẢN BÀI ĐỌC
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="md:col-span-2 lg:col-span-4">
             <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
               Tiêu đề bài đọc *
             </label>
@@ -483,7 +487,7 @@ export default function AdminReadingEditorPage() {
             />
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 lg:col-span-4">
             <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
               Phụ đề (Mô tả ngắn)
             </label>
@@ -547,7 +551,7 @@ export default function AdminReadingEditorPage() {
             </p>
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 lg:col-span-4">
             <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
               Chủ đề (Phân cách bằng dấu phẩy)
             </label>
@@ -635,45 +639,77 @@ export default function AdminReadingEditorPage() {
           </div>
         )}
 
-        <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1 text-xs font-bold text-slate-500">
-            <p>{audioUrl ? 'Audio đã sẵn sàng.' : 'Bài đọc chưa có audio.'}</p>
-            <p>
-              {matchedTermCount === null
-                ? 'Lưu bài rồi quét để đánh dấu các từ vựng có sẵn.'
-                : getReadingVocabularyMatchMessage(matchedTermCount)}
-            </p>
+        <div className="flex flex-col gap-3 pt-3 border-t-2 border-slate-900 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            {audioUrl ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 border-2 border-slate-900 rounded-xl text-xs font-black text-emerald-950 shadow-[2px_2px_0px_0px_#000]">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                Audio TTS đã sẵn sàng
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 border-2 border-slate-900 rounded-xl text-xs font-black text-amber-950 shadow-[2px_2px_0px_0px_#000]">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                Chưa có Audio TTS
+              </span>
+            )}
+
+            {matchedTermCount !== null ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 border-2 border-slate-900 rounded-xl text-xs font-black text-purple-950 shadow-[2px_2px_0px_0px_#000]">
+                <Sparkles size={14} className="text-purple-700" />
+                {getReadingVocabularyMatchMessage(matchedTermCount)}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 border-2 border-slate-900 rounded-xl text-xs font-bold text-slate-700 shadow-[2px_2px_0px_0px_#000]">
+                Lưu bài để quét từ vựng
+              </span>
+            )}
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
+
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="ghost"
               onClick={() => handleSave(false)}
               disabled={saving}
-              className="h-9 bg-white"
+              className="neo-button h-10 px-4 bg-white hover:bg-slate-50 text-slate-900 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] font-black text-xs rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
-              <Save size={15} />
+              {saving ? (
+                <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Save size={15} />
+              )}
               <span>{saving ? 'Đang lưu...' : 'Lưu Nháp'}</span>
             </Button>
+
             <Button
               type="button"
               variant="secondary"
               onClick={handleScanTerms}
               disabled={scanningTerms || !isEditing}
-              className="h-9"
+              className="neo-button h-10 px-4 bg-blue-100 hover:bg-blue-200 text-blue-950 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] font-black text-xs rounded-xl flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
-              <ScanSearch size={15} className={scanningTerms ? 'animate-pulse' : ''} />
+              {scanningTerms ? (
+                <div className="w-4 h-4 border-2 border-blue-950 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <ScanSearch size={15} />
+              )}
               <span>{scanningTerms ? 'Đang quét...' : 'Quét từ vựng'}</span>
             </Button>
+
             {audioUrl && <ReadingAudioPreview audioUrl={audioUrl} />}
+
             <Button
               type="button"
               onClick={handleGenerateTts}
               disabled={generatingTts || !isEditing}
-              className="neo-button px-4 py-2 h-9 bg-purple-200 text-purple-950 font-black text-xs border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="neo-button h-10 px-4 bg-purple-200 hover:bg-purple-300 text-purple-950 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] font-black text-xs rounded-xl flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
-              <Volume2 size={15} className={generatingTts ? 'animate-pulse' : ''} />
-              <span>{generatingTts ? 'Đang tạo audio...' : 'Tạo Audio TTS'}</span>
+              {generatingTts ? (
+                <div className="w-4 h-4 border-2 border-purple-950 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Volume2 size={15} />
+              )}
+              <span>{generatingTts ? 'Đang tạo Audio...' : 'Tạo Audio TTS'}</span>
             </Button>
           </div>
         </div>

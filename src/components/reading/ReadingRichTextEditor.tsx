@@ -27,7 +27,6 @@ import {
   Rows3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Select } from '@/components/ui/select'
 import { cn } from '@/utils/cn'
 
 interface ReadingRichTextEditorProps {
@@ -187,14 +186,58 @@ export function ReadingRichTextEditor({
 
   return (
     <div className="overflow-hidden rounded-xl border-2 border-slate-900 bg-white shadow-[3px_3px_0px_0px_#000]">
-      <div className="flex flex-wrap items-center gap-1 border-b-2 border-slate-900 bg-slate-100 p-2">
-        <div className="w-36">
-          <Select
+      <div className="flex flex-wrap items-center gap-1.5 border-b-2 border-slate-900 bg-slate-100 p-2">
+        {/* Paragraph Style Segmented Buttons */}
+        <div className="flex items-center p-0.5 bg-slate-200 border border-slate-900 rounded-lg shadow-[1px_1px_0px_0px_#000]" role="group" aria-label="Kiểu đoạn văn">
+          <label htmlFor="reading-block-style" className="sr-only">Kiểu đoạn văn</label>
+          <select
+            id="reading-block-style"
+            aria-label="Kiểu đoạn văn"
             value={toolbarState?.block || 'paragraph'}
-            onChange={handleBlockChange}
-            options={blockOptions}
-            disabled={!editor}
-          />
+            onChange={(e) => handleBlockChange(e.target.value)}
+            className="sr-only"
+          >
+            {blockOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={() => handleBlockChange('paragraph')}
+            className={cn(
+              'px-2.5 py-1 text-xs font-bold rounded transition-colors cursor-pointer',
+              (toolbarState?.block || 'paragraph') === 'paragraph'
+                ? 'bg-[#fdc800] text-slate-900 font-black shadow-[1px_1px_0px_0px_#000]'
+                : 'text-slate-700 hover:bg-slate-300'
+            )}
+          >
+            Đoạn văn
+          </button>
+          <button
+            type="button"
+            onClick={() => handleBlockChange('heading-2')}
+            className={cn(
+              'px-2.5 py-1 text-xs font-bold rounded transition-colors cursor-pointer',
+              toolbarState?.block === 'heading-2'
+                ? 'bg-[#fdc800] text-slate-900 font-black shadow-[1px_1px_0px_0px_#000]'
+                : 'text-slate-700 hover:bg-slate-300'
+            )}
+          >
+            H2
+          </button>
+          <button
+            type="button"
+            onClick={() => handleBlockChange('heading-3')}
+            className={cn(
+              'px-2.5 py-1 text-xs font-bold rounded transition-colors cursor-pointer',
+              toolbarState?.block === 'heading-3'
+                ? 'bg-[#fdc800] text-slate-900 font-black shadow-[1px_1px_0px_0px_#000]'
+                : 'text-slate-700 hover:bg-slate-300'
+            )}
+          >
+            H3
+          </button>
         </div>
 
         <span className="mx-1 h-7 w-px bg-slate-300" aria-hidden="true" />
@@ -357,17 +400,48 @@ export function ReadingRichTextEditor({
           <Table2 size={15} />
         </ToolbarButton>
 
-        <div className="ml-auto flex items-center gap-2">
-          <label htmlFor="reading-paste-mode" className="text-xs font-black">
-            Khi dán
+        {/* Paste Mode Segmented Buttons */}
+        <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+          <label htmlFor="reading-paste-mode" className="text-xs font-black shrink-0">
+            Khi dán:
           </label>
-          <div className="w-40">
-            <Select
+          <div className="flex items-center p-0.5 bg-slate-200 border border-slate-900 rounded-lg shadow-[1px_1px_0px_0px_#000]">
+            <select
               id="reading-paste-mode"
+              aria-label="Khi dán"
               value={pasteMode}
-              onChange={setPasteMode}
-              options={pasteOptions}
-            />
+              onChange={(e) => setPasteMode(e.target.value)}
+              className="sr-only"
+            >
+              {pasteOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={() => setPasteMode('formatted')}
+              className={cn(
+                'px-2.5 py-1 text-xs font-bold rounded transition-colors cursor-pointer',
+                pasteMode === 'formatted'
+                  ? 'bg-[#fdc800] text-slate-900 font-black shadow-[1px_1px_0px_0px_#000]'
+                  : 'text-slate-700 hover:bg-slate-300'
+              )}
+            >
+              Giữ định dạng
+            </button>
+            <button
+              type="button"
+              onClick={() => setPasteMode('plain')}
+              className={cn(
+                'px-2.5 py-1 text-xs font-bold rounded transition-colors cursor-pointer',
+                pasteMode === 'plain'
+                  ? 'bg-[#fdc800] text-slate-900 font-black shadow-[1px_1px_0px_0px_#000]'
+                  : 'text-slate-700 hover:bg-slate-300'
+              )}
+            >
+              Chỉ giữ văn bản
+            </button>
           </div>
         </div>
       </div>
