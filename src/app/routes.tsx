@@ -67,6 +67,8 @@ const ReadingHubPage = lazyWithChunkRecovery(() => import('@/pages/reading/Readi
 const ReadingDetailPage = lazyWithChunkRecovery(() => import('@/pages/reading/ReadingDetailPage'))
 const AdminReadingListPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminReadingListPage'))
 const AdminReadingEditorPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminReadingEditorPage'))
+const AdminExamsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminExamsPage'))
+const AdminExamBuilderPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminExamBuilderPage'))
 
 function RootLayout() {
   return (
@@ -279,6 +281,22 @@ export const router = createBrowserRouter([
                     element: (
                       <React.Suspense fallback={<AppLoading />}>
                         <AdminReadingEditorPage />
+                      </React.Suspense>
+                    ),
+                  },
+                  {
+                    path: 'exams',
+                    element: (
+                      <React.Suspense fallback={<AppLoading />}>
+                        <AdminExamsPage />
+                      </React.Suspense>
+                    ),
+                  },
+                  {
+                    path: 'exams/:id/builder',
+                    element: (
+                      <React.Suspense fallback={<AppLoading />}>
+                        <AdminExamBuilderPage />
                       </React.Suspense>
                     ),
                   },
