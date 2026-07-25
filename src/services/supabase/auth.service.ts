@@ -89,7 +89,7 @@ export const authService = {
   },
   async updateProfile(
     userId: string,
-    input: Partial<Pick<Profile, 'display_name' | 'native_language' | 'current_target_language' | 'ui_language'>>,
+    input: Partial<Pick<Profile, 'display_name' | 'native_language' | 'current_target_language' | 'ui_language' | 'email_reminders_enabled' | 'weekly_digest_enabled'>>,
   ): Promise<Profile> {
     const { data, error } = await supabase.from('profiles').update(input).eq('id', userId).select('*').single()
     if (error) throw error

@@ -15,6 +15,10 @@ export interface Profile {
   email?: string | null
   daily_goal?: number
   default_study_mode?: StudyMode
+  email_reminders_enabled?: boolean
+  weekly_digest_enabled?: boolean
+  last_reminder_sent_at?: string | null
+  inactivity_paused?: boolean
   created_at: string
   updated_at: string
 }

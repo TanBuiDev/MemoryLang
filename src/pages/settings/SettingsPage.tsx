@@ -29,6 +29,9 @@ export function SettingsPage() {
   const [nativeLanguage, setNativeLanguage] = useState<LanguageCode>(profile?.native_language ?? 'vi')
   const [targetLanguage, setTargetLanguage] = useState<LanguageCode>(profile?.current_target_language ?? 'en')
   const [uiLanguage, setUiLanguage] = useState<UiLanguageCode>(profile?.ui_language ?? 'vi')
+  const [emailRemindersEnabled, setEmailRemindersEnabled] = useState(profile?.email_reminders_enabled ?? true)
+  const [weeklyDigestEnabled, setWeeklyDigestEnabled] = useState(profile?.weekly_digest_enabled ?? true)
+  const [savingEmailPreferences, setSavingEmailPreferences] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
   const [savingUiLanguage, setSavingUiLanguage] = useState(false)
   const [capturingHotkey, setCapturingHotkey] = useState<StudyHotkeyAction | null>(null)
@@ -126,6 +129,21 @@ export function SettingsPage() {
       setProfile(updated)
     } catch { /* silently ignore */ }
     finally { setSavingUiLanguage(false) }
+  }
+
+  async function saveEmailPreferences(reminders: boolean, digest: boolean) {
+    if (!isSupabaseConfigured || !user || !profile) return
+    setSavingEmailPreferences(true)
+    try {
+      const updated = await authService.updateProfile(user.id, {
+        email_reminders_enabled: reminders,
+        weekly_digest_enabled: digest,
+      })
+      setProfile(updated)
+      setEmailRemindersEnabled(updated.email_reminders_enabled ?? true)
+      setWeeklyDigestEnabled(updated.weekly_digest_enabled ?? true)
+    } catch { /* silently ignore */ }
+    finally { setSavingEmailPreferences(false) }
   }
 
   async function deleteAccount() {
@@ -243,6 +261,46 @@ export function SettingsPage() {
           <div className="mt-4 grid gap-4">
             <div><Label>{t('settings.speechRate')}</Label><Input defaultValue="1" type="number" step="0.1" /></div>
             <div><Label>{t('settings.speechPitch')}</Label><Input defaultValue="1" type="number" step="0.1" /></div>
+          </div>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardTitle>Cấu hình Email Thông báo</CardTitle>
+          <CardDescription className="mt-2">Quản lý các email thông báo và nhắc nhở học tập gửi đến email của bạn</CardDescription>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="flex items-center justify-between rounded-lg border-2 border-border p-4 bg-background">
+              <div>
+                <p className="font-black text-sm">Email nhắc nhở ôn tập hàng ngày</p>
+                <p className="text-xs text-muted-foreground mt-1">Nhận 1 email tổng hợp vào 8:00 AM khi có từ vựng đến hạn ôn tập SM-2</p>
+              </div>
+              <input
+                type="checkbox"
+                className="h-5 w-5 rounded border-2 border-border accent-primary cursor-pointer shrink-0"
+                checked={emailRemindersEnabled}
+                onChange={(e) => {
+                  const val = e.target.checked
+                  setEmailRemindersEnabled(val)
+                  void saveEmailPreferences(val, weeklyDigestEnabled)
+                }}
+                disabled={savingEmailPreferences}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border-2 border-border p-4 bg-background">
+              <div>
+                <p className="font-black text-sm">Báo cáo tiến độ học tập hàng tuần</p>
+                <p className="text-xs text-muted-foreground mt-1">Nhận báo cáo tổng kết số từ vựng đã ghi nhớ vào cuối tuần</p>
+              </div>
+              <input
+                type="checkbox"
+                className="h-5 w-5 rounded border-2 border-border accent-primary cursor-pointer shrink-0"
+                checked={weeklyDigestEnabled}
+                onChange={(e) => {
+                  const val = e.target.checked
+                  setWeeklyDigestEnabled(val)
+                  void saveEmailPreferences(emailRemindersEnabled, val)
+                }}
+                disabled={savingEmailPreferences}
+              />
+            </div>
           </div>
         </Card>
         <Card className="lg:col-span-2">
