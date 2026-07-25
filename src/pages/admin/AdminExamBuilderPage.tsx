@@ -72,12 +72,37 @@ export default function AdminExamBuilderPage() {
   // Delete modal state
   const [pendingDeleteSetId, setPendingDeleteSetId] = useState<string | null>(null)
 
-  const handleBulkImport = (imported: Partial<ExamQuestion>[]) => {
-    setQuestions((prev) => [...prev, ...imported])
+  const handleBulkImport = (imported: any[]) => {
+    if (!imported || imported.length === 0) return
+
+    const formatted: Partial<ExamQuestion>[] = imported.map((q, idx) => ({
+      question_number: Number(q.questionNumber || q.question_number) || (idx + 101),
+      question_text: q.questionText || q.question_text || '',
+      question_type: 'multiple_choice',
+      options: (q.options || []).map((opt: any) => ({
+        key: opt.key,
+        text: opt.text || '',
+        is_correct: Boolean(opt.is_correct),
+      })),
+      explanation_html: q.explanationHtml || q.explanation_html || '',
+    }))
+
+    setQuestions((prev) => {
+      const isSingleEmpty =
+        prev.length === 1 &&
+        !prev[0].question_text &&
+        (!prev[0].options || prev[0].options.every((o) => !o.text))
+
+      if (isSingleEmpty) {
+        return formatted
+      }
+      return [...prev, ...formatted]
+    })
+
     showToast({
       type: 'success',
       title: 'Đã nhập câu hỏi',
-      message: `Đã nhập thành công ${imported.length} câu hỏi vào cụm hiện tại.`,
+      message: `Đã nhập thành công ${formatted.length} câu hỏi vào cụm hiện tại.`,
     })
   }
 
