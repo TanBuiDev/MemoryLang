@@ -51,19 +51,17 @@ export async function testGeminiApiKeyAndModel(
     const errJson = await res.json().catch(() => ({}))
     const errorMsg = errJson?.error?.message || `Lỗi HTTP ${res.status}`
 
-    if (res.status === 404 || errorMsg.includes('not found')) {
-      return { ok: false, message: `Model '${targetModel}' không tồn tại hoặc không hỗ trợ generateContent!` }
-    }
-
-    if (res.status === 400 && (errorMsg.includes('API_KEY_INVALID') || errorMsg.includes('API key not valid'))) {
-      return { ok: false, message: 'API Key không chính xác hoặc đã bị vô hiệu hóa trên Google AI Studio!' }
-    }
-
     if (res.status === 429) {
-      return { ok: true, message: `Key & Model '${targetModel}' hợp lệ! (Lưu ý: Đang bị giới hạn tốc độ Rate Limit từ Google).` }
+      return {
+        ok: true,
+        message: `Key & Model '${targetModel}' hợp lệ! (Lưu ý: Key vừa chạm Rate Limit từ Google: ${errorMsg}).`,
+      }
     }
 
-    return { ok: false, message: `Kiểm tra thất bại: ${errorMsg}` }
+    return {
+      ok: false,
+      message: `Google API từ chối (Lỗi ${res.status}): ${errorMsg}`,
+    }
   } catch (err: any) {
     return { ok: false, message: `Không thể kết nối tới Google API: ${err.message || 'Lỗi mạng'}` }
   }
