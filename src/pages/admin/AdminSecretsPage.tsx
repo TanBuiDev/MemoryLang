@@ -10,56 +10,78 @@ import {
   Zap,
   Sparkles,
   RefreshCw,
+  Plus,
+  Layers,
+  Tag,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import {
   adminSecretsService,
-  type SecretOverviewItem,
+  type KeyPoolItem,
   type AiModelConfigItem,
   type KeyUsageLogItem,
 } from '@/services/supabase/adminSecrets.service'
 import { testGeminiApiKeyAndModel } from '@/utils/geminiVisionParser'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 
+const PURPOSE_OPTIONS = [
+  { value: 'all', label: 'Tất cả mục đích / dịch vụ' },
+  { value: 'ai_vision', label: '📷 AI Vision Exam Parser (Quét đề 2 cột)' },
+  { value: 'ai_chat', label: '🤖 AI Tutor Chatbot' },
+  { value: 'tts', label: '🔊 Google Cloud TTS (Phát âm)' },
+  { value: 'translation', label: '🌐 DeepL Translation (Dịch thuật)' },
+  { value: 'payment', label: '💳 PayOS Payment (Thanh toán)' },
+]
+
 export default function AdminSecretsPage() {
   const [loading, setLoading] = useState(true)
-  const [secretsOverview, setSecretsOverview] = useState<SecretOverviewItem[]>([])
+  const [keyPools, setKeyPools] = useState<KeyPoolItem[]>([])
   const [aiModels, setAiModels] = useState<AiModelConfigItem[]>([])
   const [usageLogs, setUsageLogs] = useState<KeyUsageLogItem[]>([])
+  const [selectedPurposeFilter, setSelectedPurposeFilter] = useState('all')
 
-  // Form states (Write-Only, Non-readable)
-  const [geminiKeyInput, setGeminiKeyInput] = useState('')
-  const [selectedModel, setSelectedModel] = useState('')
-  const [customModelText, setCustomModelText] = useState('')
-  const [modelDescription, setModelDescription] = useState('')
-  const [isDefaultModel, setIsDefaultModel] = useState(false)
+  // Add/Edit Key Modal state
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [editingKeyId, setEditingKeyId] = useState<string | null>(null)
+  const [formKeyName, setFormKeyName] = useState('')
+  const [formPurposeTag, setFormPurposeTag] = useState('ai_vision')
+  const [formSecretVal, setFormSecretVal] = useState('')
+  const [formModelName, setFormModelName] = useState('gemini-2.0-flash')
+  const [formCustomModel, setFormCustomModel] = useState('')
+  const [formIsActive, setFormIsActive] = useState(true)
 
   // Status & Testing states
-  const [testingStatus, setTestingStatus] = useState(false)
+  const [savingStatus, setSavingStatus] = useState(false)
   const [feedbackMsg, setFeedbackMsg] = useState<{ ok: boolean; message: string } | null>(null)
-  const [pendingDeleteKey, setPendingDeleteKey] = useState<string | null>(null)
+  const [pendingDeleteKeyId, setPendingDeleteKeyId] = useState<string | null>(null)
+
+  // Auto-dismiss notification after 4 seconds
+  useEffect(() => {
+    if (feedbackMsg) {
+      const timer = setTimeout(() => {
+        setFeedbackMsg(null)
+      }, 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [feedbackMsg])
 
   const loadData = async () => {
     setLoading(true)
     try {
-      const [secrets, models, logs] = await Promise.all([
-        adminSecretsService.getSecretsOverview(),
+      const [pools, models, logs] = await Promise.all([
+        adminSecretsService.getKeyPools(),
         adminSecretsService.getAiModels(),
         adminSecretsService.getKeyUsageLogs(50),
       ])
 
-      setSecretsOverview(secrets)
+      setKeyPools(pools)
       setAiModels(models)
       setUsageLogs(logs)
-
-      // Set default selected model if available
-      const defaultMod = models.find((m) => m.is_default) || models[0]
-      if (defaultMod) {
-        setSelectedModel(defaultMod.model_name)
-      }
     } catch (err: any) {
-      console.error('Failed to load admin secrets data:', err)
+      console.error('Failed to load admin secrets vault:', err)
     } finally {
       setLoading(false)
     }
@@ -69,78 +91,128 @@ export default function AdminSecretsPage() {
     void loadData()
   }, [])
 
-  const geminiSecretConfig = secretsOverview.find((s) => s.key_name === 'GEMINI_API_KEY')
+  const handleOpenAddModal = (item?: KeyPoolItem) => {
+    if (item) {
+      setEditingKeyId(item.id)
+      setFormKeyName(item.key_name)
+      setFormPurposeTag(item.purpose_tag)
+      setFormSecretVal('') // Write-Only policy: never prefill secret string
+      setFormModelName(item.model_name)
+      setFormCustomModel('')
+      setFormIsActive(item.status === 'active')
+    } else {
+      setEditingKeyId(null)
+      setFormKeyName('')
+      setFormPurposeTag('ai_vision')
+      setFormSecretVal('')
+      setFormModelName(aiModels.find((m) => m.is_default)?.model_name || 'gemini-2.0-flash')
+      setFormCustomModel('')
+      setFormIsActive(true)
+    }
+    setShowAddModal(true)
+  }
 
-  const handleSaveGeminiConfig = async () => {
+  const handleSaveKeyPoolForm = async () => {
     const targetModel =
-      selectedModel === 'custom'
-        ? customModelText.trim()
-        : selectedModel.trim()
+      formModelName === 'custom'
+        ? formCustomModel.trim()
+        : formModelName.trim()
 
-    if (!geminiKeyInput.trim() && !targetModel) {
-      setFeedbackMsg({ ok: false, message: 'Vui lòng nhập Gemini API Key hoặc chọn Model AI.' })
+    if (!editingKeyId && !formSecretVal.trim()) {
+      setFeedbackMsg({ ok: false, message: 'Vui lòng dán API Key secret vào đây.' })
       return
     }
 
-    setTestingStatus(true)
+    if (!formKeyName.trim()) {
+      setFeedbackMsg({ ok: false, message: 'Vui lòng nhập tên mục đích / tên gợi nhớ cho Key này.' })
+      return
+    }
+
+    setSavingStatus(true)
     setFeedbackMsg(null)
 
     try {
-      // 1. Test Key & Model directly with Google API if key is supplied
-      if (geminiKeyInput.trim()) {
-        const testRes = await testGeminiApiKeyAndModel(geminiKeyInput.trim(), targetModel)
+      // If adding or providing new key string, test connection with Google first
+      if (formSecretVal.trim() && (formPurposeTag === 'ai_vision' || formPurposeTag === 'ai_chat')) {
+        const testRes = await testGeminiApiKeyAndModel(formSecretVal.trim(), targetModel)
         if (!testRes.ok) {
           setFeedbackMsg(testRes)
-          setTestingStatus(false)
+          setSavingStatus(false)
           return
         }
 
-        // Save Key securely to Database Vault via RPC
-        await adminSecretsService.saveSecret(
-          'GEMINI_API_KEY',
-          geminiKeyInput.trim(),
-          'Google Gemini API Key dùng cho AI Vision bóc tách đề thi & AI Tutor Chat'
-        )
+        // Save model to verified catalog
+        if (targetModel) {
+          await adminSecretsService.saveVerifiedAiModel(targetModel, 'gemini')
+        }
       }
 
-      // 2. Save verified AI Model to Database (Preventing duplicates)
-      if (targetModel) {
-        await adminSecretsService.saveVerifiedAiModel(
-          targetModel,
-          'gemini',
-          modelDescription.trim() || undefined,
-          isDefaultModel
-        )
-      }
-
-      // 3. Clear sensitive input string from memory immediately
-      setGeminiKeyInput('')
-      setCustomModelText('')
-      setModelDescription('')
-      setFeedbackMsg({
-        ok: true,
-        message: '✓ Đã xác thực thành công và lưu Cấu hình vào Database Vault an toàn!',
+      await adminSecretsService.upsertKeyPoolItem({
+        id: editingKeyId || undefined,
+        key_name: formKeyName.trim(),
+        purpose_tag: formPurposeTag,
+        secret_val: formSecretVal.trim() || undefined,
+        model_name: targetModel,
+        is_active: formIsActive,
       })
 
-      // Reload fresh status from server
+      // Immediately purge cleartext secret from state memory
+      setFormSecretVal('')
+      setShowAddModal(false)
+      setFeedbackMsg({
+        ok: true,
+        message: editingKeyId
+          ? '✓ Cập nhật cấu hình Key thành công!'
+          : '✓ Đã xác thực & Thêm API Key mới vào Vault thành công!',
+      })
+
       await loadData()
     } catch (err: any) {
-      setFeedbackMsg({ ok: false, message: `Lỗi khi lưu cấu hình: ${err.message}` })
+      setFeedbackMsg({ ok: false, message: `Lỗi khi lưu Key: ${err.message}` })
     } finally {
-      setTestingStatus(false)
+      setSavingStatus(false)
     }
   }
 
-  const handleDeleteSecret = async (keyName: string) => {
+  const handleToggleStatus = async (item: KeyPoolItem) => {
+    const newStatus = item.status === 'active' ? 'disabled' : 'active'
     try {
-      await adminSecretsService.deleteSecret(keyName)
-      setPendingDeleteKey(null)
-      setFeedbackMsg({ ok: true, message: `✓ Đã xóa hoàn toàn Key '${keyName}' khỏi Database Vault!` })
+      await adminSecretsService.toggleKeyPoolStatus(item.id, newStatus)
+      setFeedbackMsg({
+        ok: true,
+        message: `✓ Đã ${newStatus === 'active' ? 'bật' : 'tắt'} trạng thái cho Key '${item.key_name}'.`,
+      })
+      await loadData()
+    } catch (err: any) {
+      setFeedbackMsg({ ok: false, message: `Lỗi khi đổi trạng thái Key: ${err.message}` })
+    }
+  }
+
+  const handleUpdateModel = async (id: string, modelName: string) => {
+    try {
+      await adminSecretsService.updateKeyPoolModel(id, modelName)
+      setFeedbackMsg({ ok: true, message: `✓ Đã chuyển Model sang '${modelName}'.` })
+      await loadData()
+    } catch (err: any) {
+      setFeedbackMsg({ ok: false, message: `Lỗi khi đổi Model: ${err.message}` })
+    }
+  }
+
+  const handleDeleteKey = async (id: string) => {
+    try {
+      await adminSecretsService.deleteKeyPoolItem(id)
+      setPendingDeleteKeyId(null)
+      setFeedbackMsg({ ok: true, message: '✓ Đã xóa Key khỏi Pool Vault!' })
       await loadData()
     } catch (err: any) {
       setFeedbackMsg({ ok: false, message: `Lỗi khi xóa Key: ${err.message}` })
     }
   }
+
+  // Filter keys by purpose tag
+  const filteredKeys = keyPools.filter((k) =>
+    selectedPurposeFilter === 'all' ? true : k.purpose_tag === selectedPurposeFilter
+  )
 
   // Calculate statistics
   const totalCalls = usageLogs.length
@@ -150,46 +222,76 @@ export default function AdminSecretsPage() {
     totalCalls > 0
       ? Math.round(usageLogs.reduce((acc, curr) => acc + curr.response_time_ms, 0) / totalCalls)
       : 0
+  const activeKeysCount = keyPools.filter((k) => k.status === 'active').length
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto space-y-6">
+    <div className="w-full px-4 sm:px-6 md:px-8 py-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b-3 border-slate-900">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b-3 border-slate-900">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-primary shrink-0" />
-            Quản lý Secret Vault & AI Models Bảo mật 100%
+            Google AI Studio Style Key Vault & Failover Engine
           </h1>
           <p className="text-xs sm:text-sm font-bold text-slate-600 mt-1">
-            Lưu trữ mã hóa trên Supabase Database Vault. Trình duyệt không bao giờ chứa hay để lộ API Key.
+            Quản lý Multi-Key Pool với cơ chế tự động chuyển đổi Key (Automatic Failover) khi bị lỗi hoặc chạm Rate Limit.
           </p>
         </div>
 
-        <Button
-          variant="ghost"
-          onClick={() => void loadData()}
-          disabled={loading}
-          className="text-xs font-black self-start sm:self-auto"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          Làm mới
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => void loadData()}
+            disabled={loading}
+            className="text-xs font-black"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            Làm mới
+          </Button>
+
+          <Button
+            variant="primary"
+            onClick={() => handleOpenAddModal()}
+            className="text-xs font-black px-4"
+          >
+            <Plus size={16} /> Thêm API Key mới
+          </Button>
+        </div>
       </div>
+
+      {/* Auto-Dismissing Toast Notification */}
+      {feedbackMsg && (
+        <div
+          className={`p-3.5 rounded-xl border-2 font-black text-xs flex items-center justify-between gap-2 shadow-[4px_4px_0px_0px_#000] animate-in fade-in slide-in-from-top-2 ${
+            feedbackMsg.ok
+              ? 'bg-emerald-100 border-emerald-400 text-emerald-950'
+              : 'bg-rose-100 border-rose-400 text-rose-950'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            {feedbackMsg.ok ? <CheckCircle2 size={16} className="text-emerald-700" /> : <AlertTriangle size={16} className="text-rose-700" />}
+            {feedbackMsg.message}
+          </span>
+          <button
+            type="button"
+            onClick={() => setFeedbackMsg(null)}
+            className="text-xs font-black opacity-70 hover:opacity-100 px-2"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Analytics Dashboard Tiles */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div className="neo-card p-4 bg-card border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] rounded-xl flex items-center gap-3">
           <div className="p-2.5 bg-emerald-100 border-2 border-slate-900 rounded-lg text-emerald-800">
-            <ShieldCheck size={20} />
+            <Layers size={20} />
           </div>
           <div>
-            <div className="text-[11px] font-black text-slate-500 uppercase tracking-wider">Trạng thái Vault</div>
-            <div className="text-sm font-black text-slate-900 flex items-center gap-1">
-              {geminiSecretConfig?.is_configured ? (
-                <span className="text-emerald-700 font-black">✓ Online & Safe</span>
-              ) : (
-                <span className="text-amber-700 font-black">⚠ Chưa cài Key</span>
-              )}
+            <div className="text-[11px] font-black text-slate-500 uppercase tracking-wider">Tổng Key Sẵn sàng</div>
+            <div className="text-base font-black text-slate-900">
+              <span className="text-emerald-700">{activeKeysCount}</span> / {keyPools.length} Keys Active
             </div>
           </div>
         </div>
@@ -225,160 +327,157 @@ export default function AdminSecretsPage() {
         </div>
       </div>
 
-      {/* Main Secret Management Box */}
-      <div className="neo-card p-5 sm:p-6 bg-card border-3 border-slate-900 shadow-[6px_6px_0px_0px_#000] rounded-2xl flex flex-col gap-5">
-        <div className="flex items-center justify-between">
-          <h2 className="font-black text-slate-900 text-base sm:text-lg flex items-center gap-2">
-            <Lock className="w-5 h-5 text-primary" />
-            Cấu hình Google Gemini API Key & AI Model (Write-Only Vault)
-          </h2>
+      {/* Main Google AI Studio Style Key Manager Table */}
+      <div className="neo-card p-5 sm:p-6 bg-card border-3 border-slate-900 shadow-[6px_6px_0px_0px_#000] rounded-2xl flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b-2 border-slate-200">
+          <div className="flex items-center gap-2">
+            <Lock className="w-5 h-5 text-primary shrink-0" />
+            <h2 className="font-black text-slate-900 text-base sm:text-lg">
+              Danh sách API Keys Vault Manager ({filteredKeys.length} Keys)
+            </h2>
+          </div>
 
-          {geminiSecretConfig?.is_configured && (
-            <span className="text-xs font-black text-emerald-800 bg-emerald-100 border-2 border-emerald-400 px-3 py-1 rounded-xl flex items-center gap-1.5">
-              <CheckCircle2 size={14} /> Đã bảo mật trong DB Vault ({geminiSecretConfig.masked_preview})
-            </span>
-          )}
+          {/* Filter Dropdown */}
+          <div className="w-full sm:w-64">
+            <Select
+              value={selectedPurposeFilter}
+              onChange={(val) => setSelectedPurposeFilter(val)}
+              options={PURPOSE_OPTIONS}
+            />
+          </div>
         </div>
 
-        {feedbackMsg && (
-          <div
-            className={`p-3.5 rounded-xl border-2 font-black text-xs flex items-center justify-between gap-2 ${
-              feedbackMsg.ok
-                ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
-                : 'bg-rose-50 border-rose-300 text-rose-900'
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              {feedbackMsg.ok ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-              {feedbackMsg.message}
-            </span>
-            <button
-              type="button"
-              onClick={() => setFeedbackMsg(null)}
-              className="text-xs font-black opacity-70 hover:opacity-100"
-            >
-              ✕
-            </button>
+        {filteredKeys.length === 0 ? (
+          <div className="p-8 text-center text-xs font-bold text-slate-500 bg-muted/20 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center gap-2">
+            <AlertTriangle size={24} className="text-amber-500" />
+            <span>Chưa có Key nào trong danh mục lọc này. Bấm "Thêm API Key mới" để cấu hình.</span>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-bold border-collapse">
+              <thead>
+                <tr className="border-b-2 border-slate-900 bg-muted/40 text-slate-700">
+                  <th className="p-3 font-black">Tên Key / Mục đích</th>
+                  <th className="p-3 font-black">Key Preview</th>
+                  <th className="p-3 font-black">Chức năng</th>
+                  <th className="p-3 font-black">Model AI</th>
+                  <th className="p-3 font-black">Trạng thái (Status)</th>
+                  <th className="p-3 font-black">Lượt gọi / Lỗi</th>
+                  <th className="p-3 font-black">Lần dùng gần nhất</th>
+                  <th className="p-3 font-black text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y border-b-2 border-slate-900">
+                {filteredKeys.map((k) => (
+                  <tr key={k.id} className="hover:bg-muted/20">
+                    {/* Name */}
+                    <td className="p-3 font-black text-slate-900">
+                      {k.key_name}
+                    </td>
+
+                    {/* Masked Preview */}
+                    <td className="p-3 font-mono font-bold text-slate-700">
+                      <span className="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded text-[11px]">
+                        {k.masked_preview}
+                      </span>
+                    </td>
+
+                    {/* Purpose Badge */}
+                    <td className="p-3">
+                      <span className="text-[11px] font-black px-2 py-0.5 rounded border bg-blue-50 border-blue-300 text-blue-900 inline-flex items-center gap-1">
+                        <Tag size={10} />
+                        {k.purpose_tag === 'ai_vision'
+                          ? 'AI Vision Exam'
+                          : k.purpose_tag === 'ai_chat'
+                          ? 'AI Tutor Chat'
+                          : k.purpose_tag === 'tts'
+                          ? 'Google TTS'
+                          : k.purpose_tag === 'translation'
+                          ? 'DeepL Translate'
+                          : k.purpose_tag}
+                      </span>
+                    </td>
+
+                    {/* Model Dropdown */}
+                    <td className="p-3">
+                      <select
+                        value={k.model_name}
+                        onChange={(e) => void handleUpdateModel(k.id, e.target.value)}
+                        className="px-2 py-1 border border-slate-900 rounded bg-background text-[11px] font-mono font-bold focus:outline-none focus:border-primary"
+                      >
+                        {aiModels.map((m) => (
+                          <option key={m.id} value={m.model_name}>
+                            {m.model_name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+
+                    {/* Status Badge */}
+                    <td className="p-3">
+                      {k.status === 'active' ? (
+                        <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1 w-fit">
+                          🟢 Active
+                        </span>
+                      ) : k.status === 'rate_limited' ? (
+                        <span className="text-[10px] font-black text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded flex items-center gap-1 w-fit">
+                          🟡 Rate Limited
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-black text-rose-800 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded flex items-center gap-1 w-fit">
+                          🔴 Disabled
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Calls / Errors */}
+                    <td className="p-3 font-mono text-[11px]">
+                      <span className="text-slate-900">{k.total_calls}</span>
+                      {k.error_count > 0 && <span className="text-rose-600 font-black ml-1">({k.error_count} lỗi)</span>}
+                    </td>
+
+                    {/* Last Used */}
+                    <td className="p-3 text-slate-500 font-mono text-[11px]">
+                      {k.last_used_at ? new Date(k.last_used_at).toLocaleString('vi-VN') : 'Chưa sử dụng'}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="p-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => void handleToggleStatus(k)}
+                          title={k.status === 'active' ? 'Tắt Key' : 'Bật Key'}
+                          className="p-1 text-slate-700 hover:text-primary transition"
+                        >
+                          {k.status === 'active' ? <ToggleRight size={20} className="text-emerald-600" /> : <ToggleLeft size={20} className="text-slate-400" />}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAddModal(k)}
+                          title="Sửa Key"
+                          className="p-1 text-slate-700 hover:text-primary transition font-black text-[11px] underline"
+                        >
+                          Sửa
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setPendingDeleteKeyId(k.id)}
+                          title="Xóa Key khỏi Pool"
+                          className="p-1 text-rose-600 hover:text-rose-800 transition"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Key Input (Write-Only & Non-Copyable) */}
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-              Google Gemini API Key (Miễn phí từ Google AI Studio):
-            </label>
-            <div className="relative">
-              <input
-                type="password"
-                value={geminiKeyInput}
-                autoComplete="new-password"
-                onCopy={(e) => e.preventDefault()}
-                onCut={(e) => e.preventDefault()}
-                onContextMenu={(e) => e.preventDefault()}
-                onChange={(e) => {
-                  setGeminiKeyInput(e.target.value)
-                  setFeedbackMsg(null)
-                }}
-                placeholder={
-                  geminiSecretConfig?.is_configured
-                    ? `•••••••••••••••• (Key hiện tại: ${geminiSecretConfig.masked_preview})`
-                    : 'Dán AIzaSy... API key mới của bạn vào đây'
-                }
-                className="w-full px-3.5 py-2.5 border-2 border-slate-900 rounded-xl bg-background text-xs font-mono font-bold focus:outline-none focus:border-primary pr-20"
-              />
-              <span className="absolute right-3 top-2.5 text-[10px] font-black text-muted-foreground uppercase tracking-wider bg-muted px-2 py-0.5 rounded">
-                Write-Only
-              </span>
-            </div>
-            <p className="text-[11px] font-bold text-slate-500">
-              * Ô nhập ngăn chặn Sao chép (Copy). Sau khi lưu, chuỗi raw key sẽ được mã hóa vào Database và tự động xóa khỏi bộ nhớ RAM của trang web.
-            </p>
-          </div>
-
-          {/* Model Selector & Management */}
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-              <Sparkles size={14} className="text-amber-500" />
-              Chọn hoặc Nhập AI Vision Model:
-            </label>
-            <Select
-              value={selectedModel}
-              onChange={(val) => {
-                setSelectedModel(val)
-                setFeedbackMsg(null)
-              }}
-              options={[
-                ...aiModels.map((m) => ({
-                  value: m.model_name,
-                  label: `${m.model_name} ${m.is_default ? '(Default)' : ''} — ${m.description || ''}`,
-                })),
-                { value: 'custom', label: '+ Thêm Model AI tùy chỉnh mới...' },
-              ]}
-            />
-
-            {selectedModel === 'custom' && (
-              <div className="flex flex-col gap-2 pt-1">
-                <input
-                  type="text"
-                  value={customModelText}
-                  onChange={(e) => setCustomModelText(e.target.value)}
-                  placeholder="Nhập tên Model AI (VD: gemini-2.5-flash)"
-                  className="w-full px-3 py-2 border-2 border-slate-900 rounded-xl text-xs font-mono font-bold bg-background focus:outline-none focus:border-primary"
-                />
-                <input
-                  type="text"
-                  value={modelDescription}
-                  onChange={(e) => setModelDescription(e.target.value)}
-                  placeholder="Mô tả ngắn gọn về model này..."
-                  className="w-full px-3 py-1.5 border border-slate-400 rounded-lg text-xs font-bold bg-background"
-                />
-                <label className="flex items-center gap-2 text-xs font-black text-slate-800 cursor-pointer pt-0.5">
-                  <input
-                    type="checkbox"
-                    checked={isDefaultModel}
-                    onChange={(e) => setIsDefaultModel(e.target.checked)}
-                    className="w-4 h-4 rounded border-2 border-slate-900"
-                  />
-                  Đặt làm Model mặc định cho toàn hệ thống
-                </label>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-3 border-t-2 border-slate-200">
-          {geminiSecretConfig?.is_configured ? (
-            <Button
-              variant="danger"
-              type="button"
-              onClick={() => setPendingDeleteKey('GEMINI_API_KEY')}
-              className="text-xs font-black px-4"
-            >
-              <Trash2 size={14} /> Xóa Key khỏi Database Vault
-            </Button>
-          ) : (
-            <span className="text-xs font-bold text-slate-500">Trạng thái: Chưa có Key nào trong DB Vault</span>
-          )}
-
-          <Button
-            variant="primary"
-            type="button"
-            disabled={testingStatus}
-            onClick={handleSaveGeminiConfig}
-            className="px-6 text-xs font-black min-w-[190px]"
-          >
-            {testingStatus ? (
-              <span className="flex items-center gap-1.5">
-                <Loader2 size={14} className="animate-spin" />
-                Đang xác thực & Lưu...
-              </span>
-            ) : (
-              'Xác thực & Lưu vào Vault'
-            )}
-          </Button>
-        </div>
       </div>
 
       {/* Managed AI Models Database Catalog */}
@@ -431,12 +530,10 @@ export default function AdminSecretsPage() {
 
       {/* Real-time Usage & Security Audit Logs */}
       <div className="neo-card p-5 bg-card border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] rounded-2xl flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h3 className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">
-            <Activity className="w-4 h-4 text-blue-600" />
-            Nhật ký Giám sát Lưu lượng Gọi API & Kiểm toán Security ({usageLogs.length} logs gần nhất)
-          </h3>
-        </div>
+        <h3 className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">
+          <Activity className="w-4 h-4 text-blue-600" />
+          Nhật ký Giám sát Lưu lượng Gọi API & Automatic Failover Logs ({usageLogs.length} logs)
+        </h3>
 
         {usageLogs.length === 0 ? (
           <div className="p-6 text-center text-xs font-bold text-slate-500 bg-muted/20 rounded-xl border border-dashed border-slate-300">
@@ -449,7 +546,7 @@ export default function AdminSecretsPage() {
                 <tr className="border-b-2 border-slate-900 bg-muted/40 text-slate-700">
                   <th className="p-2.5 font-black">Thời gian</th>
                   <th className="p-2.5 font-black">Dịch vụ</th>
-                  <th className="p-2.5 font-black">Key</th>
+                  <th className="p-2.5 font-black">Tên Key</th>
                   <th className="p-2.5 font-black">Model</th>
                   <th className="p-2.5 font-black">HTTP Status</th>
                   <th className="p-2.5 font-black">Độ trễ (Latency)</th>
@@ -468,7 +565,7 @@ export default function AdminSecretsPage() {
                       {log.status_code === 200 ? (
                         <span className="text-emerald-700 font-black">200 OK</span>
                       ) : (
-                        <span className="text-rose-700 font-black">{log.status_code} Error</span>
+                        <span className="text-rose-700 font-black">{log.status_code} Failover</span>
                       )}
                     </td>
                     <td className="p-2.5 font-mono text-slate-700">{log.response_time_ms} ms</td>
@@ -480,15 +577,131 @@ export default function AdminSecretsPage() {
         )}
       </div>
 
+      {/* Add / Edit Key Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="neo-card p-6 bg-card border-3 border-slate-900 shadow-[6px_6px_0px_0px_#000] rounded-2xl w-full max-w-lg flex flex-col gap-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b-2 border-slate-200 pb-3">
+              <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                <Lock className="w-4 h-4 text-primary" />
+                {editingKeyId ? 'Sửa Cấu Hình Key' : 'Thêm API Key mới vào Vault'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="text-slate-500 hover:text-slate-900 font-black text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="text-xs font-black text-slate-900">Tên Gợi Nhớ / Mục đích *</label>
+                <input
+                  type="text"
+                  value={formKeyName}
+                  onChange={(e) => setFormKeyName(e.target.value)}
+                  placeholder="VD: Key Gemini Dự Phòng 1, Key AI Tutor Chat..."
+                  className="w-full mt-1 px-3 py-2 border-2 border-slate-900 rounded-xl bg-background text-xs font-bold focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black text-slate-900">Chức năng Gắn kèm *</label>
+                <div className="mt-1">
+                  <Select
+                    value={formPurposeTag}
+                    onChange={(val) => setFormPurposeTag(val)}
+                    options={PURPOSE_OPTIONS.filter((p) => p.value !== 'all')}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-black text-slate-900">
+                  {editingKeyId ? 'API Key Secret (Bỏ trống nếu giữ nguyên key cũ)' : 'API Key Secret (Write-Only) *'}
+                </label>
+                <input
+                  type="password"
+                  value={formSecretVal}
+                  autoComplete="new-password"
+                  onCopy={(e) => e.preventDefault()}
+                  onCut={(e) => e.preventDefault()}
+                  onContextMenu={(e) => e.preventDefault()}
+                  onChange={(e) => setFormSecretVal(e.target.value)}
+                  placeholder={editingKeyId ? '•••••••••••••••• (Giữ nguyên)' : 'Dán AIzaSy... API key của bạn vào đây'}
+                  className="w-full mt-1 px-3 py-2 border-2 border-slate-900 rounded-xl bg-background text-xs font-mono font-bold focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black text-slate-900">Model AI Gắn liền với Key này</label>
+                <div className="mt-1">
+                  <Select
+                    value={formModelName}
+                    onChange={(val) => setFormModelName(val)}
+                    options={[
+                      ...aiModels.map((m) => ({ value: m.model_name, label: m.model_name })),
+                      { value: 'custom', label: '+ Tùy chỉnh model khác...' },
+                    ]}
+                  />
+                </div>
+
+                {formModelName === 'custom' && (
+                  <input
+                    type="text"
+                    value={formCustomModel}
+                    onChange={(e) => setFormCustomModel(e.target.value)}
+                    placeholder="Nhập tên Model tùy chỉnh (VD: gemini-2.5-flash)"
+                    className="w-full mt-2 px-3 py-1.5 border-2 border-slate-900 rounded-lg text-xs font-mono font-bold bg-background focus:outline-none focus:border-primary"
+                  />
+                )}
+              </div>
+
+              <label className="flex items-center gap-2 text-xs font-black text-slate-800 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  checked={formIsActive}
+                  onChange={(e) => setFormIsActive(e.target.checked)}
+                  className="w-4 h-4 rounded border-2 border-slate-900"
+                />
+                Kích hoạt Key này trong Pool (Active)
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t-2 border-slate-200">
+              <Button variant="ghost" onClick={() => setShowAddModal(false)} className="text-xs font-black">
+                Hủy
+              </Button>
+              <Button
+                variant="primary"
+                disabled={savingStatus}
+                onClick={handleSaveKeyPoolForm}
+                className="text-xs font-black px-5 min-w-[140px]"
+              >
+                {savingStatus ? (
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 size={14} className="animate-spin" /> Đang kiểm tra...
+                  </span>
+                ) : (
+                  'Lưu vào Vault'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       <ConfirmModal
-        open={!!pendingDeleteKey}
+        open={!!pendingDeleteKeyId}
         onConfirm={() => {
-          if (pendingDeleteKey) void handleDeleteSecret(pendingDeleteKey)
+          if (pendingDeleteKeyId) void handleDeleteKey(pendingDeleteKeyId)
         }}
-        onCancel={() => setPendingDeleteKey(null)}
-        title="Xóa Key khỏi Database Vault?"
-        description="Hành động này sẽ xóa hoàn toàn API Key khỏi Database Vault. Các dịch vụ AI Vision sẽ ngừng hoạt động cho đến khi có Key mới."
+        onCancel={() => setPendingDeleteKeyId(null)}
+        title="Xóa Key khỏi Pool Vault?"
+        description="Hành động này sẽ xóa hoàn toàn API Key khỏi Pool. Nếu còn các Key khác trong Pool, hệ thống sẽ tự động chuyển đổi."
       />
     </div>
   )
