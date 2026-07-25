@@ -55,7 +55,7 @@ export async function testGeminiApiKeyAndModel(
       return { ok: false, message: `Model '${targetModel}' không tồn tại hoặc không hỗ trợ generateContent!` }
     }
 
-    if (res.status === 400 && errorMsg.includes('API_KEY_INVALID')) {
+    if (res.status === 400 && (errorMsg.includes('API_KEY_INVALID') || errorMsg.includes('API key not valid'))) {
       return { ok: false, message: 'API Key không chính xác hoặc đã bị vô hiệu hóa trên Google AI Studio!' }
     }
 
@@ -102,7 +102,16 @@ export async function parseQuestionsWithGeminiVision(
   })
 
   if (error) {
-    throw new Error(error.message || 'Không thể kết nối dịch vụ bóc tách đề thi AI Vision.')
+    let detailedMsg = error.message
+    try {
+      if (error.context && typeof error.context.json === 'function') {
+        const body = await error.context.json()
+        if (body?.error) detailedMsg = body.error
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(detailedMsg || 'Không thể kết nối dịch vụ bóc tách đề thi AI Vision.')
   }
 
   if (!data || !data.ok || !Array.isArray(data.questions)) {

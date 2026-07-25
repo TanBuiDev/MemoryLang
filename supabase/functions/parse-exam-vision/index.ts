@@ -25,13 +25,12 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  const startTime = Date.now()
   try {
     const { imageBase64, customApiKey, customModel } = await req.json()
 
     if (!imageBase64) {
-      return new Response(JSON.stringify({ error: 'Missing imageBase64 parameter' }), {
-        status: 400,
+      return new Response(JSON.stringify({ ok: false, error: 'Vui lòng cung cấp dữ liệu hình ảnh (imageBase64)' }), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -72,10 +71,11 @@ Deno.serve(async (req) => {
     if (candidates.length === 0) {
       return new Response(
         JSON.stringify({
-          error: 'Chưa có Gemini API Key nào sẵn sàng trong Key Pool Vault hoặc Secrets.',
+          ok: false,
+          error: 'Chưa có Gemini API Key nào sẵn sàng trong Key Pool Vault. Vui lòng vào trang Quản lý Key (/app/admin/secrets) để thêm API Key mới.',
         }),
         {
-          status: 400,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       )
@@ -222,14 +222,14 @@ Return ONLY a valid JSON array of objects with this exact format:
       }
     }
 
-    // All keys in pool failed
+    // All keys in pool failed: return JSON error payload
     return new Response(
       JSON.stringify({
         ok: false,
-        error: `Tất cả ${candidates.length} Key trong Pool đều thất bại. Lỗi cuối cùng: ${lastErrorMsg}`,
+        error: `Tất cả ${candidates.length} Key trong Pool đều thất bại. Lỗi từ Google API (${lastStatusCode}): ${lastErrorMsg}`,
       }),
       {
-        status: lastStatusCode !== 200 ? lastStatusCode : 500,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     )
@@ -238,7 +238,7 @@ Return ONLY a valid JSON array of objects with this exact format:
     return new Response(
       JSON.stringify({ ok: false, error: err.message || 'Internal server error' }),
       {
-        status: 500,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     )
