@@ -87,6 +87,9 @@ export default function AdminExamBuilderPage() {
       explanation_html: q.explanationHtml || q.explanation_html || '',
     }))
 
+    let addedCount = 0
+    let updatedCount = 0
+
     setQuestions((prev) => {
       const isSingleEmpty =
         prev.length === 1 &&
@@ -94,15 +97,43 @@ export default function AdminExamBuilderPage() {
         (!prev[0].options || prev[0].options.every((o) => !o.text))
 
       if (isSingleEmpty) {
+        addedCount = formatted.length
         return formatted
       }
-      return [...prev, ...formatted]
+
+      // Smart Merge logic: Update existing question if question_number matches; else append new question
+      const resultList = [...prev]
+
+      formatted.forEach((newQ) => {
+        const existingIdx = resultList.findIndex(
+          (q) => q.question_number === newQ.question_number
+        )
+
+        if (existingIdx !== -1) {
+          // Update existing question in place
+          resultList[existingIdx] = {
+            ...resultList[existingIdx],
+            ...newQ,
+          }
+          updatedCount++
+        } else {
+          // Append new question
+          resultList.push(newQ)
+          addedCount++
+        }
+      })
+
+      return resultList
     })
+
+    const msg = updatedCount > 0
+      ? `Đã cập nhật ${updatedCount} câu có sẵn & Thêm mới ${addedCount} câu vào cụm.`
+      : `Đã nhập thành công ${formatted.length} câu hỏi vào cụm hiện tại.`
 
     showToast({
       type: 'success',
       title: 'Đã nhập câu hỏi',
-      message: `Đã nhập thành công ${formatted.length} câu hỏi vào cụm hiện tại.`,
+      message: msg,
     })
   }
 
