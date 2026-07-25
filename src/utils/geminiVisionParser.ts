@@ -32,13 +32,6 @@ export async function testGeminiApiKeyAndModel(
     return { ok: false, message: 'Vui lòng nhập Gemini API Key.' }
   }
 
-  if (!apiKey.startsWith('AIzaSy')) {
-    return {
-      ok: false,
-      message: 'Định dạng API Key không hợp lệ! Google Gemini API Key chuẩn phải bắt đầu bằng "AIzaSy...".',
-    }
-  }
-
   try {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`,
