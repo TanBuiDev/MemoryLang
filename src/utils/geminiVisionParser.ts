@@ -28,6 +28,48 @@ export function setGeminiApiKey(key: string): void {
 }
 
 /**
+ * Tests if a Gemini API Key is valid and active before saving
+ */
+export async function testGeminiApiKey(key: string): Promise<{ ok: boolean; message: string }> {
+  const apiKey = key.trim()
+  if (!apiKey) {
+    return { ok: false, message: 'Vui lòng nhập Gemini API Key.' }
+  }
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'Ping' }] }],
+        }),
+      }
+    )
+
+    if (res.ok) {
+      return { ok: true, message: 'Kết nối Google Gemini API thành công!' }
+    }
+
+    const errJson = await res.json().catch(() => ({}))
+    const errorMsg = errJson?.error?.message || `Lỗi HTTP ${res.status}`
+
+    if (res.status === 400 && errorMsg.includes('API_KEY_INVALID')) {
+      return { ok: false, message: 'API Key không chính xác hoặc đã bị vô hiệu hóa trên Google AI Studio!' }
+    }
+
+    if (res.status === 429) {
+      return { ok: true, message: 'Key hợp lệ! (Lưu ý: Đang tạm thời bị giới hạn tốc độ Rate Limit từ Google).' }
+    }
+
+    return { ok: false, message: `Kiểm tra Key thất bại: ${errorMsg}` }
+  } catch (err: any) {
+    return { ok: false, message: `Không thể kết nối tới Google API: ${err.message || 'Lỗi mạng'}` }
+  }
+}
+
+/**
  * Converts a File or Blob into base64 data string
  */
 export function fileToBase64(file: File | Blob): Promise<string> {

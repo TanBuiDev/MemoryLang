@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { CheckCircle2, AlertTriangle, HelpCircle, Play, KeyRound } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, HelpCircle, Play, KeyRound, Loader2 } from 'lucide-react'
 import { generateAudio } from '@/services/api/generateAudio.api'
 import { imageSearchService } from '@/services/api/imageSearch.api'
 import { Button } from '@/components/ui/button'
+import { testGeminiApiKey, setGeminiApiKey } from '@/utils/geminiVisionParser'
 
 interface SecretStatus {
   name: string
@@ -17,7 +18,8 @@ export default function AdminSecretsPage() {
   const [geminiKeyInput, setGeminiKeyInput] = useState(() => {
     return localStorage.getItem('memorylang_gemini_api_key') || ''
   })
-  const [geminiSaved, setGeminiSaved] = useState(false)
+  const [geminiTesting, setGeminiTesting] = useState(false)
+  const [geminiStatus, setGeminiStatus] = useState<{ ok: boolean; message: string } | null>(null)
 
   const [secrets, setSecrets] = useState<SecretStatus[]>([
     {
@@ -222,11 +224,17 @@ export default function AdminSecretsPage() {
         <div className="flex items-center justify-between">
           <h3 className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">
             <KeyRound className="w-4 h-4 text-primary" />
-            Cấu hình nhanh Google Gemini API Key (Không cần sửa file .env)
+            Cấu hình nhanh Google Gemini API Key (Tự động kiểm tra trước khi lưu)
           </h3>
-          {geminiSaved && (
-            <span className="text-xs font-black text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded">
-              ✓ Đã lưu thành công
+          {geminiStatus && (
+            <span
+              className={`text-xs font-black px-2.5 py-0.5 rounded border flex items-center gap-1 ${
+                geminiStatus.ok
+                  ? 'text-emerald-800 bg-emerald-100 border-emerald-300'
+                  : 'text-rose-800 bg-rose-100 border-rose-300'
+              }`}
+            >
+              {geminiStatus.ok ? '✓ ' : '✕ '} {geminiStatus.message}
             </span>
           )}
         </div>
@@ -240,7 +248,7 @@ export default function AdminSecretsPage() {
           >
             Google AI Studio
           </a>{' '}
-          để dùng tính năng Quét câu hỏi từ ảnh 2 cột bằng AI Vision.
+          để dùng tính năng Quét câu hỏi từ ảnh 2 cột bằng AI Vision. Hệ thống sẽ tự động kiểm tra kết nối với Google trước khi lưu.
         </p>
 
         <div className="flex items-center gap-2 pt-1">
@@ -249,7 +257,7 @@ export default function AdminSecretsPage() {
             value={geminiKeyInput}
             onChange={(e) => {
               setGeminiKeyInput(e.target.value)
-              setGeminiSaved(false)
+              setGeminiStatus(null)
             }}
             placeholder="Dán AIzaSy... API key của bạn vào đây"
             className="flex-1 px-3 py-2 border-2 border-slate-900 rounded-xl bg-background text-xs font-mono font-bold focus:outline-none focus:border-primary"
@@ -257,18 +265,35 @@ export default function AdminSecretsPage() {
           <Button
             variant="primary"
             type="button"
-            onClick={() => {
-              if (geminiKeyInput.trim()) {
-                localStorage.setItem('memorylang_gemini_api_key', geminiKeyInput.trim())
-              } else {
-                localStorage.removeItem('memorylang_gemini_api_key')
+            disabled={geminiTesting}
+            onClick={async () => {
+              if (!geminiKeyInput.trim()) {
+                setGeminiApiKey('')
+                setGeminiStatus({ ok: true, message: 'Đã xóa Key khỏi bộ nhớ' })
+                return
               }
-              setGeminiSaved(true)
-              setTimeout(() => setGeminiSaved(false), 3000)
+
+              setGeminiTesting(true)
+              setGeminiStatus(null)
+
+              const res = await testGeminiApiKey(geminiKeyInput.trim())
+              setGeminiTesting(false)
+              setGeminiStatus(res)
+
+              if (res.ok) {
+                setGeminiApiKey(geminiKeyInput.trim())
+              }
             }}
-            className="px-5 text-xs font-black"
+            className="px-5 text-xs font-black min-w-[150px]"
           >
-            Lưu Gemini Key
+            {geminiTesting ? (
+              <span className="flex items-center gap-1.5">
+                <Loader2 size={14} className="animate-spin" />
+                Đang kiểm tra...
+              </span>
+            ) : (
+              'Kiểm tra & Lưu Key'
+            )}
           </Button>
         </div>
       </div>

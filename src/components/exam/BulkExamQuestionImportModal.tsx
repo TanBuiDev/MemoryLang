@@ -28,6 +28,7 @@ import {
   parseQuestionsWithGeminiVision,
   getGeminiApiKey,
   setGeminiApiKey,
+  testGeminiApiKey,
   fileToBase64,
 } from '@/utils/geminiVisionParser'
 import type { ExamQuestion } from '@/types/exam.types'
@@ -61,6 +62,8 @@ export function BulkExamQuestionImportModal({
   const [aiVisionLoading, setAiVisionLoading] = useState(false)
   const [aiVisionError, setAiVisionError] = useState<string | null>(null)
   const [keySavedBadge, setKeySavedBadge] = useState(false)
+  const [testingKey, setTestingKey] = useState(false)
+  const [keyErrorMsg, setKeyErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) {
@@ -72,6 +75,8 @@ export function BulkExamQuestionImportModal({
       setOcrError(null)
       setAiVisionLoading(false)
       setAiVisionError(null)
+      setTestingKey(false)
+      setKeyErrorMsg(null)
     } else {
       setApiKeyInput(getGeminiApiKey())
     }
@@ -169,11 +174,28 @@ export function BulkExamQuestionImportModal({
     }
   }
 
-  const handleSaveApiKey = () => {
-    setGeminiApiKey(apiKeyInput.trim())
-    setKeySavedBadge(true)
-    setTimeout(() => setKeySavedBadge(false), 2500)
-    setShowKeyEdit(false)
+  const handleSaveApiKey = async () => {
+    if (!apiKeyInput.trim()) {
+      setGeminiApiKey('')
+      setShowKeyEdit(false)
+      setKeyErrorMsg(null)
+      return
+    }
+
+    setTestingKey(true)
+    setKeyErrorMsg(null)
+
+    const res = await testGeminiApiKey(apiKeyInput.trim())
+    setTestingKey(false)
+
+    if (res.ok) {
+      setGeminiApiKey(apiKeyInput.trim())
+      setKeySavedBadge(true)
+      setTimeout(() => setKeySavedBadge(false), 2500)
+      setShowKeyEdit(false)
+    } else {
+      setKeyErrorMsg(res.message)
+    }
   }
 
   const handleSelectCorrectOption = (qIdx: number, optKey: string) => {
@@ -410,23 +432,46 @@ export function BulkExamQuestionImportModal({
                         Nhập Google Gemini API Key (Miễn phí từ Google AI Studio):
                       </label>
                       {keySavedBadge && (
-                        <span className="text-[11px] font-black text-emerald-600">✓ Đã lưu Key!</span>
+                        <span className="text-[11px] font-black text-emerald-600">✓ Key hợp lệ & Đã lưu!</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       <input
                         type="password"
                         value={apiKeyInput}
-                        onChange={(e) => setApiKeyInput(e.target.value)}
+                        onChange={(e) => {
+                          setApiKeyInput(e.target.value)
+                          setKeyErrorMsg(null)
+                        }}
                         placeholder="Dán AIzaSy... API Key của bạn vào đây"
                         className="flex-1 px-3 py-1.5 border-2 border-border rounded-lg text-xs font-mono font-bold bg-background focus:outline-none focus:border-primary"
                       />
-                      <Button variant="primary" type="button" onClick={handleSaveApiKey} className="text-xs font-black px-4">
-                        Lưu Key
+                      <Button
+                        variant="primary"
+                        type="button"
+                        disabled={testingKey}
+                        onClick={handleSaveApiKey}
+                        className="text-xs font-black px-4 min-w-[120px]"
+                      >
+                        {testingKey ? (
+                          <span className="flex items-center gap-1">
+                            <Loader2 size={12} className="animate-spin" /> Đang kiểm tra...
+                          </span>
+                        ) : (
+                          'Kiểm tra & Lưu Key'
+                        )}
                       </Button>
                     </div>
+
+                    {keyErrorMsg && (
+                      <div className="p-2.5 bg-rose-50 border border-rose-300 rounded-lg text-[11px] font-black text-rose-700 flex items-center gap-1.5">
+                        <AlertCircle size={14} className="shrink-0" />
+                        {keyErrorMsg}
+                      </div>
+                    )}
+
                     <span className="text-[10px] text-muted-foreground font-bold">
-                      * Key được lưu an toàn trên trình duyệt của Admin. Bạn cũng có thể cài trong file `.env` với biến `VITE_GEMINI_API_KEY`.
+                      * Key được tự động kiểm tra với Google trước khi lưu an toàn trên trình duyệt của Admin.
                     </span>
                   </div>
                 ) : (
