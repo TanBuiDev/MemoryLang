@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   CheckCircle2,
   AlertTriangle,
+  AlertCircle,
   Loader2,
   Lock,
   Trash2,
@@ -29,11 +30,11 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 
 const PURPOSE_OPTIONS = [
   { value: 'all', label: 'Tất cả mục đích / dịch vụ' },
-  { value: 'ai_vision', label: '📷 AI Vision Exam Parser (Quét đề 2 cột)' },
-  { value: 'ai_chat', label: '🤖 AI Tutor Chatbot' },
-  { value: 'tts', label: '🔊 Google Cloud TTS (Phát âm)' },
-  { value: 'translation', label: '🌐 DeepL Translation (Dịch thuật)' },
-  { value: 'payment', label: '💳 PayOS Payment (Thanh toán)' },
+  { value: 'ai_vision', label: 'AI Vision Exam Parser (Quét đề 2 cột)' },
+  { value: 'ai_chat', label: 'AI Tutor Chatbot' },
+  { value: 'tts', label: 'Google Cloud TTS (Phát âm)' },
+  { value: 'translation', label: 'DeepL Translation (Dịch thuật)' },
+  { value: 'payment', label: 'PayOS Payment (Thanh toán)' },
 ]
 
 export default function AdminSecretsPage() {
@@ -417,15 +418,15 @@ export default function AdminSecretsPage() {
                     <td className="p-3">
                       {k.status === 'active' ? (
                         <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1 w-fit">
-                          🟢 Active
+                          <CheckCircle2 size={12} className="text-emerald-600" /> Active
                         </span>
                       ) : k.status === 'rate_limited' ? (
                         <span className="text-[10px] font-black text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded flex items-center gap-1 w-fit">
-                          🟡 Rate Limited
+                          <AlertTriangle size={12} className="text-amber-600" /> Rate Limited
                         </span>
                       ) : (
                         <span className="text-[10px] font-black text-rose-800 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded flex items-center gap-1 w-fit">
-                          🔴 Disabled
+                          <AlertCircle size={12} className="text-rose-600" /> Disabled
                         </span>
                       )}
                     </td>

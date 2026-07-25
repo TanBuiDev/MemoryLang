@@ -465,8 +465,8 @@ export function BulkExamQuestionImportModal({
                         <Check size={12} /> Đã có Gemini API Key
                       </span>
                     ) : (
-                      <span className="text-[10px] font-black text-rose-700 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded">
-                        ⚠ Chưa cài API Key
+                      <span className="text-[10px] font-black text-rose-700 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded flex items-center gap-1">
+                        <AlertCircle size={12} /> Chưa cài API Key
                       </span>
                     )}
                   </div>
