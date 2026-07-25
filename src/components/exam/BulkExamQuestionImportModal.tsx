@@ -295,7 +295,7 @@ export function BulkExamQuestionImportModal({
               NHẬP CÂU HỎI & ĐÁP ÁN THÔNG MINH
             </h2>
             <p className="text-xs font-bold text-muted-foreground mt-0.5">
-              Dán văn bản, Quét OCR địa phương hoặc Dùng AI Vision bóc tách ảnh 2 cột tự động.
+              Dán văn bản, Quét OCR địa phương hoặc Dùng AI Vision bóc tách mọi dạng ảnh đề thi.
             </p>
           </div>
           <button
@@ -344,7 +344,7 @@ export function BulkExamQuestionImportModal({
               }`}
             >
               <Sparkles size={14} className="text-amber-700" />
-              3. AI Vision 2 Cột + Tự giải (Gemini)
+              3. AI Vision (Quét mọi dạng Đề từ Ảnh)
             </button>
           </div>
         )}
@@ -457,7 +457,7 @@ export function BulkExamQuestionImportModal({
                   <div className="flex items-center justify-between">
                     <span className="font-black text-amber-900 flex items-center gap-1.5">
                       <Sparkles size={16} className="text-amber-600" />
-                      AI Vision Google Gemini 1.5 Flash (Quét đề 2 Cột + Tự động Giải thích)
+                      AI Vision Google Gemini (Bóc tách mọi Bố cục Đề từ Ảnh + Tự giải Lời giải)
                     </span>
 
                     {activeKey ? (
@@ -471,7 +471,7 @@ export function BulkExamQuestionImportModal({
                     )}
                   </div>
                   <p className="text-[11px] text-amber-800 leading-relaxed">
-                    Xử lý hoàn hảo bức ảnh có <strong>2 cột song song (101-104 & 105-108)</strong>, tự chọn luôn đáp án đúng và viết Lời giải chi tiết bằng Tiếng Việt!
+                    Xử lý hoàn hảo <strong>mọi bố cục đề thi</strong> (ảnh 1 cột, ảnh 2 cột song song 101-104 & 105-108, bảng biểu...), tự chọn luôn đáp án đúng và viết Lời giải chi tiết bằng Tiếng Việt!
                   </p>
                 </div>
 
@@ -597,7 +597,7 @@ export function BulkExamQuestionImportModal({
                   </div>
                   <div>
                     <span className="text-xs font-black text-foreground block">
-                      {activeKey ? 'Bấm để chọn tệp ảnh 2 Cột hoặc Kéo & Thả ảnh vào đây' : 'Hãy nhập API Key ở trên trước khi chọn ảnh'}
+                      {activeKey ? 'Bấm để chọn tệp ảnh Đề thi hoặc Kéo & Thả ảnh vào đây' : 'Hãy nhập API Key ở trên trước khi chọn ảnh'}
                     </span>
                     <span className="text-[11px] font-bold text-amber-700 mt-1 block">
                       Hoặc bấm Ctrl + V để Dán trực tiếp ảnh chụp từ Clipboard!
@@ -610,9 +610,9 @@ export function BulkExamQuestionImportModal({
                   <div className="p-4 bg-amber-100/60 border-2 border-amber-400 rounded-xl flex items-center gap-3 text-amber-950 text-xs font-black">
                     <Loader2 size={20} className="animate-spin text-amber-600 shrink-0" />
                     <div className="flex flex-col gap-0.5">
-                      <span>AI Vision đang phân tích hình ảnh 2 cột...</span>
+                      <span>AI Vision đang phân tích hình ảnh đề thi...</span>
                       <span className="text-[11px] font-bold text-amber-800">
-                        Đang tách từng câu hỏi, lập mảng lựa chọn A/B/C/D và tự giải lời giải chi tiết.
+                        Đang bóc tách từng câu hỏi, lập mảng lựa chọn A/B/C/D và tự giải lời giải chi tiết.
                       </span>
                     </div>
                   </div>

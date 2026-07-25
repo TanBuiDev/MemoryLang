@@ -30,7 +30,7 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 
 const PURPOSE_OPTIONS = [
   { value: 'all', label: 'Tất cả mục đích / dịch vụ' },
-  { value: 'ai_vision', label: 'AI Vision Exam Parser (Quét đề 2 cột)' },
+  { value: 'ai_vision', label: 'AI Vision Exam Parser (Bóc tách mọi dạng đề từ Ảnh)' },
   { value: 'ai_chat', label: 'AI Tutor Chatbot' },
   { value: 'tts', label: 'Google Cloud TTS (Phát âm)' },
   { value: 'translation', label: 'DeepL Translation (Dịch thuật)' },
