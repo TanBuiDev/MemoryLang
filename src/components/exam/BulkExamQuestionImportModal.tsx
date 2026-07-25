@@ -27,14 +27,10 @@ import {
 } from '@/utils/imageOcrQuestionParser'
 import {
   parseQuestionsWithGeminiVision,
-  getGeminiApiKey,
-  setGeminiApiKey,
-  getGeminiModel,
-  setGeminiModel,
-  GEMINI_MODEL_OPTIONS,
   testGeminiApiKeyAndModel,
   fileToBase64,
 } from '@/utils/geminiVisionParser'
+import { adminSecretsService, type AiModelConfigItem } from '@/services/supabase/adminSecrets.service'
 import type { ExamQuestion } from '@/types/exam.types'
 
 interface BulkExamQuestionImportModalProps {
@@ -61,9 +57,11 @@ export function BulkExamQuestionImportModal({
   const [ocrError, setOcrError] = useState<string | null>(null)
 
   // AI Vision state
-  const [apiKeyInput, setApiKeyInput] = useState(() => getGeminiApiKey())
-  const [apiModelInput, setApiModelInput] = useState(() => getGeminiModel())
+  const [apiKeyInput, setApiKeyInput] = useState('')
+  const [apiModelInput, setApiModelInput] = useState('gemini-2.0-flash')
   const [customModelText, setCustomModelText] = useState('')
+  const [dbAiModels, setDbAiModels] = useState<AiModelConfigItem[]>([])
+  const [isVaultConfigured, setIsVaultConfigured] = useState(false)
   const [showKeyEdit, setShowKeyEdit] = useState(false)
   const [aiVisionLoading, setAiVisionLoading] = useState(false)
   const [aiVisionError, setAiVisionError] = useState<string | null>(null)
@@ -83,9 +81,24 @@ export function BulkExamQuestionImportModal({
       setAiVisionError(null)
       setTestingKey(false)
       setKeyErrorMsg(null)
+      setApiKeyInput('')
     } else {
-      setApiKeyInput(getGeminiApiKey())
-      setApiModelInput(getGeminiModel())
+      void (async () => {
+        try {
+          const [secrets, models] = await Promise.all([
+            adminSecretsService.getSecretsOverview(),
+            adminSecretsService.getAiModels(),
+          ])
+          setDbAiModels(models)
+          const geminiSecret = secrets.find((s) => s.key_name === 'GEMINI_API_KEY')
+          setIsVaultConfigured(Boolean(geminiSecret?.is_configured))
+
+          const defModel = models.find((m) => m.is_default) || models[0]
+          if (defModel) setApiModelInput(defModel.model_name)
+        } catch {
+          // ignore
+        }
+      })()
     }
   }, [open])
 
@@ -196,28 +209,44 @@ export function BulkExamQuestionImportModal({
         ? customModelText.trim()
         : apiModelInput.trim()
 
-    if (!apiKeyInput.trim()) {
-      setGeminiApiKey('')
-      if (targetModel) setGeminiModel(targetModel)
-      setShowKeyEdit(false)
-      setKeyErrorMsg(null)
+    if (!apiKeyInput.trim() && !isVaultConfigured) {
+      setKeyErrorMsg('Vui lòng dán Gemini API Key mới vào đây.')
       return
     }
 
     setTestingKey(true)
     setKeyErrorMsg(null)
 
-    const res = await testGeminiApiKeyAndModel(apiKeyInput.trim(), targetModel)
-    setTestingKey(false)
+    try {
+      if (apiKeyInput.trim()) {
+        const testRes = await testGeminiApiKeyAndModel(apiKeyInput.trim(), targetModel)
+        if (!testRes.ok) {
+          setKeyErrorMsg(testRes.message)
+          setTestingKey(false)
+          return
+        }
 
-    if (res.ok) {
-      setGeminiApiKey(apiKeyInput.trim())
-      if (targetModel) setGeminiModel(targetModel)
+        // Save secret securely to Postgres DB Vault
+        await adminSecretsService.saveSecret(
+          'GEMINI_API_KEY',
+          apiKeyInput.trim(),
+          'Google Gemini API Key'
+        )
+      }
+
+      if (targetModel) {
+        await adminSecretsService.saveVerifiedAiModel(targetModel, 'gemini')
+      }
+
+      setIsVaultConfigured(true)
       setKeySavedBadge(true)
+      setApiKeyInput('') // Immediately purge cleartext string from memory
       setTimeout(() => setKeySavedBadge(false), 2500)
       setShowKeyEdit(false)
-    } else {
-      setKeyErrorMsg(res.message)
+    } catch (err: any) {
+      setKeyErrorMsg(err.message || 'Lỗi khi lưu cấu hình vào Database Vault')
+    } finally {
+      setTestingKey(false)
     }
   }
 
@@ -253,7 +282,7 @@ export function BulkExamQuestionImportModal({
     setParsedList(null)
   }
 
-  const activeKey = apiKeyInput.trim() || getGeminiApiKey()
+  const activeKey = Boolean(apiKeyInput.trim() || isVaultConfigured)
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -447,57 +476,57 @@ export function BulkExamQuestionImportModal({
                 </div>
 
                 {/* API Key Config Banner */}
-                {(!activeKey || showKeyEdit) ? (
+                {(!isVaultConfigured || showKeyEdit) ? (
                   <div className="p-3.5 bg-card border-2 border-border rounded-xl flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-black text-foreground flex items-center gap-1.5">
                         <KeyRound size={14} className="text-primary" />
-                        Cấu hình Google Gemini API Key & Model AI:
+                        Cấu hình Google Gemini API Key & Model AI (Vault Bảo mật):
                       </label>
                       {keySavedBadge && (
-                        <span className="text-[11px] font-black text-emerald-600">✓ Cấu hình hợp lệ & Đã lưu!</span>
+                        <span className="text-[11px] font-black text-emerald-600">✓ Đã xác thực & Lưu Vault!</span>
                       )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <div className="flex flex-col gap-1">
-                        <span className="text-[11px] font-black text-muted-foreground">API Key *</span>
+                        <span className="text-[11px] font-black text-muted-foreground">API Key (Write-Only) *</span>
                         <input
                           type="password"
                           value={apiKeyInput}
+                          autoComplete="new-password"
+                          onCopy={(e) => e.preventDefault()}
+                          onCut={(e) => e.preventDefault()}
+                          onContextMenu={(e) => e.preventDefault()}
                           onChange={(e) => {
                             setApiKeyInput(e.target.value)
                             setKeyErrorMsg(null)
                           }}
-                          placeholder="Dán AIzaSy... API Key của bạn vào đây"
+                          placeholder={isVaultConfigured ? '•••••••••••••••• (Đã có Key)' : 'Dán AIzaSy... API Key vào đây'}
                           className="px-3 py-1.5 border-2 border-border rounded-lg text-xs font-mono font-bold bg-background focus:outline-none focus:border-primary"
                         />
                       </div>
 
                       <div className="flex flex-col gap-1">
-                        <span className="text-[11px] font-black text-muted-foreground">Model AI</span>
+                        <span className="text-[11px] font-black text-muted-foreground">Model AI Vision</span>
                         <Select
-                          value={
-                            GEMINI_MODEL_OPTIONS.some((m) => m.value === apiModelInput)
-                              ? apiModelInput
-                              : 'custom'
-                          }
+                          value={apiModelInput}
                           onChange={(val) => {
-                            if (val !== 'custom') {
-                              setApiModelInput(val)
-                              setCustomModelText('')
-                            } else {
-                              setApiModelInput('custom')
-                            }
+                            setApiModelInput(val)
                             setKeyErrorMsg(null)
                           }}
-                          options={GEMINI_MODEL_OPTIONS}
+                          options={[
+                            ...dbAiModels.map((m) => ({
+                              value: m.model_name,
+                              label: `${m.model_name} ${m.is_default ? '(Default)' : ''}`,
+                            })),
+                            { value: 'custom', label: '+ Thêm Model AI khác...' },
+                          ]}
                         />
-                        {(apiModelInput === 'custom' ||
-                          !GEMINI_MODEL_OPTIONS.some((m) => m.value === apiModelInput)) && (
+                        {apiModelInput === 'custom' && (
                           <input
                             type="text"
-                            value={customModelText || apiModelInput}
+                            value={customModelText}
                             onChange={(e) => {
                               setCustomModelText(e.target.value)
                               setKeyErrorMsg(null)
@@ -529,7 +558,7 @@ export function BulkExamQuestionImportModal({
                             <Loader2 size={12} className="animate-spin" /> Đang kiểm tra...
                           </span>
                         ) : (
-                          'Kiểm tra & Lưu Cấu Hình'
+                          'Xác thực & Lưu Cấu Hình'
                         )}
                       </Button>
                     </div>
@@ -537,9 +566,11 @@ export function BulkExamQuestionImportModal({
                 ) : (
                   <div className="flex items-center justify-between text-xs font-bold text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-lg border border-border">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono">Key: ••••••••••••••••{activeKey.slice(-4)}</span>
+                      <span className="font-mono text-emerald-700 font-black flex items-center gap-1">
+                        <Check size={12} /> Key Vault: Active
+                      </span>
                       <span className="font-mono font-black text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
-                        Model: {apiModelInput || getGeminiModel()}
+                        Model: {apiModelInput}
                       </span>
                     </div>
                     <button
