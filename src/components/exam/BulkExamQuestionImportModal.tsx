@@ -19,7 +19,7 @@ import {
   parseQuestionsWithGeminiVision,
   testGeminiApiKeyAndModel,
 } from '@/utils/geminiVisionParser'
-import { adminSecretsService, type KeyPoolItem } from '@/services/supabase/adminSecrets.service'
+import { adminSecretsService } from '@/services/supabase/adminSecrets.service'
 
 interface BulkExamQuestionImportModalProps {
   open: boolean
@@ -48,13 +48,26 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
 
   // Vault state
   const [isVaultConfigured, setIsVaultConfigured] = useState(false)
-  const [activeKeyPool, setActiveKeyPool] = useState<KeyPoolItem | null>(null)
+  const [activeModelName, setActiveModelName] = useState('gemini-2.0-flash')
   const [showKeyEdit, setShowKeyEdit] = useState(false)
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [apiModelInput, setApiModelInput] = useState('')
   const [testingKey, setTestingKey] = useState(false)
   const [keyErrorMsg, setKeyErrorMsg] = useState<string | null>(null)
   const [keySavedBadge, setKeySavedBadge] = useState(false)
+
+  const checkVaultStatus = async () => {
+    try {
+      const res = await adminSecretsService.checkActiveVisionKeyConfigured()
+      setIsVaultConfigured(Boolean(res.configured))
+      if (res.model_name) {
+        setActiveModelName(res.model_name)
+        setApiModelInput(res.model_name)
+      }
+    } catch {
+      setIsVaultConfigured(false)
+    }
+  }
 
   // Load Vault Key Pools overview when modal opens
   useEffect(() => {
@@ -72,22 +85,7 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
       setApiModelInput('')
       setShowKeyEdit(false)
     } else {
-      void (async () => {
-        try {
-          const pools = await adminSecretsService.getKeyPools()
-          const visionKey = pools.find((k) => k.purpose_tag === 'ai_vision' && k.status === 'active') || pools[0]
-          if (visionKey) {
-            setIsVaultConfigured(true)
-            setActiveKeyPool(visionKey)
-            setApiModelInput(visionKey.model_name)
-          } else {
-            setIsVaultConfigured(false)
-            setActiveKeyPool(null)
-          }
-        } catch {
-          setIsVaultConfigured(false)
-        }
-      })()
+      void checkVaultStatus()
     }
   }, [open])
 
@@ -117,7 +115,7 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
 
     window.addEventListener('paste', handlePaste)
     return () => window.removeEventListener('paste', handlePaste)
-  }, [open, mode, isVaultConfigured, activeKeyPool])
+  }, [open, mode, isVaultConfigured])
 
   const handleParseText = () => {
     if (!rawInput.trim()) return
@@ -179,7 +177,7 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
   }
 
   const handleSaveApiKey = async () => {
-    const modelToTest = apiModelInput.trim() || activeKeyPool?.model_name || 'gemini-2.0-flash'
+    const modelToTest = apiModelInput.trim() || activeModelName || 'gemini-2.0-flash'
 
     if (!apiKeyInput.trim() && !isVaultConfigured) {
       setKeyErrorMsg('Vui lòng dán Gemini API Key.')
@@ -204,23 +202,15 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
           secret_val: apiKeyInput.trim(),
           model_name: modelToTest,
         })
-      } else if (activeKeyPool && modelToTest !== activeKeyPool.model_name) {
-        await adminSecretsService.updateKeyPoolModel(activeKeyPool.id, modelToTest)
       }
 
       setIsVaultConfigured(true)
+      setActiveModelName(modelToTest)
       setKeySavedBadge(true)
       setShowKeyEdit(false)
       setApiKeyInput('')
 
-      // Reload pools
-      const pools = await adminSecretsService.getKeyPools()
-      const visionKey = pools.find((k) => k.purpose_tag === 'ai_vision' && k.status === 'active') || pools[0]
-      if (visionKey) {
-        setActiveKeyPool(visionKey)
-        setApiModelInput(visionKey.model_name)
-      }
-
+      await checkVaultStatus()
       setTimeout(() => setKeySavedBadge(false), 3000)
     } catch (err: any) {
       setKeyErrorMsg(`Lỗi khi lưu: ${err.message}`)
@@ -242,13 +232,13 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
     setParsedList(null)
   }
 
-  const isReadyToProcess = Boolean(isVaultConfigured || activeKeyPool)
+  if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="neo-card p-6 bg-card border-3 border-border shadow-[6px_6px_0_var(--border)] rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col gap-4 animate-in fade-in zoom-in-95 overflow-hidden">
+      <div className="neo-card p-6 bg-card border-3 border-border shadow-[6px_6px_0_var(--border)] rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col gap-4 animate-in fade-in zoom-in-95 overflow-hidden relative z-10">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border pb-3 shrink-0">
+        <div className="flex items-center justify-between border-b border-border pb-3 shrink-0 relative z-20">
           <div>
             <h2 className="font-black text-lg text-foreground flex items-center gap-2">
               <Upload className="w-5 h-5 text-primary" />
@@ -261,7 +251,8 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
           <button
             type="button"
             onClick={onClose}
-            className="text-xs font-bold text-muted-foreground hover:text-foreground"
+            className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer relative z-30"
+            title="Đóng Modal"
           >
             <X size={20} />
           </button>
@@ -269,7 +260,7 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
 
         {/* Mode Switcher Tabs */}
         {parsedList === null && (
-          <div className="flex flex-wrap items-center gap-1.5 bg-muted/40 p-1 rounded-xl border border-border shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5 bg-muted/40 p-1 rounded-xl border border-border shrink-0 relative z-20">
             <button
               type="button"
               onClick={() => setMode('text')}
@@ -310,7 +301,7 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
         )}
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto flex flex-col gap-4 pr-1">
+        <div className="flex-1 overflow-y-auto flex flex-col gap-4 pr-1 relative z-20">
           {parsedList === null ? (
             mode === 'text' ? (
               /* Text Import Mode */
@@ -331,12 +322,17 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
                 <div className="p-3 bg-muted/30 border border-border rounded-xl text-xs font-bold text-muted-foreground">
                   💡 Chọn tệp ảnh bài thi (hoặc dán Ctrl+V) để hệ thống nhận diện văn bản OCR 1 cột ngay trên máy bạn.
                 </div>
-                <div className="relative border-2 border-dashed border-border rounded-xl p-8 hover:bg-muted/20 transition flex flex-col items-center justify-center gap-2 text-center cursor-pointer">
+
+                <label
+                  htmlFor="ocr-file-input"
+                  className="border-2 border-dashed border-border rounded-xl p-8 hover:bg-muted/20 transition flex flex-col items-center justify-center gap-2 text-center cursor-pointer"
+                >
                   <input
+                    id="ocr-file-input"
                     type="file"
                     accept="image/*"
                     onChange={handleOcrFileInputChange}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    className="hidden"
                   />
                   <Camera size={32} className="text-primary" />
                   <span className="text-xs font-black text-foreground">
@@ -345,7 +341,7 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
                   <span className="text-[11px] font-bold text-muted-foreground">
                     Hoặc bấm Ctrl + V để Dán ảnh từ Clipboard
                   </span>
-                </div>
+                </label>
 
                 {ocrLoading && (
                   <div className="p-4 bg-primary/10 rounded-xl flex items-center justify-center gap-2 text-primary text-xs font-black">
@@ -369,9 +365,9 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
                       AI Vision Google Gemini (Bóc tách mọi Bố cục Đề từ Ảnh + Tự giải Lời giải)
                     </span>
 
-                    {isReadyToProcess ? (
+                    {isVaultConfigured ? (
                       <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1">
-                        <Check size={12} /> Đã kết nối DB Vault
+                        <Check size={12} /> Đã có Gemini API Key
                       </span>
                     ) : (
                       <span className="text-[10px] font-black text-rose-700 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded flex items-center gap-1">
@@ -386,7 +382,7 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
 
                 {/* Vault Sync Status Banner */}
                 {(!isVaultConfigured || showKeyEdit) ? (
-                  <div className="p-3.5 bg-card border-2 border-border rounded-xl flex flex-col gap-3">
+                  <div className="p-3.5 bg-card border-2 border-border rounded-xl flex flex-col gap-3 relative z-30">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-black text-foreground flex items-center gap-1.5">
                         <KeyRound size={14} className="text-primary" />
@@ -460,16 +456,16 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
                   <div className="flex items-center justify-between text-xs font-bold text-muted-foreground bg-muted/30 px-3 py-2 rounded-lg border border-border">
                     <div className="flex items-center gap-3">
                       <span className="font-mono text-emerald-700 font-black flex items-center gap-1">
-                        <ShieldCheck size={14} /> Server Vault: Active ({activeKeyPool?.masked_preview || 'Configured'})
+                        <ShieldCheck size={14} /> Key Vault: Active
                       </span>
                       <span className="font-mono font-black text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
-                        Model: {activeKeyPool?.model_name || apiModelInput || 'Server Dynamic Model'}
+                        Model: {activeModelName}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowKeyEdit(true)}
-                      className="text-primary font-black hover:underline text-[11px]"
+                      className="text-primary font-black hover:underline text-[11px] cursor-pointer"
                     >
                       Đổi Key / Model khác
                     </button>
@@ -477,26 +473,30 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
                 )}
 
                 {/* Dropzone Box for AI Vision */}
-                <div className="relative border-3 border-dashed border-amber-300 rounded-2xl p-8 bg-amber-50/20 hover:bg-amber-50/40 transition flex flex-col items-center justify-center gap-3 text-center cursor-pointer group">
+                <label
+                  htmlFor="ai-vision-file-input"
+                  className="border-3 border-dashed border-amber-300 rounded-2xl p-8 bg-amber-50/20 hover:bg-amber-50/40 transition flex flex-col items-center justify-center gap-3 text-center cursor-pointer group"
+                >
                   <input
+                    id="ai-vision-file-input"
                     type="file"
                     accept="image/*"
                     onChange={handleAiVisionFileInputChange}
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                    disabled={!isReadyToProcess || aiVisionLoading}
+                    className="hidden"
+                    disabled={!isVaultConfigured || aiVisionLoading}
                   />
                   <div className="w-12 h-12 rounded-2xl bg-amber-100 border-2 border-amber-300 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Sparkles size={24} className="text-amber-600" />
                   </div>
                   <div>
                     <span className="text-xs font-black text-foreground block">
-                      {isReadyToProcess ? 'Bấm để chọn tệp ảnh Đề thi hoặc Kéo & Thả ảnh vào đây' : 'Hãy cấu hình API Key ở trên trước khi chọn ảnh'}
+                      {isVaultConfigured ? 'Bấm để chọn tệp ảnh Đề thi hoặc Kéo & Thả ảnh vào đây' : 'Hãy cấu hình API Key ở trên trước khi chọn ảnh'}
                     </span>
                     <span className="text-[11px] font-bold text-amber-700 mt-1 block">
                       Hoặc bấm Ctrl + V để Dán trực tiếp ảnh chụp từ Clipboard!
                     </span>
                   </div>
-                </div>
+                </label>
 
                 {/* AI Vision Loading Status */}
                 {aiVisionLoading && (
@@ -570,8 +570,8 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between border-t border-border pt-3 shrink-0">
-          <Button variant="ghost" onClick={handleReset} className="text-xs font-black">
+        <div className="flex items-center justify-between border-t border-border pt-3 shrink-0 relative z-20">
+          <Button variant="ghost" onClick={handleReset} className="text-xs font-black cursor-pointer">
             Hủy bỏ
           </Button>
 
@@ -579,7 +579,7 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
             <Button
               variant="primary"
               onClick={handleConfirmImport}
-              className="text-xs font-black px-6"
+              className="text-xs font-black px-6 cursor-pointer"
             >
               Nhập {parsedList.length} câu hỏi vào đề thi
             </Button>
@@ -588,7 +588,7 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
               variant="primary"
               disabled={!rawInput.trim()}
               onClick={handleParseText}
-              className="text-xs font-black px-6"
+              className="text-xs font-black px-6 cursor-pointer"
             >
               Bóc tách câu hỏi từ văn bản
             </Button>

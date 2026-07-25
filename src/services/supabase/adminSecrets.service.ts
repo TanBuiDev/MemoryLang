@@ -60,6 +60,17 @@ export const adminSecretsService = {
   },
 
   /**
+   * Public check if active vision key is configured in Vault (no raw key leakage)
+   */
+  async checkActiveVisionKeyConfigured() {
+    const { data, error } = await supabase.rpc('check_active_vision_key_configured')
+    if (error || !data) {
+      return { configured: false, model_name: 'gemini-2.0-flash' }
+    }
+    return data as { configured: boolean; model_name: string }
+  },
+
+  /**
    * Fetches secret value for admin testing only
    */
   async getKeyPoolSecretForTest(id: string) {
