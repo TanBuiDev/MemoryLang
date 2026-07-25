@@ -143,7 +143,7 @@ export default function AdminSecretsPage() {
       setFormKeyName('')
       setFormPurposeTag('ai_vision')
       setFormSecretVal('')
-      setFormModelName(aiModels.find((m) => m.is_default)?.model_name || 'gemini-2.0-flash')
+      setFormModelName('')
       setFormIsActive(true)
     }
     setShowAddModal(true)
@@ -151,10 +151,15 @@ export default function AdminSecretsPage() {
 
   const handleSaveKeyPoolForm = async () => {
     setModalErrorMsg(null)
-    const targetModel = formModelName.trim() || 'gemini-2.0-flash'
+    const targetModel = formModelName.trim()
 
     if (!formKeyName.trim()) {
       setModalErrorMsg('Vui lòng nhập Tên Gợi Nhớ / Mục đích cho Key này.')
+      return
+    }
+
+    if (!targetModel) {
+      setModalErrorMsg('Vui lòng nhập tên Model AI cho Key này (VD: gemini-2.0-flash, gemini-1.5-pro...).')
       return
     }
 
