@@ -113,7 +113,8 @@ Return ONLY a valid JSON array of objects with this exact format:
       const candidate = candidates[i]
       const callStart = Date.now()
       const apiKey = candidate.encrypted_value
-      const model = candidate.model_name || 'gemini-2.0-flash'
+      const rawModel = candidate.model_name || 'gemini-2.0-flash'
+      const model = rawModel.trim().replace(/^models\//i, '')
 
       try {
         console.log(`[Failover Engine] Attempting Key ${i + 1}/${candidates.length}: ${candidate.key_name} (${model})`)

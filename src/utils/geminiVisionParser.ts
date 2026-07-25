@@ -26,7 +26,7 @@ export async function testGeminiApiKeyAndModel(
   modelName: string = DEFAULT_GEMINI_MODEL
 ): Promise<{ ok: boolean; message: string }> {
   const apiKey = key.trim()
-  const targetModel = modelName.trim() || DEFAULT_GEMINI_MODEL
+  const targetModel = modelName.trim().replace(/^models\//i, '') || DEFAULT_GEMINI_MODEL
 
   if (!apiKey) {
     return { ok: false, message: 'Vui lòng nhập Gemini API Key.' }
