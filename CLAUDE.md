@@ -234,12 +234,14 @@ The authenticated `nav.study` sidebar link resumes an active stored flashcard se
 - **CRITICAL:** When deploying new code that relies on database schema changes (such as new columns, tables, or policies), you must ensure that all corresponding SQL migrations under `supabase/migrations/` have been successfully run/applied to the remote production Supabase database. Otherwise, the live app will hit 400 Bad Request errors (`column table.column does not exist`). Use the Supabase MCP server or Supabase Dashboard to run DDL migrations.
 - Deploy edge functions: `npx supabase functions deploy <name> --project-ref brwvbpkgimhamivmaflu`
 - Edge functions source: `supabase/functions/<name>/index.ts`
-- **Edge Functions (5 source directories; `ai-chat` deployment pending):**
+- **Edge Functions (7 source directories; `ai-chat` deployment pending):**
   - `enrich-vocabulary` — dictionary lookup + machine translation
   - `search-images` — proxies Unsplash (primary), Pexels, and Pixabay APIs for vocabulary illustrations. All images are downloaded and re-uploaded to `vocabulary-images` bucket. API keys stored in `.env` and synced to Edge Function secrets via `pnpm sync:secrets`.
   - `generate-audio` — Google Cloud Text-to-Speech (WaveNet voices) with audio caching in Cloudflare R2. Accepts `text`, `language` (BCP-47), and optional `voice` name. Returns `audioUrl` + `cached` flag.
   - `process-payment` — PayOS checkout, payment status/cancel actions, subscription cancellation, and unauthenticated PayOS webhook processing. Deployed with `--no-verify-jwt` so PayOS webhooks can reach the function; app actions still validate the Supabase auth header inside the function.
   - `ai-chat` — authenticated AI Tutor chat with Gemini/OpenAI provider selection, daily tier quota, and persisted session history. Gemini uses native function calling for read-only, JWT-scoped learner data tools; assistant messages retain the verified evidence labels in `chat_messages.metadata`. Direct learning-data and grammar-catalog replies are formatted deterministically from the RPC payload rather than letting the model paraphrase counts. Replies mirror the latest learner-message language unless target-language practice is explicitly requested; the chat page inserts an optimistic user message and a thinking state before the provider responds. Requires the AI chat migrations plus `AI_PROVIDER`, provider API key, and model secrets before deployment.
+  - `send-email` — handles transactional emails and daily/weekly notifications via Resend API (`RESEND_API_KEY`). Includes HTML templates, List-Unsubscribe headers, and mock mode fallback.
+  - `daily-study-reminder` — queries active profiles with pending SM-2 review terms and triggers daily study reminder emails.
 - Dashboard: https://supabase.com/dashboard/project/brwvbpkgimhamivmaflu
 
 ## Frontend Deployment & Chunk Cache
