@@ -46,7 +46,7 @@ serve(async (req) => {
   }
 
   try {
-    const { imageBase64, customApiKey } = await req.json()
+    const { imageBase64, customApiKey, customModel } = await req.json()
 
     if (!imageBase64) {
       return new Response(JSON.stringify({ error: 'Missing imageBase64 parameter' }), {
@@ -55,8 +55,9 @@ serve(async (req) => {
       })
     }
 
-    // 2. Resolve Gemini API Key (Priority: Deno Env Secret > Client custom key)
+    // 2. Resolve Gemini API Key & Model
     const apiKey = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('VITE_GEMINI_API_KEY') || customApiKey
+    const model = customModel || Deno.env.get('GEMINI_MODEL') || 'gemini-2.0-flash'
 
     if (!apiKey) {
       return new Response(
@@ -97,7 +98,7 @@ Return ONLY a valid JSON array of objects with this exact format:
 
     // 4. Securely invoke Google Gemini Vision API from Backend
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

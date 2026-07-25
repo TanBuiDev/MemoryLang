@@ -2,6 +2,16 @@ import { supabase } from '@/services/supabase/client'
 import type { ParsedExamQuestion } from '@/utils/examQuestionImport'
 
 const GEMINI_KEY_STORAGE = 'memorylang_gemini_api_key'
+const GEMINI_MODEL_STORAGE = 'memorylang_gemini_model'
+export const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
+
+export const GEMINI_MODEL_OPTIONS = [
+  { value: 'gemini-2.0-flash', label: 'gemini-2.0-flash (Mới nhất - Nhanh & Chuẩn)' },
+  { value: 'gemini-1.5-flash', label: 'gemini-1.5-flash (Nhanh & Tối ưu)' },
+  { value: 'gemini-1.5-pro', label: 'gemini-1.5-pro (Độ chính xác cao)' },
+  { value: 'gemini-2.0-flash-lite', label: 'gemini-2.0-flash-lite (Siêu nhẹ)' },
+  { value: 'custom', label: 'Tùy chỉnh model khác...' },
+]
 
 /**
  * Gets Gemini API Key with hierarchy: LocalStorage Admin UI setting > Environment Variable
@@ -28,17 +38,46 @@ export function setGeminiApiKey(key: string): void {
 }
 
 /**
- * Tests if a Gemini API Key is valid and active before saving
+ * Gets Gemini AI Model with hierarchy: LocalStorage > Environment Variable > Default
  */
-export async function testGeminiApiKey(key: string): Promise<{ ok: boolean; message: string }> {
+export function getGeminiModel(): string {
+  const stored = localStorage.getItem(GEMINI_MODEL_STORAGE)
+  if (stored && stored.trim()) return stored.trim()
+
+  const envModel = import.meta.env.VITE_GEMINI_MODEL
+  if (envModel && envModel.trim()) return envModel.trim()
+
+  return DEFAULT_GEMINI_MODEL
+}
+
+/**
+ * Saves Gemini AI Model to LocalStorage for Admin UI
+ */
+export function setGeminiModel(model: string): void {
+  if (model && model.trim()) {
+    localStorage.setItem(GEMINI_MODEL_STORAGE, model.trim())
+  } else {
+    localStorage.removeItem(GEMINI_MODEL_STORAGE)
+  }
+}
+
+/**
+ * Tests if a Gemini API Key and Model are valid and active before saving
+ */
+export async function testGeminiApiKeyAndModel(
+  key: string,
+  modelName: string = getGeminiModel()
+): Promise<{ ok: boolean; message: string }> {
   const apiKey = key.trim()
+  const targetModel = modelName.trim() || DEFAULT_GEMINI_MODEL
+
   if (!apiKey) {
     return { ok: false, message: 'Vui lòng nhập Gemini API Key.' }
   }
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -49,25 +88,32 @@ export async function testGeminiApiKey(key: string): Promise<{ ok: boolean; mess
     )
 
     if (res.ok) {
-      return { ok: true, message: 'Kết nối Google Gemini API thành công!' }
+      return { ok: true, message: `Kết nối thành công tới Gemini API với Model '${targetModel}'!` }
     }
 
     const errJson = await res.json().catch(() => ({}))
     const errorMsg = errJson?.error?.message || `Lỗi HTTP ${res.status}`
+
+    if (res.status === 404 || errorMsg.includes('not found')) {
+      return { ok: false, message: `Model '${targetModel}' không tồn tại hoặc không hỗ trợ generateContent!` }
+    }
 
     if (res.status === 400 && errorMsg.includes('API_KEY_INVALID')) {
       return { ok: false, message: 'API Key không chính xác hoặc đã bị vô hiệu hóa trên Google AI Studio!' }
     }
 
     if (res.status === 429) {
-      return { ok: true, message: 'Key hợp lệ! (Lưu ý: Đang tạm thời bị giới hạn tốc độ Rate Limit từ Google).' }
+      return { ok: true, message: `Key & Model '${targetModel}' hợp lệ! (Lưu ý: Đang bị giới hạn tốc độ Rate Limit từ Google).` }
     }
 
-    return { ok: false, message: `Kiểm tra Key thất bại: ${errorMsg}` }
+    return { ok: false, message: `Kiểm tra thất bại: ${errorMsg}` }
   } catch (err: any) {
     return { ok: false, message: `Không thể kết nối tới Google API: ${err.message || 'Lỗi mạng'}` }
   }
 }
+
+// Backward compatibility alias
+export const testGeminiApiKey = testGeminiApiKeyAndModel
 
 /**
  * Converts a File or Blob into base64 data string
@@ -87,9 +133,11 @@ export function fileToBase64(file: File | Blob): Promise<string> {
  */
 export async function parseQuestionsWithGeminiVision(
   imageBase64: string,
-  apiKey?: string
+  apiKey?: string,
+  model?: string
 ): Promise<ParsedExamQuestion[]> {
   const customApiKey = apiKey || getGeminiApiKey()
+  const targetModel = model || getGeminiModel()
 
   // 1. First attempt: Invoke Supabase Edge Function Proxy (Zero Client API Key Leakage)
   try {
@@ -101,6 +149,7 @@ export async function parseQuestionsWithGeminiVision(
       body: {
         imageBase64,
         customApiKey: customApiKey || undefined,
+        customModel: targetModel,
       },
     })
 
@@ -156,7 +205,7 @@ Return ONLY a valid JSON array of objects with this exact format:
 ]`
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${customApiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${customApiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

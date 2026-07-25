@@ -3,7 +3,14 @@ import { CheckCircle2, AlertTriangle, HelpCircle, Play, KeyRound, Loader2 } from
 import { generateAudio } from '@/services/api/generateAudio.api'
 import { imageSearchService } from '@/services/api/imageSearch.api'
 import { Button } from '@/components/ui/button'
-import { testGeminiApiKey, setGeminiApiKey } from '@/utils/geminiVisionParser'
+import { Select } from '@/components/ui/select'
+import {
+  testGeminiApiKeyAndModel,
+  setGeminiApiKey,
+  getGeminiModel,
+  setGeminiModel,
+  GEMINI_MODEL_OPTIONS,
+} from '@/utils/geminiVisionParser'
 
 interface SecretStatus {
   name: string
@@ -18,6 +25,8 @@ export default function AdminSecretsPage() {
   const [geminiKeyInput, setGeminiKeyInput] = useState(() => {
     return localStorage.getItem('memorylang_gemini_api_key') || ''
   })
+  const [geminiModelInput, setGeminiModelInput] = useState(() => getGeminiModel())
+  const [customModelText, setCustomModelText] = useState('')
   const [geminiTesting, setGeminiTesting] = useState(false)
   const [geminiStatus, setGeminiStatus] = useState<{ ok: boolean; message: string } | null>(null)
 
@@ -219,16 +228,16 @@ export default function AdminSecretsPage() {
         ))}
       </div>
 
-      {/* Direct Gemini API Key Management Box */}
-      <div className="neo-card p-5 bg-card border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] rounded-2xl flex flex-col gap-3">
+      {/* Direct Gemini API Key & Model Management Box */}
+      <div className="neo-card p-5 bg-card border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] rounded-2xl flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h3 className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">
             <KeyRound className="w-4 h-4 text-primary" />
-            Cấu hình nhanh Google Gemini API Key (Tự động kiểm tra trước khi lưu)
+            Cấu hình Google Gemini API Key & AI Model (Tự động kiểm tra trước khi lưu)
           </h3>
           {geminiStatus && (
             <span
-              className={`text-xs font-black px-2.5 py-0.5 rounded border flex items-center gap-1 ${
+              className={`text-xs font-black px-2.5 py-1 rounded border flex items-center gap-1 max-w-md ${
                 geminiStatus.ok
                   ? 'text-emerald-800 bg-emerald-100 border-emerald-300'
                   : 'text-rose-800 bg-rose-100 border-rose-300'
@@ -248,27 +257,76 @@ export default function AdminSecretsPage() {
           >
             Google AI Studio
           </a>{' '}
-          để dùng tính năng Quét câu hỏi từ ảnh 2 cột bằng AI Vision. Hệ thống sẽ tự động kiểm tra kết nối với Google trước khi lưu.
+          và chọn/nhập tên Model AI. Hệ thống sẽ tự động gửi request test thử nghiệm tới Google để xác thực Key & Model trước khi lưu.
         </p>
 
-        <div className="flex items-center gap-2 pt-1">
-          <input
-            type="password"
-            value={geminiKeyInput}
-            onChange={(e) => {
-              setGeminiKeyInput(e.target.value)
-              setGeminiStatus(null)
-            }}
-            placeholder="Dán AIzaSy... API key của bạn vào đây"
-            className="flex-1 px-3 py-2 border-2 border-slate-900 rounded-xl bg-background text-xs font-mono font-bold focus:outline-none focus:border-primary"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+          {/* API Key Input */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-black text-foreground">Google Gemini API Key *</label>
+            <input
+              type="password"
+              value={geminiKeyInput}
+              onChange={(e) => {
+                setGeminiKeyInput(e.target.value)
+                setGeminiStatus(null)
+              }}
+              placeholder="Dán AIzaSy... API key của bạn vào đây"
+              className="w-full px-3 py-2 border-2 border-slate-900 rounded-xl bg-background text-xs font-mono font-bold focus:outline-none focus:border-primary"
+            />
+          </div>
+
+          {/* Model Selector */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-black text-foreground">Model AI Vision (Được hỗ trợ)</label>
+            <Select
+              value={
+                GEMINI_MODEL_OPTIONS.some((m) => m.value === geminiModelInput)
+                  ? geminiModelInput
+                  : 'custom'
+              }
+              onChange={(val) => {
+                if (val !== 'custom') {
+                  setGeminiModelInput(val)
+                  setCustomModelText('')
+                } else {
+                  setGeminiModelInput('custom')
+                }
+                setGeminiStatus(null)
+              }}
+              options={GEMINI_MODEL_OPTIONS}
+            />
+
+            {(geminiModelInput === 'custom' ||
+              !GEMINI_MODEL_OPTIONS.some((m) => m.value === geminiModelInput)) && (
+              <input
+                type="text"
+                value={customModelText || geminiModelInput}
+                onChange={(e) => {
+                  setCustomModelText(e.target.value)
+                  setGeminiStatus(null)
+                }}
+                placeholder="Nhập tên Model tùy chỉnh (VD: gemini-2.5-flash)"
+                className="mt-1 px-3 py-1.5 border-2 border-slate-900 rounded-lg text-xs font-mono font-bold bg-background focus:outline-none focus:border-primary"
+              />
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-2 border-t border-border/60">
           <Button
             variant="primary"
             type="button"
             disabled={geminiTesting}
             onClick={async () => {
+              const activeModel =
+                geminiModelInput === 'custom'
+                  ? customModelText.trim()
+                  : geminiModelInput.trim()
+
               if (!geminiKeyInput.trim()) {
                 setGeminiApiKey('')
+                if (activeModel) setGeminiModel(activeModel)
                 setGeminiStatus({ ok: true, message: 'Đã xóa Key khỏi bộ nhớ' })
                 return
               }
@@ -276,15 +334,16 @@ export default function AdminSecretsPage() {
               setGeminiTesting(true)
               setGeminiStatus(null)
 
-              const res = await testGeminiApiKey(geminiKeyInput.trim())
+              const res = await testGeminiApiKeyAndModel(geminiKeyInput.trim(), activeModel)
               setGeminiTesting(false)
               setGeminiStatus(res)
 
               if (res.ok) {
                 setGeminiApiKey(geminiKeyInput.trim())
+                if (activeModel) setGeminiModel(activeModel)
               }
             }}
-            className="px-5 text-xs font-black min-w-[150px]"
+            className="px-6 text-xs font-black min-w-[170px]"
           >
             {geminiTesting ? (
               <span className="flex items-center gap-1.5">
@@ -292,7 +351,7 @@ export default function AdminSecretsPage() {
                 Đang kiểm tra...
               </span>
             ) : (
-              'Kiểm tra & Lưu Key'
+              'Kiểm tra & Lưu Cấu Hình'
             )}
           </Button>
         </div>

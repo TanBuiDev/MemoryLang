@@ -16,6 +16,7 @@ import {
   Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Select } from '@/components/ui/select'
 import {
   parseExamQuestionsText,
   type ParsedExamQuestion,
@@ -28,7 +29,10 @@ import {
   parseQuestionsWithGeminiVision,
   getGeminiApiKey,
   setGeminiApiKey,
-  testGeminiApiKey,
+  getGeminiModel,
+  setGeminiModel,
+  GEMINI_MODEL_OPTIONS,
+  testGeminiApiKeyAndModel,
   fileToBase64,
 } from '@/utils/geminiVisionParser'
 import type { ExamQuestion } from '@/types/exam.types'
@@ -58,6 +62,8 @@ export function BulkExamQuestionImportModal({
 
   // AI Vision state
   const [apiKeyInput, setApiKeyInput] = useState(() => getGeminiApiKey())
+  const [apiModelInput, setApiModelInput] = useState(() => getGeminiModel())
+  const [customModelText, setCustomModelText] = useState('')
   const [showKeyEdit, setShowKeyEdit] = useState(false)
   const [aiVisionLoading, setAiVisionLoading] = useState(false)
   const [aiVisionError, setAiVisionError] = useState<string | null>(null)
@@ -79,6 +85,7 @@ export function BulkExamQuestionImportModal({
       setKeyErrorMsg(null)
     } else {
       setApiKeyInput(getGeminiApiKey())
+      setApiModelInput(getGeminiModel())
     }
   }, [open])
 
@@ -108,7 +115,7 @@ export function BulkExamQuestionImportModal({
 
     window.addEventListener('paste', handlePaste)
     return () => window.removeEventListener('paste', handlePaste)
-  }, [open, mode, apiKeyInput])
+  }, [open, mode, apiKeyInput, apiModelInput, customModelText])
 
   if (!open) return null
 
@@ -150,11 +157,20 @@ export function BulkExamQuestionImportModal({
       const base64 = await fileToBase64(file)
       setImagePreview(base64)
 
-      const questions = await parseQuestionsWithGeminiVision(base64, apiKeyInput.trim() || undefined)
+      const targetModel =
+        apiModelInput === 'custom'
+          ? customModelText.trim()
+          : apiModelInput.trim()
+
+      const questions = await parseQuestionsWithGeminiVision(
+        base64,
+        apiKeyInput.trim() || undefined,
+        targetModel || undefined
+      )
       setParsedList(questions)
     } catch (err: any) {
       console.error(err)
-      setAiVisionError(err.message || 'Không thể bóc tách ảnh bằng AI Vision. Vui lòng kiểm tra lại API Key.')
+      setAiVisionError(err.message || 'Không thể bóc tách ảnh bằng AI Vision. Vui lòng kiểm tra lại API Key và Model.')
     } finally {
       setAiVisionLoading(false)
     }
@@ -175,8 +191,14 @@ export function BulkExamQuestionImportModal({
   }
 
   const handleSaveApiKey = async () => {
+    const targetModel =
+      apiModelInput === 'custom'
+        ? customModelText.trim()
+        : apiModelInput.trim()
+
     if (!apiKeyInput.trim()) {
       setGeminiApiKey('')
+      if (targetModel) setGeminiModel(targetModel)
       setShowKeyEdit(false)
       setKeyErrorMsg(null)
       return
@@ -185,11 +207,12 @@ export function BulkExamQuestionImportModal({
     setTestingKey(true)
     setKeyErrorMsg(null)
 
-    const res = await testGeminiApiKey(apiKeyInput.trim())
+    const res = await testGeminiApiKeyAndModel(apiKeyInput.trim(), targetModel)
     setTestingKey(false)
 
     if (res.ok) {
       setGeminiApiKey(apiKeyInput.trim())
+      if (targetModel) setGeminiModel(targetModel)
       setKeySavedBadge(true)
       setTimeout(() => setKeySavedBadge(false), 2500)
       setShowKeyEdit(false)
@@ -425,42 +448,65 @@ export function BulkExamQuestionImportModal({
 
                 {/* API Key Config Banner */}
                 {(!activeKey || showKeyEdit) ? (
-                  <div className="p-3.5 bg-card border-2 border-border rounded-xl flex flex-col gap-2">
+                  <div className="p-3.5 bg-card border-2 border-border rounded-xl flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-black text-foreground flex items-center gap-1.5">
                         <KeyRound size={14} className="text-primary" />
-                        Nhập Google Gemini API Key (Miễn phí từ Google AI Studio):
+                        Cấu hình Google Gemini API Key & Model AI:
                       </label>
                       {keySavedBadge && (
-                        <span className="text-[11px] font-black text-emerald-600">✓ Key hợp lệ & Đã lưu!</span>
+                        <span className="text-[11px] font-black text-emerald-600">✓ Cấu hình hợp lệ & Đã lưu!</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="password"
-                        value={apiKeyInput}
-                        onChange={(e) => {
-                          setApiKeyInput(e.target.value)
-                          setKeyErrorMsg(null)
-                        }}
-                        placeholder="Dán AIzaSy... API Key của bạn vào đây"
-                        className="flex-1 px-3 py-1.5 border-2 border-border rounded-lg text-xs font-mono font-bold bg-background focus:outline-none focus:border-primary"
-                      />
-                      <Button
-                        variant="primary"
-                        type="button"
-                        disabled={testingKey}
-                        onClick={handleSaveApiKey}
-                        className="text-xs font-black px-4 min-w-[120px]"
-                      >
-                        {testingKey ? (
-                          <span className="flex items-center gap-1">
-                            <Loader2 size={12} className="animate-spin" /> Đang kiểm tra...
-                          </span>
-                        ) : (
-                          'Kiểm tra & Lưu Key'
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] font-black text-muted-foreground">API Key *</span>
+                        <input
+                          type="password"
+                          value={apiKeyInput}
+                          onChange={(e) => {
+                            setApiKeyInput(e.target.value)
+                            setKeyErrorMsg(null)
+                          }}
+                          placeholder="Dán AIzaSy... API Key của bạn vào đây"
+                          className="px-3 py-1.5 border-2 border-border rounded-lg text-xs font-mono font-bold bg-background focus:outline-none focus:border-primary"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] font-black text-muted-foreground">Model AI</span>
+                        <Select
+                          value={
+                            GEMINI_MODEL_OPTIONS.some((m) => m.value === apiModelInput)
+                              ? apiModelInput
+                              : 'custom'
+                          }
+                          onChange={(val) => {
+                            if (val !== 'custom') {
+                              setApiModelInput(val)
+                              setCustomModelText('')
+                            } else {
+                              setApiModelInput('custom')
+                            }
+                            setKeyErrorMsg(null)
+                          }}
+                          options={GEMINI_MODEL_OPTIONS}
+                        />
+                        {(apiModelInput === 'custom' ||
+                          !GEMINI_MODEL_OPTIONS.some((m) => m.value === apiModelInput)) && (
+                          <input
+                            type="text"
+                            value={customModelText || apiModelInput}
+                            onChange={(e) => {
+                              setCustomModelText(e.target.value)
+                              setKeyErrorMsg(null)
+                            }}
+                            placeholder="Tên Model (VD: gemini-2.5-flash)"
+                            className="mt-1 px-2.5 py-1 border border-border rounded text-xs font-mono font-bold bg-background focus:outline-none focus:border-primary"
+                          />
                         )}
-                      </Button>
+                      </div>
                     </div>
 
                     {keyErrorMsg && (
@@ -470,19 +516,38 @@ export function BulkExamQuestionImportModal({
                       </div>
                     )}
 
-                    <span className="text-[10px] text-muted-foreground font-bold">
-                      * Key được tự động kiểm tra với Google trước khi lưu an toàn trên trình duyệt của Admin.
-                    </span>
+                    <div className="flex justify-end pt-1">
+                      <Button
+                        variant="primary"
+                        type="button"
+                        disabled={testingKey}
+                        onClick={handleSaveApiKey}
+                        className="text-xs font-black px-4 min-w-[150px]"
+                      >
+                        {testingKey ? (
+                          <span className="flex items-center gap-1">
+                            <Loader2 size={12} className="animate-spin" /> Đang kiểm tra...
+                          </span>
+                        ) : (
+                          'Kiểm tra & Lưu Cấu Hình'
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between text-xs font-bold text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-lg border border-border">
-                    <span className="font-mono">API Key: ••••••••••••••••{activeKey.slice(-4)}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono">Key: ••••••••••••••••{activeKey.slice(-4)}</span>
+                      <span className="font-mono font-black text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
+                        Model: {apiModelInput || getGeminiModel()}
+                      </span>
+                    </div>
                     <button
                       type="button"
                       onClick={() => setShowKeyEdit(true)}
                       className="text-primary font-black hover:underline"
                     >
-                      Đổi Key khác
+                      Đổi Key / Model khác
                     </button>
                   </div>
                 )}
