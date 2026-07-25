@@ -54,6 +54,7 @@ export default function AdminSecretsPage() {
   const [formModelName, setFormModelName] = useState('gemini-2.0-flash')
   const [formCustomModel, setFormCustomModel] = useState('')
   const [formIsActive, setFormIsActive] = useState(true)
+  const [modalErrorMsg, setModalErrorMsg] = useState<string | null>(null)
 
   // Status & Testing states
   const [savingStatus, setSavingStatus] = useState(false)
@@ -123,6 +124,7 @@ export default function AdminSecretsPage() {
   }, [])
 
   const handleOpenAddModal = (item?: KeyPoolItem) => {
+    setModalErrorMsg(null)
     if (item) {
       setEditingKeyId(item.id)
       setFormKeyName(item.key_name)
@@ -144,30 +146,31 @@ export default function AdminSecretsPage() {
   }
 
   const handleSaveKeyPoolForm = async () => {
+    setModalErrorMsg(null)
+
     const targetModel =
       formModelName === 'custom'
         ? formCustomModel.trim()
         : formModelName.trim()
 
-    if (!editingKeyId && !formSecretVal.trim()) {
-      setFeedbackMsg({ ok: false, message: 'Vui lòng dán API Key secret vào đây.' })
+    if (!formKeyName.trim()) {
+      setModalErrorMsg('Vui lòng nhập Tên Gợi Nhớ / Mục đích cho Key này.')
       return
     }
 
-    if (!formKeyName.trim()) {
-      setFeedbackMsg({ ok: false, message: 'Vui lòng nhập tên mục đích / tên gợi nhớ cho Key này.' })
+    if (!editingKeyId && !formSecretVal.trim()) {
+      setModalErrorMsg('Vui lòng dán API Key secret vào đây.')
       return
     }
 
     setSavingStatus(true)
-    setFeedbackMsg(null)
 
     try {
       // If adding or providing new key string, test connection with Google first
       if (formSecretVal.trim() && (formPurposeTag === 'ai_vision' || formPurposeTag === 'ai_chat')) {
         const testRes = await testGeminiApiKeyAndModel(formSecretVal.trim(), targetModel)
         if (!testRes.ok) {
-          setFeedbackMsg(testRes)
+          setModalErrorMsg(testRes.message)
           setSavingStatus(false)
           return
         }
@@ -199,7 +202,7 @@ export default function AdminSecretsPage() {
 
       await loadData()
     } catch (err: any) {
-      setFeedbackMsg({ ok: false, message: `Lỗi khi lưu Key: ${err.message}` })
+      setModalErrorMsg(`Lỗi khi lưu Key: ${err.message}`)
     } finally {
       setSavingStatus(false)
     }
@@ -640,6 +643,13 @@ export default function AdminSecretsPage() {
                 ✕
               </button>
             </div>
+
+            {modalErrorMsg && (
+              <div className="p-3 rounded-xl bg-rose-100 border-2 border-rose-400 text-rose-950 text-xs font-black flex items-center gap-2 animate-in fade-in">
+                <AlertCircle size={16} className="text-rose-700 shrink-0" />
+                <span>{modalErrorMsg}</span>
+              </div>
+            )}
 
             <div className="flex flex-col gap-3">
               <div>
