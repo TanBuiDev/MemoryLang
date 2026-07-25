@@ -1,102 +1,91 @@
-import { useEffect, useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
-  ClipboardPaste,
-  WandSparkles,
-  CheckCircle2,
-  AlertCircle,
-  X,
-  Plus,
-  Camera,
   FileText,
-  Upload,
-  Loader2,
-  ImageIcon,
+  Camera,
   Sparkles,
-  KeyRound,
+  Upload,
+  X,
   Check,
+  AlertCircle,
+  Loader2,
+  KeyRound,
+  ShieldCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Select } from '@/components/ui/select'
+import { parseExamQuestionsText, type ParsedExamQuestion } from '@/utils/examQuestionImport'
+import { processImageToText } from '@/utils/imageOcrQuestionParser'
 import {
-  parseExamQuestionsText,
-  type ParsedExamQuestion,
-} from '@/utils/examQuestionImport'
-import {
-  parseQuestionsFromImage,
-  type OcrProgressInfo,
-} from '@/utils/imageOcrQuestionParser'
-import {
+  fileToBase64,
   parseQuestionsWithGeminiVision,
   testGeminiApiKeyAndModel,
-  fileToBase64,
 } from '@/utils/geminiVisionParser'
-import { adminSecretsService, type AiModelConfigItem } from '@/services/supabase/adminSecrets.service'
-import type { ExamQuestion } from '@/types/exam.types'
+import { adminSecretsService, type KeyPoolItem } from '@/services/supabase/adminSecrets.service'
 
 interface BulkExamQuestionImportModalProps {
   open: boolean
   onClose: () => void
-  onImport: (parsedQuestions: Partial<ExamQuestion>[]) => void
+  onImport: (questions: ParsedExamQuestion[]) => void
 }
 
 type ImportMode = 'text' | 'ocr' | 'ai_vision'
 
-export function BulkExamQuestionImportModal({
+export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalProps> = ({
   open,
   onClose,
   onImport,
-}: BulkExamQuestionImportModalProps) {
+}) => {
   const [mode, setMode] = useState<ImportMode>('text')
   const [rawInput, setRawInput] = useState('')
   const [parsedList, setParsedList] = useState<ParsedExamQuestion[] | null>(null)
 
-  // OCR Image state
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  // OCR state
   const [ocrLoading, setOcrLoading] = useState(false)
-  const [ocrProgress, setOcrProgress] = useState<OcrProgressInfo | null>(null)
   const [ocrError, setOcrError] = useState<string | null>(null)
 
   // AI Vision state
-  const [apiKeyInput, setApiKeyInput] = useState('')
-  const [apiModelInput, setApiModelInput] = useState('gemini-2.0-flash')
-  const [customModelText, setCustomModelText] = useState('')
-  const [dbAiModels, setDbAiModels] = useState<AiModelConfigItem[]>([])
-  const [isVaultConfigured, setIsVaultConfigured] = useState(false)
-  const [showKeyEdit, setShowKeyEdit] = useState(false)
   const [aiVisionLoading, setAiVisionLoading] = useState(false)
   const [aiVisionError, setAiVisionError] = useState<string | null>(null)
-  const [keySavedBadge, setKeySavedBadge] = useState(false)
+
+  // Vault state
+  const [isVaultConfigured, setIsVaultConfigured] = useState(false)
+  const [activeKeyPool, setActiveKeyPool] = useState<KeyPoolItem | null>(null)
+  const [showKeyEdit, setShowKeyEdit] = useState(false)
+  const [apiKeyInput, setApiKeyInput] = useState('')
+  const [apiModelInput, setApiModelInput] = useState('')
   const [testingKey, setTestingKey] = useState(false)
   const [keyErrorMsg, setKeyErrorMsg] = useState<string | null>(null)
+  const [keySavedBadge, setKeySavedBadge] = useState(false)
 
+  // Load Vault Key Pools overview when modal opens
   useEffect(() => {
     if (!open) {
+      setMode('text')
       setRawInput('')
       setParsedList(null)
-      setImagePreview(null)
       setOcrLoading(false)
-      setOcrProgress(null)
       setOcrError(null)
       setAiVisionLoading(false)
       setAiVisionError(null)
       setTestingKey(false)
       setKeyErrorMsg(null)
       setApiKeyInput('')
+      setApiModelInput('')
+      setShowKeyEdit(false)
     } else {
       void (async () => {
         try {
-          const [secrets, models] = await Promise.all([
-            adminSecretsService.getSecretsOverview(),
-            adminSecretsService.getAiModels(),
-          ])
-          setDbAiModels(models)
-          const geminiSecret = secrets.find((s) => s.key_name === 'GEMINI_API_KEY')
-          setIsVaultConfigured(Boolean(geminiSecret?.is_configured))
-
-          const defModel = models.find((m) => m.is_default) || models[0]
-          if (defModel) setApiModelInput(defModel.model_name)
+          const pools = await adminSecretsService.getKeyPools()
+          const visionKey = pools.find((k) => k.purpose_tag === 'ai_vision' && k.status === 'active') || pools[0]
+          if (visionKey) {
+            setIsVaultConfigured(true)
+            setActiveKeyPool(visionKey)
+            setApiModelInput(visionKey.model_name)
+          } else {
+            setIsVaultConfigured(false)
+            setActiveKeyPool(null)
+          }
         } catch {
-          // ignore
+          setIsVaultConfigured(false)
         }
       })()
     }
@@ -116,7 +105,7 @@ export function BulkExamQuestionImportModal({
           const file = item.getAsFile()
           if (file) {
             if (mode === 'ocr') {
-              void processOcrImageFile(file)
+              void processOcrFile(file)
             } else if (mode === 'ai_vision') {
               void processAiVisionImageFile(file)
             }
@@ -128,89 +117,72 @@ export function BulkExamQuestionImportModal({
 
     window.addEventListener('paste', handlePaste)
     return () => window.removeEventListener('paste', handlePaste)
-  }, [open, mode, apiKeyInput, apiModelInput, customModelText])
+  }, [open, mode, isVaultConfigured, activeKeyPool])
 
-  if (!open) return null
-
-  const handleAnalyzeText = () => {
+  const handleParseText = () => {
     if (!rawInput.trim()) return
-    const results = parseExamQuestionsText(rawInput)
-    setParsedList(results)
+    const result = parseExamQuestionsText(rawInput)
+    setParsedList(result)
   }
 
-  const processOcrImageFile = async (file: File) => {
+  const handleOcrFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      void processOcrFile(files[0])
+    }
+  }
+
+  const processOcrFile = async (file: File) => {
+    setOcrLoading(true)
+    setOcrError(null)
     try {
-      setOcrLoading(true)
-      setOcrError(null)
-      setOcrProgress({ status: 'Starting OCR engine', progress: 5 })
-
-      const previewUrl = URL.createObjectURL(file)
-      setImagePreview(previewUrl)
-
-      const result = await parseQuestionsFromImage(file, (progress) => {
-        setOcrProgress(progress)
-      })
-
-      setRawInput(result.extractedText)
-      setParsedList(result.questions)
+      const text = await processImageToText(file)
+      if (!text.trim()) {
+        setOcrError('Không thể nhận diện văn bản từ hình ảnh này. Hãy thử ảnh rõ hơn.')
+        return
+      }
+      setRawInput(text)
+      const questions = parseExamQuestionsText(text)
+      setParsedList(questions)
     } catch (err: any) {
-      console.error(err)
-      setOcrError('Không thể nhận diện chữ từ tệp ảnh này. Vui lòng thử lại với ảnh rõ nét hơn.')
+      setOcrError(err.message || 'Lỗi khi quét OCR ảnh.')
     } finally {
       setOcrLoading(false)
-      setOcrProgress(null)
+    }
+  }
+
+  const handleAiVisionFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      void processAiVisionImageFile(files[0])
     }
   }
 
   const processAiVisionImageFile = async (file: File) => {
+    setAiVisionLoading(true)
+    setAiVisionError(null)
     try {
-      setAiVisionLoading(true)
-      setAiVisionError(null)
-
       const base64 = await fileToBase64(file)
-      setImagePreview(base64)
+      const questions = await parseQuestionsWithGeminiVision(base64)
 
-      const targetModel =
-        apiModelInput === 'custom'
-          ? customModelText.trim()
-          : apiModelInput.trim()
+      if (!questions || questions.length === 0) {
+        setAiVisionError('Không tìm thấy câu hỏi hợp lệ trong bức ảnh này.')
+        return
+      }
 
-      const questions = await parseQuestionsWithGeminiVision(
-        base64,
-        apiKeyInput.trim() || undefined,
-        targetModel || undefined
-      )
       setParsedList(questions)
     } catch (err: any) {
-      console.error(err)
-      setAiVisionError(err.message || 'Không thể bóc tách ảnh bằng AI Vision. Vui lòng kiểm tra lại API Key và Model.')
+      setAiVisionError(err.message || 'Lỗi khi bóc tách câu hỏi với AI Vision.')
     } finally {
       setAiVisionLoading(false)
     }
   }
 
-  const handleOcrFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      void processOcrImageFile(file)
-    }
-  }
-
-  const handleAiVisionFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      void processAiVisionImageFile(file)
-    }
-  }
-
   const handleSaveApiKey = async () => {
-    const targetModel =
-      apiModelInput === 'custom'
-        ? customModelText.trim()
-        : apiModelInput.trim()
+    const modelToTest = apiModelInput.trim() || activeKeyPool?.model_name || 'gemini-2.0-flash'
 
     if (!apiKeyInput.trim() && !isVaultConfigured) {
-      setKeyErrorMsg('Vui lòng dán Gemini API Key mới vào đây.')
+      setKeyErrorMsg('Vui lòng dán Gemini API Key.')
       return
     }
 
@@ -219,79 +191,67 @@ export function BulkExamQuestionImportModal({
 
     try {
       if (apiKeyInput.trim()) {
-        const testRes = await testGeminiApiKeyAndModel(apiKeyInput.trim(), targetModel)
+        const testRes = await testGeminiApiKeyAndModel(apiKeyInput.trim(), modelToTest)
         if (!testRes.ok) {
           setKeyErrorMsg(testRes.message)
           setTestingKey(false)
           return
         }
 
-        // Save secret securely to Postgres DB Vault
-        await adminSecretsService.saveSecret(
-          'GEMINI_API_KEY',
-          apiKeyInput.trim(),
-          'Google Gemini API Key'
-        )
-      }
-
-      if (targetModel) {
-        await adminSecretsService.saveVerifiedAiModel(targetModel, 'gemini')
+        await adminSecretsService.upsertKeyPoolItem({
+          key_name: 'Google Gemini API Key',
+          purpose_tag: 'ai_vision',
+          secret_val: apiKeyInput.trim(),
+          model_name: modelToTest,
+        })
+      } else if (activeKeyPool && modelToTest !== activeKeyPool.model_name) {
+        await adminSecretsService.updateKeyPoolModel(activeKeyPool.id, modelToTest)
       }
 
       setIsVaultConfigured(true)
       setKeySavedBadge(true)
-      setApiKeyInput('') // Immediately purge cleartext string from memory
-      setTimeout(() => setKeySavedBadge(false), 2500)
       setShowKeyEdit(false)
+      setApiKeyInput('')
+
+      // Reload pools
+      const pools = await adminSecretsService.getKeyPools()
+      const visionKey = pools.find((k) => k.purpose_tag === 'ai_vision' && k.status === 'active') || pools[0]
+      if (visionKey) {
+        setActiveKeyPool(visionKey)
+        setApiModelInput(visionKey.model_name)
+      }
+
+      setTimeout(() => setKeySavedBadge(false), 3000)
     } catch (err: any) {
-      setKeyErrorMsg(err.message || 'Lỗi khi lưu cấu hình vào Database Vault')
+      setKeyErrorMsg(`Lỗi khi lưu: ${err.message}`)
     } finally {
       setTestingKey(false)
     }
   }
 
-  const handleSelectCorrectOption = (qIdx: number, optKey: string) => {
-    if (!parsedList) return
-    setParsedList((prev) =>
-      (prev || []).map((q, idx) => {
-        if (idx !== qIdx) return q
-        const updatedOpts = q.options.map((opt) => ({
-          ...opt,
-          is_correct: opt.key === optKey,
-        }))
-        return { ...q, options: updatedOpts }
-      })
-    )
+  const handleConfirmImport = () => {
+    if (parsedList && parsedList.length > 0) {
+      onImport(parsedList)
+      handleReset()
+    }
   }
 
-  const handleConfirmImport = () => {
-    if (!parsedList || parsedList.length === 0) return
-
-    const formatted: Partial<ExamQuestion>[] = parsedList.map((item, idx) => ({
-      question_number: item.questionNumber || idx + 101,
-      question_text: item.questionText,
-      question_type: 'multiple_choice',
-      options: item.options,
-      points: 1,
-      explanation_html: item.explanationHtml || '',
-    }))
-
-    onImport(formatted)
+  const handleReset = () => {
     onClose()
     setRawInput('')
     setParsedList(null)
   }
 
-  const activeKey = Boolean(apiKeyInput.trim() || isVaultConfigured)
+  const isReadyToProcess = Boolean(isVaultConfigured || activeKeyPool)
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="neo-card p-6 bg-card border-3 border-border shadow-[6px_6px_0_var(--border)] rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col gap-4 animate-in fade-in zoom-in-95 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b-2 border-border pb-3 shrink-0">
+        <div className="flex items-center justify-between border-b border-border pb-3 shrink-0">
           <div>
-            <h2 className="text-lg font-black text-foreground flex items-center gap-2">
-              <ClipboardPaste size={22} className="text-primary" />
+            <h2 className="font-black text-lg text-foreground flex items-center gap-2">
+              <Upload className="w-5 h-5 text-primary" />
               NHẬP CÂU HỎI & ĐÁP ÁN THÔNG MINH
             </h2>
             <p className="text-xs font-bold text-muted-foreground mt-0.5">
@@ -354,99 +314,48 @@ export function BulkExamQuestionImportModal({
           {parsedList === null ? (
             mode === 'text' ? (
               /* Text Import Mode */
-              <div className="flex flex-col gap-4">
-                <div className="p-3.5 bg-amber-50 border-2 border-amber-300 rounded-xl flex flex-col gap-1 text-xs font-bold text-amber-950">
-                  <span className="font-black text-amber-900 flex items-center gap-1">
-                    <WandSparkles size={14} /> Định dạng mẫu được hỗ trợ (Từ PDF / ETS / Word):
-                  </span>
-                  <pre className="font-mono text-[11px] bg-amber-100/70 p-2 rounded border border-amber-200 mt-1 whitespace-pre-wrap leading-relaxed">
-{`101. The lecture will take place at 6:00 P.M., ------- which attendees may ask questions.
-(A) across
-(B) after
-(C) inside
-(D) among`}
-                  </pre>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-black text-foreground">Dán nội dung câu hỏi tại đây *</label>
-                  <textarea
-                    rows={8}
-                    value={rawInput}
-                    onChange={(e) => setRawInput(e.target.value)}
-                    placeholder="Dán nội dung từ PDF hoặc tài liệu Word của bạn vào đây..."
-                    className="w-full p-3 border-2 border-border rounded-xl bg-background text-xs font-mono font-bold focus:outline-none focus:border-primary leading-relaxed"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button
-                    variant="primary"
-                    onClick={handleAnalyzeText}
-                    disabled={!rawInput.trim()}
-                    className="px-5 text-xs font-black"
-                  >
-                    <WandSparkles size={16} />
-                    Phân tích & Tách dữ liệu
-                  </Button>
-                </div>
+              <div className="flex flex-col gap-3">
+                <label className="text-xs font-bold text-muted-foreground">
+                  Dán nội dung bài thi vào ô bên dưới (Tự động tách câu hỏi 101, 102... và đáp án A, B, C, D):
+                </label>
+                <textarea
+                  value={rawInput}
+                  onChange={(e) => setRawInput(e.target.value)}
+                  placeholder={`VD:\n101. The lecture will take place at 6:00 P.M., ------- which attendees may ask questions.\n(A) across\n(B) after\n(C) inside\n(D) among\n\n102. Ms. Rivera ------- assigned the new accounts to senior staff members.`}
+                  className="w-full h-64 p-3 font-mono text-xs border-2 border-border rounded-xl bg-background focus:outline-none focus:border-primary resize-none"
+                />
               </div>
             ) : mode === 'ocr' ? (
-              /* OCR Image Mode */
+              /* OCR Import Mode */
               <div className="flex flex-col gap-4">
-                <div className="p-3.5 bg-blue-50 border-2 border-blue-300 rounded-xl flex flex-col gap-1 text-xs font-bold text-blue-950">
-                  <span className="font-black text-blue-900 flex items-center gap-1">
-                    <Camera size={14} /> Quét chữ tự động từ Ảnh 1 Cột (Local Web Worker OCR):
-                  </span>
-                  <p className="text-[11px] text-blue-800 leading-relaxed mt-0.5">
-                    Phù hợp cho ảnh chụp 1 cột câu hỏi. Chụp ảnh màn hình (<strong>Win + Shift + S</strong>) rồi bấm <strong>Ctrl + V</strong> dán vào đây!
-                  </p>
+                <div className="p-3 bg-muted/30 border border-border rounded-xl text-xs font-bold text-muted-foreground">
+                  💡 Chọn tệp ảnh bài thi (hoặc dán Ctrl+V) để hệ thống nhận diện văn bản OCR 1 cột ngay trên máy bạn.
                 </div>
-
-                {/* Dropzone Box */}
-                <div className="relative border-3 border-dashed border-border rounded-2xl p-8 bg-muted/20 hover:bg-muted/40 transition flex flex-col items-center justify-center gap-3 text-center cursor-pointer group">
+                <div className="relative border-2 border-dashed border-border rounded-xl p-8 hover:bg-muted/20 transition flex flex-col items-center justify-center gap-2 text-center cursor-pointer">
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleOcrFileInputChange}
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
                   />
-                  <div className="w-12 h-12 rounded-2xl bg-primary/10 border-2 border-primary/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Upload size={24} className="text-primary" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-black text-foreground block">
-                      Bấm để chọn tệp ảnh hoặc Kéo & Thả tệp ảnh vào đây
-                    </span>
-                    <span className="text-[11px] font-bold text-primary mt-1 block">
-                      Hoặc bấm Ctrl + V để Dán trực tiếp ảnh từ Clipboard!
-                    </span>
-                  </div>
+                  <Camera size={32} className="text-primary" />
+                  <span className="text-xs font-black text-foreground">
+                    Bấm để chọn tệp ảnh hoặc Kéo & Thả ảnh vào đây
+                  </span>
+                  <span className="text-[11px] font-bold text-muted-foreground">
+                    Hoặc bấm Ctrl + V để Dán ảnh từ Clipboard
+                  </span>
                 </div>
 
-                {/* Progress / Loading indicator */}
                 {ocrLoading && (
-                  <div className="p-4 bg-primary/10 border-2 border-primary/30 rounded-xl flex flex-col gap-2">
-                    <div className="flex items-center justify-between text-xs font-black text-primary">
-                      <span className="flex items-center gap-2">
-                        <Loader2 size={16} className="animate-spin" />
-                        Đang quét chữ từ ảnh chụp bằng AI Web Worker...
-                      </span>
-                      <span>{ocrProgress?.progress || 0}%</span>
-                    </div>
-                    <div className="w-full bg-background rounded-full h-2 overflow-hidden border border-border">
-                      <div
-                        className="bg-primary h-full transition-all duration-300"
-                        style={{ width: `${ocrProgress?.progress || 0}%` }}
-                      />
-                    </div>
+                  <div className="p-4 bg-primary/10 rounded-xl flex items-center justify-center gap-2 text-primary text-xs font-black">
+                    <Loader2 size={16} className="animate-spin" /> Đang quét OCR bài thi...
                   </div>
                 )}
 
                 {ocrError && (
-                  <div className="p-3.5 bg-rose-50 border-2 border-rose-300 rounded-xl text-xs font-bold text-rose-700 flex items-center gap-2">
-                    <AlertCircle size={16} />
-                    {ocrError}
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl text-xs font-bold flex items-center gap-2">
+                    <AlertCircle size={16} /> {ocrError}
                   </div>
                 )}
               </div>
@@ -460,9 +369,9 @@ export function BulkExamQuestionImportModal({
                       AI Vision Google Gemini (Bóc tách mọi Bố cục Đề từ Ảnh + Tự giải Lời giải)
                     </span>
 
-                    {activeKey ? (
+                    {isReadyToProcess ? (
                       <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1">
-                        <Check size={12} /> Đã có Gemini API Key
+                        <Check size={12} /> Đã kết nối DB Vault
                       </span>
                     ) : (
                       <span className="text-[10px] font-black text-rose-700 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded flex items-center gap-1">
@@ -475,16 +384,16 @@ export function BulkExamQuestionImportModal({
                   </p>
                 </div>
 
-                {/* API Key Config Banner */}
+                {/* Vault Sync Status Banner */}
                 {(!isVaultConfigured || showKeyEdit) ? (
                   <div className="p-3.5 bg-card border-2 border-border rounded-xl flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-black text-foreground flex items-center gap-1.5">
                         <KeyRound size={14} className="text-primary" />
-                        Cấu hình Google Gemini API Key & Model AI (Vault Bảo mật):
+                        Cấu hình Gemini API Key & Model (Cập nhật trực tiếp Server Vault):
                       </label>
                       {keySavedBadge && (
-                        <span className="text-[11px] font-black text-emerald-600">✓ Đã xác thực & Lưu Vault!</span>
+                        <span className="text-[11px] font-black text-emerald-600">✓ Đã đồng bộ Server Vault!</span>
                       )}
                     </div>
 
@@ -502,39 +411,23 @@ export function BulkExamQuestionImportModal({
                             setApiKeyInput(e.target.value)
                             setKeyErrorMsg(null)
                           }}
-                          placeholder={isVaultConfigured ? '•••••••••••••••• (Đã có Key)' : 'Dán AIzaSy... API Key vào đây'}
+                          placeholder={isVaultConfigured ? '•••••••••••••••• (Đã có Key)' : 'Dán API Key vào đây'}
                           className="px-3 py-1.5 border-2 border-border rounded-lg text-xs font-mono font-bold bg-background focus:outline-none focus:border-primary"
                         />
                       </div>
 
                       <div className="flex flex-col gap-1">
                         <span className="text-[11px] font-black text-muted-foreground">Model AI Vision</span>
-                        <Select
+                        <input
+                          type="text"
                           value={apiModelInput}
-                          onChange={(val) => {
-                            setApiModelInput(val)
+                          onChange={(e) => {
+                            setApiModelInput(e.target.value)
                             setKeyErrorMsg(null)
                           }}
-                          options={[
-                            ...dbAiModels.map((m) => ({
-                              value: m.model_name,
-                              label: `${m.model_name} ${m.is_default ? '(Default)' : ''}`,
-                            })),
-                            { value: 'custom', label: '+ Thêm Model AI khác...' },
-                          ]}
+                          placeholder="VD: gemini-2.0-flash, gemini-1.5-pro..."
+                          className="px-3 py-1.5 border-2 border-border rounded-lg text-xs font-mono font-bold bg-background focus:outline-none focus:border-primary"
                         />
-                        {apiModelInput === 'custom' && (
-                          <input
-                            type="text"
-                            value={customModelText}
-                            onChange={(e) => {
-                              setCustomModelText(e.target.value)
-                              setKeyErrorMsg(null)
-                            }}
-                            placeholder="Tên Model (VD: gemini-2.5-flash)"
-                            className="mt-1 px-2.5 py-1 border border-border rounded text-xs font-mono font-bold bg-background focus:outline-none focus:border-primary"
-                          />
-                        )}
                       </div>
                     </div>
 
@@ -555,28 +448,28 @@ export function BulkExamQuestionImportModal({
                       >
                         {testingKey ? (
                           <span className="flex items-center gap-1">
-                            <Loader2 size={12} className="animate-spin" /> Đang kiểm tra...
+                            <Loader2 size={12} className="animate-spin" /> Đang lưu...
                           </span>
                         ) : (
-                          'Xác thực & Lưu Cấu Hình'
+                          'Đồng bộ vào Vault'
                         )}
                       </Button>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between text-xs font-bold text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-lg border border-border">
+                  <div className="flex items-center justify-between text-xs font-bold text-muted-foreground bg-muted/30 px-3 py-2 rounded-lg border border-border">
                     <div className="flex items-center gap-3">
                       <span className="font-mono text-emerald-700 font-black flex items-center gap-1">
-                        <Check size={12} /> Key Vault: Active
+                        <ShieldCheck size={14} /> Server Vault: Active ({activeKeyPool?.masked_preview || 'Configured'})
                       </span>
                       <span className="font-mono font-black text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
-                        Model: {apiModelInput}
+                        Model: {activeKeyPool?.model_name || apiModelInput || 'Server Dynamic Model'}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowKeyEdit(true)}
-                      className="text-primary font-black hover:underline"
+                      className="text-primary font-black hover:underline text-[11px]"
                     >
                       Đổi Key / Model khác
                     </button>
@@ -590,14 +483,14 @@ export function BulkExamQuestionImportModal({
                     accept="image/*"
                     onChange={handleAiVisionFileInputChange}
                     className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                    disabled={!activeKey || aiVisionLoading}
+                    disabled={!isReadyToProcess || aiVisionLoading}
                   />
                   <div className="w-12 h-12 rounded-2xl bg-amber-100 border-2 border-amber-300 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Sparkles size={24} className="text-amber-600" />
                   </div>
                   <div>
                     <span className="text-xs font-black text-foreground block">
-                      {activeKey ? 'Bấm để chọn tệp ảnh Đề thi hoặc Kéo & Thả ảnh vào đây' : 'Hãy nhập API Key ở trên trước khi chọn ảnh'}
+                      {isReadyToProcess ? 'Bấm để chọn tệp ảnh Đề thi hoặc Kéo & Thả ảnh vào đây' : 'Hãy cấu hình API Key ở trên trước khi chọn ảnh'}
                     </span>
                     <span className="text-[11px] font-bold text-amber-700 mt-1 block">
                       Hoặc bấm Ctrl + V để Dán trực tiếp ảnh chụp từ Clipboard!
@@ -619,155 +512,87 @@ export function BulkExamQuestionImportModal({
                 )}
 
                 {aiVisionError && (
-                  <div className="p-3.5 bg-rose-50 border-2 border-rose-300 rounded-xl text-xs font-bold text-rose-700 flex items-center gap-2">
-                    <AlertCircle size={16} />
-                    {aiVisionError}
+                  <div className="p-3.5 bg-rose-50 border-2 border-rose-300 text-rose-950 rounded-xl text-xs font-black flex items-center gap-2">
+                    <AlertCircle size={16} className="text-rose-600 shrink-0" />
+                    <span>{aiVisionError}</span>
                   </div>
                 )}
               </div>
             )
           ) : (
-            /* Parsed Preview List */
-            <div className="flex flex-col gap-4">
+            /* Parsed Questions Preview List */
+            <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between bg-emerald-50 border-2 border-emerald-300 p-3 rounded-xl">
                 <span className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
-                  <CheckCircle2 size={16} className="text-emerald-600" />
-                  Đã bóc tách thành công {parsedList.length} câu hỏi. Kiểm tra & bấm Nhập vào cụm bài!
+                  <Check size={16} className="text-emerald-700" />
+                  Đã tách thành công {parsedList.length} câu hỏi!
                 </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setParsedList(null)
-                    setImagePreview(null)
-                  }}
-                  className="text-xs font-bold text-slate-700 hover:underline"
-                >
-                  ← Thử quét lại ảnh/văn bản khác
-                </button>
+                <Button variant="ghost" onClick={() => setParsedList(null)} className="text-xs font-bold">
+                  Quét lại tệp khác
+                </Button>
               </div>
 
-              {/* Show image preview thumbnail if image was used */}
-              {imagePreview && (
-                <div className="flex items-center gap-3 p-3 bg-card border-2 border-border rounded-xl">
-                  <img
-                    src={imagePreview}
-                    alt="Ảnh đề thi gốc"
-                    className="w-32 h-20 object-contain rounded border border-border bg-muted/30"
-                  />
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs font-black text-foreground flex items-center gap-1">
-                      <ImageIcon size={14} className="text-primary" /> Ảnh đề thi gốc đã quét
-                    </span>
-                    <span className="text-[11px] font-bold text-muted-foreground">
-                      Dữ liệu chữ đã được AI trích xuất và tự động điền vào bên dưới.
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-4 max-h-[50vh] overflow-y-auto pr-1">
-                {parsedList.map((item, qIdx) => (
-                  <div
-                    key={qIdx}
-                    className="p-4 border-2 border-border rounded-xl bg-card shadow-[2px_2px_0_var(--border)] flex flex-col gap-3"
-                  >
-                    <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-primary">Câu {qIdx + 1}</span>
-                        <span className="text-xs font-bold text-muted-foreground">(Số thứ tự:</span>
-                        <input
-                          type="number"
-                          value={item.questionNumber || qIdx + 101}
-                          onChange={(e) => {
-                            const updated = [...parsedList]
-                            updated[qIdx].questionNumber = Number(e.target.value)
-                            setParsedList(updated)
-                          }}
-                          className="w-16 px-1.5 py-0.5 border border-border rounded text-xs font-black text-center"
-                        />
-                        <span className="text-xs font-bold text-muted-foreground">)</span>
-                      </div>
-
-                      {item.error && (
-                        <span className="text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 flex items-center gap-1">
-                          <AlertCircle size={12} /> {item.error}
-                        </span>
-                      )}
+              <div className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto pr-1">
+                {parsedList.map((q, idx) => (
+                  <div key={idx} className="p-3.5 bg-card border-2 border-border rounded-xl flex flex-col gap-2">
+                    <div className="flex items-center gap-2 font-black text-xs text-foreground">
+                      <span className="px-2 py-0.5 bg-primary/10 text-primary rounded font-mono">
+                        Câu {q.questionNumber || idx + 1}
+                      </span>
+                      <span>{q.questionText}</span>
                     </div>
 
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[11px] font-black text-foreground">Nội dung câu hỏi</label>
-                      <input
-                        type="text"
-                        value={item.questionText}
-                        onChange={(e) => {
-                          const updated = [...parsedList]
-                          updated[qIdx].questionText = e.target.value
-                          setParsedList(updated)
-                        }}
-                        className="px-2.5 py-1.5 border border-border rounded-lg text-xs font-bold bg-background focus:outline-none focus:border-primary"
-                      />
-                    </div>
-
-                    {/* Choices A, B, C, D selection */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                      {item.options.map((opt) => (
+                    <div className="grid grid-cols-2 gap-1.5 text-xs font-bold pl-2">
+                      {q.options.map((opt) => (
                         <div
                           key={opt.key}
-                          onClick={() => handleSelectCorrectOption(qIdx, opt.key)}
-                          className={`flex items-center gap-2 p-2 border-2 rounded-lg cursor-pointer transition ${
+                          className={`p-1.5 rounded-lg border ${
                             opt.is_correct
-                              ? 'border-emerald-500 bg-emerald-50/70 font-black'
-                              : 'border-border bg-background hover:bg-muted/40'
+                              ? 'bg-emerald-100 border-emerald-400 text-emerald-950 font-black'
+                              : 'bg-muted/30 border-border text-muted-foreground'
                           }`}
                         >
-                          <input
-                            type="radio"
-                            name={`correct_opt_modal_${qIdx}`}
-                            checked={opt.is_correct}
-                            onChange={() => handleSelectCorrectOption(qIdx, opt.key)}
-                            className="accent-emerald-600 cursor-pointer"
-                          />
-                          <span className="text-xs font-black">{opt.key}.</span>
-                          <input
-                            type="text"
-                            value={opt.text}
-                            onChange={(e) => {
-                              const updated = [...parsedList]
-                              updated[qIdx].options = updated[qIdx].options.map((o) =>
-                                o.key === opt.key ? { ...o, text: e.target.value } : o
-                              )
-                              setParsedList(updated)
-                            }}
-                            className="flex-1 px-1.5 py-0.5 text-xs font-bold bg-transparent border-b border-border/40 focus:outline-none"
-                          />
+                          ({opt.key}) {opt.text} {opt.is_correct && '✓'}
                         </div>
                       ))}
                     </div>
 
-                    {item.explanationHtml && (
-                      <div className="flex flex-col gap-1 pt-1 border-t border-border/40">
-                        <label className="text-[11px] font-black text-muted-foreground">Lời giải AI:</label>
-                        <p className="text-xs font-bold text-foreground bg-muted/30 p-2 rounded border border-border">
-                          {item.explanationHtml}
-                        </p>
+                    {q.explanationHtml && (
+                      <div className="text-[11px] font-bold text-amber-900 bg-amber-50 p-2 rounded-lg border border-amber-200 mt-1">
+                        <strong>Lời giải:</strong> {q.explanationHtml}
                       </div>
                     )}
                   </div>
                 ))}
               </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t-2 border-border">
-                <Button variant="ghost" onClick={() => setParsedList(null)}>
-                  Quay lại
-                </Button>
-                <Button variant="primary" onClick={handleConfirmImport} className="px-6 text-xs font-black">
-                  <Plus size={16} />
-                  Nhập {parsedList.length} câu hỏi vào Cụm bài
-                </Button>
-              </div>
             </div>
           )}
+        </div>
+
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between border-t border-border pt-3 shrink-0">
+          <Button variant="ghost" onClick={handleReset} className="text-xs font-black">
+            Hủy bỏ
+          </Button>
+
+          {parsedList !== null ? (
+            <Button
+              variant="primary"
+              onClick={handleConfirmImport}
+              className="text-xs font-black px-6"
+            >
+              Nhập {parsedList.length} câu hỏi vào đề thi
+            </Button>
+          ) : mode === 'text' ? (
+            <Button
+              variant="primary"
+              disabled={!rawInput.trim()}
+              onClick={handleParseText}
+              className="text-xs font-black px-6"
+            >
+              Bóc tách câu hỏi từ văn bản
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>
