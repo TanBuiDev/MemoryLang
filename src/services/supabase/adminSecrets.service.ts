@@ -165,18 +165,6 @@ export const adminSecretsService = {
   },
 
   /**
-   * Securely deletes an admin secret via RPC
-   */
-  async deleteSecret(keyName: string) {
-    const { data, error } = await supabase.rpc('delete_admin_secret', {
-      p_key_name: keyName,
-    })
-
-    if (error) throw new Error(error.message)
-    return data as { ok: boolean; key_name: string; message: string }
-  },
-
-  /**
    * Fetches active AI Model configurations
    */
   async getAiModels(): Promise<AiModelConfigItem[]> {
@@ -206,6 +194,18 @@ export const adminSecretsService = {
 
     if (error) throw new Error(error.message)
     return data as { ok: boolean; model_name: string; message: string }
+  },
+
+  /**
+   * Deletes an AI Model from catalog
+   */
+  async deleteAiModel(id: string) {
+    const { data, error } = await supabase.rpc('delete_ai_model_config', {
+      p_id: id,
+    })
+
+    if (error) throw new Error(error.message)
+    return data as { ok: boolean; message: string }
   },
 
   /**

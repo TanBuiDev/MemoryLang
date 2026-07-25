@@ -51,16 +51,22 @@ export default function AdminSecretsPage() {
   const [formKeyName, setFormKeyName] = useState('')
   const [formPurposeTag, setFormPurposeTag] = useState('ai_vision')
   const [formSecretVal, setFormSecretVal] = useState('')
-  const [formModelName, setFormModelName] = useState('gemini-2.0-flash')
-  const [formCustomModel, setFormCustomModel] = useState('')
+  const [formModelName, setFormModelName] = useState('')
   const [formIsActive, setFormIsActive] = useState(true)
   const [modalErrorMsg, setModalErrorMsg] = useState<string | null>(null)
+
+  // Add Model Catalog Modal state
+  const [showAddModelModal, setShowAddModelModal] = useState(false)
+  const [newModelNameInput, setNewModelNameInput] = useState('')
+  const [newModelDescInput, setNewModelDescInput] = useState('')
+  const [newModelIsDefault, setNewModelIsDefault] = useState(false)
 
   // Status & Testing states
   const [savingStatus, setSavingStatus] = useState(false)
   const [testingKeyId, setTestingKeyId] = useState<string | null>(null)
   const [feedbackMsg, setFeedbackMsg] = useState<{ ok: boolean; message: string } | null>(null)
   const [pendingDeleteKeyId, setPendingDeleteKeyId] = useState<string | null>(null)
+  const [pendingDeleteModelId, setPendingDeleteModelId] = useState<string | null>(null)
 
   const handleTestIndividualKey = async (item: KeyPoolItem) => {
     setTestingKeyId(item.id)
@@ -131,7 +137,6 @@ export default function AdminSecretsPage() {
       setFormPurposeTag(item.purpose_tag)
       setFormSecretVal('') // Write-Only policy: never prefill secret string
       setFormModelName(item.model_name)
-      setFormCustomModel('')
       setFormIsActive(item.status === 'active')
     } else {
       setEditingKeyId(null)
@@ -139,7 +144,6 @@ export default function AdminSecretsPage() {
       setFormPurposeTag('ai_vision')
       setFormSecretVal('')
       setFormModelName(aiModels.find((m) => m.is_default)?.model_name || 'gemini-2.0-flash')
-      setFormCustomModel('')
       setFormIsActive(true)
     }
     setShowAddModal(true)
@@ -147,11 +151,7 @@ export default function AdminSecretsPage() {
 
   const handleSaveKeyPoolForm = async () => {
     setModalErrorMsg(null)
-
-    const targetModel =
-      formModelName === 'custom'
-        ? formCustomModel.trim()
-        : formModelName.trim()
+    const targetModel = formModelName.trim() || 'gemini-2.0-flash'
 
     if (!formKeyName.trim()) {
       setModalErrorMsg('Vui lòng nhập Tên Gợi Nhớ / Mục đích cho Key này.')
@@ -174,11 +174,11 @@ export default function AdminSecretsPage() {
           setSavingStatus(false)
           return
         }
+      }
 
-        // Save model to verified catalog
-        if (targetModel) {
-          await adminSecretsService.saveVerifiedAiModel(targetModel, 'gemini')
-        }
+      // Upsert model to verified catalog so it shows in catalog
+      if (targetModel) {
+        await adminSecretsService.saveVerifiedAiModel(targetModel, 'gemini')
       }
 
       await adminSecretsService.upsertKeyPoolItem({
@@ -208,6 +208,44 @@ export default function AdminSecretsPage() {
     }
   }
 
+  const handleSaveNewModelCatalog = async () => {
+    if (!newModelNameInput.trim()) {
+      setModalErrorMsg('Vui lòng nhập Tên Model AI.')
+      return
+    }
+
+    setSavingStatus(true)
+    try {
+      await adminSecretsService.saveVerifiedAiModel(
+        newModelNameInput.trim(),
+        'gemini',
+        newModelDescInput.trim() || undefined,
+        newModelIsDefault
+      )
+      setNewModelNameInput('')
+      setNewModelDescInput('')
+      setNewModelIsDefault(false)
+      setShowAddModelModal(false)
+      setFeedbackMsg({ ok: true, message: `✓ Đã thêm Model '${newModelNameInput.trim()}' vào Danh mục!` })
+      await loadData()
+    } catch (err: any) {
+      setFeedbackMsg({ ok: false, message: `Lỗi khi lưu Model: ${err.message}` })
+    } finally {
+      setSavingStatus(false)
+    }
+  }
+
+  const handleDeleteModel = async (id: string) => {
+    try {
+      await adminSecretsService.deleteAiModel(id)
+      setPendingDeleteModelId(null)
+      setFeedbackMsg({ ok: true, message: '✓ Đã xóa Model khỏi danh mục.' })
+      await loadData()
+    } catch (err: any) {
+      setFeedbackMsg({ ok: false, message: `Lỗi khi xóa Model: ${err.message}` })
+    }
+  }
+
   const handleToggleStatus = async (item: KeyPoolItem) => {
     const newStatus = item.status === 'active' ? 'disabled' : 'active'
     try {
@@ -225,6 +263,9 @@ export default function AdminSecretsPage() {
   const handleUpdateModel = async (id: string, modelName: string) => {
     try {
       await adminSecretsService.updateKeyPoolModel(id, modelName)
+      if (modelName.trim()) {
+        await adminSecretsService.saveVerifiedAiModel(modelName.trim(), 'gemini')
+      }
       setFeedbackMsg({ ok: true, message: `✓ Đã chuyển Model sang '${modelName}'.` })
       await loadData()
     } catch (err: any) {
@@ -432,19 +473,15 @@ export default function AdminSecretsPage() {
                       </span>
                     </td>
 
-                    {/* Model Dropdown */}
+                    {/* Model Name Input/Dropdown */}
                     <td className="p-3">
-                      <select
+                      <input
+                        type="text"
                         value={k.model_name}
                         onChange={(e) => void handleUpdateModel(k.id, e.target.value)}
-                        className="px-2 py-1 border border-slate-900 rounded bg-background text-[11px] font-mono font-bold focus:outline-none focus:border-primary"
-                      >
-                        {aiModels.map((m) => (
-                          <option key={m.id} value={m.model_name}>
-                            {m.model_name}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder="VD: gemini-2.0-flash"
+                        className="px-2 py-1 border border-slate-900 rounded bg-background text-[11px] font-mono font-bold focus:outline-none focus:border-primary w-36"
+                      />
                     </td>
 
                     {/* Status Badge */}
@@ -531,50 +568,82 @@ export default function AdminSecretsPage() {
 
       {/* Managed AI Models Database Catalog */}
       <div className="neo-card p-5 bg-card border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] rounded-2xl flex flex-col gap-4">
-        <h3 className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-amber-500" />
-          Danh mục AI Models đã xác minh trong Database ({aiModels.length} models)
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            Danh mục AI Models đã xác minh trong Database ({aiModels.length} models)
+          </h3>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-bold border-collapse">
-            <thead>
-              <tr className="border-b-2 border-slate-900 bg-muted/40 text-slate-700">
-                <th className="p-3 font-black">Tên Model</th>
-                <th className="p-3 font-black">Provider</th>
-                <th className="p-3 font-black">Mô tả</th>
-                <th className="p-3 font-black">Trạng thái</th>
-                <th className="p-3 font-black">Lần xác minh gần nhất</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y border-b-2 border-slate-900">
-              {aiModels.map((m) => (
-                <tr key={m.id} className="hover:bg-muted/20">
-                  <td className="p-3 font-mono font-black text-slate-900 flex items-center gap-2">
-                    {m.model_name}
-                    {m.is_default && (
-                      <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded">
-                        Default
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-3 uppercase text-slate-600 font-mono text-[11px]">{m.provider}</td>
-                  <td className="p-3 text-slate-600">{m.description || '—'}</td>
-                  <td className="p-3">
-                    {m.is_active ? (
-                      <span className="text-emerald-700 font-black">✓ Active</span>
-                    ) : (
-                      <span className="text-slate-400 font-bold">Inactive</span>
-                    )}
-                  </td>
-                  <td className="p-3 text-slate-500 font-mono text-[11px]">
-                    {m.last_verified_at ? new Date(m.last_verified_at).toLocaleString('vi-VN') : 'Chưa có'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setNewModelNameInput('')
+              setNewModelDescInput('')
+              setNewModelIsDefault(false)
+              setShowAddModelModal(true)
+            }}
+            className="text-xs font-black px-3 py-1"
+          >
+            <Plus size={14} /> Thêm Model AI mới
+          </Button>
         </div>
+
+        {aiModels.length === 0 ? (
+          <div className="p-6 text-center text-xs font-bold text-slate-500 bg-muted/20 rounded-xl border border-dashed border-slate-300">
+            Chưa có Model AI nào trong danh mục. Hãy bấm "+ Thêm Model AI mới" hoặc thêm Key ở trên để tự động bổ sung Model vào danh mục.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-bold border-collapse">
+              <thead>
+                <tr className="border-b-2 border-slate-900 bg-muted/40 text-slate-700">
+                  <th className="p-3 font-black">Tên Model</th>
+                  <th className="p-3 font-black">Provider</th>
+                  <th className="p-3 font-black">Mô tả</th>
+                  <th className="p-3 font-black">Trạng thái</th>
+                  <th className="p-3 font-black">Lần xác minh gần nhất</th>
+                  <th className="p-3 font-black text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y border-b-2 border-slate-900">
+                {aiModels.map((m) => (
+                  <tr key={m.id} className="hover:bg-muted/20">
+                    <td className="p-3 font-mono font-black text-slate-900 flex items-center gap-2">
+                      {m.model_name}
+                      {m.is_default && (
+                        <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded">
+                          Default
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-3 uppercase text-slate-600 font-mono text-[11px]">{m.provider}</td>
+                    <td className="p-3 text-slate-600">{m.description || '—'}</td>
+                    <td className="p-3">
+                      {m.is_active ? (
+                        <span className="text-emerald-700 font-black">✓ Active</span>
+                      ) : (
+                        <span className="text-slate-400 font-bold">Inactive</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-slate-500 font-mono text-[11px]">
+                      {m.last_verified_at ? new Date(m.last_verified_at).toLocaleString('vi-VN') : 'Chưa có'}
+                    </td>
+                    <td className="p-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setPendingDeleteModelId(m.id)}
+                        className="p-1 text-rose-600 hover:text-rose-800 transition"
+                        title="Xóa Model khỏi danh mục"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Real-time Usage & Security Audit Logs */}
@@ -686,33 +755,23 @@ export default function AdminSecretsPage() {
                   onCut={(e) => e.preventDefault()}
                   onContextMenu={(e) => e.preventDefault()}
                   onChange={(e) => setFormSecretVal(e.target.value)}
-                  placeholder={editingKeyId ? '•••••••••••••••• (Giữ nguyên)' : 'Dán AIzaSy... API key của bạn vào đây'}
+                  placeholder={editingKeyId ? '•••••••••••••••• (Giữ nguyên)' : 'Dán API key của bạn vào đây'}
                   className="w-full mt-1 px-3 py-2 border-2 border-slate-900 rounded-xl bg-background text-xs font-mono font-bold focus:outline-none focus:border-primary"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-black text-slate-900">Model AI Gắn liền với Key này</label>
-                <div className="mt-1">
-                  <Select
-                    value={formModelName}
-                    onChange={(val) => setFormModelName(val)}
-                    options={[
-                      ...aiModels.map((m) => ({ value: m.model_name, label: m.model_name })),
-                      { value: 'custom', label: '+ Tùy chỉnh model khác...' },
-                    ]}
-                  />
-                </div>
-
-                {formModelName === 'custom' && (
-                  <input
-                    type="text"
-                    value={formCustomModel}
-                    onChange={(e) => setFormCustomModel(e.target.value)}
-                    placeholder="Nhập tên Model tùy chỉnh (VD: gemini-2.5-flash)"
-                    className="w-full mt-2 px-3 py-1.5 border-2 border-slate-900 rounded-lg text-xs font-mono font-bold bg-background focus:outline-none focus:border-primary"
-                  />
-                )}
+                <label className="text-xs font-black text-slate-900">Model AI Gắn liền với Key này *</label>
+                <input
+                  type="text"
+                  value={formModelName}
+                  onChange={(e) => setFormModelName(e.target.value)}
+                  placeholder="VD: gemini-2.0-flash, gemini-1.5-pro, gemini-2.5-flash..."
+                  className="w-full mt-1 px-3 py-2 border-2 border-slate-900 rounded-xl bg-background text-xs font-mono font-bold focus:outline-none focus:border-primary"
+                />
+                <p className="text-[10px] text-slate-500 mt-1 font-bold">
+                  Nhập tên Model AI từ Google AI Studio (VD: gemini-2.0-flash, gemini-1.5-pro). Model này sẽ tự động lưu vào Catalog.
+                </p>
               </div>
 
               <label className="flex items-center gap-2 text-xs font-black text-slate-800 cursor-pointer pt-1">
@@ -749,7 +808,76 @@ export default function AdminSecretsPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Add Model Catalog Modal */}
+      {showAddModelModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="neo-card p-6 bg-card border-3 border-slate-900 shadow-[6px_6px_0px_0px_#000] rounded-2xl w-full max-w-md flex flex-col gap-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b-2 border-slate-200 pb-3">
+              <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                Thêm Model AI mới vào Danh mục Catalog
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddModelModal(false)}
+                className="text-slate-500 hover:text-slate-900 font-black text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="text-xs font-black text-slate-900">Tên Model AI *</label>
+                <input
+                  type="text"
+                  value={newModelNameInput}
+                  onChange={(e) => setNewModelNameInput(e.target.value)}
+                  placeholder="VD: gemini-2.0-flash, gemini-1.5-pro..."
+                  className="w-full mt-1 px-3 py-2 border-2 border-slate-900 rounded-xl bg-background text-xs font-mono font-bold focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black text-slate-900">Mô tả Model</label>
+                <input
+                  type="text"
+                  value={newModelDescInput}
+                  onChange={(e) => setNewModelDescInput(e.target.value)}
+                  placeholder="Mô tả ngắn gọn về model..."
+                  className="w-full mt-1 px-3 py-2 border-2 border-slate-900 rounded-xl bg-background text-xs font-bold focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-xs font-black text-slate-800 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  checked={newModelIsDefault}
+                  onChange={(e) => setNewModelIsDefault(e.target.checked)}
+                  className="w-4 h-4 rounded border-2 border-slate-900"
+                />
+                Đặt làm Model mặc định (Default)
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t-2 border-slate-200">
+              <Button variant="ghost" onClick={() => setShowAddModelModal(false)} className="text-xs font-black">
+                Hủy
+              </Button>
+              <Button
+                variant="primary"
+                disabled={savingStatus}
+                onClick={handleSaveNewModelCatalog}
+                className="text-xs font-black px-4"
+              >
+                {savingStatus ? 'Đang lưu...' : 'Lưu vào Danh mục'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Key Confirmation Modal */}
       <ConfirmModal
         open={!!pendingDeleteKeyId}
         onConfirm={() => {
@@ -758,6 +886,17 @@ export default function AdminSecretsPage() {
         onCancel={() => setPendingDeleteKeyId(null)}
         title="Xóa Key khỏi Pool Vault?"
         description="Hành động này sẽ xóa hoàn toàn API Key khỏi Pool. Nếu còn các Key khác trong Pool, hệ thống sẽ tự động chuyển đổi."
+      />
+
+      {/* Delete Model Confirmation Modal */}
+      <ConfirmModal
+        open={!!pendingDeleteModelId}
+        onConfirm={() => {
+          if (pendingDeleteModelId) void handleDeleteModel(pendingDeleteModelId)
+        }}
+        onCancel={() => setPendingDeleteModelId(null)}
+        title="Xóa Model khỏi Catalog?"
+        description="Hành động này sẽ xóa Model AI khỏi danh mục catalog trong Database."
       />
     </div>
   )
