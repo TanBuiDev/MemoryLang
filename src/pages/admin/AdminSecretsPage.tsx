@@ -12,6 +12,7 @@ import {
   Sparkles,
   RefreshCw,
   Plus,
+  Play,
   Layers,
   Tag,
   ToggleLeft,
@@ -56,8 +57,37 @@ export default function AdminSecretsPage() {
 
   // Status & Testing states
   const [savingStatus, setSavingStatus] = useState(false)
+  const [testingKeyId, setTestingKeyId] = useState<string | null>(null)
   const [feedbackMsg, setFeedbackMsg] = useState<{ ok: boolean; message: string } | null>(null)
   const [pendingDeleteKeyId, setPendingDeleteKeyId] = useState<string | null>(null)
+
+  const handleTestIndividualKey = async (item: KeyPoolItem) => {
+    setTestingKeyId(item.id)
+    setFeedbackMsg(null)
+    try {
+      const keyData = await adminSecretsService.getKeyPoolSecretForTest(item.id)
+      const testRes = await testGeminiApiKeyAndModel(keyData.encrypted_value, item.model_name)
+
+      if (testRes.ok) {
+        await adminSecretsService.toggleKeyPoolStatus(item.id, 'active')
+        setFeedbackMsg({
+          ok: true,
+          message: `✓ Kiểm tra thành công! Key '${item.key_name}' (${item.model_name}) đang hoạt động tốt.`,
+        })
+      } else {
+        await adminSecretsService.toggleKeyPoolStatus(item.id, 'disabled')
+        setFeedbackMsg({
+          ok: false,
+          message: `✕ Key '${item.key_name}' kiểm tra thất bại: ${testRes.message}`,
+        })
+      }
+      await loadData()
+    } catch (err: any) {
+      setFeedbackMsg({ ok: false, message: `Lỗi khi kiểm tra Key '${item.key_name}': ${err.message}` })
+    } finally {
+      setTestingKeyId(null)
+    }
+  }
 
   // Auto-dismiss notification after 4 seconds
   useEffect(() => {
@@ -445,6 +475,21 @@ export default function AdminSecretsPage() {
                     {/* Actions */}
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          disabled={testingKeyId === k.id}
+                          onClick={() => void handleTestIndividualKey(k)}
+                          title="Kiểm tra kết nối Key này với Google API"
+                          className="px-2 py-1 text-blue-700 bg-blue-50 border border-blue-300 hover:bg-blue-100 rounded text-[11px] font-black flex items-center gap-1 transition"
+                        >
+                          {testingKeyId === k.id ? (
+                            <Loader2 size={12} className="animate-spin text-blue-600" />
+                          ) : (
+                            <Play size={12} className="text-blue-600 fill-blue-600" />
+                          )}
+                          Test
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => void handleToggleStatus(k)}

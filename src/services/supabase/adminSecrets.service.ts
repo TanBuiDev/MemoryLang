@@ -60,6 +60,17 @@ export const adminSecretsService = {
   },
 
   /**
+   * Fetches secret value for admin testing only
+   */
+  async getKeyPoolSecretForTest(id: string) {
+    const { data, error } = await supabase.rpc('get_key_pool_secret_for_test', { p_id: id })
+    if (error || !data || data.length === 0) {
+      throw new Error(error?.message || 'Không thể lấy thông tin Key để kiểm tra.')
+    }
+    return data[0] as { id: string; key_name: string; encrypted_value: string; model_name: string; purpose_tag: string }
+  },
+
+  /**
    * Upserts an API Key into the Multi-Key Pool Vault
    */
   async upsertKeyPoolItem(payload: {
@@ -86,7 +97,7 @@ export const adminSecretsService = {
   /**
    * Toggles status of a Key in Pool (active <-> disabled)
    */
-  async toggleKeyPoolStatus(id: string, status: 'active' | 'disabled') {
+  async toggleKeyPoolStatus(id: string, status: 'active' | 'disabled' | 'rate_limited') {
     const { data, error } = await supabase.rpc('toggle_key_pool_status', {
       p_id: id,
       p_status: status,
