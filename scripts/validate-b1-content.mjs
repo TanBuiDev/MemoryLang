@@ -176,6 +176,28 @@ export function validateB1Artifact(value) {
       if (!isNonEmptyString(activity.title)) {
         error(`${activityPath}.title`, 'Expected a non-empty string')
       }
+      if (activity.instructions !== undefined && !isNonEmptyString(activity.instructions)) {
+        error(
+          `${activityPath}.instructions`,
+          'Expected a non-empty string when provided',
+        )
+      }
+      if (activity.content !== undefined && !isNonEmptyString(activity.content)) {
+        error(
+          `${activityPath}.content`,
+          'Expected a non-empty string when provided',
+        )
+      }
+      if (
+        activity.passage !== undefined
+        && activity.passage !== null
+        && !isNonEmptyString(activity.passage)
+      ) {
+        error(
+          `${activityPath}.passage`,
+          'Expected a non-empty string or null when provided',
+        )
+      }
       validateMediaUrl(
         activity.audio_url,
         `${activityPath}.audio_url`,
@@ -298,6 +320,18 @@ export function validateB1Artifact(value) {
       }
       if (!isNonEmptyString(prompt.prompt)) {
         error(`${promptPath}.prompt`, 'Expected a non-empty string')
+      }
+      if (prompt.instructions !== undefined && !isNonEmptyString(prompt.instructions)) {
+        error(
+          `${promptPath}.instructions`,
+          'Expected a non-empty string when provided',
+        )
+      }
+      if (prompt.content !== undefined && !isNonEmptyString(prompt.content)) {
+        error(
+          `${promptPath}.content`,
+          'Expected a non-empty string when provided',
+        )
       }
       validateSourcePage(prompt.source_page, `${promptPath}.source_page`)
       validateMediaUrl(prompt.image_url, `${promptPath}.image_url`, 'Image', false)

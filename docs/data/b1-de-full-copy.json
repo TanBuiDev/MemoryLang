@@ -264,7 +264,7 @@
             {
               "key": "A",
               "text": "should have been",
-              "is_correct": true
+              "is_correct": false
             },
             {
               "key": "B",
@@ -274,7 +274,7 @@
             {
               "key": "C",
               "text": "should have",
-              "is_correct": false
+              "is_correct": true
             },
             {
               "key": "D",

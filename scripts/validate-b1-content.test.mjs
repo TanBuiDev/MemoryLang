@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
 import { validateB1Artifact } from './validate-b1-content.mjs'
@@ -152,4 +153,98 @@ test('rejects malformed provenance exclusion metadata', () => {
   assert.ok(result.errors.some((error) =>
     error.path === 'source.provenance.excluded_source_numbers.signs[0]'
     && error.message === 'Expected a non-empty string'))
+})
+
+const invalidOptionalContentCases = [
+  {
+    name: 'activity instructions with an invalid type',
+    path: 'activities[0].instructions',
+    mutate: (artifact) => { artifact.activities[0].instructions = 42 },
+    message: 'Expected a non-empty string when provided',
+  },
+  {
+    name: 'empty activity instructions',
+    path: 'activities[0].instructions',
+    mutate: (artifact) => { artifact.activities[0].instructions = '' },
+    message: 'Expected a non-empty string when provided',
+  },
+  {
+    name: 'activity content with an invalid type',
+    path: 'activities[0].content',
+    mutate: (artifact) => { artifact.activities[0].content = [] },
+    message: 'Expected a non-empty string when provided',
+  },
+  {
+    name: 'empty activity content',
+    path: 'activities[0].content',
+    mutate: (artifact) => { artifact.activities[0].content = '  ' },
+    message: 'Expected a non-empty string when provided',
+  },
+  {
+    name: 'activity passage with an invalid type',
+    path: 'activities[0].passage',
+    mutate: (artifact) => { artifact.activities[0].passage = {} },
+    message: 'Expected a non-empty string or null when provided',
+  },
+  {
+    name: 'empty activity passage',
+    path: 'activities[0].passage',
+    mutate: (artifact) => { artifact.activities[0].passage = '' },
+    message: 'Expected a non-empty string or null when provided',
+  },
+  {
+    name: 'prompt instructions with an invalid type',
+    path: 'prompts[0].instructions',
+    mutate: (artifact) => { artifact.prompts[0].instructions = false },
+    message: 'Expected a non-empty string when provided',
+  },
+  {
+    name: 'empty prompt instructions',
+    path: 'prompts[0].instructions',
+    mutate: (artifact) => { artifact.prompts[0].instructions = '' },
+    message: 'Expected a non-empty string when provided',
+  },
+  {
+    name: 'prompt content with an invalid type',
+    path: 'prompts[0].content',
+    mutate: (artifact) => { artifact.prompts[0].content = ['invalid'] },
+    message: 'Expected a non-empty string when provided',
+  },
+  {
+    name: 'empty prompt content',
+    path: 'prompts[0].content',
+    mutate: (artifact) => { artifact.prompts[0].content = ' ' },
+    message: 'Expected a non-empty string when provided',
+  },
+]
+
+for (const invalidCase of invalidOptionalContentCases) {
+  test(`rejects ${invalidCase.name}`, () => {
+    const artifact = validArtifact()
+    invalidCase.mutate(artifact)
+
+    const result = validateB1Artifact(artifact)
+
+    assert.equal(result.valid, false)
+    assert.ok(result.errors.some((error) =>
+      error.path === invalidCase.path
+      && error.message === invalidCase.message))
+  })
+}
+
+test('keeps Grammar 108 aligned with the highlighted PDF answer', async () => {
+  const artifact = JSON.parse(await readFile(
+    new URL('../docs/data/b1-de-full-copy.json', import.meta.url),
+    'utf8',
+  ))
+  const grammar = artifact.activities.find((activity) =>
+    activity.source_key === 'grammar-use-of-english')
+  const question = grammar.questions.find((candidate) => candidate.source_number === '108')
+  const correctOptions = question.options.filter((option) => option.is_correct)
+
+  assert.deepEqual(correctOptions, [{
+    key: 'C',
+    text: 'should have',
+    is_correct: true,
+  }])
 })
