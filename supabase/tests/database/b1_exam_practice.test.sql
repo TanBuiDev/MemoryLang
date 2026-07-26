@@ -190,11 +190,43 @@ values
     '{"role":"admin"}'::jsonb,
     now(),
     now()
+  ),
+  (
+    '91000000-0000-0000-0000-000000000003',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated',
+    'authenticated',
+    'b1-pro@example.test',
+    crypt('local-test-password', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{}'::jsonb,
+    now(),
+    now()
   );
 
 update public.profiles
 set is_admin = true
 where id = '91000000-0000-0000-0000-000000000001';
+
+insert into public.subscriptions (
+  id,
+  user_id,
+  plan_type,
+  status,
+  billing_cycle,
+  current_period_start,
+  current_period_end
+)
+values (
+  '91100000-0000-0000-0000-000000000003',
+  '91000000-0000-0000-0000-000000000003',
+  'pro',
+  'active',
+  'monthly',
+  now(),
+  now() + interval '1 day'
+);
 
 insert into public.exams (
   id,
@@ -207,16 +239,43 @@ insert into public.exams (
   default_time_minutes,
   created_by
 )
+values
+  (
+    '92000000-0000-0000-0000-000000000001',
+    'B1 practice fixture',
+    'GENERAL',
+    true,
+    'free',
+    'b1-practice-fixture',
+    'B1',
+    120,
+    '91000000-0000-0000-0000-000000000001'
+  ),
+  (
+    '92000000-0000-0000-0000-000000000002',
+    'B1 Pro practice fixture',
+    'GENERAL',
+    true,
+    'pro',
+    'b1-pro-practice-fixture',
+    'B1',
+    120,
+    '91000000-0000-0000-0000-000000000001'
+  );
+
+insert into public.exam_passage_sets (
+  id,
+  exam_id,
+  part_number,
+  title,
+  order_index
+)
 values (
+  '92100000-0000-0000-0000-000000000001',
   '92000000-0000-0000-0000-000000000001',
-  'B1 practice fixture',
-  'GENERAL',
-  true,
-  'free',
-  'b1-practice-fixture',
-  'B1',
-  120,
-  '91000000-0000-0000-0000-000000000001'
+  1,
+  'Legacy passage fixture',
+  1
 );
 
 insert into public.practice_activities (
@@ -249,6 +308,16 @@ values
     false,
     'free',
     '91000000-0000-0000-0000-000000000001'
+  ),
+  (
+    '93000000-0000-0000-0000-000000000003',
+    'b1-grammar-pro',
+    'grammar',
+    'multiple_choice',
+    'Pro grammar activity',
+    true,
+    'pro',
+    '91000000-0000-0000-0000-000000000001'
   );
 
 insert into public.practice_questions (
@@ -263,18 +332,31 @@ insert into public.practice_questions (
   source_page,
   order_index
 )
-values (
-  '94000000-0000-0000-0000-000000000001',
-  '93000000-0000-0000-0000-000000000001',
-  'b1-grammar-question-1',
-  '101',
-  'multiple_choice',
-  'Choose the correct answer.',
-  '[{"key":"A","text":"works","is_correct":true}]'::jsonb,
-  '[]'::jsonb,
-  1,
-  1
-);
+values
+  (
+    '94000000-0000-0000-0000-000000000001',
+    '93000000-0000-0000-0000-000000000001',
+    'b1-grammar-question-1',
+    '101',
+    'multiple_choice',
+    'Choose the correct answer.',
+    '[{"key":"A","text":"works","is_correct":true}]'::jsonb,
+    '[]'::jsonb,
+    1,
+    1
+  ),
+  (
+    '94000000-0000-0000-0000-000000000002',
+    '93000000-0000-0000-0000-000000000003',
+    'b1-grammar-pro-question-1',
+    '102',
+    'multiple_choice',
+    'Choose the Pro answer.',
+    '[{"key":"A","text":"worked","is_correct":true}]'::jsonb,
+    '[]'::jsonb,
+    1,
+    1
+  );
 
 insert into public.practice_prompts (
   id,
@@ -287,17 +369,29 @@ insert into public.practice_prompts (
   access_tier,
   created_by
 )
-values (
-  '95000000-0000-0000-0000-000000000001',
-  'b1-writing-published',
-  'writing',
-  'Published writing prompt',
-  'Write an email applying for a part-time job.',
-  10,
-  true,
-  'free',
-  '91000000-0000-0000-0000-000000000001'
-);
+values
+  (
+    '95000000-0000-0000-0000-000000000001',
+    'b1-writing-published',
+    'writing',
+    'Published writing prompt',
+    'Write an email applying for a part-time job.',
+    10,
+    true,
+    'free',
+    '91000000-0000-0000-0000-000000000001'
+  ),
+  (
+    '95000000-0000-0000-0000-000000000002',
+    'b1-writing-pro',
+    'writing',
+    'Pro writing prompt',
+    'Write a formal complaint.',
+    11,
+    true,
+    'pro',
+    '91000000-0000-0000-0000-000000000001'
+  );
 
 insert into public.exam_sections (
   id,
@@ -310,16 +404,134 @@ insert into public.exam_sections (
   order_index,
   is_required
 )
-values (
-  '96000000-0000-0000-0000-000000000001',
-  '92000000-0000-0000-0000-000000000001',
-  'b1-grammar-section',
-  'grammar',
-  'Grammar',
-  'activity',
-  '93000000-0000-0000-0000-000000000001',
-  1,
-  true
+values
+  (
+    '96000000-0000-0000-0000-000000000001',
+    '92000000-0000-0000-0000-000000000001',
+    'b1-grammar-section',
+    'grammar',
+    'Grammar',
+    'activity',
+    '93000000-0000-0000-0000-000000000001',
+    1,
+    true
+  ),
+  (
+    '96000000-0000-0000-0000-000000000002',
+    '92000000-0000-0000-0000-000000000001',
+    'b1-draft-activity-section',
+    'grammar',
+    'Draft activity section',
+    'activity',
+    '93000000-0000-0000-0000-000000000002',
+    2,
+    true
+  ),
+  (
+    '96000000-0000-0000-0000-000000000003',
+    '92000000-0000-0000-0000-000000000001',
+    'b1-pro-activity-section',
+    'grammar',
+    'Pro activity section',
+    'activity',
+    '93000000-0000-0000-0000-000000000003',
+    3,
+    true
+  ),
+  (
+    '96000000-0000-0000-0000-000000000004',
+    '92000000-0000-0000-0000-000000000001',
+    'b1-pro-prompt-section',
+    'writing',
+    'Pro prompt section',
+    'prompt',
+    '95000000-0000-0000-0000-000000000002',
+    4,
+    true
+  );
+
+select extensions.throws_ok(
+  $$
+    insert into public.exam_sections (
+      exam_id,
+      source_key,
+      skill,
+      title,
+      resource_type,
+      resource_id,
+      order_index
+    )
+    values (
+      '92000000-0000-0000-0000-000000000001',
+      'missing-activity-resource',
+      'grammar',
+      'Missing activity resource',
+      'activity',
+      '93999999-0000-0000-0000-000000000999',
+      10
+    )
+  $$,
+  '23503',
+  'exam section activity resource does not exist or skill does not match',
+  'section resources cannot point at a missing activity'
+);
+select extensions.throws_ok(
+  $$
+    insert into public.exam_sections (
+      exam_id,
+      source_key,
+      skill,
+      title,
+      resource_type,
+      resource_id,
+      order_index
+    )
+    values (
+      '92000000-0000-0000-0000-000000000001',
+      'mismatched-prompt-resource',
+      'grammar',
+      'Mismatched prompt resource',
+      'prompt',
+      '93000000-0000-0000-0000-000000000001',
+      11
+    )
+  $$,
+  '23503',
+  'exam section prompt resource does not exist or skill does not match',
+  'section resource type must match the referenced table'
+);
+select extensions.throws_ok(
+  $$
+    delete from public.practice_activities
+    where id = '93000000-0000-0000-0000-000000000001'
+  $$,
+  '23503',
+  'practice activity is referenced by exam_sections',
+  'referenced practice activities cannot be deleted'
+);
+select extensions.throws_ok(
+  $$
+    update public.practice_prompts
+    set skill = 'speaking'
+    where id = '95000000-0000-0000-0000-000000000002'
+  $$,
+  '23503',
+  'practice prompt is referenced by exam_sections',
+  'referenced practice prompt skills cannot be changed'
+);
+
+select extensions.ok(
+  not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename in ('exams', 'exam_passage_sets', 'exam_questions')
+      and (
+        coalesce(qual, '') ~* 'user_metadata|auth[.]jwt'
+        or coalesce(with_check, '') ~* 'user_metadata|auth[.]jwt'
+      )
+  ),
+  'legacy exam policies contain no user_metadata or auth.jwt authorization'
 );
 
 select extensions.throws_ok(
@@ -455,6 +667,55 @@ select extensions.is(
   1::bigint,
   'authenticated users can read published free prompts'
 );
+select extensions.is(
+  (
+    select count(*)
+    from public.exams
+    where id = '92000000-0000-0000-0000-000000000002'
+  ),
+  0::bigint,
+  'Free users cannot read Pro exams'
+);
+select extensions.is(
+  (
+    select count(*)
+    from public.practice_activities
+    where id = '93000000-0000-0000-0000-000000000003'
+  ),
+  0::bigint,
+  'Free users cannot read Pro activities'
+);
+select extensions.is(
+  (
+    select count(*)
+    from public.practice_prompts
+    where id = '95000000-0000-0000-0000-000000000002'
+  ),
+  0::bigint,
+  'Free users cannot read Pro prompts'
+);
+select extensions.is(
+  (
+    select count(*)
+    from public.exam_sections
+    where id in (
+      '96000000-0000-0000-0000-000000000002',
+      '96000000-0000-0000-0000-000000000003',
+      '96000000-0000-0000-0000-000000000004'
+    )
+  ),
+  0::bigint,
+  'Free users cannot read sections linked to draft or Pro resources'
+);
+select extensions.is(
+  (
+    select count(*)
+    from public.practice_questions
+    where id = '94000000-0000-0000-0000-000000000002'
+  ),
+  0::bigint,
+  'Free users cannot read questions from Pro activities'
+);
 
 select extensions.throws_ok(
   $$
@@ -469,6 +730,108 @@ select extensions.throws_ok(
   '42501',
   'new row violates row-level security policy for table "practice_activities"',
   'user-editable user_metadata cannot grant admin write access'
+);
+select extensions.throws_ok(
+  $$
+    insert into public.exams (title, category)
+    values ('Forged metadata exam', 'GENERAL')
+  $$,
+  '42501',
+  'new row violates row-level security policy for table "exams"',
+  'forged user_metadata cannot insert legacy exams'
+);
+select extensions.throws_ok(
+  $$
+    insert into public.exam_passage_sets (
+      exam_id,
+      part_number,
+      title,
+      order_index
+    )
+    values (
+      '92000000-0000-0000-0000-000000000001',
+      2,
+      'Forged metadata passage',
+      2
+    )
+  $$,
+  '42501',
+  'new row violates row-level security policy for table "exam_passage_sets"',
+  'forged user_metadata cannot insert legacy exam passage sets'
+);
+select extensions.throws_ok(
+  $$
+    insert into public.exam_questions (
+      passage_set_id,
+      question_number,
+      question_text
+    )
+    values (
+      '92100000-0000-0000-0000-000000000001',
+      999,
+      'Forged metadata question'
+    )
+  $$,
+  '42501',
+  'new row violates row-level security policy for table "exam_questions"',
+  'forged user_metadata cannot insert legacy exam questions'
+);
+
+select set_config(
+  'request.jwt.claim.sub',
+  '91000000-0000-0000-0000-000000000003',
+  true
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"91000000-0000-0000-0000-000000000003","role":"authenticated"}',
+  true
+);
+
+select extensions.is(
+  (
+    select count(*)
+    from public.exams
+    where id = '92000000-0000-0000-0000-000000000002'
+  ),
+  1::bigint,
+  'active Pro users can read Pro exams'
+);
+select extensions.is(
+  (
+    select count(*)
+    from public.practice_activities
+    where id = '93000000-0000-0000-0000-000000000003'
+  ),
+  1::bigint,
+  'active Pro users can read Pro activities'
+);
+select extensions.is(
+  (
+    select count(*)
+    from public.practice_prompts
+    where id = '95000000-0000-0000-0000-000000000002'
+  ),
+  1::bigint,
+  'active Pro users can read Pro prompts'
+);
+select extensions.is(
+  (
+    select count(*)
+    from public.exam_sections
+    where id = '96000000-0000-0000-0000-000000000003'
+  ),
+  1::bigint,
+  'active Pro users can read sections linked to Pro activities'
+);
+select extensions.is(
+  (
+    select count(*)
+    from public.practice_questions
+    where id = '94000000-0000-0000-0000-000000000002'
+  ),
+  1::bigint,
+  'active Pro users can read questions from Pro activities'
 );
 
 select set_config(
@@ -494,13 +857,20 @@ select extensions.lives_ok(
   $$,
   'profile admins can insert practice content'
 );
-select extensions.lives_ok(
+select extensions.results_eq(
   $$
     update public.practice_activities
     set title = 'Updated by admin'
     where source_key = 'admin-crud-fixture'
+    returning source_key, title
   $$,
-  'profile admins can update practice content'
+  $$
+    values (
+      'admin-crud-fixture'::text,
+      'Updated by admin'::text
+    )
+  $$,
+  'profile admin UPDATE changes and returns the targeted row'
 );
 select extensions.lives_ok(
   $$

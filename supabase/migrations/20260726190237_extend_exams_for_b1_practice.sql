@@ -193,6 +193,109 @@ create index exam_sections_source_key_idx
 create index exam_sections_resource_idx
   on public.exam_sections (resource_type, resource_id);
 
+create function public.validate_exam_section_resource()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if new.resource_type = 'activity' then
+    if not exists (
+      select 1
+      from public.practice_activities
+      where practice_activities.id = new.resource_id
+        and practice_activities.skill = new.skill
+    ) then
+      raise exception using
+        errcode = '23503',
+        message = 'exam section activity resource does not exist or skill does not match',
+        constraint = 'exam_sections_resource_reference_fkey',
+        table = 'exam_sections',
+        column = 'resource_id';
+    end if;
+  elsif new.resource_type = 'prompt' then
+    if not exists (
+      select 1
+      from public.practice_prompts
+      where practice_prompts.id = new.resource_id
+        and practice_prompts.skill = new.skill
+    ) then
+      raise exception using
+        errcode = '23503',
+        message = 'exam section prompt resource does not exist or skill does not match',
+        constraint = 'exam_sections_resource_reference_fkey',
+        table = 'exam_sections',
+        column = 'resource_id';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+create constraint trigger validate_exam_section_resource
+  after insert or update on public.exam_sections
+  deferrable initially immediate
+  for each row execute function public.validate_exam_section_resource();
+
+create function public.prevent_practice_resource_orphan()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if tg_table_name = 'practice_activities' and exists (
+    select 1
+    from public.exam_sections
+    where exam_sections.resource_type = 'activity'
+      and exam_sections.resource_id = old.id
+  ) then
+    raise exception using
+      errcode = '23503',
+      message = 'practice activity is referenced by exam_sections',
+      constraint = 'exam_sections_resource_reference_fkey',
+      table = 'exam_sections',
+      column = 'resource_id';
+  elsif tg_table_name = 'practice_prompts' and exists (
+    select 1
+    from public.exam_sections
+    where exam_sections.resource_type = 'prompt'
+      and exam_sections.resource_id = old.id
+  ) then
+    raise exception using
+      errcode = '23503',
+      message = 'practice prompt is referenced by exam_sections',
+      constraint = 'exam_sections_resource_reference_fkey',
+      table = 'exam_sections',
+      column = 'resource_id';
+  end if;
+
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger protect_practice_activity_delete
+  before delete on public.practice_activities
+  for each row execute function public.prevent_practice_resource_orphan();
+
+create trigger protect_practice_activity_id_update
+  before update of id, skill on public.practice_activities
+  for each row execute function public.prevent_practice_resource_orphan();
+
+create trigger protect_practice_prompt_delete
+  before delete on public.practice_prompts
+  for each row execute function public.prevent_practice_resource_orphan();
+
+create trigger protect_practice_prompt_id_update
+  before update of id, skill on public.practice_prompts
+  for each row execute function public.prevent_practice_resource_orphan();
+
 create trigger update_practice_activities_modtime
   before update on public.practice_activities
   for each row execute function public.update_exams_modtime();
@@ -334,6 +437,36 @@ using (
       and (
         exams.access_tier = 'free'
         or (select public.is_user_pro((select auth.uid())))
+      )
+      and (
+        (
+          exam_sections.resource_type = 'activity'
+          and exists (
+            select 1
+            from public.practice_activities
+            where practice_activities.id = exam_sections.resource_id
+              and practice_activities.skill = exam_sections.skill
+              and practice_activities.is_published = true
+              and (
+                practice_activities.access_tier = 'free'
+                or (select public.is_user_pro((select auth.uid())))
+              )
+          )
+        )
+        or (
+          exam_sections.resource_type = 'prompt'
+          and exists (
+            select 1
+            from public.practice_prompts
+            where practice_prompts.id = exam_sections.resource_id
+              and practice_prompts.skill = exam_sections.skill
+              and practice_prompts.is_published = true
+              and (
+                practice_prompts.access_tier = 'free'
+                or (select public.is_user_pro((select auth.uid())))
+              )
+          )
+        )
       )
   )
 );
