@@ -1,0 +1,14 @@
+{
+  "page_count": 18,
+  "annotation_count": 99,
+  "required_markers": {
+    "1": ["101. Andrew managed"],
+    "3": ["B. Signs", "B. Do not park in front of this entrance."],
+    "5": ["COASTEERING"],
+    "10": ["2. COMPOSITION"],
+    "11": ["LISTENING"],
+    "16": ["SPEAKING TEST INSTRUCTIONS"],
+    "18": ["Topic 33", "Topic 34", "Topic 35"]
+  },
+  "required_image_pages": [3]
+}
