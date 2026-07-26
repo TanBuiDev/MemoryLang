@@ -151,6 +151,31 @@ select extensions.ok(
   'anonymous requests receive no practice-content table privileges'
 );
 
+select extensions.ok(
+  position(
+    'from public.practice_activities where practice_activities.id = new.resource_id for share;'
+    in validator.source
+  ) > 0,
+  'section activity validation locks the referenced target row'
+)
+from (
+  select lower(regexp_replace(prosrc, '\s+', ' ', 'g')) as source
+  from pg_proc
+  where oid = 'public.validate_exam_section_resource()'::regprocedure
+) as validator;
+select extensions.ok(
+  position(
+    'from public.practice_prompts where practice_prompts.id = new.resource_id for share;'
+    in validator.source
+  ) > 0,
+  'section prompt validation locks the referenced target row'
+)
+from (
+  select lower(regexp_replace(prosrc, '\s+', ' ', 'g')) as source
+  from pg_proc
+  where oid = 'public.validate_exam_section_resource()'::regprocedure
+) as validator;
+
 insert into auth.users (
   id,
   instance_id,

@@ -199,14 +199,17 @@ language plpgsql
 security invoker
 set search_path = ''
 as $$
+declare
+  referenced_resource_skill text;
 begin
   if new.resource_type = 'activity' then
-    if not exists (
-      select 1
-      from public.practice_activities
-      where practice_activities.id = new.resource_id
-        and practice_activities.skill = new.skill
-    ) then
+    select practice_activities.skill
+    into referenced_resource_skill
+    from public.practice_activities
+    where practice_activities.id = new.resource_id
+    for share;
+
+    if not found or referenced_resource_skill is distinct from new.skill then
       raise exception using
         errcode = '23503',
         message = 'exam section activity resource does not exist or skill does not match',
@@ -215,12 +218,13 @@ begin
         column = 'resource_id';
     end if;
   elsif new.resource_type = 'prompt' then
-    if not exists (
-      select 1
-      from public.practice_prompts
-      where practice_prompts.id = new.resource_id
-        and practice_prompts.skill = new.skill
-    ) then
+    select practice_prompts.skill
+    into referenced_resource_skill
+    from public.practice_prompts
+    where practice_prompts.id = new.resource_id
+    for share;
+
+    if not found or referenced_resource_skill is distinct from new.skill then
       raise exception using
         errcode = '23503',
         message = 'exam section prompt resource does not exist or skill does not match',
@@ -246,6 +250,8 @@ security invoker
 set search_path = ''
 as $$
 begin
+  -- Parent mutations already lock the target row. Keep this reverse lookup
+  -- unlocked so it does not invert the validator's section-to-target lock order.
   if tg_table_name = 'practice_activities' and exists (
     select 1
     from public.exam_sections
