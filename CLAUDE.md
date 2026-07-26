@@ -86,6 +86,13 @@ src/
 | `reading_attempts` | User reading progress and quiz attempts |
 | `reading_highlights` | User highlights saved from reading passages |
 | `reading_article_terms` | Persisted links between reading articles and existing `global_terms` vocabulary |
+| `exams` | Published exam catalogs, access tier, CEFR classification, and default duration |
+| `exam_passage_sets` | Legacy TOEIC/IELTS passage groups attached to an exam |
+| `exam_questions` | Legacy questions attached to exam passage groups |
+| `exam_sections` | Ordered links from an exam to reusable practice activities or prompts |
+| `practice_activities` | Reusable objective B1 activities with publication, access-tier, and optional audio state |
+| `practice_questions` | Objective questions attached to practice activities, including nullable image support |
+| `practice_prompts` | Reusable Writing/Speaking prompts with optional image and audio media |
 
 ## Routing
 **Public:** `/` (full branded homepage with feature/workflow/product-preview sections), `/login`, `/register`, `/forgot-password`, `/onboarding`
