@@ -1,0 +1,2609 @@
+{
+  "source": {
+    "file_name": "DeFull Copy.pdf",
+    "page_count": 18,
+    "provenance": {
+      "annotation_count": 99,
+      "extraction": "PyMuPDF text layer and annotations, followed by rendered-page visual review",
+      "answer_source": "PDF highlight annotations for objective questions and FreeText annotations for fill-in answers and samples",
+      "excluded_source_numbers": {
+        "signs": [
+          "11",
+          "12",
+          "13",
+          "14",
+          "15"
+        ]
+      },
+      "notes": [
+        "Signs 11-15 were excluded by user decision because the PDF contains no answer annotations for them.",
+        "Signs raster artwork was not OCR-transcribed; image_url remains null for imported Signs 1-10.",
+        "No audio files were present in the source artifact; all audio_url values remain null."
+      ]
+    }
+  },
+  "exam": {
+    "source_key": "b1-de-full-copy",
+    "title": "B1 Full Practice Test",
+    "default_time_minutes": 120,
+    "category": "GENERAL",
+    "access_tier": "free"
+  },
+  "activities": [
+    {
+      "source_key": "grammar-use-of-english",
+      "skill": "grammar",
+      "activity_type": "multiple_choice",
+      "title": "Grammar and Use of English",
+      "instructions": "Choose the best answer among A, B, C, or D.",
+      "audio_url": null,
+      "questions": [
+        {
+          "source_key": "grammar-101",
+          "source_number": "101",
+          "question_type": "multiple_choice",
+          "prompt": "Andrew managed ____________ a promotion.",
+          "options": [
+            {
+              "key": "A",
+              "text": "in getting",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "to get",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "getting",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "get",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 1,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-102",
+          "source_number": "102",
+          "question_type": "multiple_choice",
+          "prompt": "I’d rather ____________ with my cousin for the weekend.",
+          "options": [
+            {
+              "key": "A",
+              "text": "stay",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "to stay",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "staying",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "to staying",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 1,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-103",
+          "source_number": "103",
+          "question_type": "multiple_choice",
+          "prompt": "They suggested ____________ the children to the new aquarium.",
+          "options": [
+            {
+              "key": "A",
+              "text": "to take",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "in taking",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "taking",
+              "is_correct": true
+            },
+            {
+              "key": "D",
+              "text": "to taking",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 1,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-104",
+          "source_number": "104",
+          "question_type": "multiple_choice",
+          "prompt": "Don’t forget ____________ off the computer when you finish.",
+          "options": [
+            {
+              "key": "A",
+              "text": "turning",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "to turning",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "turn",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "to turn",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 1,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-105",
+          "source_number": "105",
+          "question_type": "multiple_choice",
+          "prompt": "I’m sorry, but I don’t really feel like ____________ them tonight.",
+          "options": [
+            {
+              "key": "A",
+              "text": "seeing",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "to see",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "see",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "to seeing",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 1,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-106",
+          "source_number": "106",
+          "question_type": "multiple_choice",
+          "prompt": "Charles ____________ his car washed for two months.",
+          "options": [
+            {
+              "key": "A",
+              "text": "hadn’t been",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "hasn’t had",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "hasn’t",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "hadn’t been having",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 1,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-107",
+          "source_number": "107",
+          "question_type": "multiple_choice",
+          "prompt": "Could I ____________ by fax, please?",
+          "options": [
+            {
+              "key": "A",
+              "text": "have been sent",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "have sent it",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "had it sent",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "have it sent",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 1,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-108",
+          "source_number": "108",
+          "question_type": "multiple_choice",
+          "prompt": "You ____________ checked the report twice.",
+          "options": [
+            {
+              "key": "A",
+              "text": "should have been",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "could",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "should have",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "could have been",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 1,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-109",
+          "source_number": "109",
+          "question_type": "multiple_choice",
+          "prompt": "They ____________ come back from the shopping centre by now.",
+          "options": [
+            {
+              "key": "A",
+              "text": "must have",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "must have to",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "might be",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "may have been",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 2,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-110",
+          "source_number": "110",
+          "question_type": "multiple_choice",
+          "prompt": "I’m not sure, but I think he ____________ used your coffee mug.",
+          "options": [
+            {
+              "key": "A",
+              "text": "can have been",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "might have to",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "can be",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "may have",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 2,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-111",
+          "source_number": "111",
+          "question_type": "multiple_choice",
+          "prompt": "I was cooking and talking on the phone ____________.",
+          "options": [
+            {
+              "key": "A",
+              "text": "at once",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "at random",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "at a glance",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "at the same time",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 2,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-112",
+          "source_number": "112",
+          "question_type": "multiple_choice",
+          "prompt": "They’re having a lesson ____________.",
+          "options": [
+            {
+              "key": "A",
+              "text": "at random",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "at a glance",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "at the moment",
+              "is_correct": true
+            },
+            {
+              "key": "D",
+              "text": "at once",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 2,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-113",
+          "source_number": "113",
+          "question_type": "multiple_choice",
+          "prompt": "____________ of six, he wanted to become an astronaut.",
+          "options": [
+            {
+              "key": "A",
+              "text": "At a glance",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "At the age",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "At the moment",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "At the same time",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 2,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-114",
+          "source_number": "114",
+          "question_type": "multiple_choice",
+          "prompt": "The headmaster told them to go to their classroom ____________.",
+          "options": [
+            {
+              "key": "A",
+              "text": "at once",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "at the age",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "at his own speed",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "at a glance",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 2,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-115",
+          "source_number": "115",
+          "question_type": "multiple_choice",
+          "prompt": "I’m really sorry, but I didn’t have ____________ that your mother was so seriously ill.",
+          "options": [
+            {
+              "key": "A",
+              "text": "the chance",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "an argument",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "a lot in common",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "the slightest idea",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 2,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-116",
+          "source_number": "116",
+          "question_type": "multiple_choice",
+          "prompt": "The chief editor had ____________ at the whole magazine before it was printed.",
+          "options": [
+            {
+              "key": "A",
+              "text": "an effect",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "a look",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "a lot in common",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "an argument",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 2,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-117",
+          "source_number": "117",
+          "question_type": "multiple_choice",
+          "prompt": "I’m sure that he had ____________ leaving you here all by yourself.",
+          "options": [
+            {
+              "key": "A",
+              "text": "a look at",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "the chance",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "no intention of",
+              "is_correct": true
+            },
+            {
+              "key": "D",
+              "text": "an effect on",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 2,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-118",
+          "source_number": "118",
+          "question_type": "multiple_choice",
+          "prompt": "Unfortunately, they had a big ____________ their supervisor yesterday morning.",
+          "options": [
+            {
+              "key": "A",
+              "text": "effect on",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "intention of",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "look at",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "argument with",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 2,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-119",
+          "source_number": "119",
+          "question_type": "multiple_choice",
+          "prompt": "Gregory never ____________ what his mother tells him.",
+          "options": [
+            {
+              "key": "A",
+              "text": "informs",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "is used to",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "pays attention to",
+              "is_correct": true
+            },
+            {
+              "key": "D",
+              "text": "makes his way to",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 2,
+          "image_url": null
+        },
+        {
+          "source_key": "grammar-120",
+          "source_number": "120",
+          "question_type": "multiple_choice",
+          "prompt": "Mona’s teacher ____________ her from taking the exams.",
+          "options": [
+            {
+              "key": "A",
+              "text": "informed",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "discouraged",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "waited",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "made",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 2,
+          "image_url": null
+        }
+      ]
+    },
+    {
+      "source_key": "signs",
+      "skill": "signs",
+      "activity_type": "multiple_choice",
+      "title": "Signs",
+      "instructions": "Read each sign and choose the best answer among A, B, C, or D. Sign images are pending admin upload and were not OCR-transcribed.",
+      "content": "Source numbers 1-10 are included because their answers are highlighted in the PDF. Source numbers 11-15 are excluded because the PDF provides no answer annotation.",
+      "audio_url": null,
+      "questions": [
+        {
+          "source_key": "signs-1",
+          "source_number": "1",
+          "question_type": "multiple_choice",
+          "prompt": "Read sign 1 and choose the best answer.",
+          "options": [
+            {
+              "key": "A",
+              "text": "Always keep this door open.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "Do not park in front of this entrance.",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "Permission is needed to park here.",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "Only use this entrance in an emergency.",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 3,
+          "image_url": null
+        },
+        {
+          "source_key": "signs-2",
+          "source_number": "2",
+          "question_type": "multiple_choice",
+          "prompt": "Read sign 2 and choose the best answer.",
+          "options": [
+            {
+              "key": "A",
+              "text": "Drinks cannot be ordered at the bar.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "Use this machine when the bar is closed.",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "There is a drinks machine in the bar.",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "This machine is not working at the moment.",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 3,
+          "image_url": null
+        },
+        {
+          "source_key": "signs-3",
+          "source_number": "3",
+          "question_type": "multiple_choice",
+          "prompt": "Read sign 3 and choose the best answer.",
+          "options": [
+            {
+              "key": "A",
+              "text": "The librarian needs to see your books before you go.",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "Make sure you take all your books with you.",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "Return your books before you leave the library.",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "The librarian will show you where to put your books.",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 3,
+          "image_url": null
+        },
+        {
+          "source_key": "signs-4",
+          "source_number": "4",
+          "question_type": "multiple_choice",
+          "prompt": "Read sign 4 and choose the best answer.",
+          "options": [
+            {
+              "key": "A",
+              "text": "This room cannot be used at present.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "This door must always be kept locked.",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "Lock the room when it is not being used.",
+              "is_correct": true
+            },
+            {
+              "key": "D",
+              "text": "Keep the key to this door in the room.",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 3,
+          "image_url": null
+        },
+        {
+          "source_key": "signs-5",
+          "source_number": "5",
+          "question_type": "multiple_choice",
+          "prompt": "Read sign 5 and choose the best answer.",
+          "options": [
+            {
+              "key": "A",
+              "text": "Supersaver tickets can be used every day except Fridays.",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "You need a special ticket to travel on a Friday.",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "Supersaver tickets cannot be bought before the weekend.",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "You can save money by traveling on a Friday.",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 3,
+          "image_url": null
+        },
+        {
+          "source_key": "signs-6",
+          "source_number": "6",
+          "question_type": "multiple_choice",
+          "prompt": "Read sign 6 and choose the best answer.",
+          "options": [
+            {
+              "key": "A",
+              "text": "Do not forget to put your luggage outside your room.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "Keep the corridor clear of luggage.",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "Bags left in the corridor will be removed.",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "Bags will be collected from the corridor.",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 3,
+          "image_url": null
+        },
+        {
+          "source_key": "signs-7",
+          "source_number": "7",
+          "question_type": "multiple_choice",
+          "prompt": "Read sign 7 and choose the best answer.",
+          "options": [
+            {
+              "key": "A",
+              "text": "Wait upstairs to see the nurse.",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "Go upstairs to make an appointment with the nurse.",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "The nurse will tell you when it is your turn.",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "The nurse can only see patients with appointments.",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 3,
+          "image_url": null
+        },
+        {
+          "source_key": "signs-8",
+          "source_number": "8",
+          "question_type": "multiple_choice",
+          "prompt": "Read sign 8 and choose the best answer.",
+          "options": [
+            {
+              "key": "A",
+              "text": "Do not touch the fruit before paying for it.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "Damaged fruit must be paid for.",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "Self-service fruit is cheaper.",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "Choose your fruit and then pay for it.",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 4,
+          "image_url": null
+        },
+        {
+          "source_key": "signs-9",
+          "source_number": "9",
+          "question_type": "multiple_choice",
+          "prompt": "Read sign 9 and choose the best answer.",
+          "options": [
+            {
+              "key": "A",
+              "text": "Please be quiet while people are taking their examination.",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "Do not talk to the examiner.",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "Do not speak during the examination.",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "The examiner will tell you when you can talk.",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 4,
+          "image_url": null
+        },
+        {
+          "source_key": "signs-10",
+          "source_number": "10",
+          "question_type": "multiple_choice",
+          "prompt": "Read sign 10 and choose the best answer.",
+          "options": [
+            {
+              "key": "A",
+              "text": "Bring your computer here for repairs.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "We will not mend computers bought from other shops.",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "We charge to repair computers not bought here.",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "Computers bought here never need repairing.",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 4,
+          "image_url": null
+        }
+      ]
+    },
+    {
+      "source_key": "reading-text-2-coasteering",
+      "skill": "reading",
+      "activity_type": "multiple_choice",
+      "title": "Text 2: Coasteering",
+      "instructions": "Read the passage carefully and choose the correct answer among A, B, C, or D.",
+      "passage": "Lily Carter had no idea what present she wanted for her 14th birthday. But she’d always been keen on challenging sports, especially to do with water, like surfing and sailing. So when her parents heard about an activity called coasteering - exploring rocks along the coast by climbing and swimming - they thought Lily would love it. They found a course offered at an activity center called Porthdean, just along the coast from the family home, which was perfect. So after checking it was led by experienced instructors, they signed her up.\n\nLily had seen a TV show about coasteering and was interested in doing it, although she’d thought only adults could take part. But then she discovered that on courses at Porthdean, there’d also be people her age jumping from rocks into the sea, and also exploring caves - which she was never normally allowed to do, so she really wanted to go. But she still asked her dad to go along too and, although he wondered whether he’d like coasteering himself, he knew how much Lily wanted someone to accompany her, so he agreed.\n\nLily and her dad drove to Porthdean, where they attended a session with their instructors to learn basic safety and techniques and be given helmets and special wetsuits to keep the cold out. The group they joined was quite small, which meant they got lots of individual attention. Says Lily, “The entire trip was awesome - although the water was freezing! But our instructors encouraged the whole group so much, we were ready to try absolutely all the challenges, even stuff we hadn’t expected at all, like jumping off high cliffs! I must admit, the one I jumped off wasn’t that high, but Dad went much higher!”\n\n“Anyway, Dad and I hadn’t realized how hard it would be physically, so we were glad we were fit,” explains Lily. “Even so, afterward, we actually felt like we’d done loads of hard exercise in the gym! But I’ll keep the memories of that trip forever, I reckon. And the instructors are going to put a video of it onto the website, so my friends will see it. They’d never believe me otherwise!”",
+      "audio_url": null,
+      "questions": [
+        {
+          "source_key": "reading-text-2-1",
+          "source_number": "1",
+          "question_type": "multiple_choice",
+          "prompt": "Why did Lily’s parents choose Porthdean for her coasteering present?",
+          "options": [
+            {
+              "key": "A",
+              "text": "It offered various courses in her favorite watersport.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "The instructors there were highly recommended.",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "It wasn’t too far away from where they lived.",
+              "is_correct": true
+            },
+            {
+              "key": "D",
+              "text": "She had already tried some activities there.",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 5,
+          "image_url": null
+        },
+        {
+          "source_key": "reading-text-2-2",
+          "source_number": "2",
+          "question_type": "multiple_choice",
+          "prompt": "How did Lily feel about the coasteering course?",
+          "options": [
+            {
+              "key": "A",
+              "text": "pleased that it included something she’d always wanted to try",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "excited about doing the experience all on her own",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "keen to find out more about what it involved",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "interested to see whether she was the only teenager",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 6,
+          "image_url": null
+        },
+        {
+          "source_key": "reading-text-2-3",
+          "source_number": "3",
+          "question_type": "multiple_choice",
+          "prompt": "Lily particularly liked her instructors because they made sure everyone",
+          "options": [
+            {
+              "key": "A",
+              "text": "was comfortable with the kit they were given.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "felt confident about the new things they would attempt.",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "got the same amount of attention.",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "knew all the activities they would take part in.",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 6,
+          "image_url": null
+        },
+        {
+          "source_key": "reading-text-2-4",
+          "source_number": "4",
+          "question_type": "multiple_choice",
+          "prompt": "Lily says that after the course, she was",
+          "options": [
+            {
+              "key": "A",
+              "text": "happy she’d shared something so exciting with her dad.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "sorry she hadn’t worked at getting fitter before she went.",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "proud that her friends all thought she’d done well.",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "surprised at how exhausted she was by the activities.",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 6,
+          "image_url": null
+        },
+        {
+          "source_key": "reading-text-2-5",
+          "source_number": "5",
+          "question_type": "multiple_choice",
+          "prompt": "What would Lily text to a friend while she was away on the course?",
+          "options": [
+            {
+              "key": "A",
+              "text": "I don’t think Dad was sure before he came that he’d enjoy it - but actually, he’s been braver than me!",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "I wanted to do the coasteering course, and mentioned it to my parents before my birthday. But I never expected they’d let me go!",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "Our session before the activities was great, although I really didn’t think I’d need a wetsuit for the cold - and I was right!",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "Going into caves was amazing. I’d love to explore them by myself when we’re next at the beach - I’m sure my parents will let me!",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 6,
+          "image_url": null
+        }
+      ]
+    },
+    {
+      "source_key": "reading-text-3-karina-moore",
+      "skill": "reading",
+      "activity_type": "multiple_choice",
+      "title": "Text 3: Karina Moore - Teenage High Diver!",
+      "instructions": "Read the passage carefully and choose the correct answer among A, B, C, or D.",
+      "passage": "Several times a week, teenager Karina Moore trains at her local pool to jump from the high-diving board into the water - in an attempt to become a national diving champion.\n\nKarina first learned about diving during a family break in Spain, where the resort’s pool had a high-diving board. Young people were diving off it, and it looked fun, but Karina didn’t join in, even though she was a strong swimmer. Then after returning home, she discovered a long-distance runner she’d always admired had started diving for relaxation - so she became more interested.\n\nKarina joined a beginners’ diving class at her local pool. They had several sessions jumping onto soft materials before trying the high board. “The water looked a long way down,” says Karina, “but after our training, I felt I’d handle it - without injuring myself! They’d warned me I’d land in the water fast - at around 60 kph - but I was prepared. I couldn’t wait to get started - although the others weren’t so keen! Anyway, I wasn’t disappointed by the experience.”\n\nIn Karina’s area, there’s now lots of interest in high diving, but it’s sometimes difficult for swimmers to find suitable practice facilities. Although the pools are deep enough, they’re in use so often by diving clubs that other people don’t get opportunities to practise. Fortunately, though, Karina’s coach noticed her talent and helped her develop her techniques. After only two years, she’s winning competitions in her area.\n\nBut what’s it like to concentrate so much on diving? “I train 20 hours a week,” says Karina, “and I won’t pretend it’s easy - you have to enjoy it to spend so much time doing it! It’s not easy for my parents either, though - they drive me to training sessions early in the morning, and that costs money. But they’ve had financial help from sports organisations, luckily. And my schoolwork and social life are good. I still meet my mates - and there’s always the phone! The only thing I hadn’t realised was that the pool water would damage my hair - I used to love my long hair, but I’ve had to cut it short because it looked awful! But I’ll definitely keep on diving!”",
+      "audio_url": null,
+      "questions": [
+        {
+          "source_key": "reading-text-3-1",
+          "source_number": "1",
+          "question_type": "multiple_choice",
+          "prompt": "What made Karina keen to take up diving?",
+          "options": [
+            {
+              "key": "A",
+              "text": "She wanted to repeat her holiday experience.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "She found out her athletics hero had taken it up.",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "She’d visited a pool where some teenagers were doing it.",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "She wanted a new challenge after her success at swimming.",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 7,
+          "image_url": null
+        },
+        {
+          "source_key": "reading-text-3-2",
+          "source_number": "2",
+          "question_type": "multiple_choice",
+          "prompt": "How did Karina feel the first time she used the highboard?",
+          "options": [
+            {
+              "key": "A",
+              "text": "worried about how far it was above the pool",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "pleased to experience it with other beginners",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "confident that she wouldn’t get hurt",
+              "is_correct": true
+            },
+            {
+              "key": "D",
+              "text": "shocked to hit the water at such speed",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 7,
+          "image_url": null
+        },
+        {
+          "source_key": "reading-text-3-3",
+          "source_number": "3",
+          "question_type": "multiple_choice",
+          "prompt": "What does the writer suggest about diving facilities in Karina’s area?",
+          "options": [
+            {
+              "key": "A",
+              "text": "They’re not used as much as they could be.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "There aren’t enough coaches teaching people to use them.",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "There aren’t as many boards as there used to be.",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "They’re not available to the public for long enough each day.",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 7,
+          "image_url": null
+        },
+        {
+          "source_key": "reading-text-3-4",
+          "source_number": "4",
+          "question_type": "multiple_choice",
+          "prompt": "How does Karina feel about spending so much time diving?",
+          "options": [
+            {
+              "key": "A",
+              "text": "surprised by one effect it has had on her",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "sorry she no longer sees her friends so much",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "anxious about the amount of money it costs",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "grateful to be able to focus on something she loves",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 7,
+          "image_url": null
+        },
+        {
+          "source_key": "reading-text-3-5",
+          "source_number": "5",
+          "question_type": "multiple_choice",
+          "prompt": "What would the writer say about Karina?",
+          "options": [
+            {
+              "key": "A",
+              "text": "She’s a young girl who’s achieved a lot by becoming a national diving champion - and all with very little support.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "She’s made enormous progress in a very short time - after only a couple of years, she’s already showing great signs of success.",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "She has a lot of natural talent, but she’s already thinking of having a break from the high board for a while.",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "She’s sad that she’s given up almost everything for her sport - and her lifestyle really sounds quite hard.",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 7,
+          "image_url": null
+        }
+      ]
+    },
+    {
+      "source_key": "cloze-text-15-william-the-hero",
+      "skill": "cloze",
+      "activity_type": "multiple_choice",
+      "title": "Text 15: William the hero!",
+      "instructions": "Fill in each numbered blank with one suitable word or phrase.",
+      "passage": "Brave William Baldock, who is six years old, is a hero after helping his mother when she fell downstairs. William quickly rang (1) ____________ an ambulance when he discovered his mother had broken her leg. In spite of being frightened, he (2) ____________ the emergency services what had happened and answered all the questions they asked him. He also telephoned his father (3) ____________ work, and then his grandmother, to explain what he had (4) ____________. While waiting for (5) ____________ people to come, William looked after his 18-month-old sister.\n\nWhen ambulance man Steve Lyn went to the house, he was amazed: “It’s (6) ____________ that a young boy of six knew the right number to (7) ____________, and was able to give us the correct information. (8) ____________ of William’s quick thinking, we were able to (9) ____________ there immediately.”\n\nMrs Baldock left hospital yesterday, very (10) ____________ to both William and the ambulance service.",
+      "audio_url": null,
+      "questions": [
+        {
+          "source_key": "cloze-text-15-1",
+          "source_number": "1",
+          "question_type": "multiple_choice",
+          "prompt": "Choose the answer for blank (1).",
+          "options": [
+            {
+              "key": "A",
+              "text": "to",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "off",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "for",
+              "is_correct": true
+            },
+            {
+              "key": "D",
+              "text": "with",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 8,
+          "image_url": null
+        },
+        {
+          "source_key": "cloze-text-15-2",
+          "source_number": "2",
+          "question_type": "multiple_choice",
+          "prompt": "Choose the answer for blank (2).",
+          "options": [
+            {
+              "key": "A",
+              "text": "said",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "talked",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "spoke",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "told",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 8,
+          "image_url": null
+        },
+        {
+          "source_key": "cloze-text-15-3",
+          "source_number": "3",
+          "question_type": "multiple_choice",
+          "prompt": "Choose the answer for blank (3).",
+          "options": [
+            {
+              "key": "A",
+              "text": "in",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "at",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "on",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "by",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 8,
+          "image_url": null
+        },
+        {
+          "source_key": "cloze-text-15-4",
+          "source_number": "4",
+          "question_type": "multiple_choice",
+          "prompt": "Choose the answer for blank (4).",
+          "options": [
+            {
+              "key": "A",
+              "text": "done",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "made",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "acted",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "worked",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 8,
+          "image_url": null
+        },
+        {
+          "source_key": "cloze-text-15-5",
+          "source_number": "5",
+          "question_type": "multiple_choice",
+          "prompt": "Choose the answer for blank (5).",
+          "options": [
+            {
+              "key": "A",
+              "text": "these",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "every",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "each",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "this",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 8,
+          "image_url": null
+        },
+        {
+          "source_key": "cloze-text-15-6",
+          "source_number": "6",
+          "question_type": "multiple_choice",
+          "prompt": "Choose the answer for blank (6).",
+          "options": [
+            {
+              "key": "A",
+              "text": "pleased",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "fine",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "clever",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "great",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 8,
+          "image_url": null
+        },
+        {
+          "source_key": "cloze-text-15-7",
+          "source_number": "7",
+          "question_type": "multiple_choice",
+          "prompt": "Choose the answer for blank (7).",
+          "options": [
+            {
+              "key": "A",
+              "text": "put",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "set",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "dial",
+              "is_correct": true
+            },
+            {
+              "key": "D",
+              "text": "hit",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 8,
+          "image_url": null
+        },
+        {
+          "source_key": "cloze-text-15-8",
+          "source_number": "8",
+          "question_type": "multiple_choice",
+          "prompt": "Choose the answer for blank (8).",
+          "options": [
+            {
+              "key": "A",
+              "text": "Since",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "Because",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "As",
+              "is_correct": false
+            },
+            {
+              "key": "D",
+              "text": "Although",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 8,
+          "image_url": null
+        },
+        {
+          "source_key": "cloze-text-15-9",
+          "source_number": "9",
+          "question_type": "multiple_choice",
+          "prompt": "Choose the answer for blank (9).",
+          "options": [
+            {
+              "key": "A",
+              "text": "manage",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "find",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "get",
+              "is_correct": true
+            },
+            {
+              "key": "D",
+              "text": "reach",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 8,
+          "image_url": null
+        },
+        {
+          "source_key": "cloze-text-15-10",
+          "source_number": "10",
+          "question_type": "multiple_choice",
+          "prompt": "Choose the answer for blank (10).",
+          "options": [
+            {
+              "key": "A",
+              "text": "agreeable",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "happy",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "grateful",
+              "is_correct": true
+            },
+            {
+              "key": "D",
+              "text": "approving",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 8,
+          "image_url": null
+        }
+      ]
+    },
+    {
+      "source_key": "sentence-transformation",
+      "skill": "transformation",
+      "activity_type": "fill_blank",
+      "title": "Sentence Transformation",
+      "instructions": "Complete the second sentence using the word in brackets so that it has the same meaning as the first sentence.",
+      "audio_url": null,
+      "questions": [
+        {
+          "source_key": "transformation-61",
+          "source_number": "61",
+          "question_type": "fill_blank",
+          "prompt": "You’ll be caught! (away)\nYou won’t …",
+          "options": [],
+          "accepted_answers": [
+            "get away with it!"
+          ],
+          "source_page": 9,
+          "image_url": null
+        },
+        {
+          "source_key": "transformation-62",
+          "source_number": "62",
+          "question_type": "fill_blank",
+          "prompt": "I didn’t do anything wrong! (guilty)\nI’m not …",
+          "options": [],
+          "accepted_answers": [
+            "guilty of anything!"
+          ],
+          "source_page": 9,
+          "image_url": null
+        },
+        {
+          "source_key": "transformation-63",
+          "source_number": "63",
+          "question_type": "fill_blank",
+          "prompt": "I was talking to Jo on the phone when we were disconnected. (off)\nJo and I … when we were talking on the phone.",
+          "options": [],
+          "accepted_answers": [
+            "were cut off"
+          ],
+          "source_page": 9,
+          "image_url": null
+        },
+        {
+          "source_key": "transformation-64",
+          "source_number": "64",
+          "question_type": "fill_blank",
+          "prompt": "You can have half of this pizza. (share)\nI’ll …",
+          "options": [],
+          "accepted_answers": [
+            "share this pizza with you."
+          ],
+          "source_page": 9,
+          "image_url": null
+        },
+        {
+          "source_key": "transformation-65",
+          "source_number": "65",
+          "question_type": "fill_blank",
+          "prompt": "I was so ill that I didn’t go to school. (too)\nI was …",
+          "options": [],
+          "accepted_answers": [
+            "too ill to go to school."
+          ],
+          "source_page": 9,
+          "image_url": null
+        },
+        {
+          "source_key": "transformation-66",
+          "source_number": "66",
+          "question_type": "fill_blank",
+          "prompt": "I’m much better at this job than Gordon is. (than)\nGordon is … I am at this job.",
+          "options": [],
+          "accepted_answers": [
+            "much worse than"
+          ],
+          "source_page": 9,
+          "image_url": null
+        },
+        {
+          "source_key": "transformation-67",
+          "source_number": "67",
+          "question_type": "fill_blank",
+          "prompt": "There were such a lot of customers that I didn’t get a break all day. (many)\nThere were … that I didn’t get a break all day.",
+          "options": [],
+          "accepted_answers": [
+            "so many customers"
+          ],
+          "source_page": 9,
+          "image_url": null
+        },
+        {
+          "source_key": "transformation-68",
+          "source_number": "68",
+          "question_type": "fill_blank",
+          "prompt": "I’ve never done a job more difficult than this. (most)\nThis is … I’ve ever done.",
+          "options": [],
+          "accepted_answers": [
+            "the most difficult job"
+          ],
+          "source_page": 9,
+          "image_url": null
+        },
+        {
+          "source_key": "transformation-69",
+          "source_number": "69",
+          "question_type": "fill_blank",
+          "prompt": "The hospital was so big that I couldn’t find my cousin’s bed. (such)\nIt was … I couldn’t find my cousin’s bed.",
+          "options": [],
+          "accepted_answers": [
+            "such a big hospital that"
+          ],
+          "source_page": 9,
+          "image_url": null
+        },
+        {
+          "source_key": "transformation-70",
+          "source_number": "70",
+          "question_type": "fill_blank",
+          "prompt": "Tim caught a cold on holiday, but I was lucky and I didn’t. (than)\nI was … and didn’t catch a cold on holiday.",
+          "options": [],
+          "accepted_answers": [
+            "luckier than Tim"
+          ],
+          "source_page": 9,
+          "image_url": null
+        }
+      ]
+    },
+    {
+      "source_key": "listening-text-1",
+      "skill": "listening",
+      "activity_type": "fill_blank",
+      "title": "Listening Text 1: Being a Kid",
+      "instructions": "Listen and fill in the missing words in the blanks.",
+      "content": "1. Being a kid can be lots of fun. You play a lot - you have a lot of games that Mom and Dad don’t know how to play. I love playing (1) ____________. I get a lot of time to play soccer as a kid. Adults don’t have as much time to play - my dad works so he doesn’t get to play soccer very much. One bad thing about a kid is school. I don’t really like going to school. I can’t stand doing (2) ____________ either - especially cleaning my room. Oh, and, my brother has a new (3) ____________. That’s really annoying because he isn’t very good at playing it!\n\n2. Some good things about being a kid are: summer (4) ____________, playing sports, and getting lots of presents on my birthday - adults don’t get as many presents. I like playing with my friends every weekend, too. Bad things about being a kid are: some of the chores I have to do - I don’t mind doing some of them, but there are some I can’t (5) ____________, like doing dishes. Sometimes I can’t watch TV when my Dad wants to watch a program that I can’t watch. I don’t like that, and, I don’t like doing homework. But I am happy I don’t have to pay (6) ____________! That’s one bad thing about being an adult.\n\n3. I don’t like having to go to bed so early - at (7) ____________. I always have to finish all the food on my plate, even if I don’t like it. One thing I really don’t like - I don’t like older people telling me what to do. That’s probably the (8) ____________ thing about being a kid. There are a lot of good things though. I don’t have to work and my parents give me money for (9) ____________. When I am an adult, I’ll have to pay for everything. And, I get to see my friends all the time at school - we have (10) ____________ so we can play. You don’t have (10) ____________ when you’re an adult!",
+      "audio_url": null,
+      "questions": [
+        {
+          "source_key": "listening-text-1-1",
+          "source_number": "1",
+          "question_type": "fill_blank",
+          "prompt": "I love playing (1) ____________.",
+          "options": [],
+          "accepted_answers": [
+            "soccer"
+          ],
+          "source_page": 11,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-1-2",
+          "source_number": "2",
+          "question_type": "fill_blank",
+          "prompt": "I can’t stand doing (2) ____________ either.",
+          "options": [],
+          "accepted_answers": [
+            "chores"
+          ],
+          "source_page": 11,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-1-3",
+          "source_number": "3",
+          "question_type": "fill_blank",
+          "prompt": "My brother has a new (3) ____________.",
+          "options": [],
+          "accepted_answers": [
+            "trumpet"
+          ],
+          "source_page": 11,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-1-4",
+          "source_number": "4",
+          "question_type": "fill_blank",
+          "prompt": "Some good things about being a kid are: summer (4) ____________.",
+          "options": [],
+          "accepted_answers": [
+            "vacation"
+          ],
+          "source_page": 11,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-1-5",
+          "source_number": "5",
+          "question_type": "fill_blank",
+          "prompt": "There are some chores I can’t (5) ____________.",
+          "options": [],
+          "accepted_answers": [
+            "stand"
+          ],
+          "source_page": 11,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-1-6",
+          "source_number": "6",
+          "question_type": "fill_blank",
+          "prompt": "I am happy I don’t have to pay (6) ____________.",
+          "options": [],
+          "accepted_answers": [
+            "taxes"
+          ],
+          "source_page": 11,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-1-7",
+          "source_number": "7",
+          "question_type": "fill_blank",
+          "prompt": "I don’t like having to go to bed so early - at (7) ____________.",
+          "options": [],
+          "accepted_answers": [
+            "7:30"
+          ],
+          "source_page": 11,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-1-8",
+          "source_number": "8",
+          "question_type": "fill_blank",
+          "prompt": "That’s probably the (8) ____________ thing about being a kid.",
+          "options": [],
+          "accepted_answers": [
+            "worst"
+          ],
+          "source_page": 11,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-1-9",
+          "source_number": "9",
+          "question_type": "fill_blank",
+          "prompt": "My parents give me money for (9) ____________.",
+          "options": [],
+          "accepted_answers": [
+            "allowance"
+          ],
+          "source_page": 11,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-1-10",
+          "source_number": "10",
+          "question_type": "fill_blank",
+          "prompt": "We have (10) ____________ so we can play.",
+          "options": [],
+          "accepted_answers": [
+            "recess"
+          ],
+          "source_page": 11,
+          "image_url": null
+        }
+      ]
+    },
+    {
+      "source_key": "listening-text-31",
+      "skill": "listening",
+      "activity_type": "multiple_choice",
+      "title": "Listening Text 31: Apartment Search",
+      "instructions": "Listen carefully and choose the best answer (A, B, or C) for each question.",
+      "audio_url": null,
+      "questions": [
+        {
+          "source_key": "listening-text-31-1",
+          "source_number": "1",
+          "question_type": "multiple_choice",
+          "prompt": "What is the main topic of the conversation?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Problems with living in an apartment",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "A search for a new apartment",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "The cost of rent near universities",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 12,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-31-2",
+          "source_number": "2",
+          "question_type": "multiple_choice",
+          "prompt": "Why doesn’t Ann like her current apartment?",
+          "options": [
+            {
+              "key": "A",
+              "text": "It’s too expensive.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "The neighborhood is noisy.",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "It’s located some distance from school.",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 12,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-31-3",
+          "source_number": "3",
+          "question_type": "multiple_choice",
+          "prompt": "How much money does Ann want to pay for rent?",
+          "options": [
+            {
+              "key": "A",
+              "text": "No more than $200",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "Around $200",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "A little more than $200",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 12,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-31-4",
+          "source_number": "4",
+          "question_type": "multiple_choice",
+          "prompt": "What kind of place is she looking for?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Somewhere that is within a short driving distance of campus",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "An apartment with furniture already in it",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "A place where she can live alone",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 12,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-31-5",
+          "source_number": "5",
+          "question_type": "multiple_choice",
+          "prompt": "How is Roger going to help her?",
+          "options": [
+            {
+              "key": "A",
+              "text": "He is planning on calling a friend who owns an apartment building.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "He will check the newspapers to see if he can find an apartment for rent.",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "He is going to visit an apartment building near his place.",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 12,
+          "image_url": null
+        }
+      ]
+    },
+    {
+      "source_key": "listening-text-34",
+      "skill": "listening",
+      "activity_type": "multiple_choice",
+      "title": "Listening Text 34: Movie Date",
+      "instructions": "Listen carefully and choose the best answer (A, B, or C) for each question.",
+      "audio_url": null,
+      "questions": [
+        {
+          "source_key": "listening-text-34-1",
+          "source_number": "1",
+          "question_type": "multiple_choice",
+          "prompt": "What kind of movie is the girl going to see on her date?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Horror",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "Romance",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "Science fiction",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 13,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-34-2",
+          "source_number": "2",
+          "question_type": "multiple_choice",
+          "prompt": "At what theater is the movie playing?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Central Palace",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "Campus Plaza",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "Common Plex",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 13,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-34-3",
+          "source_number": "3",
+          "question_type": "multiple_choice",
+          "prompt": "How is the girl getting to the movie?",
+          "options": [
+            {
+              "key": "A",
+              "text": "She is getting a ride with her brother.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "Her date is coming to pick her up.",
+              "is_correct": true
+            },
+            {
+              "key": "C",
+              "text": "She is going by bus and will meet her date there.",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 13,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-34-4",
+          "source_number": "4",
+          "question_type": "multiple_choice",
+          "prompt": "What time does the movie begin?",
+          "options": [
+            {
+              "key": "A",
+              "text": "7:30 p.m.",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "8:00 p.m.",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "8:30 p.m.",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 13,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-34-5",
+          "source_number": "5",
+          "question_type": "multiple_choice",
+          "prompt": "What time does she have to be home?",
+          "options": [
+            {
+              "key": "A",
+              "text": "10:00 p.m.",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "10:30 p.m.",
+              "is_correct": false
+            },
+            {
+              "key": "C",
+              "text": "11:00 p.m.",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 13,
+          "image_url": null
+        }
+      ]
+    },
+    {
+      "source_key": "listening-text-52",
+      "skill": "listening",
+      "activity_type": "true_false",
+      "title": "Listening Text 52: Long-Distance Running",
+      "instructions": "Listen and decide if the following statements are True (T) or False (F).",
+      "audio_url": null,
+      "questions": [
+        {
+          "source_key": "listening-text-52-1",
+          "source_number": "1",
+          "question_type": "true_false",
+          "prompt": "The main idea of the talk is one reason for long-distance running.",
+          "options": [
+            {
+              "key": "A",
+              "text": "True",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "False",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 14,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-52-2",
+          "source_number": "2",
+          "question_type": "true_false",
+          "prompt": "The professor organizes the information in the lecture by describing a process.",
+          "options": [
+            {
+              "key": "A",
+              "text": "True",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "False",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 14,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-52-3",
+          "source_number": "3",
+          "question_type": "true_false",
+          "prompt": "Clever traps is the type of hunt that is being done by the San people.",
+          "options": [
+            {
+              "key": "A",
+              "text": "True",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "False",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 14,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-52-4",
+          "source_number": "4",
+          "question_type": "true_false",
+          "prompt": "The San people are in Asia.",
+          "options": [
+            {
+              "key": "A",
+              "text": "True",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "False",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 14,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-52-5",
+          "source_number": "5",
+          "question_type": "true_false",
+          "prompt": "Track and Field events happened long before they became a sport.",
+          "options": [
+            {
+              "key": "A",
+              "text": "True",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "False",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 14,
+          "image_url": null
+        }
+      ]
+    },
+    {
+      "source_key": "listening-text-56",
+      "skill": "listening",
+      "activity_type": "true_false",
+      "title": "Listening Text 56: Vitamin D and Sunshine",
+      "instructions": "Listen and decide if the following statements are True (T) or False (F).",
+      "audio_url": null,
+      "questions": [
+        {
+          "source_key": "listening-text-56-1",
+          "source_number": "1",
+          "question_type": "true_false",
+          "prompt": "The professor mainly discusses the importance of getting vitamin D from sunshine as an aspect of health.",
+          "options": [
+            {
+              "key": "A",
+              "text": "True",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "False",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 15,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-56-2",
+          "source_number": "2",
+          "question_type": "true_false",
+          "prompt": "The speaker’s main point is to get enough vitamin D, we need sunshine.",
+          "options": [
+            {
+              "key": "A",
+              "text": "True",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "False",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 15,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-56-3",
+          "source_number": "3",
+          "question_type": "true_false",
+          "prompt": "The professor emphasizes her point about getting enough vitamin D by showing what happens when we’re in the sun.",
+          "options": [
+            {
+              "key": "A",
+              "text": "True",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "False",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 15,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-56-4",
+          "source_number": "4",
+          "question_type": "true_false",
+          "prompt": "Without Vitamin D, we may develop strong bones and teeth.",
+          "options": [
+            {
+              "key": "A",
+              "text": "True",
+              "is_correct": false
+            },
+            {
+              "key": "B",
+              "text": "False",
+              "is_correct": true
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 15,
+          "image_url": null
+        },
+        {
+          "source_key": "listening-text-56-5",
+          "source_number": "5",
+          "question_type": "true_false",
+          "prompt": "Too much sunshine can cause skin cancer.",
+          "options": [
+            {
+              "key": "A",
+              "text": "True",
+              "is_correct": true
+            },
+            {
+              "key": "B",
+              "text": "False",
+              "is_correct": false
+            }
+          ],
+          "accepted_answers": [],
+          "source_page": 15,
+          "image_url": null
+        }
+      ]
+    }
+  ],
+  "prompts": [
+    {
+      "source_key": "writing-topic-7",
+      "skill": "writing",
+      "title": "Writing Topic 7: Applying for a Part-Time Job",
+      "prompt": "You are looking for a part-time job. Write an email with at least 150 words to an employment agency. In your email: introduce yourself; explain what sort of job you would like; say what experience and skills you have.",
+      "instructions": "Use an appropriate letter/email format, state the purpose, present and extend all bullet points, link ideas coherently, and use accurate vocabulary and varied grammar.",
+      "content": "Dear ...,\n\nMy name is ... and I am currently a student. I am writing to apply for a part-time job so that I can earn some extra money and gain more work experience.\n\nI would like to work in a convenience store or small shop. I can work in the evenings. I’m interested in jobs such as serving customers, checking goods, and helping at the cash register.\n\nPreviously, I worked part-time at a convenience store. My duties included helping customers, putting products on shelves, checking prices, cleaning the store, and doing cashier work. This experience helped me improve my communication and teamwork skills.\n\nI am friendly, careful, hardworking, and responsible. I can learn new tasks quickly and work well with other people.\n\nPlease let me know if you have a suitable part-time position. You can contact me by email at ... or by phone at ...\n\nYours faithfully,\n...",
+      "source_page": 10,
+      "image_url": null,
+      "audio_url": null
+    },
+    {
+      "source_key": "speaking-test-instructions",
+      "skill": "speaking",
+      "title": "Speaking Test Instructions - CEFR B1",
+      "prompt": "For candidates: Each candidate has three to five minutes to present his/her topic. No supporting documents are permitted during the test.\n\nFor examiners: Ask three to five questions to each candidate. Each candidate’s oral performance is evaluated as follows: Content 6 marks; Grammar 4 marks; Pronunciation 5 marks; Fluency 5 marks; Total 20 marks.\n\nPhase 1 - Topic selection: The examiners invite 6 candidates at a time to pick up topics. Each candidate has about 5 minutes to brainstorm ideas and make notes, if necessary, on blank papers provided by the examiners.\n\nPhase 2 - Interview (4 minutes). Warm-up (1 minute): The examiners randomly ask each candidate 2 to 3 questions: May I have your full name, please? How are you today? What’s your major? Where are you living now? What do you often do in your free time? How many people are there in your family? Who are they?\n\nTopic discussion (2 minutes): The examiners ask the candidate to talk about the chosen topic. Candidates are not expected to read scripts from their notes.\n\nFurther discussion (1 minute): The examiners ask a few more questions related to the previous topic.\n\nPhase 3 - Closure: The examiners signal that it is the end of the test, thank the candidate, and complete the scoring form.",
+      "instructions": "Follow the three speaking-test phases and the timing shown in the source.",
+      "source_page": 16,
+      "image_url": null,
+      "audio_url": null
+    },
+    {
+      "source_key": "speaking-example-famous-person",
+      "skill": "speaking",
+      "title": "Example: A Famous Person You Would Like to Meet",
+      "prompt": "Describe a famous person that you would like to meet. You should say: Who is he/she? Why is he/she famous? Why do you want to meet him/her? What would you like to do if you met him/her?",
+      "instructions": "Further discussion: What is he/she like? What does he/she look like? How would you feel if you met this famous person? What would you say or ask if you had the chance to meet this famous person? Have you ever had the opportunity to meet a celebrity or famous person before? Do you think it is important for young people to have positive role models among famous individuals?",
+      "source_page": 16,
+      "image_url": null,
+      "audio_url": null
+    },
+    {
+      "source_key": "speaking-topic-33",
+      "skill": "speaking",
+      "title": "Topic 33: A Park You Like Visiting",
+      "prompt": "Describe a park you like visiting. You should answer: Where is the park? When did you visit the park? What is the park like? Why do you like visiting it?",
+      "source_page": 18,
+      "image_url": null,
+      "audio_url": null
+    },
+    {
+      "source_key": "speaking-topic-34",
+      "skill": "speaking",
+      "title": "Topic 34: A Time When You Cooked a Meal",
+      "prompt": "Describe a time when you cooked a meal. You should answer: What did you cook? When and where did you cook it? Who was with you? How did you feel about it?",
+      "content": "I’d like to talk about the time I cooked fried rice with eggs, vegetables, and chicken. It was last Sunday evening. I cooked it in the kitchen of the shared house where I live with other students. One of my roommates helped me prepare the ingredients. To be honest, I felt a little nervous at first, but in the end, I was really happy and proud because everyone enjoyed the meal and gave me good feedback.",
+      "source_page": 18,
+      "image_url": null,
+      "audio_url": null
+    },
+    {
+      "source_key": "speaking-topic-35",
+      "skill": "speaking",
+      "title": "Topic 35: A Time When You Spent a Lot of Money",
+      "prompt": "Describe a time when you spent a lot of money on something. You should answer: What did you buy? When did you buy it? Where did you buy it? Why did you spend a lot of money to buy it?",
+      "content": "I once spent a lot of money on a Yonex badminton racket. I bought it about three months ago at a sports shop near my house called Hali Sports. It cost more than two million Vietnamese dong, which was quite expensive for a student like me. However, I decided to buy it because I play badminton regularly and I wanted a strong, high-quality racket. I believed it would help me play better and last for a long time, so it was a worthwhile investment.",
+      "source_page": 18,
+      "image_url": null,
+      "audio_url": null
+    }
+  ],
+  "sections": [
+    {
+      "source_key": "section-1-grammar-use-of-english",
+      "skill": "grammar",
+      "resource_type": "activity",
+      "resource_source_key": "grammar-use-of-english",
+      "order_index": 1,
+      "is_required": true
+    },
+    {
+      "source_key": "section-2-signs",
+      "skill": "signs",
+      "resource_type": "activity",
+      "resource_source_key": "signs",
+      "order_index": 2,
+      "is_required": true
+    },
+    {
+      "source_key": "section-3-reading-text-2-coasteering",
+      "skill": "reading",
+      "resource_type": "activity",
+      "resource_source_key": "reading-text-2-coasteering",
+      "order_index": 3,
+      "is_required": true
+    },
+    {
+      "source_key": "section-4-reading-text-3-karina-moore",
+      "skill": "reading",
+      "resource_type": "activity",
+      "resource_source_key": "reading-text-3-karina-moore",
+      "order_index": 4,
+      "is_required": true
+    },
+    {
+      "source_key": "section-5-cloze-text-15-william-the-hero",
+      "skill": "cloze",
+      "resource_type": "activity",
+      "resource_source_key": "cloze-text-15-william-the-hero",
+      "order_index": 5,
+      "is_required": true
+    },
+    {
+      "source_key": "section-6-sentence-transformation",
+      "skill": "transformation",
+      "resource_type": "activity",
+      "resource_source_key": "sentence-transformation",
+      "order_index": 6,
+      "is_required": true
+    },
+    {
+      "source_key": "section-7-writing-topic-7",
+      "skill": "writing",
+      "resource_type": "prompt",
+      "resource_source_key": "writing-topic-7",
+      "order_index": 7,
+      "is_required": true
+    },
+    {
+      "source_key": "section-8-listening-text-1",
+      "skill": "listening",
+      "resource_type": "activity",
+      "resource_source_key": "listening-text-1",
+      "order_index": 8,
+      "is_required": true
+    },
+    {
+      "source_key": "section-9-listening-text-31",
+      "skill": "listening",
+      "resource_type": "activity",
+      "resource_source_key": "listening-text-31",
+      "order_index": 9,
+      "is_required": true
+    },
+    {
+      "source_key": "section-10-listening-text-34",
+      "skill": "listening",
+      "resource_type": "activity",
+      "resource_source_key": "listening-text-34",
+      "order_index": 10,
+      "is_required": true
+    },
+    {
+      "source_key": "section-11-listening-text-52",
+      "skill": "listening",
+      "resource_type": "activity",
+      "resource_source_key": "listening-text-52",
+      "order_index": 11,
+      "is_required": true
+    },
+    {
+      "source_key": "section-12-listening-text-56",
+      "skill": "listening",
+      "resource_type": "activity",
+      "resource_source_key": "listening-text-56",
+      "order_index": 12,
+      "is_required": true
+    },
+    {
+      "source_key": "section-13-speaking-test-instructions",
+      "skill": "speaking",
+      "resource_type": "prompt",
+      "resource_source_key": "speaking-test-instructions",
+      "order_index": 13,
+      "is_required": true
+    },
+    {
+      "source_key": "section-14-speaking-example-famous-person",
+      "skill": "speaking",
+      "resource_type": "prompt",
+      "resource_source_key": "speaking-example-famous-person",
+      "order_index": 14,
+      "is_required": true
+    },
+    {
+      "source_key": "section-15-speaking-topic-33",
+      "skill": "speaking",
+      "resource_type": "prompt",
+      "resource_source_key": "speaking-topic-33",
+      "order_index": 15,
+      "is_required": true
+    },
+    {
+      "source_key": "section-16-speaking-topic-34",
+      "skill": "speaking",
+      "resource_type": "prompt",
+      "resource_source_key": "speaking-topic-34",
+      "order_index": 16,
+      "is_required": true
+    },
+    {
+      "source_key": "section-17-speaking-topic-35",
+      "skill": "speaking",
+      "resource_type": "prompt",
+      "resource_source_key": "speaking-topic-35",
+      "order_index": 17,
+      "is_required": true
+    }
+  ]
+}

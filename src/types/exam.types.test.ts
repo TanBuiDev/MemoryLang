@@ -11,6 +11,10 @@ describe('isB1ContentArtifact', () => {
         skill: 'grammar',
         activity_type: 'multiple_choice',
         title: 'Grammar and Use of English',
+        instructions: 'Choose the best answer.',
+        content: 'Grammar source content.',
+        passage: null,
+        audio_url: null,
         questions: [{
           source_key: 'grammar-101',
           source_number: '101',
@@ -57,6 +61,55 @@ describe('isB1ContentArtifact', () => {
           image_url: null,
         }],
       }],
+      prompts: [],
+      sections: [],
+    }
+
+    expect(isB1ContentArtifact(invalid)).toBe(false)
+  })
+
+  it('rejects invalid activity and prompt content fields', () => {
+    const invalid = {
+      source: { file_name: 'DeFull Copy.pdf', page_count: 18 },
+      exam: { source_key: 'b1', title: 'B1', default_time_minutes: 120 },
+      activities: [{
+        source_key: 'listening-text-1',
+        skill: 'listening',
+        activity_type: 'fill_blank',
+        title: 'Listening Text 1',
+        audio_url: 42,
+        passage: [],
+        questions: [],
+      }],
+      prompts: [{
+        source_key: 'writing-topic-7',
+        skill: 'writing',
+        title: 'Writing Topic 7',
+        prompt: 'Write an email.',
+        source_page: 10,
+        image_url: null,
+        audio_url: { url: 'invalid' },
+      }],
+      sections: [],
+    }
+
+    expect(isB1ContentArtifact(invalid)).toBe(false)
+  })
+
+  it('rejects invalid source provenance metadata', () => {
+    const invalid = {
+      source: {
+        file_name: 'DeFull Copy.pdf',
+        page_count: 18,
+        provenance: {
+          annotation_count: -1,
+          extraction: 'text layer',
+          answer_source: 'PDF annotations',
+          excluded_source_numbers: { signs: [11, 12, 13, 14, 15] },
+        },
+      },
+      exam: { source_key: 'b1', title: 'B1', default_time_minutes: 120 },
+      activities: [],
       prompts: [],
       sections: [],
     }

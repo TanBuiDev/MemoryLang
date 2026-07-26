@@ -84,6 +84,10 @@ export interface PracticeActivity {
   skill: ExamSkill
   activity_type: PracticeQuestionType
   title: string
+  instructions?: string
+  content?: string
+  passage?: string | null
+  audio_url: string | null
   questions: PracticeQuestion[]
 }
 
@@ -92,8 +96,11 @@ export interface PracticePrompt {
   skill: ExamSkill
   title: string
   prompt: string
+  instructions?: string
+  content?: string
   source_page: number
   image_url: string | null
+  audio_url: string | null
 }
 
 export interface ExamSection {
@@ -105,10 +112,19 @@ export interface ExamSection {
   is_required: boolean
 }
 
+export interface B1ContentProvenance {
+  annotation_count: number
+  extraction: string
+  answer_source: string
+  excluded_source_numbers: Record<string, string[]>
+  notes?: string[]
+}
+
 export interface B1ContentArtifact {
   source: {
     file_name: string
     page_count: 18
+    provenance?: B1ContentProvenance
   }
   exam: {
     source_key: string
@@ -177,6 +193,19 @@ export function isB1ContentArtifact(value: unknown): value is B1ContentArtifact 
     || !isRecord(value.source)
     || !isNonEmptyString(value.source.file_name)
     || value.source.page_count !== 18
+    || (value.source.provenance !== undefined
+      && (!isRecord(value.source.provenance)
+        || typeof value.source.provenance.annotation_count !== 'number'
+        || !Number.isInteger(value.source.provenance.annotation_count)
+        || value.source.provenance.annotation_count < 0
+        || !isNonEmptyString(value.source.provenance.extraction)
+        || !isNonEmptyString(value.source.provenance.answer_source)
+        || !isRecord(value.source.provenance.excluded_source_numbers)
+        || !Object.values(value.source.provenance.excluded_source_numbers).every((items) =>
+          Array.isArray(items) && items.every(isNonEmptyString))
+        || (value.source.provenance.notes !== undefined
+          && (!Array.isArray(value.source.provenance.notes)
+            || !value.source.provenance.notes.every(isNonEmptyString)))))
     || !isRecord(value.exam)
     || !isNonEmptyString(value.exam.source_key)
     || !isNonEmptyString(value.exam.title)
@@ -198,6 +227,10 @@ export function isB1ContentArtifact(value: unknown): value is B1ContentArtifact 
     && examSkills.includes(activity.skill as ExamSkill)
     && questionTypes.includes(activity.activity_type as PracticeQuestionType)
     && isNonEmptyString(activity.title)
+    && (activity.instructions === undefined || isNonEmptyString(activity.instructions))
+    && (activity.content === undefined || isNonEmptyString(activity.content))
+    && (activity.passage === undefined || activity.passage === null || isNonEmptyString(activity.passage))
+    && (activity.audio_url === null || isNonEmptyString(activity.audio_url))
     && Array.isArray(activity.questions)
     && hasUniqueSourceKeys(activity.questions)
     && activity.questions.every(isQuestion))) {
@@ -208,10 +241,13 @@ export function isB1ContentArtifact(value: unknown): value is B1ContentArtifact 
     && examSkills.includes(prompt.skill as ExamSkill)
     && isNonEmptyString(prompt.title)
     && isNonEmptyString(prompt.prompt)
+    && (prompt.instructions === undefined || isNonEmptyString(prompt.instructions))
+    && (prompt.content === undefined || isNonEmptyString(prompt.content))
     && typeof prompt.source_page === 'number'
     && Number.isInteger(prompt.source_page)
     && prompt.source_page >= 1
-    && (prompt.image_url === null || isNonEmptyString(prompt.image_url)))) {
+    && (prompt.image_url === null || isNonEmptyString(prompt.image_url))
+    && (prompt.audio_url === null || isNonEmptyString(prompt.audio_url)))) {
     return false
   }
 
