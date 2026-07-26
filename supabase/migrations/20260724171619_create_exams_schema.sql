@@ -89,22 +89,12 @@ CREATE POLICY "Public users can view published exams"
 DROP POLICY IF EXISTS "Admin users can manage exams" ON public.exams;
 CREATE POLICY "Admin users can manage exams"
   ON public.exams FOR ALL
-  TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND is_admin = true
+      SELECT 1 FROM auth.users
+      WHERE auth.users.id = auth.uid()
+      AND (auth.users.raw_app_meta_data->>'role' = 'admin' OR auth.users.raw_user_meta_data->>'role' = 'admin')
     )
-    OR (auth.jwt() -> 'app_metadata' ->> 'role' = 'admin')
-    OR (auth.jwt() -> 'user_metadata' ->> 'role' = 'admin')
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND is_admin = true
-    )
-    OR (auth.jwt() -> 'app_metadata' ->> 'role' = 'admin')
-    OR (auth.jwt() -> 'user_metadata' ->> 'role' = 'admin')
   );
 
 -- 2. Policies cho exam_passage_sets
@@ -122,22 +112,12 @@ CREATE POLICY "Public users can view passage sets of published exams"
 DROP POLICY IF EXISTS "Admin users can manage passage sets" ON public.exam_passage_sets;
 CREATE POLICY "Admin users can manage passage sets"
   ON public.exam_passage_sets FOR ALL
-  TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND is_admin = true
+      SELECT 1 FROM auth.users
+      WHERE auth.users.id = auth.uid()
+      AND (auth.users.raw_app_meta_data->>'role' = 'admin' OR auth.users.raw_user_meta_data->>'role' = 'admin')
     )
-    OR (auth.jwt() -> 'app_metadata' ->> 'role' = 'admin')
-    OR (auth.jwt() -> 'user_metadata' ->> 'role' = 'admin')
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND is_admin = true
-    )
-    OR (auth.jwt() -> 'app_metadata' ->> 'role' = 'admin')
-    OR (auth.jwt() -> 'user_metadata' ->> 'role' = 'admin')
   );
 
 -- 3. Policies cho exam_questions
@@ -156,20 +136,10 @@ CREATE POLICY "Public users can view questions of published exams"
 DROP POLICY IF EXISTS "Admin users can manage exam questions" ON public.exam_questions;
 CREATE POLICY "Admin users can manage exam questions"
   ON public.exam_questions FOR ALL
-  TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND is_admin = true
+      SELECT 1 FROM auth.users
+      WHERE auth.users.id = auth.uid()
+      AND (auth.users.raw_app_meta_data->>'role' = 'admin' OR auth.users.raw_user_meta_data->>'role' = 'admin')
     )
-    OR (auth.jwt() -> 'app_metadata' ->> 'role' = 'admin')
-    OR (auth.jwt() -> 'user_metadata' ->> 'role' = 'admin')
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND is_admin = true
-    )
-    OR (auth.jwt() -> 'app_metadata' ->> 'role' = 'admin')
-    OR (auth.jwt() -> 'user_metadata' ->> 'role' = 'admin')
   );
