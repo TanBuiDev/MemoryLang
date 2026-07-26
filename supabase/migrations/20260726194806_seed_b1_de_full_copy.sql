@@ -66,7 +66,6 @@ insert into public.practice_activities (
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   activity_type = excluded.activity_type,
   title = excluded.title,
   instructions = excluded.instructions,
@@ -108,7 +107,6 @@ insert into public.practice_activities (
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   activity_type = excluded.activity_type,
   title = excluded.title,
   instructions = excluded.instructions,
@@ -156,7 +154,6 @@ Lily and her dad drove to Porthdean, where they attended a session with their in
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   activity_type = excluded.activity_type,
   title = excluded.title,
   instructions = excluded.instructions,
@@ -206,7 +203,6 @@ But what’s it like to concentrate so much on diving? “I train 20 hours a wee
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   activity_type = excluded.activity_type,
   title = excluded.title,
   instructions = excluded.instructions,
@@ -252,7 +248,6 @@ Mrs Baldock left hospital yesterday, very (10) ____________ to both William and 
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   activity_type = excluded.activity_type,
   title = excluded.title,
   instructions = excluded.instructions,
@@ -294,7 +289,6 @@ insert into public.practice_activities (
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   activity_type = excluded.activity_type,
   title = excluded.title,
   instructions = excluded.instructions,
@@ -340,7 +334,6 @@ insert into public.practice_activities (
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   activity_type = excluded.activity_type,
   title = excluded.title,
   instructions = excluded.instructions,
@@ -382,7 +375,6 @@ insert into public.practice_activities (
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   activity_type = excluded.activity_type,
   title = excluded.title,
   instructions = excluded.instructions,
@@ -424,7 +416,6 @@ insert into public.practice_activities (
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   activity_type = excluded.activity_type,
   title = excluded.title,
   instructions = excluded.instructions,
@@ -466,7 +457,6 @@ insert into public.practice_activities (
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   activity_type = excluded.activity_type,
   title = excluded.title,
   instructions = excluded.instructions,
@@ -508,7 +498,6 @@ insert into public.practice_activities (
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   activity_type = excluded.activity_type,
   title = excluded.title,
   instructions = excluded.instructions,
@@ -565,7 +554,6 @@ Yours faithfully,
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   title = excluded.title,
   prompt = excluded.prompt,
   instructions = excluded.instructions,
@@ -622,7 +610,6 @@ Phase 3 - Closure: The examiners signal that it is the end of the test, thank th
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   title = excluded.title,
   prompt = excluded.prompt,
   instructions = excluded.instructions,
@@ -667,7 +654,6 @@ insert into public.practice_prompts (
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   title = excluded.title,
   prompt = excluded.prompt,
   instructions = excluded.instructions,
@@ -712,7 +698,6 @@ insert into public.practice_prompts (
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   title = excluded.title,
   prompt = excluded.prompt,
   instructions = excluded.instructions,
@@ -757,7 +742,6 @@ insert into public.practice_prompts (
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   title = excluded.title,
   prompt = excluded.prompt,
   instructions = excluded.instructions,
@@ -802,7 +786,6 @@ insert into public.practice_prompts (
   null
 )
 on conflict (source_key) do update set
-  skill = excluded.skill,
   title = excluded.title,
   prompt = excluded.prompt,
   instructions = excluded.instructions,

@@ -152,6 +152,7 @@ export function validateB1Artifact(value) {
   }
 
   const activityKeys = new Set()
+  const activitySkillsByKey = new Map()
   if (!Array.isArray(value.activities)) {
     error('activities', 'Expected an array')
   } else {
@@ -166,6 +167,9 @@ export function validateB1Artifact(value) {
       validateSourceKey(activity.source_key, `${activityPath}.source_key`)
       if (isNonEmptyString(activity.source_key)) {
         activityKeys.add(activity.source_key)
+        if (EXAM_SKILLS.has(activity.skill)) {
+          activitySkillsByKey.set(activity.source_key, activity.skill)
+        }
       }
       if (!EXAM_SKILLS.has(activity.skill)) {
         error(`${activityPath}.skill`, 'Expected a supported exam skill')
@@ -297,6 +301,7 @@ export function validateB1Artifact(value) {
   }
 
   const promptKeys = new Set()
+  const promptSkillsByKey = new Map()
   if (!Array.isArray(value.prompts)) {
     error('prompts', 'Expected an array')
   } else {
@@ -311,6 +316,9 @@ export function validateB1Artifact(value) {
       validateSourceKey(prompt.source_key, `${promptPath}.source_key`)
       if (isNonEmptyString(prompt.source_key)) {
         promptKeys.add(prompt.source_key)
+        if (EXAM_SKILLS.has(prompt.skill)) {
+          promptSkillsByKey.set(prompt.source_key, prompt.skill)
+        }
       }
       if (!EXAM_SKILLS.has(prompt.skill)) {
         error(`${promptPath}.skill`, 'Expected a supported exam skill')
@@ -353,6 +361,7 @@ export function validateB1Artifact(value) {
     error('sections', 'Expected an array')
   } else {
     counts.sections = value.sections.length
+    const sectionOrderPaths = new Map()
     value.sections.forEach((section, sectionIndex) => {
       const sectionPath = `sections[${sectionIndex}]`
       if (!isRecord(section)) {
@@ -385,9 +394,39 @@ export function validateB1Artifact(value) {
           `${sectionPath}.resource_source_key`,
           `Unknown prompt source_key "${section.resource_source_key}"`,
         )
+      } else if (
+        section.resource_type === 'activity'
+        && activitySkillsByKey.has(section.resource_source_key)
+        && EXAM_SKILLS.has(section.skill)
+        && activitySkillsByKey.get(section.resource_source_key) !== section.skill
+      ) {
+        error(
+          `${sectionPath}.skill`,
+          `Expected skill "${activitySkillsByKey.get(section.resource_source_key)}" `
+            + `to match referenced activity "${section.resource_source_key}"`,
+        )
+      } else if (
+        section.resource_type === 'prompt'
+        && promptSkillsByKey.has(section.resource_source_key)
+        && EXAM_SKILLS.has(section.skill)
+        && promptSkillsByKey.get(section.resource_source_key) !== section.skill
+      ) {
+        error(
+          `${sectionPath}.skill`,
+          `Expected skill "${promptSkillsByKey.get(section.resource_source_key)}" `
+            + `to match referenced prompt "${section.resource_source_key}"`,
+        )
       }
       if (!Number.isInteger(section.order_index) || section.order_index <= 0) {
         error(`${sectionPath}.order_index`, 'Expected a positive integer')
+      } else if (sectionOrderPaths.has(section.order_index)) {
+        error(
+          `${sectionPath}.order_index`,
+          `Duplicate order_index ${section.order_index}; first used at `
+            + sectionOrderPaths.get(section.order_index),
+        )
+      } else {
+        sectionOrderPaths.set(section.order_index, `${sectionPath}.order_index`)
       }
       if (typeof section.is_required !== 'boolean') {
         error(`${sectionPath}.is_required`, 'Expected a boolean')

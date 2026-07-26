@@ -25,6 +25,35 @@ function statementFor(sql, table, sourceKey) {
   return sql.slice(statementStart, nextStatement === -1 ? undefined : nextStatement)
 }
 
+function statementsForTable(sql, table) {
+  const marker = `insert into public.${table}`
+  const statements = []
+  let statementStart = sql.indexOf(marker)
+
+  while (statementStart !== -1) {
+    const nextStatement = sql.indexOf('\n\ninsert into public.', statementStart + marker.length)
+    statements.push(sql.slice(
+      statementStart,
+      nextStatement === -1 ? undefined : nextStatement,
+    ))
+    statementStart = sql.indexOf(marker, statementStart + marker.length)
+  }
+
+  return statements
+}
+
+function upsertAssignmentColumns(statement) {
+  const updateMarker = 'on conflict (source_key) do update set\n'
+  const updateStart = statement.lastIndexOf(updateMarker)
+  assert.notEqual(updateStart, -1)
+
+  return statement
+    .slice(updateStart + updateMarker.length)
+    .replace(/;\s*$/u, '')
+    .split(',\n')
+    .map((assignment) => assignment.trim().split(/\s*=\s*/u, 1)[0])
+}
+
 test('generates one complete draft transaction in dependency order', () => {
   const sql = buildB1SeedSql(artifact)
   const normalized = sql.trim()
@@ -90,6 +119,24 @@ test('uses deterministic RFC 4122 UUID v5 identifiers and idempotent upserts', (
     (firstSql.match(/insert into public\./gu) ?? []).length,
   )
   assert.doesNotMatch(firstSql, /\b(?:delete|truncate)\s+from\b/iu)
+})
+
+test('resource upserts never assign immutable trigger columns', () => {
+  const sql = buildB1SeedSql(artifact)
+  const resourceStatements = [
+    ...statementsForTable(sql, 'practice_activities'),
+    ...statementsForTable(sql, 'practice_prompts'),
+  ]
+
+  assert.equal(
+    resourceStatements.length,
+    artifact.activities.length + artifact.prompts.length,
+  )
+  for (const statement of resourceStatements) {
+    const assignmentColumns = upsertAssignmentColumns(statement)
+    assert.equal(assignmentColumns.includes('id'), false)
+    assert.equal(assignmentColumns.includes('skill'), false)
+  }
 })
 
 test('escapes SQL literals without changing the source artifact', () => {

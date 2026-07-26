@@ -107,6 +107,43 @@ test('rejects a section that references a missing resource', () => {
     && error.message === 'Unknown activity source_key "missing-activity"'))
 })
 
+test('rejects duplicate section order_index values', () => {
+  const artifact = validArtifact()
+  artifact.sections[1].order_index = artifact.sections[0].order_index
+
+  const result = validateB1Artifact(artifact)
+
+  assert.equal(result.valid, false)
+  assert.ok(result.errors.some((error) =>
+    error.path === 'sections[1].order_index'
+    && error.message === 'Duplicate order_index 1; first used at sections[0].order_index'))
+})
+
+test('rejects a section whose skill differs from its referenced resource', () => {
+  const artifact = validArtifact()
+  artifact.sections[0].skill = 'reading'
+
+  const result = validateB1Artifact(artifact)
+
+  assert.equal(result.valid, false)
+  assert.ok(result.errors.some((error) =>
+    error.path === 'sections[0].skill'
+    && error.message === 'Expected skill "signs" to match referenced activity "signs"'))
+})
+
+test('rejects a prompt section whose skill differs from its resource', () => {
+  const artifact = validArtifact()
+  artifact.sections[1].skill = 'speaking'
+
+  const result = validateB1Artifact(artifact)
+
+  assert.equal(result.valid, false)
+  assert.ok(result.errors.some((error) =>
+    error.path === 'sections[1].skill'
+    && error.message === 'Expected skill "writing" '
+      + 'to match referenced prompt "writing-topic-7"'))
+})
+
 test('rejects source_page values outside the 1-18 source range', () => {
   const artifact = validArtifact()
   artifact.activities[0].questions[0].source_page = 19

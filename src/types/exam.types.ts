@@ -251,8 +251,18 @@ export function isB1ContentArtifact(value: unknown): value is B1ContentArtifact 
     return false
   }
 
-  const activityKeys = new Set(value.activities.map((activity) => activity.source_key))
-  const promptKeys = new Set(value.prompts.map((prompt) => prompt.source_key))
+  const activitySkillsByKey = new Map(
+    value.activities.map((activity) => [activity.source_key, activity.skill]),
+  )
+  const promptSkillsByKey = new Map(
+    value.prompts.map((prompt) => [prompt.source_key, prompt.skill]),
+  )
+  const sectionOrderIndexes = value.sections.map((section) =>
+    isRecord(section) ? section.order_index : undefined)
+
+  if (new Set(sectionOrderIndexes).size !== sectionOrderIndexes.length) {
+    return false
+  }
 
   return value.sections.every((section) => isRecord(section)
     && examSkills.includes(section.skill as ExamSkill)
@@ -263,6 +273,6 @@ export function isB1ContentArtifact(value: unknown): value is B1ContentArtifact 
     && section.order_index > 0
     && typeof section.is_required === 'boolean'
     && (section.resource_type === 'activity'
-      ? activityKeys.has(section.resource_source_key)
-      : promptKeys.has(section.resource_source_key)))
+      ? activitySkillsByKey.get(section.resource_source_key) === section.skill
+      : promptSkillsByKey.get(section.resource_source_key) === section.skill))
 }

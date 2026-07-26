@@ -166,7 +166,6 @@ function activityStatement(artifact, activity) {
     ],
     conflictTarget: ['source_key'],
     updates: [
-      'skill = excluded.skill',
       'activity_type = excluded.activity_type',
       'title = excluded.title',
       'instructions = excluded.instructions',
@@ -220,7 +219,6 @@ function promptStatement(artifact, prompt) {
     ],
     conflictTarget: ['source_key'],
     updates: [
-      'skill = excluded.skill',
       'title = excluded.title',
       'prompt = excluded.prompt',
       'instructions = excluded.instructions',
