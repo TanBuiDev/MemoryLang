@@ -274,6 +274,14 @@ export const adminExamContentService = {
     )
   },
 
+  async deleteSection(sectionId: string): Promise<void> {
+    const { error } = await supabase
+      .from('exam_sections')
+      .delete()
+      .eq('id', sectionId)
+    if (error) throw error
+  },
+
   async updateQuestion(
     questionId: string,
     input: Partial<Pick<AdminExamContentQuestion, 'prompt' | 'options' | 'translation' | 'explanation' | 'accepted_answers'>>,

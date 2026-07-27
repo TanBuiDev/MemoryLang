@@ -9,7 +9,7 @@ import { AdminB1ExamContentBuilderPage } from './AdminB1ExamContentBuilderPage'
 vi.mock('@/services/supabase/adminExamContent.service', () => ({
   adminExamContentService: {
     getExamContent: vi.fn(), updateResourcePresentation: vi.fn(), updateQuestion: vi.fn(), updateResourceContent: vi.fn(), updatePromptText: vi.fn(),
-    listPromptSamples: vi.fn(), savePromptSample: vi.fn(), deletePromptSample: vi.fn(), reorderSections: vi.fn(), createSection: vi.fn(),
+    listPromptSamples: vi.fn(), savePromptSample: vi.fn(), deletePromptSample: vi.fn(), deleteSection: vi.fn(), reorderSections: vi.fn(), createSection: vi.fn(),
   },
 }))
 
@@ -46,6 +46,7 @@ describe('AdminB1ExamContentBuilderPage', () => {
     vi.mocked(adminExamContentService.updatePromptText).mockResolvedValue(undefined)
     vi.mocked(adminExamContentService.listPromptSamples).mockResolvedValue([])
     vi.mocked(adminExamContentService.deletePromptSample).mockResolvedValue(undefined)
+    vi.mocked(adminExamContentService.deleteSection).mockResolvedValue(undefined)
     vi.mocked(adminExamContentService.reorderSections).mockResolvedValue(undefined)
     vi.mocked(adminExamContentService.createSection).mockResolvedValue({
       id: 'section-new', source_key: 'new-section', skill: 'grammar', title: 'Section mới', resource_type: 'activity', resource_id: 'activity-new', order_index: 2, is_required: true, suggested_time_minutes: null, resource: null,

@@ -139,6 +139,17 @@ describe('adminExamContentService', () => {
     }))
   })
 
+  it('removes only the section link without deleting its reusable resource', async () => {
+    const remove = { delete: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
+    from.mockReturnValueOnce(remove as never)
+
+    await expect(adminExamContentService.deleteSection('section-1')).resolves.toBeUndefined()
+
+    expect(from).toHaveBeenCalledWith('exam_sections')
+    expect(remove.delete).toHaveBeenCalledTimes(1)
+    expect(remove.eq).toHaveBeenCalledWith('id', 'section-1')
+  })
+
   it('updates a Writing or Speaking prompt and its learner instructions', async () => {
     const update = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
     from.mockReturnValueOnce(update as never)

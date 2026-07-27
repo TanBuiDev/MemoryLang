@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, FileAudio, Layers, Plus, Save } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, FileAudio, Layers, Plus, Save, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ChoiceListEditor, type EditableChoiceQuestion } from '@/components/admin/exam-presentations/ChoiceListEditor'
@@ -126,6 +126,7 @@ export function AdminB1ExamContentBuilderPage() {
   const [transformationQuestions, setTransformationQuestions] = useState<EditableTransformationQuestion[]>([])
   const [longFormValue, setLongFormValue] = useState<LongFormPromptValue>({ prompt: '', instructions: '' })
   const [pendingDeleteSampleId, setPendingDeleteSampleId] = useState<string | null>(null)
+  const [pendingDeleteSectionId, setPendingDeleteSectionId] = useState<string | null>(null)
   const [isCreateSectionOpen, setIsCreateSectionOpen] = useState(false)
   const [newSectionTitle, setNewSectionTitle] = useState('')
   const [newSectionSkill, setNewSectionSkill] = useState<ExamSkill>('grammar')
@@ -279,6 +280,15 @@ export function AdminB1ExamContentBuilderPage() {
     },
   })
 
+  const deleteSection = useMutation({
+    mutationFn: (sectionId: string) => adminExamContentService.deleteSection(sectionId),
+    onSuccess: async () => {
+      setPendingDeleteSectionId(null)
+      setSelectedSectionKey(null)
+      await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+    },
+  })
+
   const createSection = useMutation({
     mutationFn: () => {
       const title = newSectionTitle.trim()
@@ -375,6 +385,14 @@ export function AdminB1ExamContentBuilderPage() {
                       onClick={() => moveSection(section.id, 'down')}
                       className="min-h-0 px-2 py-1"
                     ><ArrowDown size={14} /></Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      aria-label={`Gỡ ${section.title} khỏi đề`}
+                      disabled={deleteSection.isPending}
+                      onClick={() => setPendingDeleteSectionId(section.id)}
+                      className="min-h-0 px-2 py-1"
+                    ><Trash2 size={14} /></Button>
                   </div>
                 </div>
               )
@@ -478,6 +496,19 @@ export function AdminB1ExamContentBuilderPage() {
           </ul>
         )}
       </section>
+      <ConfirmModal
+        open={Boolean(pendingDeleteSectionId)}
+        title="Gỡ section này khỏi đề?"
+        description="Chỉ liên kết section với đề bị gỡ. Nội dung gốc và các attempt đã có vẫn được giữ nguyên."
+        confirmLabel={deleteSection.isPending ? 'Đang gỡ...' : 'Gỡ khỏi đề'}
+        cancelLabel="Giữ lại"
+        variant="danger"
+        confirmDisabled={deleteSection.isPending}
+        onConfirm={() => {
+          if (pendingDeleteSectionId) deleteSection.mutate(pendingDeleteSectionId)
+        }}
+        onCancel={() => setPendingDeleteSectionId(null)}
+      />
       <ConfirmModal
         open={isCreateSectionOpen}
         title="Tạo section mới"
