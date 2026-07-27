@@ -57,6 +57,7 @@ const KNOWN_FEATURE_FLAGS: Array<FeatureFlag & { category: 'main_nav' | 'more_na
   { flag: 'speaking_module', label: 'Luyện nói', category: 'main_nav', enabled: true, description: 'Bật/tắt nút điều hướng Luyện nói trên thanh Menu' },
   { flag: 'reading_module', label: 'Đọc hiểu', category: 'main_nav', enabled: true, description: 'Bật/tắt nút điều hướng Đọc hiểu trên thanh Menu' },
   { flag: 'writing_module', label: 'Luyện viết', category: 'main_nav', enabled: true, description: 'Bật/tắt nút điều hướng Luyện viết trên thanh Menu' },
+  { flag: 'exams_module', label: 'Đề thi thử', category: 'main_nav', enabled: true, description: 'Bật/tắt nút điều hướng Đề thi trên thanh Menu' },
   { flag: 'games_module', label: 'Trò chơi', category: 'main_nav', enabled: true, description: 'Bật/tắt nút điều hướng Trò chơi trên thanh Menu' },
 
   // 2. Menu Mở rộng (More Dropdown Items)
@@ -66,7 +67,6 @@ const KNOWN_FEATURE_FLAGS: Array<FeatureFlag & { category: 'main_nav' | 'more_na
   { flag: 'quiz_nav', label: 'Kiểm tra dịch thuật', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Kiểm tra trong menu Xem thêm' },
   { flag: 'review_nav', label: 'Ôn tập thẻ cần học', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Ôn tập trong menu Xem thêm' },
   { flag: 'roadmap_module', label: 'Lộ trình học tập', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Lộ trình học trong menu Xem thêm' },
-  { flag: 'exams_module', label: 'Luyện thi chứng chỉ', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Kỳ thi trong menu Xem thêm' },
   { flag: 'videos_module', label: 'Bài học Video', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Video trong menu Xem thêm' },
   { flag: 'blog_module', label: 'Blog / Bài viết', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Blog / Bài viết trong menu Xem thêm' },
   { flag: 'community_module', label: 'Cộng đồng người học', category: 'more_nav', enabled: true, description: 'Bật/tắt mục Cộng đồng trong menu Xem thêm' },
