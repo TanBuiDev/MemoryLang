@@ -14,8 +14,8 @@ vi.mock('@/services/supabase/listening.service', () => ({
     getPartWithQuestions: vi.fn(),
   },
 }))
-vi.mock('@/components/listening/AudioPlayer', () => ({
-  AudioPlayer: ({ src }: { src: string }) => <div data-testid="audio-player">{src}</div>,
+vi.mock('@/components/listening/ListeningAudioPlayer', () => ({
+  ListeningAudioPlayer: ({ src }: { src: string }) => <div data-testid="audio-player">{src}</div>,
 }))
 
 const proTopic = {
@@ -94,7 +94,7 @@ describe('ListeningSessionPage content gating', () => {
 
     renderPage()
 
-    expect(await screen.findByText('Không tìm thấy nội dung')).toBeInTheDocument()
+    expect(await screen.findByText('Không tìm thấy nội dung bài nghe')).toBeInTheDocument()
     expect(listeningService.getPartWithQuestions).not.toHaveBeenCalled()
   })
 

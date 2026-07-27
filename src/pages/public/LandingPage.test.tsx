@@ -23,14 +23,13 @@ describe('LandingPage', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('link', { name: /tính năng/i })).toHaveAttribute('href', '#features')
-    expect(screen.getByRole('link', { name: /cách học/i })).toHaveAttribute('href', '#workflow')
-    expect(screen.getByRole('heading', { name: /cách memorylang biến từ vựng/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /xem memorylang hoạt động/i })).toBeInTheDocument()
-    expect(screen.getByText('Nhập bản dịch')).toBeInTheDocument()
-    expect(screen.getAllByText(/Nhập bản dịch của từ và nhận phản hồi ngay/)).toHaveLength(2)
-    expect(screen.queryByText(/đúng\/sai/i)).not.toBeInTheDocument()
-    expect(screen.getAllByTestId('homepage-mascot-art')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Tính năng' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Gia sư AI' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Hệ sinh thái' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Hỏi đáp & Tra cứu tức thì với Gia sư AI 24/7' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Tất cả công cụ bạn cần để làm chủ Tiếng Anh' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Học không giới hạn cùng MemoryLang Pro' })).toBeInTheDocument()
+    expect(screen.getAllByTestId('homepage-mascot-art')).toHaveLength(1)
     expect(screen.getByRole('contentinfo')).toBeInTheDocument()
   })
 
@@ -42,9 +41,9 @@ describe('LandingPage', () => {
     )
 
     expect(screen.getByRole('link', { name: 'Đăng nhập' })).toHaveAttribute('href', '/login')
-    expect(screen.getAllByRole('link', { name: 'Bắt đầu' })[0]).toHaveAttribute('href', '/login')
-    expect(screen.getByRole('link', { name: 'Bắt đầu học' })).toHaveAttribute('href', '/login')
-    expect(screen.getAllByRole('link', { name: 'Mở demo' })[0]).toHaveAttribute('href', '/app/dashboard')
+    expect(screen.getByRole('link', { name: 'Đăng ký Miễn phí ✨' })).toHaveAttribute('href', '/login')
+    expect(screen.getByRole('link', { name: /Đăng ký Học Miễn Phí/ })).toHaveAttribute('href', '/login')
+    expect(screen.getByRole('link', { name: 'Trải nghiệm Demo 🚀' })).toHaveAttribute('href', '/app/dashboard')
   })
 
   it('replaces guest actions with app actions when the user is authenticated', async () => {
@@ -74,9 +73,9 @@ describe('LandingPage', () => {
     )
 
     expect(screen.queryByRole('link', { name: 'Đăng nhập' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Bắt đầu' })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'Vào tổng quan' })[0]).toHaveAttribute('href', '/app/dashboard')
-    expect(screen.getAllByRole('link', { name: 'Tiếp tục học' })[0]).toHaveAttribute('href', '/app/study')
+    expect(screen.queryByRole('link', { name: 'Đăng ký Miễn phí ✨' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Vào tổng quan' })).toHaveAttribute('href', '/app/dashboard')
+    expect(screen.getByRole('link', { name: /Vào Bảng Điều Khiển/ })).toHaveAttribute('href', '/app/dashboard')
     await user.click(screen.getByRole('button', { name: 'Đăng xuất' }))
     expect(signOutSpy).toHaveBeenCalledTimes(1)
     signOutSpy.mockRestore()
