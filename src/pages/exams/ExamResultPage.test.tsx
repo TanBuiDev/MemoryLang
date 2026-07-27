@@ -1,12 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
 import { ExamResultPage } from './ExamResultPage'
 
 vi.mock('@/services/supabase/examPractice.service', () => ({
-  examPracticeService: { getAttempt: vi.fn(), listPromptSamples: vi.fn() },
+  examPracticeService: { getAttempt: vi.fn(), listPromptSamples: vi.fn(), startAttempt: vi.fn() },
 }))
 
 describe('ExamResultPage', () => {
@@ -127,5 +127,22 @@ describe('ExamResultPage', () => {
 
     expect(await screen.findByText('for')).toBeInTheDocument()
     expect(screen.queryByText('B')).not.toBeInTheDocument()
+  })
+
+  it('creates a new attempt with the same timer when the learner starts over', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: {
+        id: 'attempt-1', status: 'submitted', exam_id: 'exam-1', target_duration_seconds: 5400,
+      },
+      sections: [],
+    } as never)
+    vi.mocked(examPracticeService.startAttempt).mockResolvedValue({ id: 'attempt-2' } as never)
+
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/app/exams/attempt/attempt-1/result']}><Routes><Route path="/app/exams/attempt/:attemptId/result" element={<ExamResultPage />} /><Route path="/app/exams/attempt/:attemptId" element={<div>New attempt</div>} /></Routes></MemoryRouter></QueryClientProvider>)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Làm lại bài thi' }))
+
+    await waitFor(() => expect(examPracticeService.startAttempt).toHaveBeenCalledWith('exam-1', 5400))
+    expect(await screen.findByText('New attempt')).toBeInTheDocument()
   })
 })

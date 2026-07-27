@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   ArrowLeft,
   Award,
@@ -303,6 +303,17 @@ export function ExamResultPage() {
     queryFn: () => examPracticeService.listPromptSamples(writingPromptId!),
     enabled: Boolean(writingPromptId) && attemptQuery.data?.attempt.status === 'submitted',
   })
+  const restartAttempt = useMutation({
+    mutationFn: () => {
+      const completedAttempt = attemptQuery.data?.attempt
+      if (!completedAttempt) throw new Error('Không tìm thấy dữ liệu bài thi để làm lại.')
+      return examPracticeService.startAttempt(
+        completedAttempt.exam_id,
+        completedAttempt.target_duration_seconds,
+      )
+    },
+    onSuccess: (newAttempt) => navigate(`/app/exams/attempt/${newAttempt.id}`),
+  })
 
   if (attemptQuery.isLoading) {
     return (
@@ -461,11 +472,12 @@ export function ExamResultPage() {
               </Link>
             </Button>
             <Button
-              onClick={() => navigate(`/app/exams/attempt/${attemptId}`)}
+              onClick={() => restartAttempt.mutate()}
               variant="primary"
+              disabled={restartAttempt.isPending}
               className="font-black shadow-[3px_3px_0_var(--border)]"
             >
-              <RotateCcw size={16} /> Làm lại bài thi
+              <RotateCcw size={16} /> {restartAttempt.isPending ? 'Đang tạo bài mới...' : 'Làm lại bài thi'}
             </Button>
           </div>
         </div>
