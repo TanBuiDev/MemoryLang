@@ -63,6 +63,7 @@ describe('AdminB1ExamContentBuilderPage', () => {
     const user = userEvent.setup()
     renderPage()
 
+    expect(await screen.findByRole('heading', { name: 'Học viên làm bài' })).toBeInTheDocument()
     await user.click(await screen.findByRole('button', { name: 'Lưu cách trình bày' }))
 
     expect(adminExamContentService.updateResourcePresentation).toHaveBeenCalled()

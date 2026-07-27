@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CheckCircle2, CircleAlert, Layers, Save } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Layers, Save } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ChoiceListEditor, type EditableChoiceQuestion } from '@/components/admin/exam-presentations/ChoiceListEditor'
 import { InlineGapEditor } from '@/components/admin/exam-presentations/InlineGapEditor'
 import { LongFormPromptEditor, type LongFormPromptValue } from '@/components/admin/exam-presentations/LongFormPromptEditor'
 import { PresentationPicker } from '@/components/admin/exam-presentations/PresentationPicker'
+import { PresentationPreview } from '@/components/admin/exam-presentations/PresentationPreview'
 import { PromptSampleEditor, type PromptSampleDraft } from '@/components/admin/exam-presentations/PromptSampleEditor'
 import { TransformationEditor, type EditableTransformationQuestion } from '@/components/admin/exam-presentations/TransformationEditor'
 import { Button } from '@/components/ui/button'
@@ -121,6 +122,22 @@ export function AdminB1ExamContentBuilderPage() {
     queryFn: () => adminExamContentService.listPromptSamples(selectedResource!.id),
     enabled: selectedResource?.kind === 'prompt',
   })
+  const previewQuestions = useMemo(() => {
+    if (presentationType === 'sentence_transformation') {
+      return transformationQuestions.map((question) => ({
+        id: question.id,
+        prompt: question.prompt,
+        acceptedAnswers: question.acceptedAnswers,
+      }))
+    }
+    const inlineAnswers = new Map(inlineGapDraft?.gaps.map((gap) => [gap.id, gap.acceptedAnswers]) ?? [])
+    return editedQuestions.map((question) => ({
+      id: question.id,
+      prompt: question.prompt,
+      options: question.options,
+      acceptedAnswers: inlineAnswers.get(question.id) ?? [],
+    }))
+  }, [editedQuestions, inlineGapDraft?.gaps, presentationType, transformationQuestions])
 
   useEffect(() => {
     if (!selectedResource) return
@@ -320,10 +337,14 @@ export function AdminB1ExamContentBuilderPage() {
                   />
                 </>
               )}
-              <div className="border-2 border-dashed border-border bg-muted/40 p-4 text-sm font-semibold leading-relaxed">
-                <CircleAlert className="mr-2 inline text-secondary" size={16} />
-                Editor chuyên biệt, preview học viên và preview đáp án của presentation này sẽ được hiển thị tại đây.
-              </div>
+              <PresentationPreview
+                presentationType={presentationType}
+                title={selectedSection.title}
+                instructions={longFormValue.instructions || selectedResource.instructions}
+                passage={selectedResource.passage ?? selectedResource.content}
+                prompt={longFormValue.prompt || selectedResource.prompt}
+                questions={previewQuestions}
+              />
               {savePresentation.isError && <p className="text-sm font-bold text-danger">Không thể lưu: {savePresentation.error.message}</p>}
               <Button
                 variant="primary"
