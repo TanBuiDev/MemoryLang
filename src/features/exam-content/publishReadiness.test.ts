@@ -51,4 +51,16 @@ describe('getExamPublishReadiness', () => {
 
     expect(readiness.canPublish).toBe(true)
   })
+
+  it('blocks a required section whose presentation has no learner/result renderer yet', () => {
+    const readiness = getExamPublishReadiness({
+      sections: [{ id: 'section-1', title: 'Ghép cặp', skill: 'reading', is_required: true, resource: {
+        id: 'activity-1', kind: 'activity', presentation_type: 'matching', grading_mode: 'matching', audio_url: null,
+        questions: [{ id: 'q-1', prompt: 'Match.', options: [], accepted_answers: [], translation: 'Ghép.', explanation: 'Lời giải.' }],
+      }}],
+    })
+
+    expect(readiness.canPublish).toBe(false)
+    expect(readiness.issues).toContainEqual(expect.objectContaining({ message: expect.stringMatching(/chưa sẵn sàng xuất bản/i) }))
+  })
 })

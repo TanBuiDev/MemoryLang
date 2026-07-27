@@ -1,4 +1,4 @@
-import { isGradingModeCompatible } from './presentationRegistry'
+import { isGradingModeCompatible, isPresentationReadyForPublication } from './presentationRegistry'
 import type { ExamGradingMode, ExamPresentationType, ExamResourceType, ExamSkill } from '@/types/exam.types'
 
 export interface PublishReadinessIssue {
@@ -76,6 +76,9 @@ export function getExamPublishReadiness(exam: PublishReadinessExam): { canPublis
     }
     if (!isGradingModeCompatible(resource.presentation_type, resource.grading_mode)) {
       issues.push({ severity: 'error', sectionId: section.id, message: `${section.title}: cách chấm không tương thích với cách trình bày.` })
+    }
+    if (!isPresentationReadyForPublication(resource.presentation_type)) {
+      issues.push({ severity: 'error', sectionId: section.id, message: `${section.title}: presentation này chưa sẵn sàng xuất bản vì chưa có đầy đủ renderer học viên và đáp án.` })
     }
     if (section.skill === 'listening' && !resource.audio_url) {
       issues.push({ severity: 'error', sectionId: section.id, message: `${section.title}: thiếu audio bắt buộc cho phần Listening.` })

@@ -35,4 +35,15 @@ describe('PresentationPicker', () => {
     expect(screen.getByRole('button', { name: /Chuẩn bị bài nói/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Điền từ trong đoạn văn/i })).not.toBeInTheDocument()
   })
+
+  it('keeps unfinished presentation types visible but prevents an admin from selecting them', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(<PresentationPicker resourceKind="activity" value="choice_list" onChange={onChange} />)
+
+    const matching = screen.getByRole('button', { name: /Ghép cặp.*chưa sẵn sàng xuất bản/i })
+    expect(matching).toBeDisabled()
+    await user.click(matching)
+    expect(onChange).not.toHaveBeenCalled()
+  })
 })

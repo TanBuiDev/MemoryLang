@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   getPresentationDefinition,
+  isPresentationReadyForPublication,
   isGradingModeCompatible,
   validatePresentationContent,
 } from './presentationRegistry'
@@ -38,5 +39,11 @@ describe('presentationRegistry', () => {
     })
 
     expect(result.success).toBe(true)
+  })
+
+  it('marks a presentation without learner and result renderers as unavailable for publication', () => {
+    expect(isPresentationReadyForPublication('choice_list')).toBe(true)
+    expect(isPresentationReadyForPublication('matching')).toBe(false)
+    expect(isPresentationReadyForPublication('ordering')).toBe(false)
   })
 })

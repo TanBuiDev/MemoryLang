@@ -12,6 +12,7 @@ export interface PresentationDefinition {
   compatibleGradingModes: readonly ExamGradingMode[]
   requiresStructuredGaps: boolean
   resourceKind: 'activity' | 'prompt'
+  isReadyForPublication?: boolean
 }
 
 const sharedChoiceModes: readonly ExamGradingMode[] = ['single_choice']
@@ -31,7 +32,7 @@ export const PRESENTATION_REGISTRY: Record<ExamPresentationType, PresentationDef
   },
   passage_choice_inline: {
     type: 'passage_choice_inline', label: 'Chọn đáp án trong đoạn văn', description: 'Mỗi ô trống trong passage nhận một lựa chọn.',
-    compatibleGradingModes: sharedChoiceModes, requiresStructuredGaps: true, resourceKind: 'activity',
+    compatibleGradingModes: sharedChoiceModes, requiresStructuredGaps: true, resourceKind: 'activity', isReadyForPublication: false,
   },
   passage_text_inline: {
     type: 'passage_text_inline', label: 'Điền từ trong đoạn văn', description: 'Học viên điền đáp án trực tiếp vào từng ô trống.',
@@ -47,7 +48,7 @@ export const PRESENTATION_REGISTRY: Record<ExamPresentationType, PresentationDef
   },
   short_answer_list: {
     type: 'short_answer_list', label: 'Câu trả lời ngắn', description: 'Danh sách các ô nhập câu trả lời ngắn.',
-    compatibleGradingModes: ['exact_text', 'normalized_text'], requiresStructuredGaps: false, resourceKind: 'activity',
+    compatibleGradingModes: ['exact_text', 'normalized_text'], requiresStructuredGaps: false, resourceKind: 'activity', isReadyForPublication: false,
   },
   long_form_prompt: {
     type: 'long_form_prompt', label: 'Viết bài', description: 'Đề bài dài, autosave phiên bản và bài mẫu.',
@@ -59,11 +60,11 @@ export const PRESENTATION_REGISTRY: Record<ExamPresentationType, PresentationDef
   },
   matching: {
     type: 'matching', label: 'Ghép cặp', description: 'Ghép hai danh sách nội dung tương ứng.',
-    compatibleGradingModes: ['matching'], requiresStructuredGaps: false, resourceKind: 'activity',
+    compatibleGradingModes: ['matching'], requiresStructuredGaps: false, resourceKind: 'activity', isReadyForPublication: false,
   },
   ordering: {
     type: 'ordering', label: 'Sắp xếp', description: 'Sắp xếp các mục theo thứ tự đúng.',
-    compatibleGradingModes: ['ordered_list'], requiresStructuredGaps: false, resourceKind: 'activity',
+    compatibleGradingModes: ['ordered_list'], requiresStructuredGaps: false, resourceKind: 'activity', isReadyForPublication: false,
   },
 }
 
@@ -73,6 +74,10 @@ export function getPresentationDefinition(type: ExamPresentationType): Presentat
 
 export function isGradingModeCompatible(type: ExamPresentationType, gradingMode: ExamGradingMode): boolean {
   return getPresentationDefinition(type).compatibleGradingModes.includes(gradingMode)
+}
+
+export function isPresentationReadyForPublication(type: ExamPresentationType): boolean {
+  return getPresentationDefinition(type).isReadyForPublication !== false
 }
 
 export function validatePresentationContent(type: ExamPresentationType, value: unknown) {

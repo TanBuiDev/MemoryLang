@@ -1,6 +1,6 @@
 import { BookOpen, FileText, Image, ListChecks, Mic2, PenLine, Rows3, Type } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { PRESENTATION_REGISTRY } from '@/features/exam-content/presentationRegistry'
+import { PRESENTATION_REGISTRY, isPresentationReadyForPublication } from '@/features/exam-content/presentationRegistry'
 import type { ExamPresentationType } from '@/types/exam.types'
 
 interface PresentationPickerProps {
@@ -39,6 +39,7 @@ export function PresentationPicker({ resourceKind, value, onChange, disabled = f
         {presentations.map((presentation) => {
           const Icon = presentationIcons[presentation.type]
           const isSelected = presentation.type === value
+          const isReady = isPresentationReadyForPublication(presentation.type)
           return (
             <Button
               key={presentation.type}
@@ -46,12 +47,14 @@ export function PresentationPicker({ resourceKind, value, onChange, disabled = f
               variant={isSelected ? 'secondary' : 'ghost'}
               aria-pressed={isSelected}
               onClick={() => onChange(presentation.type)}
+              disabled={disabled || !isReady}
               className="h-auto min-h-32 items-start justify-start whitespace-normal p-4 text-left"
             >
               <Icon size={20} className="mt-0.5 shrink-0" />
               <span className="space-y-1.5">
                 <span className="block text-sm font-black">{presentation.label}</span>
                 <span className="block text-xs font-semibold leading-relaxed opacity-90">{presentation.description}</span>
+                {!isReady && <span className="block text-[11px] font-black text-danger">Chưa sẵn sàng xuất bản</span>}
               </span>
             </Button>
           )
