@@ -48,6 +48,9 @@ export interface Exam {
   title: string
   category: ExamCategory
   description?: string | null
+  source_key?: string | null
+  cefr_level?: string | null
+  default_time_minutes?: number | null
   time_limit_minutes: number
   total_questions: number
   is_published: boolean

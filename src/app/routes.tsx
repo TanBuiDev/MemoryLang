@@ -69,6 +69,8 @@ const AdminReadingListPage = lazyWithChunkRecovery(() => import('@/pages/admin/A
 const AdminReadingEditorPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminReadingEditorPage'))
 const AdminExamsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminExamsPage'))
 const AdminExamBuilderPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminExamBuilderPage'))
+const ExamHubPage = lazyWithChunkRecovery(() => import('@/pages/exams/ExamHubPage').then(m => ({ default: m.ExamHubPage })))
+const ExamAttemptPage = lazyWithChunkRecovery(() => import('@/pages/exams/ExamAttemptPage').then(m => ({ default: m.ExamAttemptPage })))
 
 function RootLayout() {
   return (
@@ -186,6 +188,23 @@ export const router = createBrowserRouter([
 
               { path: 'upgrade', element: <UpgradePage /> },
               { path: 'upgrade/success', element: <UpgradeSuccessPage /> },
+
+              {
+                path: 'exams',
+                element: (
+                  <React.Suspense fallback={<AppLoading />}>
+                    <ExamHubPage />
+                  </React.Suspense>
+                ),
+              },
+              {
+                path: 'exams/attempt/:attemptId',
+                element: (
+                  <React.Suspense fallback={<AppLoading />}>
+                    <ExamAttemptPage />
+                  </React.Suspense>
+                ),
+              },
 
               /* Games Module */
               {
