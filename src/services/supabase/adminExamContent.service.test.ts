@@ -37,4 +37,24 @@ describe('adminExamContentService', () => {
     expect(update.update).toHaveBeenCalledWith({ presentation_type: 'passage_text_inline', grading_mode: 'normalized_text' })
     expect(update.eq).toHaveBeenCalledWith('id', 'activity-1')
   })
+
+  it('updates an objective question together with options and review content', async () => {
+    const update = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
+    from.mockReturnValueOnce(update as never)
+
+    await expect(adminExamContentService.updateQuestion('question-1', {
+      prompt: 'Choose the best answer.',
+      options: [{ key: 'A', text: 'First', is_correct: false }, { key: 'B', text: 'Second', is_correct: true }],
+      translation: 'Chọn đáp án đúng nhất.',
+      explanation: 'B phù hợp với ngữ cảnh.',
+    })).resolves.toBeUndefined()
+
+    expect(from).toHaveBeenCalledWith('practice_questions')
+    expect(update.update).toHaveBeenCalledWith({
+      prompt: 'Choose the best answer.',
+      options: [{ key: 'A', text: 'First', is_correct: false }, { key: 'B', text: 'Second', is_correct: true }],
+      translation: 'Chọn đáp án đúng nhất.',
+      explanation: 'B phù hợp với ngữ cảnh.',
+    })
+  })
 })

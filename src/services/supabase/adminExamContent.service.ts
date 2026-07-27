@@ -149,4 +149,15 @@ export const adminExamContentService = {
       .eq('id', input.resourceId)
     if (error) throw error
   },
+
+  async updateQuestion(
+    questionId: string,
+    input: Pick<AdminExamContentQuestion, 'prompt' | 'options' | 'translation' | 'explanation'>,
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('practice_questions')
+      .update(input)
+      .eq('id', questionId)
+    if (error) throw error
+  },
 }

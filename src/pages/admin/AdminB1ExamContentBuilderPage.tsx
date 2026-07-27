@@ -2,10 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, CheckCircle2, CircleAlert, Layers, Save } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { ChoiceListEditor, type EditableChoiceQuestion } from '@/components/admin/exam-presentations/ChoiceListEditor'
 import { PresentationPicker } from '@/components/admin/exam-presentations/PresentationPicker'
 import { Button } from '@/components/ui/button'
 import { getPresentationDefinition } from '@/features/exam-content/presentationRegistry'
-import { adminExamContentService } from '@/services/supabase/adminExamContent.service'
+import { adminExamContentService, type AdminExamContentQuestion } from '@/services/supabase/adminExamContent.service'
 import type { ExamGradingMode, ExamPresentationType } from '@/types/exam.types'
 
 const gradingModeLabels: Record<ExamGradingMode, string> = {
@@ -16,6 +17,27 @@ const gradingModeLabels: Record<ExamGradingMode, string> = {
   sample_compare: 'So sánh bài mẫu',
   matching: 'Chấm cặp ghép',
   ordered_list: 'Chấm thứ tự',
+}
+
+function toEditableChoiceQuestions(questions: AdminExamContentQuestion[]): EditableChoiceQuestion[] {
+  return questions.map((question) => ({
+    ...question,
+    id: question.id,
+    activity_id: question.activity_id,
+    source_key: question.source_key,
+    prompt: question.prompt,
+    order_index: question.order_index,
+    options: Array.isArray(question.options)
+      ? question.options.flatMap((option) => {
+        if (!option || typeof option !== 'object') return []
+        const record = option as Record<string, unknown>
+        if (typeof record.key !== 'string' || typeof record.text !== 'string') return []
+        return [{ key: record.key, text: record.text, is_correct: Boolean(record.is_correct) }]
+      })
+      : [],
+    translation: typeof question.translation === 'string' ? question.translation : null,
+    explanation: typeof question.explanation === 'string' ? question.explanation : null,
+  }))
 }
 
 function getEditorGuidance(type: ExamPresentationType) {
@@ -43,6 +65,7 @@ export function AdminB1ExamContentBuilderPage() {
   const [selectedSectionKey, setSelectedSectionKey] = useState<string | null>(null)
   const [presentationType, setPresentationType] = useState<ExamPresentationType>('choice_list')
   const [gradingMode, setGradingMode] = useState<ExamGradingMode>('single_choice')
+  const [editedQuestions, setEditedQuestions] = useState<EditableChoiceQuestion[]>([])
 
   const examQuery = useQuery({
     queryKey: ['admin-b1-exam-content', id],
@@ -63,17 +86,24 @@ export function AdminB1ExamContentBuilderPage() {
     const nextDefinition = getPresentationDefinition(nextType)
     setPresentationType(nextType)
     setGradingMode(selectedResource.grading_mode ?? nextDefinition.compatibleGradingModes[0])
+    setEditedQuestions(toEditableChoiceQuestions(selectedResource.questions))
   }, [selectedResource?.id, selectedResource?.presentation_type, selectedResource?.grading_mode, selectedResource?.kind])
 
   const savePresentation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (!selectedResource) throw new Error('Chọn một section có nội dung trước khi lưu.')
-      return adminExamContentService.updateResourcePresentation({
+      await adminExamContentService.updateResourcePresentation({
         resourceKind: selectedResource.kind,
         resourceId: selectedResource.id,
         presentationType,
         gradingMode,
       })
+      await Promise.all(editedQuestions.map((question) => adminExamContentService.updateQuestion(question.id, {
+        prompt: question.prompt,
+        options: question.options,
+        translation: question.translation ?? null,
+        explanation: question.explanation ?? null,
+      })))
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
@@ -165,6 +195,9 @@ export function AdminB1ExamContentBuilderPage() {
                   </Button>
                 ))}
               </div>
+              {['choice_list', 'boolean_list', 'image_choice_list', 'passage_questions'].includes(presentationType) && (
+                <ChoiceListEditor questions={editedQuestions} onChange={setEditedQuestions} disabled={savePresentation.isPending} />
+              )}
               <div className="border-2 border-dashed border-border bg-muted/40 p-4 text-sm font-semibold leading-relaxed">
                 <CircleAlert className="mr-2 inline text-secondary" size={16} />
                 Editor chuyên biệt, preview học viên và preview đáp án của presentation này sẽ được hiển thị tại đây.

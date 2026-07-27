@@ -7,7 +7,7 @@ import { adminExamContentService } from '@/services/supabase/adminExamContent.se
 import { AdminB1ExamContentBuilderPage } from './AdminB1ExamContentBuilderPage'
 
 vi.mock('@/services/supabase/adminExamContent.service', () => ({
-  adminExamContentService: { getExamContent: vi.fn(), updateResourcePresentation: vi.fn() },
+  adminExamContentService: { getExamContent: vi.fn(), updateResourcePresentation: vi.fn(), updateQuestion: vi.fn() },
 }))
 
 function renderPage() {
@@ -30,10 +30,15 @@ describe('AdminB1ExamContentBuilderPage', () => {
         resource_type: 'activity', resource_id: 'activity-1', order_index: 0, is_required: true, suggested_time_minutes: 10,
         resource: {
           id: 'activity-1', source_key: 'listening-1', title: 'Listening Text 1', skill: 'listening', kind: 'activity',
-          presentation_type: 'choice_list', grading_mode: 'single_choice', is_published: false, questions: [],
+          presentation_type: 'choice_list', grading_mode: 'single_choice', is_published: false, questions: [{
+            id: 'question-1', activity_id: 'activity-1', source_key: 'listening-1-q1', prompt: 'Choose one', order_index: 0,
+            options: [{ key: 'A', text: 'First', is_correct: true }, { key: 'B', text: 'Second', is_correct: false }], translation: null, explanation: null,
+          }],
         },
       }],
     } as never)
+    vi.mocked(adminExamContentService.updateResourcePresentation).mockResolvedValue(undefined)
+    vi.mocked(adminExamContentService.updateQuestion).mockResolvedValue(undefined)
   })
 
   it('switches the editor guidance when an admin chooses inline text gaps', async () => {
@@ -45,5 +50,15 @@ describe('AdminB1ExamContentBuilderPage', () => {
 
     expect(screen.getByText(/Trình soạn đoạn văn có ô trống/i)).toBeInTheDocument()
     expect(screen.queryByText(/JSON/i)).not.toBeInTheDocument()
+  })
+
+  it('saves the visual choice editor fields together with the selected presentation', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Lưu cách trình bày' }))
+
+    expect(adminExamContentService.updateResourcePresentation).toHaveBeenCalled()
+    expect(adminExamContentService.updateQuestion).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ prompt: expect.any(String) }))
   })
 })
