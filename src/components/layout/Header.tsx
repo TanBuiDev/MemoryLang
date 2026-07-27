@@ -75,6 +75,7 @@ const mainNavItems: NavItem[] = [
   { labelKey: 'header.speaking', to: '/app/speaking', icon: Mic, flag: 'speaking_module' },
   { labelKey: 'header.reading', to: '/app/reading', icon: FileText, flag: 'reading_module' },
   { labelKey: 'header.writing', to: '/app/writing', icon: PenLine, flag: 'writing_module' },
+  { labelKey: 'header.exams', to: '/app/exams', icon: ClipboardCheck, flag: 'exams_module' },
   { labelKey: 'header.games', to: '/app/games', icon: Gamepad2, flag: 'games_module' },
 ]
 
@@ -85,7 +86,6 @@ const moreDropdownItems: NavItem[] = [
   { labelKey: 'nav.quiz', to: '/app/quiz', icon: ClipboardCheck, flag: 'quiz_nav' },
   { labelKey: 'nav.review', to: '/app/review', icon: Gauge, flag: 'review_nav' },
   { labelKey: 'header.roadmap', to: '/app/roadmap', icon: Map, flag: 'roadmap_module' },
-  { labelKey: 'header.exams', to: '/app/exams', icon: ClipboardCheck, flag: 'exams_module' },
   { labelKey: 'header.videos', to: '/app/videos', icon: Video, flag: 'videos_module' },
   { labelKey: 'header.blog', to: '/app/blog', icon: Rss, flag: 'blog_module' },
   { labelKey: 'header.community', to: '/app/community', icon: MessageSquare, flag: 'community_module' },

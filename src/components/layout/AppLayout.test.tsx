@@ -25,4 +25,14 @@ describe('AppLayout navigation', () => {
     expect(screen.getByRole('link', { name: 'Học' })).toHaveAttribute('href', '/app/study')
   })
 
+  it('exposes the B1 exam list directly in the header', () => {
+    render(
+      <MemoryRouter initialEntries={['/app/dashboard']}>
+        <AppLayout />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Đề thi' })).toHaveAttribute('href', '/app/exams')
+  })
+
 })
