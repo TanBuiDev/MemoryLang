@@ -21,7 +21,7 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -389,6 +389,9 @@ export function ExamAttemptPage() {
                   <span className="font-mono font-black text-secondary text-sm">({num})</span>
                   <input
                     type="text"
+                    ref={(element) => {
+                      questionRefs.current[questionKey] = element
+                    }}
                     value={val}
                     disabled={isSubmitted}
                     onChange={(e) => {
@@ -398,6 +401,7 @@ export function ExamAttemptPage() {
                         [questionKey]: nextVal,
                       }))
                     }}
+                    onKeyDown={(event) => focusNextAnswer(event, questions, questionKey)}
                     placeholder="gõ đáp án..."
                     className={`w-28 sm:w-36 px-2 py-0.5 text-center font-bold text-sm border-b-2 outline-none transition-all ${
                       val.trim()
@@ -427,6 +431,18 @@ export function ExamAttemptPage() {
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
+  }
+
+  const focusNextAnswer = (
+    event: KeyboardEvent<HTMLInputElement>,
+    questions: SnapshotQuestion[],
+    sourceKey: string,
+  ) => {
+    if (event.key !== 'Enter') return
+    event.preventDefault()
+    const currentIndex = questions.findIndex((question) => question.source_key === sourceKey)
+    const nextKey = questions[currentIndex + 1]?.source_key
+    if (nextKey) window.setTimeout(() => questionRefs.current[nextKey]?.focus(), 0)
   }
 
   if (attemptQuery.isLoading)
@@ -972,6 +988,9 @@ export function ExamAttemptPage() {
 
                               <Input
                                 id={`answer-${question.source_key}`}
+                                ref={(element) => {
+                                  questionRefs.current[question.source_key] = element
+                                }}
                                 value={selectedAnswers[question.source_key] ?? ''}
                                 disabled={isSubmitted}
                                 onChange={(e) =>
@@ -979,6 +998,9 @@ export function ExamAttemptPage() {
                                     ...prev,
                                     [question.source_key]: e.target.value,
                                   }))
+                                }
+                                onKeyDown={(event) =>
+                                  focusNextAnswer(event, activeResource.questions ?? [], question.source_key)
                                 }
                                 placeholder="..................................."
                                 className="inline-block flex-1 min-w-[200px] max-w-md h-10 px-3 font-bold text-base text-destructive bg-background border-2 border-border focus:border-secondary focus:ring-0 shadow-[2px_2px_0_var(--border)]"
@@ -1067,6 +1089,9 @@ export function ExamAttemptPage() {
                                   <span className="font-mono font-black text-secondary text-lg shrink-0 select-none">↳</span>
                                   <Input
                                     id={`answer-${question.source_key}`}
+                                    ref={(element) => {
+                                      questionRefs.current[question.source_key] = element
+                                    }}
                                     value={selectedAnswers[question.source_key] ?? ''}
                                     disabled={isSubmitted}
                                     onChange={(e) =>
@@ -1074,6 +1099,9 @@ export function ExamAttemptPage() {
                                         ...prev,
                                         [question.source_key]: e.target.value,
                                       }))
+                                    }
+                                    onKeyDown={(event) =>
+                                      focusNextAnswer(event, activeResource.questions ?? [], question.source_key)
                                     }
                                     placeholder={answerPlaceholder(question)}
                                     className="font-bold text-base bg-background border-2 border-border focus:border-secondary focus:ring-0 shadow-[2px_2px_0_var(--border)]"
