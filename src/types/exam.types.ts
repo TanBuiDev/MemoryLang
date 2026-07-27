@@ -131,6 +131,15 @@ export interface PracticeDraftVersion {
   created_at: string
 }
 
+export interface PracticePromptSample {
+  id: string
+  prompt_id: string
+  title: string
+  content: string
+  created_at: string
+  updated_at: string
+}
+
 export interface B1QuestionSeed {
   source_key: string
   source_number: string

@@ -6,6 +6,7 @@ import type {
   ExamSectionAttemptStatus,
   B1AttemptSubmission,
   PracticeDraftVersion,
+  PracticePromptSample,
 } from '@/types/exam.types'
 
 export interface SaveExamSectionProgressInput {
@@ -124,5 +125,16 @@ export const examPracticeService = {
 
     if (error) throw error
     return data as PracticeDraftVersion
+  },
+
+  async listPromptSamples(promptId: string): Promise<PracticePromptSample[]> {
+    const { data, error } = await supabase
+      .from('practice_prompt_samples')
+      .select('*')
+      .eq('prompt_id', promptId)
+      .order('created_at', { ascending: true })
+
+    if (error) throw error
+    return (data ?? []) as PracticePromptSample[]
   },
 }

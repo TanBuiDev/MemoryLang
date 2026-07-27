@@ -107,4 +107,20 @@ describe('examPracticeService', () => {
       p_content: 'Bản sửa thứ hai.',
     })
   })
+
+  it('lists reference samples for the submitted Writing prompt', async () => {
+    const query = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({ data: [{ id: 'sample-1', title: 'Bài mẫu' }], error: null }),
+    }
+    from.mockReturnValueOnce(query as never)
+
+    await expect(examPracticeService.listPromptSamples('prompt-1')).resolves.toEqual([
+      { id: 'sample-1', title: 'Bài mẫu' },
+    ])
+
+    expect(from).toHaveBeenCalledWith('practice_prompt_samples')
+    expect(query.eq).toHaveBeenCalledWith('prompt_id', 'prompt-1')
+  })
 })

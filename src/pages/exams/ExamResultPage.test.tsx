@@ -6,7 +6,7 @@ import { examPracticeService } from '@/services/supabase/examPractice.service'
 import { ExamResultPage } from './ExamResultPage'
 
 vi.mock('@/services/supabase/examPractice.service', () => ({
-  examPracticeService: { getAttempt: vi.fn() },
+  examPracticeService: { getAttempt: vi.fn(), listPromptSamples: vi.fn() },
 }))
 
 describe('ExamResultPage', () => {
@@ -22,6 +22,7 @@ describe('ExamResultPage', () => {
         progress: { review: [{ section_source_key: 'listening-text-1', question_source_key: 'listening-text-1-1', question: 'I love playing ____.', user_answer: 'tennis', correct_option_keys: [], accepted_answers: ['soccer'], translation: 'Tôi thích chơi bóng đá.', explanation: 'Từ cần điền là soccer.', is_correct: false }] },
       }],
     } as never)
+    vi.mocked(examPracticeService.listPromptSamples).mockResolvedValue([])
   })
 
   it('shows detailed answer translations and explanations on a dedicated result page', async () => {
@@ -33,5 +34,33 @@ describe('ExamResultPage', () => {
     expect(screen.getByRole('heading', { name: 'Grammar' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Listening Text 1/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Quay lại danh sách đề' })).toHaveAttribute('href', '/app/exams')
+  })
+
+  it('shows the submitted Writing response with a punctuation-tolerant sample comparison', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: {
+        id: 'attempt-1', status: 'submitted',
+        exam_snapshot: {
+          sections: [{
+            source_key: 'writing-topic-7', skill: 'writing', resource_type: 'prompt',
+            resource: { id: 'prompt-1', prompt: 'Apply for a part-time job.' },
+          }],
+        },
+      },
+      sections: [{
+        id: 'section-writing', exam_section_source_key: 'writing-topic-7', score: 0, max_score: 0,
+        progress: { draft_content: 'Dear ...,\nI am ready to work.' },
+      }],
+    } as never)
+    vi.mocked(examPracticeService.listPromptSamples).mockResolvedValue([{
+      id: 'sample-1', prompt_id: 'prompt-1', title: 'Bài mẫu',
+      content: 'Dear I am ready to work', created_at: '', updated_at: '',
+    }])
+
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/app/exams/attempt/attempt-1/result']}><Routes><Route path="/app/exams/attempt/:attemptId/result" element={<ExamResultPage />} /></Routes></MemoryRouter></QueryClientProvider>)
+
+    expect(await screen.findByText('Bài tự luận đã nộp của bạn')).toBeInTheDocument()
+    expect(await screen.findByText('So sánh với bài mẫu')).toBeInTheDocument()
+    expect(await screen.findByText(/Nội dung bài viết khớp với bài mẫu/)).toBeInTheDocument()
   })
 })
