@@ -6,8 +6,15 @@ import { authService } from '@/services/supabase/auth.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { LandingPage } from './LandingPage'
 
+const scrollIntoViewMock = vi.fn()
+
 describe('LandingPage', () => {
   beforeEach(() => {
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoViewMock,
+    })
+    scrollIntoViewMock.mockClear()
     useAuthStore.setState({
       session: null,
       user: null,
@@ -16,7 +23,8 @@ describe('LandingPage', () => {
     })
   })
 
-  it('renders the completed homepage sections and navigation links', () => {
+  it('renders the completed homepage sections and scrolls navigation to each target', async () => {
+    const user = userEvent.setup()
     render(
       <MemoryRouter>
         <LandingPage />
@@ -31,6 +39,22 @@ describe('LandingPage', () => {
     expect(screen.getByRole('heading', { name: 'Học không giới hạn cùng MemoryLang Pro' })).toBeInTheDocument()
     expect(screen.getAllByTestId('homepage-mascot-art')).toHaveLength(1)
     expect(screen.getByRole('contentinfo')).toBeInTheDocument()
+
+    const navigationTargets = [
+      { button: 'Tính năng', sectionId: 'features' },
+      { button: 'Gia sư AI', sectionId: 'ai-tutor' },
+      { button: 'Hệ sinh thái', sectionId: 'pillars' },
+    ]
+
+    for (const target of navigationTargets) {
+      const section = document.getElementById(target.sectionId)
+      expect(section).not.toBeNull()
+
+      await user.click(screen.getByRole('button', { name: target.button }))
+
+      expect(scrollIntoViewMock.mock.instances.at(-1)).toBe(section)
+      expect(scrollIntoViewMock).toHaveBeenLastCalledWith({ behavior: 'smooth', block: 'start' })
+    }
   })
 
   it('shows guest actions when the user is not authenticated', () => {
