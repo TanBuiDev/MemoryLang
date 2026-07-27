@@ -10,6 +10,32 @@
 
 ---
 
+## 0. Audit triển khai — 2026-07-28
+
+### Kết luận ngắn
+
+Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder trực quan đã có. B1 hiện vận hành được bằng presentation metadata cho phần lớn nội dung đang có. Tuy nhiên phase **chưa hoàn tất**: learner/result renderer vẫn còn các nhánh legacy trong hai page lớn; `matching`, `ordering`, `short_answer_list` chưa có đủ ba renderer; editor passage/image/media chưa đạt toàn bộ UX đã thiết kế; và chưa có lượt audit remote/regression end-to-end cuối cùng.
+
+| Hạng mục | Trạng thái | Bằng chứng hiện tại | Việc còn lại cần thiết |
+|---|---|---|---|
+| Registry, schema frontend | Hoàn thành | `presentationRegistry.ts`, Zod schema, test registry | Giữ registry là nơi duy nhất thêm presentation mới. |
+| Migration/snapshot B1 | Hoàn thành cục bộ; cần xác minh remote cuối | `20260728002300_add_exam_presentation_registry.sql`, migration-contract test, verifier learner attempt | Chạy lại dry-run, kiểm tra migration remote và security advisors trước release. |
+| Publish gate | Hoàn thành | readiness client, guarded RPC `set_b1_exam_published_guarded`, test service | Audit remote cuối và thêm test lỗi policy/RLS nếu schema đổi. |
+| Admin builder | Hoàn thành phần lõi | picker, editor, preview, create/reorder/detach/add/delete question, tests | Clone/reuse section an toàn; editor media/image/passage phong phú hơn. |
+| Attempt renderer | Một phần | resolver metadata, inline choice component, inline text/Enter regression | Tách choice, text gap, transformation, long form thành renderer typed riêng; invalid-config fallback. |
+| Result renderer | Một phần | inline result component, wrong-selection state, Writing comparison, snapshot title/skill ưu tiên | Tách choice/transformation/long form/speaking renderer; loại bỏ hết source-key inference ngoài fallback legacy. |
+| Media/TTS | Hoàn thành workflow B1 cơ bản | `AdminExamMediaPage`, upload audio/sign, TTS, media service/test | Media library metadata, image alt/crop/usage impact chưa hoàn chỉnh. |
+| 17 section B1 | Backfill có trong migration | mapping `CASE` trong migration presentation registry | Cần smoke test remote đếm/mapping đủ 17 section và regression full suite. |
+
+### Các rủi ro không được che giấu
+
+- `ExamAttemptPage.tsx` và `ExamResultPage.tsx` vẫn là page lớn; chỉ một phần renderer được extract. Đây là rủi ro chính khi thêm presentation mới.
+- `source_key` vẫn được dùng làm fallback cho attempt legacy và liên kết progress/review. Không được dùng nó để chọn UI mới; các nhánh còn lại phải tiếp tục chuyển sang `presentation_type`.
+- `matching`, `ordering` và `short_answer_list` có registry nhưng bị chặn publish vì chưa có contract renderer/admin đầy đủ.
+- Builder hiện thêm/xóa resource source trực tiếp theo policy hiện có; chưa có RPC clone nguyên tử để đảm bảo workflow tái sử dụng section không tạo resource mồ côi khi lỗi giữa chừng.
+
+---
+
 ## 1. Mục đích và phạm vi
 
 Tài liệu này là bản chụp hiện trạng và kế hoạch kiến trúc trước khi xây dựng admin exam builder mới. Nó bao phủ ba màn hình dành cho học viên:
@@ -488,11 +514,11 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 - Create: `src/features/exam-content/presentationRegistry.test.ts`
 - Modify: `src/types/exam.types.ts`
 
-- [ ] Viết test fail cho danh sách presentation, compatibility `presentation_type ↔ grading_mode`, và schema invalid.
-- [ ] Chạy test để xác nhận fail vì registry chưa tồn tại.
-- [ ] Implement enum, Vietnamese labels, metadata preview và Zod schema tối thiểu.
-- [ ] Chạy test registry; sau đó `pnpm tsc -b`.
-- [ ] Commit: `feat: add exam content presentation registry`.
+- [x] Viết test fail cho danh sách presentation, compatibility `presentation_type ↔ grading_mode`, và schema invalid.
+- [x] Chạy test để xác nhận fail vì registry chưa tồn tại.
+- [x] Implement enum, Vietnamese labels, metadata preview và Zod schema tối thiểu.
+- [x] Chạy test registry; sau đó `pnpm tsc -b`.
+- [x] Commit: `feat: add exam content presentation registry`.
 
 ### Task 2: Schema migration và snapshot compatibility
 
@@ -502,15 +528,17 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 - Modify: RPC migrations cho `start_b1_exam_attempt`, `save_b1_section_attempt_progress`, `submit_b1_exam_attempt`
 - Test: migration SQL verification/smoke test theo project convention
 
-- [ ] Viết test/smoke case xác nhận learner snapshot không chứa answer key nhưng chứa presentation metadata.
-- [ ] Thêm columns/constraints và guarded RPC adaptation (`SECURITY DEFINER`, fixed `search_path`, grants đúng role).
-- [ ] Dry-run migration qua `scripts/check-supabase-migration-dry-run.mjs`.
-- [ ] Apply remote only sau khi dry-run chứa chính xác migration expected; run advisors và verify snapshot.
-- [ ] Commit: `feat: persist exam presentation metadata`.
+- [x] Viết test/smoke case xác nhận learner snapshot không chứa answer key nhưng chứa presentation metadata.
+- [x] Thêm columns/constraints và guarded RPC adaptation (`SECURITY DEFINER`, fixed `search_path`, grants đúng role).
+- [x] Dry-run migration qua `scripts/check-supabase-migration-dry-run.mjs` trong lượt triển khai migration ban đầu.
+- [ ] Lặp lại verify remote: dry-run expected migration, run advisors và kiểm tra snapshot trên project remote hiện tại.
+- [x] Commit: `feat: persist exam presentation metadata`.
 
 ## Chunk 2: Renderer migration có parity
 
 ### Task 3: Tách learner renderer theo presentation
+
+**Trạng thái audit:** Một phần. Đã có resolver metadata, `InlineChoicePassageAttempt` và regression cho inline text/Enter; chưa tách đủ choice/text-gap/transformation/long-form renderer ra khỏi `ExamAttemptPage.tsx`.
 
 **Files:**
 
@@ -525,6 +553,8 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 - [ ] Commit: `refactor: render B1 attempts by presentation type`.
 
 ### Task 4: Tách result renderer theo presentation
+
+**Trạng thái audit:** Một phần. Đã có `InlineGapPassageResult`, review sai nền đỏ, option text và Writing comparison; snapshot title/skill đã được ưu tiên. Các result renderer khác và fallback typed đầy đủ vẫn chưa tách.
 
 **Files:**
 
@@ -550,13 +580,15 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 - Modify: `src/app/routes.tsx`, admin navigation
 - Test: page/service tests
 
-- [ ] Viết test fail: admin chọn “Điền từ trong đoạn văn” thì chỉ thấy visual passage-gap editor, không thấy raw JSON input.
-- [ ] Implement section timeline/reorder, skill picker, presentation picker, draft/published status.
-- [ ] Chỉ dùng `Button`, `Select`, `ConfirmModal` và editor/media picker project; không dùng native select/window confirm.
-- [ ] Chạy test và `pnpm tsc -b`.
-- [ ] Commit: `feat: add B1 exam section builder`.
+- [x] Viết test fail: admin chọn “Điền từ trong đoạn văn” thì chỉ thấy visual passage-gap editor, không thấy raw JSON input.
+- [x] Implement section timeline/reorder, skill picker, presentation picker, draft/published status.
+- [x] Chỉ dùng `Button`, `Select`, `ConfirmModal` và editor/media picker project; không dùng native select/window confirm.
+- [x] Chạy test và `pnpm tsc -b`.
+- [x] Commit: `feat: add B1 exam section builder`.
 
 ### Task 6: Các editor có giá trị cao trước
+
+**Trạng thái audit:** Một phần. Choice/boolean, inline gap, transformation, long-form/speaking, sample, preview và review authoring đã có. `passage_questions` vẫn dùng editor choice chung; image choice chưa có picker/alt/crop trong builder; validation editor chưa đủ toàn bộ contract đã mô tả.
 
 **Files:**
 
@@ -570,6 +602,8 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 ## Chunk 4: Media, publish gate và B1 migration
 
 ### Task 7: Media/TTS quản trị
+
+**Trạng thái audit:** Hoàn thành workflow B1 cơ bản. Upload audio, upload sign image, TTS, preview, publish readiness và trang quản trị riêng đã có. Chưa hoàn thành media library độc lập có metadata, alt/crop, usage/impact list và quản trị thay thế/xóa theo usage.
 
 **Files:**
 
@@ -589,14 +623,27 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 - Modify: publish validation + docs
 - Test: snapshot, admin preview, attempt, result regression suite
 
-- [ ] Backfill mapping presentation cho 17 section ở mục 3.2 idempotently.
-- [ ] Test snapshot mới, attempt UI, result UI và existing submission review.
-- [ ] Verify remote migration, RLS/advisors, `pnpm test`, `pnpm tsc -b`.
-- [ ] Commit: `feat: migrate B1 content to presentation builder`.
+- [x] Backfill mapping presentation cho 17 section ở mục 3.2 idempotently.
+- [ ] Hoàn thiện test snapshot mới, attempt UI, result UI và existing submission review cho mọi presentation (đang có regression từng phần).
+- [ ] Verify remote migration, RLS/advisors, `pnpm test`, `pnpm tsc -b` như lượt release cuối.
+- [x] Commit: `feat: migrate B1 content to presentation builder`.
 
 ---
 
 ## 12. Acceptance criteria cho phase admin tiếp theo
+
+### Trạng thái audit acceptance
+
+| Tiêu chí | Trạng thái |
+|---|---|
+| Tạo section không cần DB/JSON/HTML | Đạt cho workflow hiện tại. |
+| Chọn presentation và chỉ thấy field liên quan | Đạt phần presentation đã hỗ trợ. |
+| Attempt/result cùng `presentation_type`, không phụ thuộc `source_key` | Chưa đạt hoàn toàn; metadata-first + legacy fallback đang chuyển đổi. |
+| 17 section không mất hành vi B1 đã sửa | Đạt một phần qua regression riêng; chưa có audit E2E toàn bộ 17. |
+| Thêm matching/ordering chỉ cần registry + 3 components | Chưa đạt; registry có nhưng ba component chưa tồn tại. |
+| Không lộ answer key trước submit | Đạt qua snapshot/grading contract test và guarded RPC. |
+| Publish gate + preview learner/result | Đạt phần gate/preview hiện tại; cần remote audit cuối. |
+| Attempt cũ bất biến khi sửa source | Đạt theo snapshot contract; cần kiểm thử integration remote cuối. |
 
 - Admin có thể tạo một section không cần biết database/JSON/HTML.
 - Admin chọn được presentation bằng card có preview và hệ thống chỉ hiện field liên quan.
