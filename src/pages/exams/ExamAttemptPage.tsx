@@ -56,6 +56,7 @@ interface SnapshotResource {
   content?: string | null
   passage?: string | null
   audio_url?: string | null
+  content_blocks?: unknown
   questions?: SnapshotQuestion[]
 }
 
@@ -65,6 +66,37 @@ interface SnapshotSection {
   title: string
   resource_type: 'activity' | 'prompt'
   resource: SnapshotResource
+}
+
+function getInlinePassageText(resource: SnapshotResource | undefined): string | null {
+  if (!resource) return null
+
+  if (Array.isArray(resource.content_blocks)) {
+    const structuredBlock = resource.content_blocks.find((block): block is Record<string, unknown> => {
+      return Boolean(block) && typeof block === 'object' && (block as Record<string, unknown>).type === 'inline_gap_passage'
+    })
+    if (structuredBlock && Array.isArray(structuredBlock.segments)) {
+      return structuredBlock.segments
+        .map((segment) => {
+          if (!segment || typeof segment !== 'object') return ''
+          const record = segment as Record<string, unknown>
+          if (record.type === 'text' && typeof record.value === 'string') return record.value
+          if (record.type === 'gap') {
+            const label = typeof record.label === 'string' ? record.label : ''
+            return `(${label}) ____`
+          }
+          return ''
+        })
+        .join('')
+    }
+
+    const legacyBlock = resource.content_blocks.find((block): block is Record<string, unknown> => {
+      return Boolean(block) && typeof block === 'object' && typeof (block as Record<string, unknown>).value === 'string'
+    })
+    if (legacyBlock && typeof legacyBlock.value === 'string') return legacyBlock.value
+  }
+
+  return resource.passage ?? resource.content ?? null
 }
 
 function getSections(snapshot: Record<string, unknown>): SnapshotSection[] {
@@ -152,13 +184,11 @@ export function ExamAttemptPage() {
     : null
   const isPrompt = presentationType ? isLongFormPresentation(presentationType) : false
   const isTextGapPresentation = presentationType === 'passage_text_inline'
+  const inlinePassageText = isTextGapPresentation ? getInlinePassageText(activeResource) : null
   const isInlineGapActivity =
     Boolean(presentationType && isInlineGapPresentation(presentationType)) &&
     isTextGapPresentation &&
-    Boolean(
-      (activeResource?.passage && /(\(\d+\)\s*_{2,})/.test(activeResource.passage)) ||
-      (activeResource?.content && /(\(\d+\)\s*_{2,})/.test(activeResource.content))
-    )
+    Boolean(inlinePassageText && /(\(\d+\)\s*_{2,})/.test(inlinePassageText))
   const timer = attemptDetail
     ? getAttemptTimerState(
         attemptDetail.attempt.started_at,
@@ -757,9 +787,9 @@ export function ExamAttemptPage() {
                   <BookOpen size={14} />
                   <span>Bài đọc (Passage)</span>
                 </div>
-                {isTextGapPresentation && /(\(\d+\)\s*_{2,})/.test(activeResource.passage) ? (
+                {isTextGapPresentation && inlinePassageText && /(\(\d+\)\s*_{2,})/.test(inlinePassageText) ? (
                   renderContentWithInlineGaps(
-                    activeResource.passage,
+                    inlinePassageText,
                     activeResource.questions ?? [],
                   )
                 ) : (
@@ -773,9 +803,9 @@ export function ExamAttemptPage() {
             {/* Activity or Prompt Content */}
             {!isPrompt && activeResource.content && (
               <div>
-                {isTextGapPresentation && /(\(\d+\)\s*_{2,})/.test(activeResource.content) ? (
+                {isTextGapPresentation && inlinePassageText && /(\(\d+\)\s*_{2,})/.test(inlinePassageText) ? (
                   renderContentWithInlineGaps(
-                    activeResource.content,
+                    inlinePassageText,
                     activeResource.questions ?? [],
                   )
                 ) : (
@@ -784,6 +814,10 @@ export function ExamAttemptPage() {
                   </div>
                 )}
               </div>
+            )}
+
+            {!activeResource.passage && !activeResource.content && inlinePassageText && (
+              renderContentWithInlineGaps(inlinePassageText, activeResource.questions ?? [])
             )}
 
             {/* Prompt Text & GUIDELINES for Writing / Speaking */}

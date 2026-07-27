@@ -93,6 +93,38 @@ describe('ExamAttemptPage', () => {
     await waitFor(() => expect(document.activeElement).toBe(answers[1]))
   })
 
+  it('renders editable inline gaps from a structured presentation snapshot', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: {
+        id: 'attempt-1', started_at: '2026-07-27T10:00:00.000Z', target_duration_seconds: 3600,
+        exam_snapshot: {
+          exam: { title: 'B1 DeFull' },
+          sections: [{
+            source_key: 'listening-structured', skill: 'listening', title: 'Listening Text', resource_type: 'activity',
+            resource: {
+              id: 'activity-1', activity_type: 'fill_blank', presentation_type: 'passage_text_inline',
+              content_blocks: [{
+                type: 'inline_gap_passage',
+                segments: [
+                  { type: 'text', value: 'I like ' },
+                  { type: 'gap', gapId: 'listening-structured-q1', label: '1' },
+                  { type: 'text', value: ' after school.' },
+                ],
+              }],
+              questions: [{ source_key: 'listening-structured-q1', source_number: '1', prompt: 'Blank 1' }],
+            },
+          }],
+        },
+      },
+      sections: [{ id: 'section-1', exam_section_source_key: 'listening-structured', progress: {}, status: 'not_started' }],
+    } as never)
+
+    renderPage()
+
+    expect(await screen.findByText('Điền đáp án trực tiếp vào văn bản:')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('gõ đáp án...')).toBeEnabled()
+  })
+
   it('saves the selected answer before submitting the attempt', async () => {
     vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
       attempt: {
