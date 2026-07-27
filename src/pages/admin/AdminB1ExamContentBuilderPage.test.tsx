@@ -59,6 +59,13 @@ describe('AdminB1ExamContentBuilderPage', () => {
     expect(screen.queryByText(/JSON/i)).not.toBeInTheDocument()
   })
 
+  it('shows a publish checklist with actionable missing-content issues', async () => {
+    renderPage()
+
+    expect(await screen.findByRole('heading', { name: 'Kiểm tra trước khi xuất bản' })).toBeInTheDocument()
+    expect(screen.getByText(/thiếu audio bắt buộc/i)).toBeInTheDocument()
+  })
+
   it('saves the visual choice editor fields together with the selected presentation', async () => {
     const user = userEvent.setup()
     renderPage()

@@ -10,7 +10,7 @@ export interface PublishReadinessIssue {
 export interface PublishReadinessQuestion {
   id: string
   prompt: string
-  options?: Array<{ key: string; text: string; is_correct: boolean }>
+  options?: unknown
   accepted_answers?: string[]
   acceptedAnswers?: string[]
   translation?: string | null
@@ -49,6 +49,16 @@ const promptTypes = new Set<ExamPresentationType>(['long_form_prompt', 'speaking
 
 function questionAnswers(question: PublishReadinessQuestion): string[] {
   return question.accepted_answers ?? question.acceptedAnswers ?? []
+}
+
+function choiceOptions(question: PublishReadinessQuestion): Array<{ key: string; text: string; is_correct: boolean }> {
+  if (!Array.isArray(question.options)) return []
+  return question.options.flatMap((option) => {
+    if (!option || typeof option !== 'object') return []
+    const record = option as Record<string, unknown>
+    if (typeof record.key !== 'string' || typeof record.text !== 'string') return []
+    return [{ key: record.key, text: record.text, is_correct: record.is_correct === true }]
+  })
 }
 
 export function getExamPublishReadiness(exam: PublishReadinessExam): { canPublish: boolean; issues: PublishReadinessIssue[] } {
@@ -90,7 +100,7 @@ export function getExamPublishReadiness(exam: PublishReadinessExam): { canPublis
       const number = index + 1
       if (!question.prompt.trim()) issues.push({ severity: 'error', sectionId: section.id, message: `${section.title}, câu ${number}: chưa có nội dung câu hỏi.` })
       if (choiceTypes.has(resource.presentation_type!)) {
-        const options = question.options ?? []
+        const options = choiceOptions(question)
         if (options.length < 2 || options.some((option) => !option.text.trim())) {
           issues.push({ severity: 'error', sectionId: section.id, message: `${section.title}, câu ${number}: cần tối thiểu hai lựa chọn hợp lệ.` })
         }

@@ -12,6 +12,7 @@ import { TransformationEditor, type EditableTransformationQuestion } from '@/com
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { getPresentationDefinition } from '@/features/exam-content/presentationRegistry'
+import { getExamPublishReadiness } from '@/features/exam-content/publishReadiness'
 import { createInlineGapDraft, serializeInlineGapDraft, type InlineGapDraft, type InlineGapSegment } from '@/features/exam-content/inlineGapDraft'
 import { adminExamContentService, type AdminExamContentQuestion } from '@/services/supabase/adminExamContent.service'
 import type { ExamGradingMode, ExamPresentationType } from '@/types/exam.types'
@@ -117,6 +118,10 @@ export function AdminB1ExamContentBuilderPage() {
   }, [examQuery.data?.sections, selectedSectionKey])
   const selectedResource = selectedSection?.resource ?? null
   const definition = getPresentationDefinition(presentationType)
+  const publishReadiness = useMemo(
+    () => examQuery.data ? getExamPublishReadiness(examQuery.data) : { canPublish: false, issues: [] },
+    [examQuery.data],
+  )
   const promptSamplesQuery = useQuery({
     queryKey: ['admin-b1-prompt-samples', selectedResource?.id],
     queryFn: () => adminExamContentService.listPromptSamples(selectedResource!.id),
@@ -360,6 +365,21 @@ export function AdminB1ExamContentBuilderPage() {
           <main className="neo-card p-8 text-center font-bold text-muted-foreground">Section này chưa có resource để chỉnh sửa.</main>
         )}
       </div>
+      <section className={`neo-card space-y-3 p-5 shadow-[3px_3px_0_var(--border)] ${publishReadiness.canPublish ? 'border-secondary bg-secondary/10' : 'border-danger bg-card'}`}>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-border pb-3">
+          <div><p className="text-xs font-black uppercase text-secondary">Release gate</p><h2 className="text-lg font-black">Kiểm tra trước khi xuất bản</h2></div>
+          <span className={`border-2 border-border px-3 py-1 text-xs font-black ${publishReadiness.canPublish ? 'bg-secondary text-secondary-foreground' : 'bg-danger text-white'}`}>
+            {publishReadiness.canPublish ? 'Sẵn sàng xuất bản' : `${publishReadiness.issues.length} việc cần hoàn thiện`}
+          </span>
+        </div>
+        {publishReadiness.canPublish ? (
+          <p className="font-semibold">Tất cả section bắt buộc đã có nội dung, đáp án, review, media và bài mẫu cần thiết.</p>
+        ) : (
+          <ul className="space-y-2 text-sm font-semibold">
+            {publishReadiness.issues.map((issue, index) => <li key={`${issue.sectionId}-${index}`} className="border-2 border-danger/40 bg-danger/10 px-3 py-2">{issue.message}</li>)}
+          </ul>
+        )}
+      </section>
       <ConfirmModal
         open={Boolean(pendingDeleteSampleId)}
         title="Xóa bài mẫu này?"
