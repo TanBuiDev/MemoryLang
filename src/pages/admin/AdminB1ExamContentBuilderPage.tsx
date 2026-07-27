@@ -311,6 +311,37 @@ export function AdminB1ExamContentBuilderPage() {
     },
   })
 
+  const createQuestion = useMutation({
+    mutationFn: async () => {
+      if (!selectedResource || selectedResource.kind !== 'activity') throw new Error('Chỉ section có câu hỏi mới thêm được câu mới.')
+      const nextNumber = String(Math.max(0, ...selectedResource.questions.map((question) => Number(question.source_number) || 0)) + 1)
+      const unique = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const question = await adminExamContentService.createQuestion({
+        activityId: selectedResource.id,
+        sourceKey: `${selectedResource.source_key}-q${nextNumber}-${unique}`,
+        sourceNumber: nextNumber,
+        presentationType,
+        orderIndex: selectedResource.questions.length,
+      })
+      return question
+    },
+    onSuccess: async (question) => {
+      const editable = toEditableChoiceQuestions([question])[0]
+      setEditedQuestions((current) => [...current, editable])
+      setTransformationQuestions((current) => [...current, {
+        id: question.id, prompt: question.prompt, acceptedAnswers: question.accepted_answers ?? [],
+        translation: question.translation ?? null, explanation: question.explanation ?? null,
+      }])
+      if (presentationType === 'passage_text_inline' || presentationType === 'passage_choice_inline') {
+        setInlineGapDraft((current) => current ? {
+          segments: [...current.segments, { type: 'text', value: ' ' }, { type: 'gap', gapId: question.id, label: question.source_number ?? String(current.gaps.length + 1) }, { type: 'text', value: ' '}],
+          gaps: [...current.gaps, { id: question.id, label: question.source_number ?? String(current.gaps.length + 1), acceptedAnswers: question.accepted_answers ?? [] }],
+        } : current)
+      }
+      await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+    },
+  })
+
   const newSectionPresentationOptions = Object.values(PRESENTATION_REGISTRY)
     .filter((definition) => isPresentationReadyForPublication(definition.type)
       && (newSectionSkill === 'writing' || newSectionSkill === 'speaking'
@@ -425,6 +456,11 @@ export function AdminB1ExamContentBuilderPage() {
                 <h2 className="text-lg font-black">Cách chấm và trình soạn nội dung</h2>
                 <p className="mt-1 text-sm font-semibold text-muted-foreground">{getEditorGuidance(presentationType)}</p>
               </div>
+              {selectedResource.kind === 'activity' && (
+                <Button type="button" variant="secondary" disabled={createQuestion.isPending} onClick={() => createQuestion.mutate()}>
+                  <Plus size={16} /> {createQuestion.isPending ? 'Đang thêm...' : 'Thêm câu hỏi'}
+                </Button>
+              )}
               <div className="flex flex-wrap gap-2" aria-label="Chọn cách chấm điểm">
                 {definition.compatibleGradingModes.map((mode) => (
                   <Button
@@ -439,13 +475,13 @@ export function AdminB1ExamContentBuilderPage() {
                 ))}
               </div>
               {['choice_list', 'boolean_list', 'image_choice_list', 'passage_questions', 'passage_choice_inline'].includes(presentationType) && (
-                <ChoiceListEditor questions={editedQuestions} onChange={setEditedQuestions} disabled={savePresentation.isPending} />
+                <ChoiceListEditor questions={editedQuestions} onChange={setEditedQuestions} disabled={savePresentation.isPending || createQuestion.isPending} />
               )}
               {(presentationType === 'passage_text_inline' || presentationType === 'passage_choice_inline') && inlineGapDraft && (
-                <InlineGapEditor draft={inlineGapDraft} onChange={setInlineGapDraft} disabled={savePresentation.isPending} />
+                <InlineGapEditor draft={inlineGapDraft} onChange={setInlineGapDraft} disabled={savePresentation.isPending || createQuestion.isPending} />
               )}
               {presentationType === 'sentence_transformation' && (
-                <TransformationEditor questions={transformationQuestions} onChange={setTransformationQuestions} disabled={savePresentation.isPending} />
+                <TransformationEditor questions={transformationQuestions} onChange={setTransformationQuestions} disabled={savePresentation.isPending || createQuestion.isPending} />
               )}
               {(presentationType === 'long_form_prompt' || presentationType === 'speaking_script_prompt') && (
                 <>

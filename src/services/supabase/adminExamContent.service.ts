@@ -282,6 +282,32 @@ export const adminExamContentService = {
     if (error) throw error
   },
 
+  async createQuestion(input: {
+    activityId: string
+    sourceKey: string
+    sourceNumber: string
+    presentationType: ExamPresentationType
+    orderIndex: number
+  }): Promise<AdminExamContentQuestion> {
+    const { data, error } = await supabase
+      .from('practice_questions')
+      .insert({
+        activity_id: input.activityId,
+        source_key: input.sourceKey,
+        source_number: input.sourceNumber,
+        question_type: getStarterActivityType(input.presentationType),
+        prompt: '',
+        options: getStarterOptions(input.presentationType),
+        accepted_answers: [],
+        order_index: input.orderIndex,
+      })
+      .select()
+      .single()
+    if (error) throw error
+    if (!data) throw new Error('Không thể tạo câu hỏi.')
+    return data as AdminExamContentQuestion
+  },
+
   async updateQuestion(
     questionId: string,
     input: Partial<Pick<AdminExamContentQuestion, 'prompt' | 'options' | 'translation' | 'explanation' | 'accepted_answers'>>,

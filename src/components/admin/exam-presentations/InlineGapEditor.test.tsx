@@ -30,4 +30,11 @@ describe('InlineGapEditor', () => {
     }))
     expect(screen.queryByText(/\(1\) ____/)).not.toBeInTheDocument()
   })
+
+  it('does not create a temporary blank that has no persisted question record', () => {
+    render(<InlineGapEditor draft={initialDraft} onChange={vi.fn()} />)
+
+    expect(screen.queryByRole('button', { name: /Thêm ô trống/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/Dùng nút “Thêm câu hỏi”/i)).toBeInTheDocument()
+  })
 })

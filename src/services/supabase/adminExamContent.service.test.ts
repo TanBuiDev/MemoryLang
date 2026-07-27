@@ -150,6 +150,31 @@ describe('adminExamContentService', () => {
     expect(remove.eq).toHaveBeenCalledWith('id', 'section-1')
   })
 
+  it('creates an editable objective question at the next supplied position', async () => {
+    const insert = {
+      insert: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { id: 'question-2', activity_id: 'activity-1', source_key: 'grammar-q2', source_number: '2', question_type: 'multiple_choice', prompt: '', options: [], accepted_answers: [], order_index: 1 },
+        error: null,
+      }),
+    }
+    from.mockReturnValueOnce(insert as never)
+
+    await expect(adminExamContentService.createQuestion({
+      activityId: 'activity-1', sourceKey: 'grammar-q2', sourceNumber: '2', presentationType: 'choice_list', orderIndex: 1,
+    })).resolves.toMatchObject({ id: 'question-2', order_index: 1 })
+
+    expect(from).toHaveBeenCalledWith('practice_questions')
+    expect(insert.insert).toHaveBeenCalledWith({
+      activity_id: 'activity-1', source_key: 'grammar-q2', source_number: '2', question_type: 'multiple_choice',
+      prompt: '', options: [
+        { key: 'A', text: '', is_correct: true }, { key: 'B', text: '', is_correct: false },
+        { key: 'C', text: '', is_correct: false }, { key: 'D', text: '', is_correct: false },
+      ], accepted_answers: [], order_index: 1,
+    })
+  })
+
   it('updates a Writing or Speaking prompt and its learner instructions', async () => {
     const update = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
     from.mockReturnValueOnce(update as never)

@@ -1,4 +1,4 @@
-import { Plus, TextCursorInput, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input, Label, Textarea } from '@/components/ui/input'
@@ -38,14 +38,6 @@ export function InlineGapEditor({ draft, onChange, disabled = false }: InlineGap
       segments: draft.segments.map((segment) => segment.type === 'gap' && segment.gapId === gapId
         ? { ...segment, label: patch.label ?? segment.label }
         : segment),
-    })
-  }
-  const addGap = () => {
-    const nextNumber = draft.gaps.length + 1
-    const id = `new-gap-${crypto.randomUUID()}`
-    onChange({
-      segments: [...draft.segments, { type: 'text', value: ' ' }, { type: 'gap', gapId: id, label: String(nextNumber) }, { type: 'text', value: ' '}],
-      gaps: [...draft.gaps, { id, label: String(nextNumber), acceptedAnswers: [] }],
     })
   }
   const removeGap = (gapId: string) => {
@@ -91,7 +83,7 @@ export function InlineGapEditor({ draft, onChange, disabled = false }: InlineGap
           )
         })}
       </div>
-      <Button type="button" variant="ghost" disabled={disabled} onClick={addGap}><Plus size={16} /><TextCursorInput size={16} /> Thêm ô trống</Button>
+      <p className="border-2 border-secondary/40 bg-secondary/10 px-3 py-2 text-sm font-semibold">Dùng nút “Thêm câu hỏi” phía trên để tạo một ô trống mới cùng bản ghi đáp án an toàn.</p>
     </section>
   )
 }
