@@ -21,6 +21,7 @@ describe('adminExamMediaService', () => {
 
     await expect(adminExamMediaService.listResources()).resolves.toMatchObject([
       { id: 'a-1', kind: 'activity', text: 'Hallo' },
+      { id: 'a-2', kind: 'activity', text: 'x' },
       { id: 'p-1', kind: 'prompt', text: 'Nói về bạn' },
     ])
     expect(from).toHaveBeenCalledWith('exam_sections')

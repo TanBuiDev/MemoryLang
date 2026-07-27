@@ -31,7 +31,7 @@ export const adminExamMediaService = {
     if (error) throw error
     return (data ?? []).flatMap((section: any) => {
       const item = section.resource_type === 'activity' ? section.activity : section.prompt
-      if (!item || !['listening', 'writing', 'speaking'].includes(item.skill)) return []
+      if (!item) return []
       return [{
         ...item,
         kind: section.resource_type as B1MediaResourceKind,
