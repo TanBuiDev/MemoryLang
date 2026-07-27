@@ -13,6 +13,14 @@ export interface B1MediaResource {
   is_published: boolean
 }
 
+export interface B1SignQuestion {
+  id: string
+  source_key: string
+  source_number: string | null
+  prompt: string
+  image_url: string | null
+}
+
 export const adminExamMediaService = {
   async listResources(): Promise<B1MediaResource[]> {
     const [activitiesResult, promptsResult] = await Promise.all([
@@ -45,5 +53,33 @@ export const adminExamMediaService = {
     const { error } = await supabase.storage.from('audio_assets').upload(path, file, { cacheControl: '31536000', upsert: false })
     if (error) throw error
     return supabase.storage.from('audio_assets').getPublicUrl(path).data.publicUrl
+  },
+
+  async listSigns(): Promise<B1SignQuestion[]> {
+    const { data, error } = await supabase
+      .from('practice_questions')
+      .select('id,source_key,source_number,prompt,image_url,activity:practice_activities!inner(source_key)')
+      .eq('activity.source_key', 'signs')
+      .order('order_index')
+    if (error) throw error
+    return (data ?? []) as B1SignQuestion[]
+  },
+
+  async uploadSignImage(file: File, sourceKey: string): Promise<string> {
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'png'
+    const path = `b1-signs/${sourceKey}-${Date.now()}.${extension}`
+    const { error } = await supabase.storage.from('vocabulary-images').upload(path, file, { cacheControl: '31536000', upsert: false })
+    if (error) throw error
+    return supabase.storage.from('vocabulary-images').getPublicUrl(path).data.publicUrl
+  },
+
+  async setSignImage(questionId: string, imageUrl: string | null): Promise<void> {
+    const { error } = await supabase.from('practice_questions').update({ image_url: imageUrl }).eq('id', questionId)
+    if (error) throw error
+  },
+
+  async setB1ExamPublished(isPublished: boolean): Promise<void> {
+    const { error } = await supabase.from('exams').update({ is_published: isPublished }).eq('source_key', 'b1-de-full-copy')
+    if (error) throw error
   },
 }
