@@ -103,6 +103,25 @@ function parseTransformationPrompt(promptText: string): ParsedTransformation | n
   return { originalSentence, keyword, prefixText, suffixText }
 }
 
+function cleanResourceText(text: string | null | undefined): string {
+  if (!text) return ''
+  return text
+    .replace(
+      /Source numbers \d+-\d+ are included because their answers are highlighted in the PDF\. Source numbers \d+-\d+ are excluded because the PDF provides no answer annotation\./gi,
+      '',
+    )
+    .trim()
+}
+
+interface SnapshotResource {
+  id?: string
+  instructions?: string | null
+  content?: string | null
+  passage?: string | null
+  audio_url?: string | null
+  prompt?: string | null
+}
+
 export function ExamResultPage() {
   const { attemptId = '' } = useParams()
   const navigate = useNavigate()
@@ -162,14 +181,19 @@ export function ExamResultPage() {
   const incorrectCount = reviews.filter((r) => !r.is_correct && r.user_answer?.trim()).length
   const unansweredCount = reviews.filter((r) => !r.user_answer?.trim()).length
 
-  // Build maps of question options and images from exam_snapshot if available
+  // Build maps of question options, images, and section resources from exam_snapshot if available
   const questionOptionsMap: Record<string, Array<{ key: string; text: string }>> = {}
   const questionImageMap: Record<string, string | null> = {}
+  const sectionResourceMap: Record<string, SnapshotResource> = {}
+
   if (attempt?.exam_snapshot && typeof attempt.exam_snapshot === 'object') {
     const snapshot = attempt.exam_snapshot as Record<string, unknown>
     const sectionsList = snapshot.sections
     if (Array.isArray(sectionsList)) {
       sectionsList.forEach((sec: Record<string, unknown>) => {
+        if (typeof sec.source_key === 'string' && sec.resource && typeof sec.resource === 'object') {
+          sectionResourceMap[sec.source_key] = sec.resource as SnapshotResource
+        }
         const res = sec?.resource as Record<string, unknown> | undefined
         if (res && Array.isArray(res.questions)) {
           res.questions.forEach((q: Record<string, unknown>) => {
@@ -195,6 +219,7 @@ export function ExamResultPage() {
         score: Number(section.score ?? 0),
         maxScore: Number(section.max_score ?? 0),
         reviews: sectionReviews,
+        resource: sectionResourceMap[section.exam_section_source_key],
         draftContent: typeof section.progress?.draft_content === 'string' ? section.progress.draft_content : null,
       }
     })
@@ -488,6 +513,57 @@ export function ExamResultPage() {
                       Điểm phần này: {group.score}/{group.maxScore}
                     </span>
                   </header>
+
+                  {/* Styled Audio Player when present */}
+                  {group.resource?.audio_url && (
+                    <div className="neo-card p-4 bg-muted border-2 border-border space-y-2 shadow-[2.5px_2.5px_0_var(--border)]">
+                      <div className="flex items-center gap-2 text-xs font-black text-secondary">
+                        <Headphones size={15} />
+                        <span>File nghe của phần thi này:</span>
+                      </div>
+                      <audio controls src={group.resource.audio_url} className="w-full h-10" aria-label="Phát audio đề bài" />
+                    </div>
+                  )}
+
+                  {/* Instructions Banner */}
+                  {cleanResourceText(group.resource?.instructions) && (
+                    <div className="border-2 border-border bg-muted/40 p-4 font-semibold text-sm leading-relaxed whitespace-pre-wrap">
+                      <p className="font-bold text-foreground">{cleanResourceText(group.resource?.instructions)}</p>
+                    </div>
+                  )}
+
+                  {/* Reading Passage Container */}
+                  {group.resource?.passage && (
+                    <div className="neo-card p-5 sm:p-6 bg-muted/60 border-2 border-border space-y-2.5 shadow-[3px_3px_0_var(--border)]">
+                      <div className="flex items-center gap-2 text-xs font-black uppercase text-secondary border-b-2 border-border pb-2">
+                        <BookOpen size={15} />
+                        <span>Nội dung bài đọc (Passage)</span>
+                      </div>
+                      <div className="font-semibold text-base leading-relaxed whitespace-pre-wrap text-foreground">
+                        {group.resource.passage}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Activity / Resource Content (when no passage) */}
+                  {!group.resource?.passage && group.resource?.content && (
+                    <div className="neo-card p-4 bg-muted/40 border-2 border-border font-semibold text-sm leading-relaxed whitespace-pre-wrap shadow-[2px_2px_0_var(--border)]">
+                      {group.resource.content}
+                    </div>
+                  )}
+
+                  {/* Resource Prompt (Writing / Speaking) */}
+                  {group.resource?.prompt && (
+                    <div className="neo-card p-4 bg-primary/10 border-2 border-border space-y-1.5 shadow-[2.5px_2.5px_0_var(--border)]">
+                      <div className="flex items-center gap-2 text-xs font-black uppercase text-secondary">
+                        <PenTool size={14} />
+                        <span>Đề bài tự luận</span>
+                      </div>
+                      <div className="font-semibold text-base leading-relaxed whitespace-pre-wrap text-foreground">
+                        {group.resource.prompt}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Submitted Prompt Response (Writing / Speaking Draft) */}
                   {group.draftContent && (
