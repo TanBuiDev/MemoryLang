@@ -117,8 +117,6 @@ export function ExamAttemptPage() {
   const [compareLeft, setCompareLeft] = useState('')
   const [compareRight, setCompareRight] = useState('')
   const [submitConfirmationOpen, setSubmitConfirmationOpen] = useState(false)
-  const [mobilePane, setMobilePane] = useState<'content' | 'questions'>('questions')
-
   const attemptQuery = useQuery({
     queryKey: ['b1-exam-attempt', attemptId],
     queryFn: () => examPracticeService.getAttempt(attemptId),
@@ -357,17 +355,12 @@ export function ExamAttemptPage() {
   const findVersion = (id: string): PracticeDraftVersion | undefined =>
     drafts.find((draft) => draft.id === id)
   const isSubmitted = attemptDetail.attempt.status === 'submitted'
-  const hasSideContent = Boolean(
-    activeResource.passage ||
-    activeResource.audio_url ||
-    (isPrompt && activeResource.prompt),
-  )
 
   const skillBadge = getSkillBadgeLabel(activeSection.skill)
   const SkillIcon = skillBadge.icon
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-5 pb-12">
+    <div className="mx-auto max-w-[1600px] w-full space-y-5 pb-12">
       {/* Sticky Navigation Header & Timer Bar */}
       <header className="neo-card sticky top-16 z-20 bg-card p-4 sm:p-5 shadow-[4px_4px_0_var(--border)]">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -441,27 +434,7 @@ export function ExamAttemptPage() {
         </div>
       )}
 
-      {/* Mobile Tab Toggle when Side Content exists */}
-      {hasSideContent && (
-        <div className="lg:hidden flex border-b-2 border-border gap-2 pb-1">
-          <Button
-            variant={mobilePane === 'content' ? 'primary' : 'ghost'}
-            onClick={() => setMobilePane('content')}
-            className="flex-1 font-black"
-          >
-            <BookOpen size={16} /> Đề bài / Bài đọc
-          </Button>
-          <Button
-            variant={mobilePane === 'questions' ? 'primary' : 'ghost'}
-            onClick={() => setMobilePane('questions')}
-            className="flex-1 font-black"
-          >
-            <FileEdit size={16} /> Phần làm bài ({activeResource.questions?.length ?? 1})
-          </Button>
-        </div>
-      )}
-
-      {/* Main 3-Column Split Workspace Layout */}
+      {/* Main 2-Column Split Workspace Layout */}
       <div className="grid gap-5 lg:grid-cols-12 items-start">
         {/* Left Column: Section Navigation & Question Jumper (3 cols) */}
         <aside className="lg:col-span-3 space-y-4">
@@ -553,85 +526,8 @@ export function ExamAttemptPage() {
           )}
         </aside>
 
-        {/* Middle Column: Passage / Prompt / Listening Media Pane (4 cols on desktop) */}
-        {hasSideContent && (
-          <aside
-            className={`lg:col-span-4 space-y-4 sticky top-40 max-h-[calc(100vh-180px)] overflow-y-auto ${
-              mobilePane === 'questions' ? 'hidden lg:block' : 'block'
-            }`}
-          >
-            <div className="neo-card p-5 bg-card space-y-4 shadow-[3px_3px_0_var(--border)] border-2 border-border">
-              {/* Header Badge */}
-              <div className="flex items-center justify-between border-b-2 border-border pb-3">
-                <div className="flex items-center gap-2">
-                  <SkillIcon size={18} className="text-secondary" />
-                  <span className="text-xs font-black uppercase tracking-wider text-secondary">
-                    {skillBadge.label}
-                  </span>
-                </div>
-                <span className="text-xs font-black text-muted-foreground uppercase bg-muted px-2 py-0.5 border border-border">
-                  Đề bài & Tư liệu
-                </span>
-              </div>
-
-              {/* Styled Audio Player when present */}
-              {activeResource.audio_url && (
-                <div className="border-2 border-border bg-muted p-3 space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-black text-secondary">
-                    <Headphones size={15} />
-                    <span>File nghe của phần này:</span>
-                  </div>
-                  <audio controls src={activeResource.audio_url} className="w-full h-10" aria-label="Phát audio đề bài" />
-                </div>
-              )}
-
-              {/* Instructions */}
-              {activeResource.instructions && (
-                <div className="space-y-1">
-                  <h4 className="text-xs font-black uppercase text-muted-foreground">Hướng dẫn làm bài</h4>
-                  <p className="font-semibold text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
-                    {activeResource.instructions}
-                  </p>
-                </div>
-              )}
-
-              {/* Reading Passage */}
-              {activeResource.passage && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-black uppercase text-muted-foreground">Bài đọc (Passage)</h4>
-                  <div className="border-2 border-border bg-muted/50 p-4 font-semibold text-sm leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
-                    {activeResource.passage}
-                  </div>
-                </div>
-              )}
-
-              {/* Activity or Prompt Content */}
-              {!isPrompt && activeResource.content && (
-                <div className="border-2 border-border bg-muted/40 p-4 font-semibold text-sm leading-relaxed whitespace-pre-wrap">
-                  {activeResource.content}
-                </div>
-              )}
-
-              {/* Prompt Text for Writing / Speaking */}
-              {isPrompt && activeResource.prompt && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-black uppercase text-secondary">Đề bài tự luận</h4>
-                  <div className="border-2 border-border bg-primary/20 p-4 font-semibold text-base leading-relaxed whitespace-pre-wrap shadow-[2px_2px_0_var(--border)]">
-                    {activeResource.prompt}
-                  </div>
-                </div>
-              )}
-            </div>
-          </aside>
-        )}
-
-        {/* Right Column: Questions List OR Writing Workspace (5 or 9 cols on desktop) */}
-        <main
-          ref={mainRef}
-          className={`${
-            hasSideContent ? 'lg:col-span-5' : 'lg:col-span-9'
-          } ${mobilePane === 'content' && hasSideContent ? 'hidden lg:block' : 'block'}`}
-        >
+        {/* Main Column: Passage, Audio, Prompt & Questions List (9 cols on desktop) */}
+        <main ref={mainRef} className="lg:col-span-9 space-y-6">
           <div className="neo-card p-5 sm:p-7 bg-card space-y-6 shadow-[4px_4px_0_var(--border)]">
             {/* Section Header */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-border pb-4">
@@ -643,15 +539,54 @@ export function ExamAttemptPage() {
               </div>
             </div>
 
-            {/* Inline Instructions Banner when NO Side Content */}
-            {!hasSideContent && (activeResource.instructions || activeResource.content) && (
-              <div className="border-2 border-border bg-muted/40 p-4 font-semibold text-sm leading-relaxed whitespace-pre-wrap space-y-1">
-                {activeResource.instructions && (
-                  <p className="font-bold text-foreground">{activeResource.instructions}</p>
-                )}
-                {activeResource.content && (
-                  <p className="text-muted-foreground">{activeResource.content}</p>
-                )}
+            {/* Styled Audio Player when present */}
+            {activeResource.audio_url && (
+              <div className="border-2 border-border bg-muted p-3.5 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-black text-secondary">
+                  <Headphones size={15} />
+                  <span>File nghe của phần này:</span>
+                </div>
+                <audio controls src={activeResource.audio_url} className="w-full h-10" aria-label="Phát audio đề bài" />
+              </div>
+            )}
+
+            {/* Instructions */}
+            {activeResource.instructions && (
+              <div className="border-2 border-border bg-muted/40 p-4 font-semibold text-sm leading-relaxed whitespace-pre-wrap">
+                <p className="font-bold text-foreground">{activeResource.instructions}</p>
+              </div>
+            )}
+
+            {/* Reading Passage (Full-width inside main column at top of questions) */}
+            {activeResource.passage && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-black uppercase text-secondary">
+                  <BookOpen size={14} />
+                  <span>Bài đọc (Passage)</span>
+                </div>
+                <div className="border-2 border-border bg-muted/60 p-5 font-semibold text-base leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto shadow-[2px_2px_0_var(--border)]">
+                  {activeResource.passage}
+                </div>
+              </div>
+            )}
+
+            {/* Activity or Prompt Content */}
+            {!isPrompt && activeResource.content && (
+              <div className="border-2 border-border bg-muted/40 p-4 font-semibold text-sm leading-relaxed whitespace-pre-wrap">
+                {activeResource.content}
+              </div>
+            )}
+
+            {/* Prompt Text for Writing / Speaking */}
+            {isPrompt && activeResource.prompt && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-black uppercase text-secondary">
+                  <PenTool size={14} />
+                  <span>Đề bài tự luận</span>
+                </div>
+                <div className="border-2 border-border bg-primary/20 p-5 font-semibold text-base leading-relaxed whitespace-pre-wrap shadow-[2px_2px_0_var(--border)]">
+                  {activeResource.prompt}
+                </div>
               </div>
             )}
 
