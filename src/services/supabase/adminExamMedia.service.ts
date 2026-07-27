@@ -23,16 +23,21 @@ export interface B1SignQuestion {
 
 export const adminExamMediaService = {
   async listResources(): Promise<B1MediaResource[]> {
-    const [activitiesResult, promptsResult] = await Promise.all([
-      supabase.from('practice_activities').select('id,source_key,title,skill,content,passage,audio_url,is_published').order('source_key'),
-      supabase.from('practice_prompts').select('id,source_key,title,skill,prompt,content,audio_url,is_published').order('source_key'),
-    ])
-    if (activitiesResult.error) throw activitiesResult.error
-    if (promptsResult.error) throw promptsResult.error
-    return [
-      ...(activitiesResult.data ?? []).map((item: any) => ({ ...item, kind: 'activity' as const, text: item.passage || item.content || '' })),
-      ...(promptsResult.data ?? []).map((item: any) => ({ ...item, kind: 'prompt' as const, text: item.prompt || item.content || '' })),
-    ].filter((item) => item.skill === 'listening' || item.skill === 'writing' || item.skill === 'speaking')
+    const { data, error } = await supabase
+      .from('exam_sections')
+      .select('resource_type,activity:practice_activities(id,source_key,title,skill,content,passage,audio_url,is_published),prompt:practice_prompts(id,source_key,title,skill,prompt,content,audio_url,is_published),exam:exams!inner(source_key)')
+      .eq('exam.source_key', 'b1-de-full-copy')
+      .order('order_index')
+    if (error) throw error
+    return (data ?? []).flatMap((section: any) => {
+      const item = section.resource_type === 'activity' ? section.activity : section.prompt
+      if (!item || !['listening', 'writing', 'speaking'].includes(item.skill)) return []
+      return [{
+        ...item,
+        kind: section.resource_type as B1MediaResourceKind,
+        text: item.passage || item.prompt || item.content || '',
+      }]
+    }) as B1MediaResource[]
   },
 
   async setAudioUrl(resource: B1MediaResource, audioUrl: string | null): Promise<void> {
