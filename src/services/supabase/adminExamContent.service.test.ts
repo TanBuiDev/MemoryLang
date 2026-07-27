@@ -98,16 +98,23 @@ describe('adminExamContentService', () => {
   it('persists the requested B1 section order with consecutive positions', async () => {
     const firstUpdate = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
     const secondUpdate = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
+    const finalFirstUpdate = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
+    const finalSecondUpdate = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
     from.mockReturnValueOnce(firstUpdate as never).mockReturnValueOnce(secondUpdate as never)
+      .mockReturnValueOnce(finalFirstUpdate as never).mockReturnValueOnce(finalSecondUpdate as never)
 
     await expect(adminExamContentService.reorderSections(['section-2', 'section-1'])).resolves.toBeUndefined()
 
     expect(from).toHaveBeenNthCalledWith(1, 'exam_sections')
-    expect(firstUpdate.update).toHaveBeenCalledWith({ order_index: 1 })
+    expect(firstUpdate.update).toHaveBeenCalledWith({ order_index: 1000000 })
     expect(firstUpdate.eq).toHaveBeenCalledWith('id', 'section-2')
     expect(from).toHaveBeenNthCalledWith(2, 'exam_sections')
-    expect(secondUpdate.update).toHaveBeenCalledWith({ order_index: 2 })
+    expect(secondUpdate.update).toHaveBeenCalledWith({ order_index: 1000001 })
     expect(secondUpdate.eq).toHaveBeenCalledWith('id', 'section-1')
+    expect(from).toHaveBeenNthCalledWith(3, 'exam_sections')
+    expect(finalFirstUpdate.update).toHaveBeenCalledWith({ order_index: 1 })
+    expect(from).toHaveBeenNthCalledWith(4, 'exam_sections')
+    expect(finalSecondUpdate.update).toHaveBeenCalledWith({ order_index: 2 })
   })
 
   it('updates a Writing or Speaking prompt and its learner instructions', async () => {

@@ -170,6 +170,13 @@ export const adminExamContentService = {
     for (const [index, sectionId] of sectionIds.entries()) {
       const { error } = await supabase
         .from('exam_sections')
+        .update({ order_index: 1_000_000 + index })
+        .eq('id', sectionId)
+      if (error) throw error
+    }
+    for (const [index, sectionId] of sectionIds.entries()) {
+      const { error } = await supabase
+        .from('exam_sections')
         .update({ order_index: index + 1 })
         .eq('id', sectionId)
       if (error) throw error
