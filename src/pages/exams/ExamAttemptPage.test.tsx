@@ -9,6 +9,7 @@ vi.mock('@/services/supabase/examPractice.service', () => ({
   examPracticeService: {
     getAttempt: vi.fn(),
     saveSectionProgress: vi.fn(),
+    submitAttempt: vi.fn(),
     listDraftVersions: vi.fn(),
     createDraftVersion: vi.fn(),
   },
@@ -51,6 +52,8 @@ describe('ExamAttemptPage', () => {
     expect(await screen.findByText('B1 DeFull')).toBeInTheDocument()
     expect(screen.getByText('Bạn đang làm quá giờ')).toBeInTheDocument()
     expect(screen.getByText('Viết email cho bạn của bạn.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Lưu phiên bản này' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Lưu thành phiên bản' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Nộp bài & xem đáp án' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Lưu phần này' })).not.toBeInTheDocument()
   })
 })

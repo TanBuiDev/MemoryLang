@@ -67,6 +67,17 @@ describe('examPracticeService', () => {
     })
   })
 
+  it('submits an attempt through the guarded grading RPC', async () => {
+    const result = { attempt_id: 'attempt-1', score: 7, max_score: 10, reviews: [] }
+    rpc.mockResolvedValueOnce({ data: result, error: null } as never)
+
+    await expect(examPracticeService.submitAttempt('attempt-1')).resolves.toEqual(result)
+
+    expect(rpc).toHaveBeenCalledWith('submit_b1_exam_attempt', {
+      p_attempt_id: 'attempt-1',
+    })
+  })
+
   it('creates the next immutable Writing or Speaking version through the guarded RPC', async () => {
     rpc.mockResolvedValueOnce({ data: { version_number: 2 }, error: null } as never)
 

@@ -102,6 +102,25 @@ export interface ExamSectionAttempt {
   updated_at: string
 }
 
+export interface B1AttemptQuestionReview {
+  section_source_key: string
+  question_source_key: string
+  question: string
+  user_answer: string
+  correct_option_keys: string[]
+  accepted_answers: string[]
+  translation: string | null
+  explanation: string | null
+  is_correct: boolean
+}
+
+export interface B1AttemptSubmission {
+  attempt_id: string
+  score: number
+  max_score: number
+  reviews: B1AttemptQuestionReview[]
+}
+
 export interface PracticeDraftVersion {
   id: string
   user_id: string

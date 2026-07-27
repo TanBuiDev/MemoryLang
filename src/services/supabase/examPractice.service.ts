@@ -4,6 +4,7 @@ import type {
   ExamAttempt,
   ExamSectionAttempt,
   ExamSectionAttemptStatus,
+  B1AttemptSubmission,
   PracticeDraftVersion,
 } from '@/types/exam.types'
 
@@ -78,6 +79,15 @@ export const examPracticeService = {
 
     if (error) throw error
     return data as ExamSectionAttempt
+  },
+
+  async submitAttempt(attemptId: string): Promise<B1AttemptSubmission> {
+    const { data, error } = await supabase.rpc('submit_b1_exam_attempt', {
+      p_attempt_id: attemptId,
+    })
+
+    if (error) throw error
+    return data as B1AttemptSubmission
   },
 
   async listDraftVersions(promptId: string): Promise<PracticeDraftVersion[]> {
