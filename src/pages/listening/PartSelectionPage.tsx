@@ -254,7 +254,7 @@ export function PartSelectionPage() {
                     </div>
 
                     <p className="text-xs sm:text-sm font-bold text-slate-700 leading-snug">
-                      {meta.desc}
+                      {part.directions?.trim() || meta.desc}
                     </p>
                   </div>
                 </div>
