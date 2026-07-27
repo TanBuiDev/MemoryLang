@@ -3,9 +3,11 @@ import { ArrowLeft, CheckCircle2, CircleAlert, Layers, Save } from 'lucide-react
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ChoiceListEditor, type EditableChoiceQuestion } from '@/components/admin/exam-presentations/ChoiceListEditor'
+import { InlineGapEditor } from '@/components/admin/exam-presentations/InlineGapEditor'
 import { PresentationPicker } from '@/components/admin/exam-presentations/PresentationPicker'
 import { Button } from '@/components/ui/button'
 import { getPresentationDefinition } from '@/features/exam-content/presentationRegistry'
+import { createInlineGapDraft, serializeInlineGapDraft, type InlineGapDraft, type InlineGapSegment } from '@/features/exam-content/inlineGapDraft'
 import { adminExamContentService, type AdminExamContentQuestion } from '@/services/supabase/adminExamContent.service'
 import type { ExamGradingMode, ExamPresentationType } from '@/types/exam.types'
 
@@ -40,6 +42,34 @@ function toEditableChoiceQuestions(questions: AdminExamContentQuestion[]): Edita
   }))
 }
 
+function toInlineGapDraft(resource: { passage?: string | null; content?: string | null; content_blocks?: unknown; questions: AdminExamContentQuestion[] }): InlineGapDraft {
+  if (Array.isArray(resource.content_blocks)) {
+    const block = resource.content_blocks.find((item): item is Record<string, unknown> =>
+      Boolean(item) && typeof item === 'object' && (item as Record<string, unknown>).type === 'inline_gap_passage',
+    )
+    if (block && Array.isArray(block.segments)) {
+      const segments: InlineGapSegment[] = []
+      block.segments.forEach((item) => {
+        if (!item || typeof item !== 'object') return
+        const segment = item as Record<string, unknown>
+        if (segment.type === 'text' && typeof segment.value === 'string') {
+          segments.push({ type: 'text', value: segment.value })
+          return
+        }
+        if (segment.type === 'gap' && typeof segment.gapId === 'string' && typeof segment.label === 'string') {
+          segments.push({ type: 'gap', gapId: segment.gapId, label: segment.label })
+        }
+      })
+      const gaps = segments.filter((segment): segment is Extract<InlineGapSegment, { type: 'gap' }> => segment.type === 'gap').map((segment) => {
+        const question = resource.questions.find((item) => item.id === segment.gapId)
+        return { id: segment.gapId, label: segment.label, acceptedAnswers: question?.accepted_answers ?? [] }
+      })
+      if (segments.length > 0) return { segments, gaps }
+    }
+  }
+  return createInlineGapDraft(resource.passage ?? resource.content ?? '', resource.questions)
+}
+
 function getEditorGuidance(type: ExamPresentationType) {
   switch (type) {
     case 'passage_text_inline':
@@ -66,6 +96,7 @@ export function AdminB1ExamContentBuilderPage() {
   const [presentationType, setPresentationType] = useState<ExamPresentationType>('choice_list')
   const [gradingMode, setGradingMode] = useState<ExamGradingMode>('single_choice')
   const [editedQuestions, setEditedQuestions] = useState<EditableChoiceQuestion[]>([])
+  const [inlineGapDraft, setInlineGapDraft] = useState<InlineGapDraft | null>(null)
 
   const examQuery = useQuery({
     queryKey: ['admin-b1-exam-content', id],
@@ -87,6 +118,7 @@ export function AdminB1ExamContentBuilderPage() {
     setPresentationType(nextType)
     setGradingMode(selectedResource.grading_mode ?? nextDefinition.compatibleGradingModes[0])
     setEditedQuestions(toEditableChoiceQuestions(selectedResource.questions))
+    setInlineGapDraft(toInlineGapDraft(selectedResource))
   }, [selectedResource?.id, selectedResource?.presentation_type, selectedResource?.grading_mode, selectedResource?.kind])
 
   const savePresentation = useMutation({
@@ -104,6 +136,16 @@ export function AdminB1ExamContentBuilderPage() {
         translation: question.translation ?? null,
         explanation: question.explanation ?? null,
       })))
+      if ((presentationType === 'passage_text_inline' || presentationType === 'passage_choice_inline') && inlineGapDraft) {
+        await Promise.all(inlineGapDraft.gaps
+          .filter((gap) => selectedResource.questions.some((question) => question.id === gap.id))
+          .map((gap) => adminExamContentService.updateQuestion(gap.id, { accepted_answers: gap.acceptedAnswers })))
+        await adminExamContentService.updateResourceContent({
+          resourceKind: selectedResource.kind,
+          resourceId: selectedResource.id,
+          contentBlocks: serializeInlineGapDraft(inlineGapDraft).blocks,
+        })
+      }
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
@@ -197,6 +239,9 @@ export function AdminB1ExamContentBuilderPage() {
               </div>
               {['choice_list', 'boolean_list', 'image_choice_list', 'passage_questions'].includes(presentationType) && (
                 <ChoiceListEditor questions={editedQuestions} onChange={setEditedQuestions} disabled={savePresentation.isPending} />
+              )}
+              {(presentationType === 'passage_text_inline' || presentationType === 'passage_choice_inline') && inlineGapDraft && (
+                <InlineGapEditor draft={inlineGapDraft} onChange={setInlineGapDraft} disabled={savePresentation.isPending} />
               )}
               <div className="border-2 border-dashed border-border bg-muted/40 p-4 text-sm font-semibold leading-relaxed">
                 <CircleAlert className="mr-2 inline text-secondary" size={16} />

@@ -152,12 +152,25 @@ export const adminExamContentService = {
 
   async updateQuestion(
     questionId: string,
-    input: Pick<AdminExamContentQuestion, 'prompt' | 'options' | 'translation' | 'explanation'>,
+    input: Partial<Pick<AdminExamContentQuestion, 'prompt' | 'options' | 'translation' | 'explanation' | 'accepted_answers'>>,
   ): Promise<void> {
     const { error } = await supabase
       .from('practice_questions')
       .update(input)
       .eq('id', questionId)
+    if (error) throw error
+  },
+
+  async updateResourceContent(input: {
+    resourceKind: ExamResourceType
+    resourceId: string
+    contentBlocks: unknown[]
+  }): Promise<void> {
+    const table = input.resourceKind === 'activity' ? 'practice_activities' : 'practice_prompts'
+    const { error } = await supabase
+      .from(table)
+      .update({ content_blocks: input.contentBlocks })
+      .eq('id', input.resourceId)
     if (error) throw error
   },
 }

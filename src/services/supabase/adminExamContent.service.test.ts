@@ -57,4 +57,26 @@ describe('adminExamContentService', () => {
       explanation: 'B phù hợp với ngữ cảnh.',
     })
   })
+
+  it('persists structured inline-gap blocks for an activity without exposing a raw editor', async () => {
+    const update = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
+    from.mockReturnValueOnce(update as never)
+    const blocks = [{ type: 'inline_gap_passage', segments: [{ type: 'text', value: 'I like ' }, { type: 'gap', gapId: 'q-1', label: '1' }] }]
+
+    await expect(adminExamContentService.updateResourceContent({
+      resourceKind: 'activity', resourceId: 'activity-1', contentBlocks: blocks,
+    })).resolves.toBeUndefined()
+
+    expect(from).toHaveBeenCalledWith('practice_activities')
+    expect(update.update).toHaveBeenCalledWith({ content_blocks: blocks })
+  })
+
+  it('updates accepted text answers for a visual inline gap', async () => {
+    const update = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
+    from.mockReturnValueOnce(update as never)
+
+    await expect(adminExamContentService.updateQuestion('question-1', { accepted_answers: ['football', 'soccer'] })).resolves.toBeUndefined()
+
+    expect(update.update).toHaveBeenCalledWith({ accepted_answers: ['football', 'soccer'] })
+  })
 })
