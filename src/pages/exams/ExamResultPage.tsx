@@ -176,7 +176,7 @@ function renderPassageWithInlineAnswers(
                 ) : (
                   <span className="inline-flex flex-wrap items-baseline gap-1.5 font-black text-sm">
                     {userAnswerText && (
-                      <span className="line-through text-danger opacity-75 px-1 py-0.5 bg-danger/10 border border-danger/30">
+                      <span className="text-danger px-1 py-0.5 bg-danger/10 border border-danger/30">
                         {userAnswerText}
                       </span>
                     )}
@@ -938,7 +938,7 @@ export function ExamResultPage() {
                                     isCorrectOption
                                       ? 'bg-yellow-300 text-black border-black shadow-[2.5px_2.5px_0_#000]'
                                       : isUserChoiceWrong
-                                        ? 'bg-danger text-white border-danger line-through shadow-[2.5px_2.5px_0_var(--border)]'
+                                        ? 'bg-danger text-white border-danger shadow-[2.5px_2.5px_0_var(--border)]'
                                         : 'bg-background text-foreground border-border opacity-70'
                                   }`}
                                 >

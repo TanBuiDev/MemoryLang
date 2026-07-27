@@ -94,6 +94,7 @@ describe('ExamResultPage', () => {
 
     expect(await screen.findByText('for')).toBeInTheDocument()
     expect(screen.getByText('to')).toHaveClass('text-danger')
+    expect(screen.getByText('to')).not.toHaveClass('line-through')
   })
 
   it('shows option text instead of its letter for a correct inline Cloze answer', async () => {
