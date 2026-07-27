@@ -14,6 +14,7 @@ const EXAM_SKILLS = new Set([
 ])
 const QUESTION_TYPES = new Set(['multiple_choice', 'true_false', 'fill_blank', 'short_text'])
 const RESOURCE_TYPES = new Set(['activity', 'prompt'])
+const PROMPT_SKILLS = new Set(['writing', 'speaking'])
 const EXAM_CATEGORIES = new Set(['TOEIC', 'IELTS', 'TOEFL', 'GENERAL'])
 const ACCESS_TIERS = new Set(['free', 'pro'])
 const SOURCE_PAGE_COUNT = 18
@@ -316,12 +317,12 @@ export function validateB1Artifact(value) {
       validateSourceKey(prompt.source_key, `${promptPath}.source_key`)
       if (isNonEmptyString(prompt.source_key)) {
         promptKeys.add(prompt.source_key)
-        if (EXAM_SKILLS.has(prompt.skill)) {
+        if (PROMPT_SKILLS.has(prompt.skill)) {
           promptSkillsByKey.set(prompt.source_key, prompt.skill)
         }
       }
-      if (!EXAM_SKILLS.has(prompt.skill)) {
-        error(`${promptPath}.skill`, 'Expected a supported exam skill')
+      if (!PROMPT_SKILLS.has(prompt.skill)) {
+        error(`${promptPath}.skill`, 'Expected writing or speaking')
       }
       if (!isNonEmptyString(prompt.title)) {
         error(`${promptPath}.title`, 'Expected a non-empty string')

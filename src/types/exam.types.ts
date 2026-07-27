@@ -93,7 +93,7 @@ export interface PracticeActivity {
 
 export interface PracticePrompt {
   source_key: string
-  skill: ExamSkill
+  skill: 'writing' | 'speaking'
   title: string
   prompt: string
   instructions?: string
@@ -166,6 +166,7 @@ const isQuestion = (value: unknown): value is PracticeQuestion => {
     || typeof value.source_page !== 'number'
     || !Number.isInteger(value.source_page)
     || value.source_page < 1
+    || value.source_page > 18
     || (value.image_url !== null && !isNonEmptyString(value.image_url))) {
     return false
   }
@@ -238,7 +239,7 @@ export function isB1ContentArtifact(value: unknown): value is B1ContentArtifact 
   }
 
   if (!value.prompts.every((prompt) => isRecord(prompt)
-    && examSkills.includes(prompt.skill as ExamSkill)
+    && (prompt.skill === 'writing' || prompt.skill === 'speaking')
     && isNonEmptyString(prompt.title)
     && isNonEmptyString(prompt.prompt)
     && (prompt.instructions === undefined || isNonEmptyString(prompt.instructions))
@@ -246,6 +247,7 @@ export function isB1ContentArtifact(value: unknown): value is B1ContentArtifact 
     && typeof prompt.source_page === 'number'
     && Number.isInteger(prompt.source_page)
     && prompt.source_page >= 1
+    && prompt.source_page <= 18
     && (prompt.image_url === null || isNonEmptyString(prompt.image_url))
     && (prompt.audio_url === null || isNonEmptyString(prompt.audio_url)))) {
     return false

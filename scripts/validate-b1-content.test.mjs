@@ -144,7 +144,20 @@ test('rejects a prompt section whose skill differs from its resource', () => {
       + 'to match referenced prompt "writing-topic-7"'))
 })
 
-test('rejects source_page values outside the 1-18 source range', () => {
+test('rejects a prompt with a non-writing or non-speaking skill', () => {
+  const artifact = validArtifact()
+  artifact.prompts[0].skill = 'grammar'
+  artifact.sections[1].skill = 'grammar'
+
+  const result = validateB1Artifact(artifact)
+
+  assert.equal(result.valid, false)
+  assert.ok(result.errors.some((error) =>
+    error.path === 'prompts[0].skill'
+    && error.message === 'Expected writing or speaking'))
+})
+
+test('rejects question source_page values outside the 1-18 source range', () => {
   const artifact = validArtifact()
   artifact.activities[0].questions[0].source_page = 19
 
@@ -153,6 +166,18 @@ test('rejects source_page values outside the 1-18 source range', () => {
   assert.equal(result.valid, false)
   assert.ok(result.errors.some((error) =>
     error.path === 'activities[0].questions[0].source_page'
+    && error.message === 'Expected an integer from 1 to 18'))
+})
+
+test('rejects prompt source_page values outside the 1-18 source range', () => {
+  const artifact = validArtifact()
+  artifact.prompts[0].source_page = 19
+
+  const result = validateB1Artifact(artifact)
+
+  assert.equal(result.valid, false)
+  assert.ok(result.errors.some((error) =>
+    error.path === 'prompts[0].source_page'
     && error.message === 'Expected an integer from 1 to 18'))
 })
 

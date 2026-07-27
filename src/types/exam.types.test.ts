@@ -84,6 +84,28 @@ describe('isB1ContentArtifact', () => {
     expect(isB1ContentArtifact(invalid)).toBe(false)
   })
 
+  it('rejects a prompt with a non-writing or non-speaking skill', () => {
+    const invalid = validLinkedArtifact()
+    invalid.prompts[0].skill = 'grammar'
+    invalid.sections[1].skill = 'grammar'
+
+    expect(isB1ContentArtifact(invalid)).toBe(false)
+  })
+
+  it('rejects a question source page outside the 18-page PDF', () => {
+    const invalid = validLinkedArtifact()
+    invalid.activities[0].questions[0].source_page = 19
+
+    expect(isB1ContentArtifact(invalid)).toBe(false)
+  })
+
+  it('rejects a prompt source page outside the 18-page PDF', () => {
+    const invalid = validLinkedArtifact()
+    invalid.prompts[0].source_page = 19
+
+    expect(isB1ContentArtifact(invalid)).toBe(false)
+  })
+
   it('rejects a multiple-choice question without exactly one correct answer', () => {
     const invalid = {
       source: { file_name: 'DeFull Copy.pdf', page_count: 18 },
