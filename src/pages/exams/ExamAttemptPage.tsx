@@ -1,5 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, ChevronLeft, ChevronRight, Clock3, Send, Save } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowLeft,
+  BookOpen,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  FileEdit,
+  FileText,
+  Headphones,
+  HelpCircle,
+  Layers,
+  ListChecks,
+  PenTool,
+  Save,
+  Send,
+  Sparkles,
+} from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -40,12 +59,15 @@ interface SnapshotSection {
 
 function getSections(snapshot: Record<string, unknown>): SnapshotSection[] {
   const sections = snapshot.sections
-  return Array.isArray(sections) ? sections.filter((section): section is SnapshotSection =>
-    Boolean(section)
-    && typeof section === 'object'
-    && typeof (section as SnapshotSection).source_key === 'string'
-    && typeof (section as SnapshotSection).resource === 'object',
-  ) : []
+  return Array.isArray(sections)
+    ? sections.filter(
+        (section): section is SnapshotSection =>
+          Boolean(section) &&
+          typeof section === 'object' &&
+          typeof (section as SnapshotSection).source_key === 'string' &&
+          typeof (section as SnapshotSection).resource === 'object',
+      )
+    : []
 }
 
 function getExamTitle(snapshot: Record<string, unknown>) {
@@ -56,7 +78,27 @@ function getExamTitle(snapshot: Record<string, unknown>) {
 }
 
 function answerPlaceholder(question: SnapshotQuestion) {
-  return question.question_type === 'fill_blank' ? 'Điền đáp án của bạn' : 'Nhập câu trả lời của bạn'
+  return question.question_type === 'fill_blank' ? 'Điền đáp án của bạn...' : 'Nhập câu trả lời...'
+}
+
+function getSkillBadgeLabel(skill: string) {
+  switch (skill.toLowerCase()) {
+    case 'grammar':
+    case 'grammar-use-of-english':
+      return { label: 'Grammar & Vocabulary', icon: FileText }
+    case 'reading':
+    case 'signs':
+    case 'cloze':
+      return { label: 'Reading', icon: BookOpen }
+    case 'listening':
+      return { label: 'Listening', icon: Headphones }
+    case 'writing':
+    case 'speaking':
+    case 'transformation':
+      return { label: 'Writing & Speaking', icon: PenTool }
+    default:
+      return { label: skill, icon: FileText }
+  }
 }
 
 export function ExamAttemptPage() {
@@ -64,8 +106,10 @@ export function ExamAttemptPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const mainRef = useRef<HTMLElement>(null)
+  const questionRefs = useRef<Record<string, HTMLElement | null>>({})
   const overtimeWarningShown = useRef(false)
   const progressHydrated = useRef(false)
+
   const [now, setNow] = useState(() => new Date())
   const [activeSectionIndex, setActiveSectionIndex] = useState(0)
   const [draftContent, setDraftContent] = useState('')
@@ -73,21 +117,51 @@ export function ExamAttemptPage() {
   const [compareLeft, setCompareLeft] = useState('')
   const [compareRight, setCompareRight] = useState('')
   const [submitConfirmationOpen, setSubmitConfirmationOpen] = useState(false)
+  const [mobilePane, setMobilePane] = useState<'content' | 'questions'>('questions')
 
   const attemptQuery = useQuery({
     queryKey: ['b1-exam-attempt', attemptId],
     queryFn: () => examPracticeService.getAttempt(attemptId),
     enabled: Boolean(attemptId),
   })
+
   const attemptDetail = attemptQuery.data
-  const sections = useMemo(() => attemptDetail ? getSections(attemptDetail.attempt.exam_snapshot) : [], [attemptDetail])
+  const sections = useMemo(
+    () => (attemptDetail ? getSections(attemptDetail.attempt.exam_snapshot) : []),
+    [attemptDetail],
+  )
   const activeSection = sections[activeSectionIndex]
   const activeResource = activeSection?.resource
-  const activeProgress = attemptDetail?.sections.find((section) => section.exam_section_source_key === activeSection?.source_key)
+  const activeProgress = attemptDetail?.sections.find(
+    (section) => section.exam_section_source_key === activeSection?.source_key,
+  )
   const isPrompt = activeSection?.resource_type === 'prompt'
   const timer = attemptDetail
-    ? getAttemptTimerState(attemptDetail.attempt.started_at, attemptDetail.attempt.target_duration_seconds, now)
+    ? getAttemptTimerState(
+        attemptDetail.attempt.started_at,
+        attemptDetail.attempt.target_duration_seconds,
+        now,
+      )
     : null
+
+  // Calculate overall answered questions
+  const totalStats = useMemo(() => {
+    let totalQuestions = 0
+    let answeredQuestions = 0
+
+    sections.forEach((sec) => {
+      if (sec.resource_type === 'activity' && sec.resource.questions) {
+        sec.resource.questions.forEach((q) => {
+          totalQuestions++
+          if (selectedAnswers[q.source_key] && selectedAnswers[q.source_key].trim() !== '') {
+            answeredQuestions++
+          }
+        })
+      }
+    })
+
+    return { totalQuestions, answeredQuestions }
+  }, [sections, selectedAnswers])
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setNow(new Date()), 1000)
@@ -97,7 +171,12 @@ export function ExamAttemptPage() {
   useEffect(() => {
     if (timer?.isOvertime && !overtimeWarningShown.current) {
       overtimeWarningShown.current = true
-      showToast({ type: 'warning', title: 'Bạn đang làm quá giờ', message: 'Đây là đề luyện tập; bạn có thể tiếp tục làm bài.', duration: 7000 })
+      showToast({
+        type: 'warning',
+        title: 'Bạn đang làm quá giờ',
+        message: 'Đây là đề luyện tập; bạn có thể tiếp tục làm bài.',
+        duration: 7000,
+      })
     }
   }, [timer?.isOvertime])
 
@@ -131,24 +210,55 @@ export function ExamAttemptPage() {
   const drafts = draftsQuery.data ?? []
 
   const autosaveProgress = useMutation({
-    mutationFn: (input: { sectionSourceKey: string; progress: Record<string, unknown> }) => examPracticeService.saveSectionProgress({
-      attemptId,
-      sectionSourceKey: input.sectionSourceKey,
-      progress: input.progress,
-      status: 'in_progress',
-    }),
-    onError: () => showToast({ type: 'error', title: 'Không thể tự lưu tiến độ', message: 'Vui lòng kiểm tra kết nối rồi tiếp tục làm bài.' }),
+    mutationFn: (input: { sectionSourceKey: string; progress: Record<string, unknown> }) =>
+      examPracticeService.saveSectionProgress({
+        attemptId,
+        sectionSourceKey: input.sectionSourceKey,
+        progress: input.progress,
+        status: 'in_progress',
+      }),
+    onError: () =>
+      showToast({
+        type: 'error',
+        title: 'Không thể tự lưu tiến độ',
+        message: 'Vui lòng kiểm tra kết nối rồi tiếp tục làm bài.',
+      }),
   })
 
   useEffect(() => {
-    if (!progressHydrated.current || !activeSection || !activeResource || attemptDetail?.attempt.status !== 'in_progress') return
+    if (
+      !progressHydrated.current ||
+      !activeSection ||
+      !activeResource ||
+      attemptDetail?.attempt.status !== 'in_progress'
+    )
+      return
     const questions = activeResource.questions ?? []
     const progress = isPrompt
       ? { content: draftContent }
-      : { answers: Object.fromEntries(questions.flatMap((question) => selectedAnswers[question.source_key] ? [[question.source_key, selectedAnswers[question.source_key]]] : [])) }
-    const timeoutId = window.setTimeout(() => autosaveProgress.mutate({ sectionSourceKey: activeSection.source_key, progress }), 700)
+      : {
+          answers: Object.fromEntries(
+            questions.flatMap((question) =>
+              selectedAnswers[question.source_key]
+                ? [[question.source_key, selectedAnswers[question.source_key]]]
+                : [],
+            ),
+          ),
+        }
+    const timeoutId = window.setTimeout(
+      () => autosaveProgress.mutate({ sectionSourceKey: activeSection.source_key, progress }),
+      700,
+    )
     return () => window.clearTimeout(timeoutId)
-  }, [activeResource, activeSection, attemptDetail?.attempt.status, autosaveProgress, draftContent, isPrompt, selectedAnswers])
+  }, [
+    activeResource,
+    activeSection,
+    attemptDetail?.attempt.status,
+    autosaveProgress,
+    draftContent,
+    isPrompt,
+    selectedAnswers,
+  ])
 
   const saveDraft = useMutation({
     mutationFn: () => examPracticeService.createDraftVersion(activeResource!.id, draftContent),
@@ -166,7 +276,12 @@ export function ExamAttemptPage() {
       ])
       showToast({ type: 'success', title: `Đã lưu phiên bản ${version.version_number}` })
     },
-    onError: (error) => showToast({ type: 'error', title: 'Không thể lưu phiên bản', message: error instanceof Error ? error.message : 'Vui lòng thử lại.' }),
+    onError: (error) =>
+      showToast({
+        type: 'error',
+        title: 'Không thể lưu phiên bản',
+        message: error instanceof Error ? error.message : 'Vui lòng thử lại.',
+      }),
   })
 
   const submitAttempt = useMutation({
@@ -174,10 +289,15 @@ export function ExamAttemptPage() {
     onSuccess: async (result) => {
       setSubmitConfirmationOpen(false)
       await queryClient.invalidateQueries({ queryKey: ['b1-exam-attempt', attemptId] })
-      showToast({ type: 'success', title: 'Đã nộp bài', message: `Bạn đúng ${result.score}/${result.max_score} câu khách quan.` })
+      showToast({
+        type: 'success',
+        title: 'Đã nộp bài thành công',
+        message: `Bạn làm đúng ${result.score}/${result.max_score} câu khách quan.`,
+      })
       navigate(`/app/exams/attempt/${attemptId}/result`, { replace: true })
     },
-    onError: () => showToast({ type: 'error', title: 'Chưa thể nộp bài', message: 'Vui lòng thử lại.' }),
+    onError: () =>
+      showToast({ type: 'error', title: 'Chưa thể nộp bài', message: 'Vui lòng kiểm tra lại kết nối.' }),
   })
 
   const selectSection = (index: number) => {
@@ -185,39 +305,592 @@ export function ExamAttemptPage() {
     window.setTimeout(() => mainRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
   }
 
-  if (attemptQuery.isLoading) return <div className="neo-card animate-pulse p-8 text-center font-black">Đang mở đề…</div>
-  if (attemptQuery.isError || !attemptDetail) return <div className="neo-card p-8 text-center font-black">Không tìm thấy lần làm đề này.</div>
-  if (!activeSection || !activeResource || !timer) return <div className="neo-card p-8 text-center font-black">Đề chưa có phần làm bài.</div>
+  const scrollToQuestion = (sourceKey: string) => {
+    const el = questionRefs.current[sourceKey]
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }
 
-  const versionOptions = drafts.map((draft) => ({ value: draft.id, label: `Phiên bản ${draft.version_number} · ${draft.word_count} từ` }))
-  const findVersion = (id: string): PracticeDraftVersion | undefined => drafts.find((draft) => draft.id === id)
+  if (attemptQuery.isLoading)
+    return (
+      <div className="mx-auto max-w-6xl py-12">
+        <div className="neo-card animate-pulse p-10 text-center font-black space-y-3">
+          <Sparkles className="mx-auto text-secondary" size={32} />
+          <p className="text-xl">Đang tải dữ liệu bài thi B1...</p>
+        </div>
+      </div>
+    )
+
+  if (attemptQuery.isError || !attemptDetail)
+    return (
+      <div className="mx-auto max-w-6xl py-12">
+        <div className="neo-card p-10 text-center font-black space-y-4">
+          <HelpCircle className="mx-auto text-danger" size={40} />
+          <h2 className="text-2xl">Không tìm thấy lần làm bài thi này</h2>
+          <Button variant="primary" onClick={() => navigate('/app/exams')}>
+            Quay lại danh sách đề thi
+          </Button>
+        </div>
+      </div>
+    )
+
+  if (!activeSection || !activeResource || !timer)
+    return (
+      <div className="mx-auto max-w-6xl py-12">
+        <div className="neo-card p-10 text-center font-black space-y-4">
+          <AlertTriangle className="mx-auto text-warning" size={40} />
+          <h2 className="text-2xl">Đề thi chưa có dữ liệu phần làm bài</h2>
+          <Button variant="primary" onClick={() => navigate('/app/exams')}>
+            Quay lại danh sách đề thi
+          </Button>
+        </div>
+      </div>
+    )
+
+  const versionOptions = drafts.map((draft) => ({
+    value: draft.id,
+    label: `Phiên bản ${draft.version_number} · ${draft.word_count} từ`,
+  }))
+  const findVersion = (id: string): PracticeDraftVersion | undefined =>
+    drafts.find((draft) => draft.id === id)
   const isSubmitted = attemptDetail.attempt.status === 'submitted'
+  const hasPassageOrContent = Boolean(
+    activeResource.passage || activeResource.instructions || activeResource.audio_url || (isPrompt ? activeResource.prompt : activeResource.content),
+  )
+
+  const skillBadge = getSkillBadgeLabel(activeSection.skill)
+  const SkillIcon = skillBadge.icon
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
-      <header className="neo-card sticky top-20 z-20 flex flex-col gap-4 bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div><p className="text-xs font-black uppercase tracking-wide text-secondary">Đề thi thử B1</p><h1 className="text-2xl font-black">{getExamTitle(attemptDetail.attempt.exam_snapshot)}</h1><p className="text-sm font-semibold text-muted-foreground">Phần {activeSectionIndex + 1}/{sections.length}: {activeSection.title}</p></div>
-        <div className={`border-2 border-border px-4 py-2 font-mono text-xl font-black shadow-[3px_3px_0_var(--border)] ${timer.isOvertime ? 'bg-danger text-white' : 'bg-primary'}`}><Clock3 className="mr-2 inline-block" size={18} />{timer.isOvertime ? `+${formatExamDuration(timer.overtimeSeconds)}` : formatExamDuration(timer.remainingSeconds)}</div>
+    <div className="mx-auto max-w-7xl space-y-5 pb-12">
+      {/* Sticky Navigation Header & Timer Bar */}
+      <header className="neo-card sticky top-16 z-20 bg-card p-4 sm:p-5 shadow-[4px_4px_0_var(--border)]">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => navigate('/app/exams')}
+                className="h-7 px-2 text-xs font-black"
+              >
+                <ArrowLeft size={14} className="mr-1" /> Danh sách đề
+              </Button>
+              <span className="text-muted-foreground font-bold">/</span>
+              <span className="text-xs font-black uppercase text-secondary">
+                {activeSectionIndex + 1}/{sections.length} · {activeSection.title}
+              </span>
+            </div>
+
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight leading-snug">
+              {getExamTitle(attemptDetail.attempt.exam_snapshot)}
+            </h1>
+          </div>
+
+          {/* Right Header Controls: Autosave Status, Questions Progress, & Timer */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Live Autosave Indicator */}
+            <div className="hidden sm:flex items-center gap-1.5 border border-border bg-muted/60 px-2.5 py-1 text-xs font-black rounded-sm shadow-[1px_1px_0_var(--border)]">
+              <CheckCircle2 size={14} className="text-secondary" />
+              <span>Đã tự động lưu</span>
+            </div>
+
+            {/* Total Questions Counter */}
+            {totalStats.totalQuestions > 0 && (
+              <div className="border-2 border-border bg-card px-3 py-1 text-xs font-black shadow-[2px_2px_0_var(--border)] flex items-center gap-1.5">
+                <ListChecks size={14} className="text-secondary" />
+                <span>
+                  Đã làm: {totalStats.answeredQuestions}/{totalStats.totalQuestions}
+                </span>
+              </div>
+            )}
+
+            {/* Neobrutalist Timer Badge */}
+            <div
+              className={`border-2 border-border px-3 py-1.5 font-mono text-lg font-black shadow-[3px_3px_0_var(--border)] flex items-center gap-2 ${
+                timer.isOvertime
+                  ? 'bg-danger text-white animate-pulse'
+                  : 'bg-primary text-primary-foreground'
+              }`}
+            >
+              <Clock3 size={18} />
+              <span>
+                {timer.isOvertime
+                  ? `+${formatExamDuration(timer.overtimeSeconds)}`
+                  : formatExamDuration(timer.remainingSeconds)}
+              </span>
+            </div>
+          </div>
+        </div>
       </header>
 
-      {timer.isOvertime && <div className="neo-card flex items-start gap-3 border-danger bg-red-50 p-4"><AlertTriangle className="shrink-0 text-danger" /><div><p className="font-black">Bạn đang làm quá giờ</p><p className="text-sm font-semibold">Bạn vẫn có thể tiếp tục làm và nộp bài như bình thường.</p></div></div>}
+      {/* Overtime Friendly Alert Banner */}
+      {timer.isOvertime && (
+        <div className="neo-card flex items-start gap-3 border-danger bg-red-50 p-4 shadow-[3px_3px_0_var(--border)]">
+          <AlertTriangle className="shrink-0 text-danger mt-0.5" size={20} />
+          <div>
+            <p className="font-black text-danger">Bạn đang làm quá giờ</p>
+            <p className="text-sm font-semibold text-foreground/80">
+              Đây là bài thi luyện tập; bạn vẫn có thể thoải mái tiếp tục hoàn thành và nộp bài bình thường.
+            </p>
+          </div>
+        </div>
+      )}
 
-      <div className="grid gap-5 lg:grid-cols-[220px_1fr]">
-        <aside className="neo-card h-fit p-3"><p className="px-2 pb-2 text-xs font-black uppercase">Các phần</p><div className="space-y-2">{sections.map((section, index) => <Button key={section.source_key} variant={index === activeSectionIndex ? 'primary' : 'ghost'} className="w-full justify-start text-left" onClick={() => selectSection(index)}>{index + 1}. {section.title}</Button>)}</div></aside>
+      {/* Mobile Tab Toggle when Passage exists */}
+      {hasPassageOrContent && (
+        <div className="lg:hidden flex border-b-2 border-border gap-2 pb-1">
+          <Button
+            variant={mobilePane === 'content' ? 'primary' : 'ghost'}
+            onClick={() => setMobilePane('content')}
+            className="flex-1 font-black"
+          >
+            <BookOpen size={16} /> Đề bài / Bài đọc
+          </Button>
+          <Button
+            variant={mobilePane === 'questions' ? 'primary' : 'ghost'}
+            onClick={() => setMobilePane('questions')}
+            className="flex-1 font-black"
+          >
+            <FileEdit size={16} /> Phần làm bài ({activeResource.questions?.length ?? 1})
+          </Button>
+        </div>
+      )}
 
-        <main ref={mainRef} className="neo-card p-5 sm:p-7">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-black uppercase text-secondary">{activeSection.skill}</p><h2 className="text-2xl font-black">{activeSection.title}</h2></div>{activeResource.audio_url && <audio controls src={activeResource.audio_url} aria-label="Phát audio đề bài" />}</div>
-          {activeResource.instructions && <p className="mb-4 whitespace-pre-wrap font-semibold">{activeResource.instructions}</p>}
-          {activeResource.passage && <div className="mb-5 whitespace-pre-wrap border-2 border-border bg-muted p-4 font-semibold">{activeResource.passage}</div>}
-          {!isPrompt && activeResource.content && <div className="mb-5 whitespace-pre-wrap font-semibold">{activeResource.content}</div>}
+      {/* Main 3-Column Split Workspace Layout */}
+      <div className="grid gap-5 lg:grid-cols-12 items-start">
+        {/* Left Column: Section Navigation & Question Jumper (3 cols) */}
+        <aside className="lg:col-span-3 space-y-4">
+          <div className="neo-card p-4 bg-card space-y-3 shadow-[3px_3px_0_var(--border)]">
+            <div className="flex items-center justify-between border-b-2 border-border pb-2">
+              <span className="text-xs font-black uppercase text-muted-foreground flex items-center gap-1.5">
+                <Layers size={14} /> Các phần thi ({sections.length})
+              </span>
+            </div>
 
-          {isPrompt ? <div className="space-y-5"><div className="border-2 border-border bg-primary/15 p-4 font-semibold whitespace-pre-wrap">{activeResource.prompt}</div><div><Label htmlFor="practice-draft">Bản nháp hiện tại</Label><Textarea id="practice-draft" value={draftContent} disabled={isSubmitted} onChange={(event) => setDraftContent(event.target.value)} placeholder="Viết bài của bạn ở đây…" className="mt-2 min-h-64" /><div className="mt-2 flex items-center justify-between gap-3"><span className="text-sm font-bold text-muted-foreground">{draftContent.trim() ? draftContent.trim().split(/\s+/u).length : 0} từ · Tự lưu khi bạn dừng gõ</span><Button onClick={() => saveDraft.mutate()} disabled={isSubmitted || !draftContent.trim() || saveDraft.isPending}><Save size={17} />Lưu thành phiên bản</Button></div></div><section className="border-t-2 border-border pt-5"><h3 className="text-lg font-black">So sánh phiên bản</h3><p className="mt-1 text-sm font-semibold text-muted-foreground">Chọn hai bản đã lưu để xem song song.</p>{draftsQuery.isLoading ? <p className="mt-3 text-sm font-bold">Đang tải phiên bản…</p> : drafts.length === 0 ? <p className="mt-3 text-sm font-bold">Chưa có phiên bản nào được lưu.</p> : <div className="mt-4 space-y-4"><div className="grid gap-3 sm:grid-cols-2"><Select value={compareLeft} onChange={setCompareLeft} options={versionOptions} placeholder="Chọn bản bên trái" /><Select value={compareRight} onChange={setCompareRight} options={versionOptions} placeholder="Chọn bản bên phải" /></div><div className="grid gap-4 md:grid-cols-2">{[findVersion(compareLeft), findVersion(compareRight)].map((version, index) => <article key={index} className="min-h-40 border-2 border-border bg-muted p-4"><p className="mb-2 text-sm font-black">{version ? `Phiên bản ${version.version_number}` : 'Chưa chọn phiên bản'}</p><p className="whitespace-pre-wrap text-sm font-semibold">{version?.content ?? '—'}</p></article>)}</div></div>}</section></div> : <div className="space-y-5">{(activeResource.questions ?? []).map((question, index) => <section key={question.source_key} className="border-2 border-border p-4"><p className="text-sm font-black text-secondary">Câu {question.source_number ?? index + 1}</p>{question.image_url && <img src={question.image_url} alt={`Hình minh họa câu ${question.source_number ?? index + 1}`} className="my-3 max-h-64 max-w-full border-2 border-border object-contain" />}<p className="mt-1 whitespace-pre-wrap font-black">{question.prompt}</p>{(question.options?.length ?? 0) > 0 ? <div className="mt-3 grid gap-2">{question.options?.map((option) => <Button key={option.key} variant={selectedAnswers[question.source_key] === option.key ? 'secondary' : 'ghost'} disabled={isSubmitted} className="justify-start text-left" onClick={() => setSelectedAnswers((answers) => ({ ...answers, [question.source_key]: option.key }))}>{option.key}. {option.text}</Button>)}</div> : <div className="mt-3"><Label htmlFor={`answer-${question.source_key}`}>Câu trả lời</Label><Input id={`answer-${question.source_key}`} value={selectedAnswers[question.source_key] ?? ''} disabled={isSubmitted} onChange={(event) => setSelectedAnswers((answers) => ({ ...answers, [question.source_key]: event.target.value }))} placeholder={answerPlaceholder(question)} className="mt-2 min-w-52" /></div>}</section>)}</div>}
+            {/* Section List Buttons with Status Indicators */}
+            <div className="space-y-2">
+              {sections.map((section, index) => {
+                const isActive = index === activeSectionIndex
+                const questions = section.resource.questions ?? []
+                const answered = questions.filter(
+                  (q) => selectedAnswers[q.source_key] && selectedAnswers[q.source_key].trim() !== '',
+                ).length
+                const isSectionComplete =
+                  section.resource_type === 'prompt'
+                    ? Boolean(activeProgress?.progress.content)
+                    : questions.length > 0 && answered === questions.length
 
-          <div className="mt-8 flex flex-wrap justify-between gap-3 border-t-2 border-border pt-5"><Button variant="ghost" disabled={activeSectionIndex === 0} onClick={() => selectSection(activeSectionIndex - 1)}><ChevronLeft size={17} />Phần trước</Button><div className="flex gap-3"><Button variant="danger" disabled={isSubmitted || submitAttempt.isPending} onClick={() => setSubmitConfirmationOpen(true)}><Send size={17} />Nộp bài & xem đáp án</Button><Button variant="secondary" disabled={activeSectionIndex === sections.length - 1} onClick={() => selectSection(activeSectionIndex + 1)}>Phần tiếp<ChevronRight size={17} /></Button></div></div>
-          {!isSubmitted && <p className="mt-3 text-sm font-bold text-muted-foreground">Tiến độ được tự lưu sau khi bạn dừng thao tác.</p>}
+                return (
+                  <button
+                    key={section.source_key}
+                    type="button"
+                    onClick={() => selectSection(index)}
+                    className={`w-full p-2.5 text-left border-2 border-border font-black text-sm flex items-center justify-between transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground shadow-[3px_3px_0_var(--border)]'
+                        : 'bg-background hover:bg-muted/50 text-foreground'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0 pr-1">
+                      <span className="shrink-0 text-xs font-black">{index + 1}.</span>
+                      <span className="truncate">{section.title}</span>
+                    </div>
+
+                    <div className="shrink-0">
+                      {isSectionComplete ? (
+                        <span className="bg-secondary text-secondary-foreground text-[10px] font-black px-1.5 py-0.5 rounded-xs flex items-center gap-1">
+                          <Check size={10} /> Đủ
+                        </span>
+                      ) : (
+                        section.resource_type === 'activity' &&
+                        questions.length > 0 && (
+                          <span className="text-[10px] font-black text-muted-foreground bg-muted px-1.5 py-0.5 border border-border">
+                            {answered}/{questions.length}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Question Quick-Jumper Grid for Active Activity Section */}
+          {!isPrompt && (activeResource.questions?.length ?? 0) > 0 && (
+            <div className="neo-card p-4 bg-card space-y-3 shadow-[3px_3px_0_var(--border)] hidden lg:block">
+              <span className="text-xs font-black uppercase text-muted-foreground flex items-center gap-1.5 border-b-2 border-border pb-2">
+                <ListChecks size={14} /> Ô nhảy nhanh câu hỏi
+              </span>
+
+              <div className="grid grid-cols-4 gap-2 pt-1">
+                {(activeResource.questions ?? []).map((q, idx) => {
+                  const isAnswered = Boolean(
+                    selectedAnswers[q.source_key] && selectedAnswers[q.source_key].trim() !== '',
+                  )
+                  return (
+                    <button
+                      key={q.source_key}
+                      type="button"
+                      onClick={() => scrollToQuestion(q.source_key)}
+                      className={`p-2 text-xs font-black border-2 border-border text-center transition-all cursor-pointer ${
+                        isAnswered
+                          ? 'bg-secondary text-secondary-foreground shadow-[2px_2px_0_var(--border)]'
+                          : 'bg-background hover:bg-muted text-foreground'
+                      }`}
+                    >
+                      {q.source_number ?? idx + 1}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </aside>
+
+        {/* Middle Column: Passage / Prompt / Listening Media Pane (4 cols on desktop) */}
+        {hasPassageOrContent && (
+          <aside
+            className={`lg:col-span-4 space-y-4 sticky top-40 max-h-[calc(100vh-180px)] overflow-y-auto ${
+              mobilePane === 'questions' ? 'hidden lg:block' : 'block'
+            }`}
+          >
+            <div className="neo-card p-5 bg-card space-y-4 shadow-[3px_3px_0_var(--border)] border-2 border-border">
+              {/* Header Badge */}
+              <div className="flex items-center justify-between border-b-2 border-border pb-3">
+                <div className="flex items-center gap-2">
+                  <SkillIcon size={18} className="text-secondary" />
+                  <span className="text-xs font-black uppercase tracking-wider text-secondary">
+                    {skillBadge.label}
+                  </span>
+                </div>
+                <span className="text-xs font-black text-muted-foreground uppercase bg-muted px-2 py-0.5 border border-border">
+                  Đề bài & Tư liệu
+                </span>
+              </div>
+
+              {/* Styled Audio Player when present */}
+              {activeResource.audio_url && (
+                <div className="border-2 border-border bg-muted p-3 space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-black text-secondary">
+                    <Headphones size={15} />
+                    <span>File nghe của phần này:</span>
+                  </div>
+                  <audio controls src={activeResource.audio_url} className="w-full h-10" aria-label="Phát audio đề bài" />
+                </div>
+              )}
+
+              {/* Instructions */}
+              {activeResource.instructions && (
+                <div className="space-y-1">
+                  <h4 className="text-xs font-black uppercase text-muted-foreground">Hướng dẫn làm bài</h4>
+                  <p className="font-semibold text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
+                    {activeResource.instructions}
+                  </p>
+                </div>
+              )}
+
+              {/* Reading Passage */}
+              {activeResource.passage && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-black uppercase text-muted-foreground">Bài đọc (Passage)</h4>
+                  <div className="border-2 border-border bg-muted/50 p-4 font-semibold text-sm leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
+                    {activeResource.passage}
+                  </div>
+                </div>
+              )}
+
+              {/* Activity or Prompt Content */}
+              {!isPrompt && activeResource.content && (
+                <div className="border-2 border-border bg-muted/40 p-4 font-semibold text-sm leading-relaxed whitespace-pre-wrap">
+                  {activeResource.content}
+                </div>
+              )}
+
+              {/* Prompt Text for Writing / Speaking */}
+              {isPrompt && activeResource.prompt && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-black uppercase text-secondary">Đề bài tự luận</h4>
+                  <div className="border-2 border-border bg-primary/20 p-4 font-semibold text-base leading-relaxed whitespace-pre-wrap shadow-[2px_2px_0_var(--border)]">
+                    {activeResource.prompt}
+                  </div>
+                </div>
+              )}
+            </div>
+          </aside>
+        )}
+
+        {/* Right Column: Questions List OR Writing Workspace (5 or 9 cols on desktop) */}
+        <main
+          ref={mainRef}
+          className={`${
+            hasPassageOrContent ? 'lg:col-span-5' : 'lg:col-span-9'
+          } ${mobilePane === 'content' && hasPassageOrContent ? 'hidden lg:block' : 'block'}`}
+        >
+          <div className="neo-card p-5 sm:p-7 bg-card space-y-6 shadow-[4px_4px_0_var(--border)]">
+            {/* Section Header */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-border pb-4">
+              <div>
+                <span className="text-xs font-black uppercase text-secondary flex items-center gap-1.5">
+                  <SkillIcon size={14} /> {skillBadge.label}
+                </span>
+                <h2 className="text-2xl font-black mt-0.5">{activeSection.title}</h2>
+              </div>
+            </div>
+
+            {/* Prompt Mode: Writing / Speaking Workspace */}
+            {isPrompt ? (
+              <div className="space-y-6">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="practice-draft" className="font-black text-sm">
+                      Bản nháp bài làm của bạn
+                    </Label>
+                    <span className="text-xs font-black text-secondary bg-muted px-2 py-0.5 border border-border">
+                      {draftContent.trim() ? draftContent.trim().split(/\s+/u).length : 0} từ
+                    </span>
+                  </div>
+
+                  <Textarea
+                    id="practice-draft"
+                    value={draftContent}
+                    disabled={isSubmitted}
+                    onChange={(e) => setDraftContent(e.target.value)}
+                    placeholder="Nhập nội dung bài viết của bạn ở đây..."
+                    className="mt-1 min-h-72 font-semibold text-base leading-relaxed p-4 border-2 border-border focus:ring-2 focus:ring-secondary"
+                  />
+
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      Tự động lưu sau khi dừng thao tác gõ.
+                    </span>
+
+                    <Button
+                      onClick={() => saveDraft.mutate()}
+                      disabled={isSubmitted || !draftContent.trim() || saveDraft.isPending}
+                      variant="primary"
+                      className="font-black flex items-center gap-2"
+                    >
+                      <Save size={16} />
+                      <span>Lưu thành phiên bản</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Draft Versions Comparison Section */}
+                <section className="border-t-2 border-border pt-5 space-y-4">
+                  <div>
+                    <h3 className="text-lg font-black flex items-center gap-2">
+                      <FileEdit size={18} className="text-secondary" />
+                      <span>So sánh các phiên bản bản nháp</span>
+                    </h3>
+                    <p className="text-xs font-semibold text-muted-foreground mt-0.5">
+                      Chọn hai phiên bản bạn đã lưu để đối chiếu song song.
+                    </p>
+                  </div>
+
+                  {draftsQuery.isLoading ? (
+                    <p className="text-sm font-bold text-muted-foreground animate-pulse">
+                      Đang tải phiên bản...
+                    </p>
+                  ) : drafts.length === 0 ? (
+                    <p className="text-xs font-bold text-muted-foreground bg-muted p-3 border border-border">
+                      Chưa có phiên bản nào được lưu. Hãy bấm &quot;Lưu thành phiên bản&quot; ở trên.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Select
+                          value={compareLeft}
+                          onChange={setCompareLeft}
+                          options={versionOptions}
+                          placeholder="Chọn bản bên trái"
+                        />
+                        <Select
+                          value={compareRight}
+                          onChange={setCompareRight}
+                          options={versionOptions}
+                          placeholder="Chọn bản bên phải"
+                        />
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {[findVersion(compareLeft), findVersion(compareRight)].map((version, index) => (
+                          <article key={index} className="min-h-40 border-2 border-border bg-muted/60 p-4 space-y-2">
+                            <p className="text-xs font-black uppercase text-secondary border-b border-border pb-1">
+                              {version ? `Phiên bản ${version.version_number} (${version.word_count} từ)` : 'Chưa chọn phiên bản'}
+                            </p>
+                            <p className="whitespace-pre-wrap text-xs font-semibold leading-relaxed text-foreground">
+                              {version?.content ?? '—'}
+                            </p>
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </section>
+              </div>
+            ) : (
+              /* Activity Mode: Questions List with Neobrutalist Option Cards */
+              <div className="space-y-6">
+                {(activeResource.questions ?? []).map((question, index) => {
+                  const qNumber = question.source_number ?? String(index + 1)
+                  const hasSelected = Boolean(selectedAnswers[question.source_key])
+
+                  return (
+                    <section
+                      key={question.source_key}
+                      ref={(el) => {
+                        questionRefs.current[question.source_key] = el
+                      }}
+                      className={`neo-card p-5 bg-card space-y-4 border-2 transition-all shadow-[3px_3px_0_var(--border)] ${
+                        hasSelected ? 'border-secondary' : 'border-border'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between border-b border-border pb-2">
+                        <span className="text-xs font-black uppercase tracking-wider text-secondary flex items-center gap-1.5">
+                          <HelpCircle size={14} /> Câu {qNumber}
+                        </span>
+                        {hasSelected && (
+                          <span className="text-[10px] font-black bg-secondary text-secondary-foreground px-2 py-0.5 rounded-xs flex items-center gap-1">
+                            <Check size={11} /> Đã chọn
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Question Image */}
+                      {question.image_url && (
+                        <img
+                          src={question.image_url}
+                          alt={`Hình minh họa câu ${qNumber}`}
+                          className="my-3 max-h-64 max-w-full border-2 border-border object-contain"
+                        />
+                      )}
+
+                      {/* Question Prompt */}
+                      <p className="whitespace-pre-wrap text-base font-black leading-snug">
+                        {question.prompt}
+                      </p>
+
+                      {/* Options List (Multiple Choice) */}
+                      {(question.options?.length ?? 0) > 0 ? (
+                        <div className="grid gap-2.5 pt-1">
+                          {question.options?.map((option) => {
+                            const isOptionSelected = selectedAnswers[question.source_key] === option.key
+                            return (
+                              <button
+                                key={option.key}
+                                type="button"
+                                disabled={isSubmitted}
+                                onClick={() =>
+                                  setSelectedAnswers((prev) => ({
+                                    ...prev,
+                                    [question.source_key]: option.key,
+                                  }))
+                                }
+                                className={`w-full p-3 text-left border-2 border-border font-black text-sm flex items-start gap-3 transition-all cursor-pointer ${
+                                  isOptionSelected
+                                    ? 'bg-primary text-primary-foreground shadow-[3px_3px_0_var(--border)]'
+                                    : 'bg-background hover:bg-muted/60 text-foreground'
+                                }`}
+                              >
+                                <span
+                                  className={`shrink-0 w-6 h-6 border-2 border-border flex items-center justify-center text-xs font-black rounded-xs ${
+                                    isOptionSelected
+                                      ? 'bg-secondary text-secondary-foreground'
+                                      : 'bg-muted text-foreground'
+                                  }`}
+                                >
+                                  {option.key}
+                                </span>
+                                <span className="pt-0.5 leading-snug">{option.text}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        /* Fill Blank / Text Input Question */
+                        <div className="pt-2">
+                          <Label htmlFor={`answer-${question.source_key}`} className="font-black text-xs">
+                            Đáp án của bạn
+                          </Label>
+                          <Input
+                            id={`answer-${question.source_key}`}
+                            value={selectedAnswers[question.source_key] ?? ''}
+                            disabled={isSubmitted}
+                            onChange={(e) =>
+                              setSelectedAnswers((prev) => ({
+                                ...prev,
+                                [question.source_key]: e.target.value,
+                              }))
+                            }
+                            placeholder={answerPlaceholder(question)}
+                            className="mt-1 font-bold text-sm"
+                          />
+                        </div>
+                      )}
+                    </section>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Bottom Footer Navigation Bar */}
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t-2 border-border pt-5">
+              <Button
+                variant="ghost"
+                disabled={activeSectionIndex === 0}
+                onClick={() => selectSection(activeSectionIndex - 1)}
+                className="font-black flex items-center gap-1"
+              >
+                <ChevronLeft size={17} />
+                <span>Phần trước</span>
+              </Button>
+
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="danger"
+                  disabled={isSubmitted || submitAttempt.isPending}
+                  onClick={() => setSubmitConfirmationOpen(true)}
+                  className="font-black flex items-center gap-2"
+                >
+                  <Send size={17} />
+                  <span>Nộp bài & xem đáp án</span>
+                </Button>
+
+                <Button
+                  variant="secondary"
+                  disabled={activeSectionIndex === sections.length - 1}
+                  onClick={() => selectSection(activeSectionIndex + 1)}
+                  className="font-black flex items-center gap-1"
+                >
+                  <span>Phần tiếp</span>
+                  <ChevronRight size={17} />
+                </Button>
+              </div>
+            </div>
+
+            {!isSubmitted && (
+              <p className="text-center text-xs font-semibold text-muted-foreground">
+                Tiến độ câu trả lời được tự động lưu sau khi bạn dừng thao tác.
+              </p>
+            )}
+          </div>
         </main>
       </div>
-      <ConfirmModal open={submitConfirmationOpen} onCancel={() => setSubmitConfirmationOpen(false)} onConfirm={() => submitAttempt.mutate()} title="Nộp bài thi thử?" description="Bài sẽ được chấm các câu khách quan và mở phần đáp án, dịch, giải thích hiện có." confirmLabel="Nộp bài" cancelLabel="Tiếp tục làm" confirmDisabled={submitAttempt.isPending} />
+
+      {/* Submission Confirmation Dialog */}
+      <ConfirmModal
+        open={submitConfirmationOpen}
+        onCancel={() => setSubmitConfirmationOpen(false)}
+        onConfirm={() => submitAttempt.mutate()}
+        title="Xác nhận nộp bài thi thử B1?"
+        description={`Bạn đã làm ${totalStats.answeredQuestions}/${totalStats.totalQuestions} câu hỏi. Hệ thống sẽ tự động chấm điểm các câu khách quan và mở phần lời giải chi tiết.`}
+        confirmLabel="Nộp bài ngay"
+        cancelLabel="Tiếp tục làm"
+        confirmDisabled={submitAttempt.isPending}
+      />
     </div>
   )
 }
