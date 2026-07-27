@@ -162,8 +162,9 @@ export function ExamResultPage() {
   const incorrectCount = reviews.filter((r) => !r.is_correct && r.user_answer?.trim()).length
   const unansweredCount = reviews.filter((r) => !r.user_answer?.trim()).length
 
-  // Build a map of question options from exam_snapshot if available
+  // Build maps of question options and images from exam_snapshot if available
   const questionOptionsMap: Record<string, Array<{ key: string; text: string }>> = {}
+  const questionImageMap: Record<string, string | null> = {}
   if (attempt?.exam_snapshot && typeof attempt.exam_snapshot === 'object') {
     const snapshot = attempt.exam_snapshot as Record<string, unknown>
     const sectionsList = snapshot.sections
@@ -172,8 +173,13 @@ export function ExamResultPage() {
         const res = sec?.resource as Record<string, unknown> | undefined
         if (res && Array.isArray(res.questions)) {
           res.questions.forEach((q: Record<string, unknown>) => {
-            if (typeof q.source_key === 'string' && Array.isArray(q.options)) {
-              questionOptionsMap[q.source_key] = q.options as Array<{ key: string; text: string }>
+            if (typeof q.source_key === 'string') {
+              if (Array.isArray(q.options)) {
+                questionOptionsMap[q.source_key] = q.options as Array<{ key: string; text: string }>
+              }
+              if (typeof q.image_url === 'string' && q.image_url.trim() !== '') {
+                questionImageMap[q.source_key] = q.image_url
+              }
             }
           })
         }
@@ -499,6 +505,10 @@ export function ExamResultPage() {
                   {group.reviews.map((review, index) => {
                     const parsedTransformation = parseTransformationPrompt(review.question)
                     const questionOptions = questionOptionsMap[review.question_source_key] ?? []
+                    const reviewRecord = review as unknown as Record<string, unknown>
+                    const questionImageUrl =
+                      questionImageMap[review.question_source_key] ??
+                      (typeof reviewRecord.image_url === 'string' ? reviewRecord.image_url : null)
 
                     return (
                       <article
@@ -572,6 +582,17 @@ export function ExamResultPage() {
                           <h3 className="text-base font-black leading-snug text-foreground whitespace-pre-wrap">
                             {review.question}
                           </h3>
+                        )}
+
+                        {/* Question Image (for Signs & visual questions) */}
+                        {questionImageUrl && (
+                          <div className="neo-card p-2 bg-white border-2 border-border max-w-sm my-2 shadow-[2px_2px_0_var(--border)]">
+                            <img
+                              src={questionImageUrl}
+                              alt={`Biển báo / Hình ảnh câu ${index + 1}`}
+                              className="max-h-64 w-full object-contain"
+                            />
+                          </div>
                         )}
 
                         {/* Requirement #1: Options List with Yellow Highlight on Correct Answer (Matching PDF!) */}
