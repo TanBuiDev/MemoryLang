@@ -249,7 +249,7 @@ function ExactTextTokens({ tokens, missing }: { tokens: WritingComparisonToken[]
           className={token.status === 'same'
             ? ''
             : missing
-              ? 'bg-yellow-300 px-0.5 text-black underline decoration-black decoration-2 underline-offset-2'
+              ? 'bg-yellow-300 px-0.5 text-black underline decoration-black decoration-2 underline-offset-4'
               : 'bg-danger px-0.5 text-white line-through'}
         >
           {token.value}
