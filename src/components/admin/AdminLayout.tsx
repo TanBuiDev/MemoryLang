@@ -33,6 +33,7 @@ export function AdminLayout() {
     if (path.includes('/vocabulary')) return 'Thư viện Từ vựng'
     if (path.includes('/grammar')) return 'Quản lý Ngữ pháp'
     if (path.includes('/listening')) return 'Quản lý Luyện nghe'
+    if (path.includes('/exam-media')) return 'Media đề B1'
     if (path.includes('/storage')) return 'Quản lý Storage'
     if (path.includes('/functions')) return 'Edge Functions'
     if (path.includes('/i18n')) return 'Quản lý i18n'

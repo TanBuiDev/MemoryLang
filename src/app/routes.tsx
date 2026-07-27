@@ -69,6 +69,7 @@ const AdminReadingListPage = lazyWithChunkRecovery(() => import('@/pages/admin/A
 const AdminReadingEditorPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminReadingEditorPage'))
 const AdminExamsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminExamsPage'))
 const AdminExamBuilderPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminExamBuilderPage'))
+const AdminExamMediaPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminExamMediaPage'))
 const ExamHubPage = lazyWithChunkRecovery(() => import('@/pages/exams/ExamHubPage').then(m => ({ default: m.ExamHubPage })))
 const ExamAttemptPage = lazyWithChunkRecovery(() => import('@/pages/exams/ExamAttemptPage').then(m => ({ default: m.ExamAttemptPage })))
 
@@ -279,6 +280,7 @@ export const router = createBrowserRouter([
                     ),
                   },
                   { path: 'listening', element: <AdminListeningPage /> },
+                  { path: 'exam-media', element: <AdminExamMediaPage /> },
                   {
                     path: 'reading',
                     element: (
