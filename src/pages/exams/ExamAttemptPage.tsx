@@ -43,6 +43,7 @@ interface SnapshotQuestion {
 
 interface SnapshotResource {
   id: string
+  activity_type?: string
   prompt?: string
   instructions?: string | null
   content?: string | null
@@ -136,6 +137,9 @@ export function ExamAttemptPage() {
     (section) => section.exam_section_source_key === activeSection?.source_key,
   )
   const isPrompt = activeSection?.resource_type === 'prompt'
+  const isFillBlankActivity =
+    activeResource?.activity_type === 'fill_blank' ||
+    (activeResource?.questions ?? []).every((q) => !q.options || q.options.length === 0)
   const timer = attemptDetail
     ? getAttemptTimerState(
         attemptDetail.attempt.started_at,
@@ -299,6 +303,15 @@ export function ExamAttemptPage() {
     onError: () =>
       showToast({ type: 'error', title: 'Chưa thể nộp bài', message: 'Vui lòng kiểm tra lại kết nối.' }),
   })
+
+  const cleanResourceText = (text: string | null | undefined): string => {
+    if (!text) return ''
+    return text
+      .replace(/Source numbers \d+(?:-\d+)? are included because their answers are highlighted in the PDF\.?/gi, '')
+      .replace(/Source numbers \d+(?:-\d+)? are excluded because the PDF provides no answer annotation\.?/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+  }
 
   const renderContentWithInlineGaps = (
     text: string,
@@ -613,9 +626,9 @@ export function ExamAttemptPage() {
             )}
 
             {/* Instructions */}
-            {activeResource.instructions && (
+            {cleanResourceText(activeResource.instructions) && (
               <div className="border-2 border-border bg-muted/40 p-4 font-semibold text-sm leading-relaxed whitespace-pre-wrap">
-                <p className="font-bold text-foreground">{activeResource.instructions}</p>
+                <p className="font-bold text-foreground">{cleanResourceText(activeResource.instructions)}</p>
               </div>
             )}
 
@@ -626,13 +639,13 @@ export function ExamAttemptPage() {
                   <BookOpen size={14} />
                   <span>Bài đọc (Passage)</span>
                 </div>
-                {/(\(\d+\)\s*_{2,})/.test(activeResource.passage) ? (
+                {isFillBlankActivity && /(\(\d+\)\s*_{2,})/.test(activeResource.passage) ? (
                   renderContentWithInlineGaps(
                     activeResource.passage,
                     activeResource.questions ?? [],
                   )
                 ) : (
-                  <div className="border-2 border-border bg-muted/60 p-5 font-semibold text-base leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto shadow-[2px_2px_0_var(--border)]">
+                  <div className="border-2 border-border bg-muted/60 p-5 sm:p-6 font-semibold text-base leading-relaxed whitespace-pre-wrap shadow-[2px_2px_0_var(--border)]">
                     {activeResource.passage}
                   </div>
                 )}
@@ -642,7 +655,7 @@ export function ExamAttemptPage() {
             {/* Activity or Prompt Content */}
             {!isPrompt && activeResource.content && (
               <div>
-                {/(\(\d+\)\s*_{2,})/.test(activeResource.content) ? (
+                {isFillBlankActivity && /(\(\d+\)\s*_{2,})/.test(activeResource.content) ? (
                   renderContentWithInlineGaps(
                     activeResource.content,
                     activeResource.questions ?? [],
@@ -658,55 +671,117 @@ export function ExamAttemptPage() {
             {/* Prompt Text & GUIDELINES for Writing / Speaking */}
             {isPrompt && activeResource.prompt && (
               <div className="space-y-4">
-                {/* Guidelines / Subscale Scoring Rubric Card */}
-                <div className="border-2 border-border bg-card shadow-[3px_3px_0_var(--border)] overflow-hidden">
-                  <div className="bg-muted p-3 border-b-2 border-border font-black text-xs uppercase tracking-wider flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-secondary">
-                      <FileText size={15} /> GUIDELINES / TIÊU CHÍ CHẤM ĐIỂM (SUBSCALE)
-                    </span>
-                  </div>
+                {activeSection.skill === 'speaking' ? (
+                  /* Speaking Test Guidelines & Scoring Rubric Card */
+                  <div className="border-2 border-border bg-card shadow-[3px_3px_0_var(--border)] overflow-hidden">
+                    <div className="bg-muted p-3 border-b-2 border-border font-black text-xs uppercase tracking-wider flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-secondary">
+                        <Headphones size={15} /> SPEAKING TEST INSTRUCTIONS – CEFR B1
+                      </span>
+                    </div>
 
-                  <div className="p-4 space-y-3 text-xs font-semibold leading-relaxed">
-                    {/* Task Response */}
-                    <div className="border-2 border-border bg-muted/40 p-3 space-y-2">
-                      <p className="font-black text-xs uppercase text-foreground">1. Task Response (Yêu cầu bài viết)</p>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1 bg-background p-2.5 border border-border">
-                          <p className="font-bold text-secondary text-xs">Thư / Email (Letter/Email):</p>
-                          <ul className="list-disc list-inside space-y-1 text-muted-foreground text-[11px]">
-                            <li>Format of the letter/email is appropriate.</li>
-                            <li>Purpose of the letter/email is presented.</li>
-                            <li>Bullet points are presented, highlighted and extended.</li>
-                          </ul>
+                    <div className="p-4 space-y-4 text-xs font-semibold leading-relaxed">
+                      {/* Scoring Rubric Grid */}
+                      <div className="border-2 border-border bg-muted/40 p-3 space-y-2">
+                        <p className="font-black text-xs uppercase text-foreground">Thang điểm đánh giá (Tổng 20 điểm)</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center font-bold text-xs">
+                          <div className="border border-border bg-background p-2">
+                            <span className="text-secondary block font-black">Content</span>
+                            <span className="text-muted-foreground text-[11px]">6 điểm</span>
+                          </div>
+                          <div className="border border-border bg-background p-2">
+                            <span className="text-secondary block font-black">Grammar</span>
+                            <span className="text-muted-foreground text-[11px]">4 điểm</span>
+                          </div>
+                          <div className="border border-border bg-background p-2">
+                            <span className="text-secondary block font-black">Pronunciation</span>
+                            <span className="text-muted-foreground text-[11px]">5 điểm</span>
+                          </div>
+                          <div className="border border-border bg-background p-2">
+                            <span className="text-secondary block font-black">Fluency</span>
+                            <span className="text-muted-foreground text-[11px]">5 điểm</span>
+                          </div>
+                          <div className="border border-border bg-secondary text-secondary-foreground p-2 col-span-2 sm:col-span-1">
+                            <span className="block font-black">Tổng điểm</span>
+                            <span className="text-[11px]">20 điểm</span>
+                          </div>
                         </div>
-                        <div className="space-y-1 bg-background p-2.5 border border-border">
-                          <p className="font-bold text-secondary text-xs">Bài luận (Essay):</p>
-                          <ul className="list-disc list-inside space-y-1 text-muted-foreground text-[11px]">
-                            <li>Format: 3 main parts (Introduction, Body, Conclusion).</li>
-                            <li>Ideas are developed, extended and well supported.</li>
-                            <li>All issues in the question are answered well.</li>
-                          </ul>
+                      </div>
+
+                      {/* Test Phases Overview */}
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="border border-border bg-muted/20 p-2.5 space-y-1">
+                          <p className="font-black text-xs text-secondary">Phase 1: Topic Selection</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Chuẩn bị ý tưởng và ghi chú (khoảng 5 phút).
+                          </p>
+                        </div>
+                        <div className="border border-border bg-muted/20 p-2.5 space-y-1">
+                          <p className="font-black text-xs text-secondary">Phase 2: Interview (4 phút)</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Warm-up (1m) &bull; Topic discussion (2m) &bull; Further discussion (1m).
+                          </p>
+                        </div>
+                        <div className="border border-border bg-muted/20 p-2.5 space-y-1">
+                          <p className="font-black text-xs text-secondary">Phase 3: Closure</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Kết thúc phần thi nói và tổng kết điểm số.
+                          </p>
                         </div>
                       </div>
                     </div>
+                  </div>
+                ) : (
+                  /* Writing Guidelines / Subscale Scoring Rubric Card */
+                  <div className="border-2 border-border bg-card shadow-[3px_3px_0_var(--border)] overflow-hidden">
+                    <div className="bg-muted p-3 border-b-2 border-border font-black text-xs uppercase tracking-wider flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-secondary">
+                        <FileText size={15} /> GUIDELINES / TIÊU CHÍ CHẤM ĐIỂM (SUBSCALE)
+                      </span>
+                    </div>
 
-                    {/* Cohesion & Lexical */}
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div className="border-2 border-border bg-muted/30 p-2.5 space-y-1">
-                        <p className="font-black text-xs text-foreground">2. Cohesion & Coherence</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          The use of Conjunctions and Transitions to link ideas, sentences and phrases.
-                        </p>
+                    <div className="p-4 space-y-3 text-xs font-semibold leading-relaxed">
+                      {/* Task Response */}
+                      <div className="border-2 border-border bg-muted/40 p-3 space-y-2">
+                        <p className="font-black text-xs uppercase text-foreground">1. Task Response (Yêu cầu bài viết)</p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-1 bg-background p-2.5 border border-border">
+                            <p className="font-bold text-secondary text-xs">Thư / Email (Letter/Email):</p>
+                            <ul className="list-disc list-inside space-y-1 text-muted-foreground text-[11px]">
+                              <li>Format of the letter/email is appropriate.</li>
+                              <li>Purpose of the letter/email is presented.</li>
+                              <li>Bullet points are presented, highlighted and extended.</li>
+                            </ul>
+                          </div>
+                          <div className="space-y-1 bg-background p-2.5 border border-border">
+                            <p className="font-bold text-secondary text-xs">Bài luận (Essay):</p>
+                            <ul className="list-disc list-inside space-y-1 text-muted-foreground text-[11px]">
+                              <li>Format: 3 main parts (Introduction, Body, Conclusion).</li>
+                              <li>Ideas are developed, extended and well supported.</li>
+                              <li>All issues in the question are answered well.</li>
+                            </ul>
+                          </div>
+                        </div>
                       </div>
-                      <div className="border-2 border-border bg-muted/30 p-2.5 space-y-1">
-                        <p className="font-black text-xs text-foreground">3. Lexical Resource & Grammar</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          Academic words with correct spelling, different kinds of complex structures.
-                        </p>
+
+                      {/* Cohesion & Lexical */}
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <div className="border-2 border-border bg-muted/30 p-2.5 space-y-1">
+                          <p className="font-black text-xs text-foreground">2. Cohesion & Coherence</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            The use of Conjunctions and Transitions to link ideas, sentences and phrases.
+                          </p>
+                        </div>
+                        <div className="border-2 border-border bg-muted/30 p-2.5 space-y-1">
+                          <p className="font-black text-xs text-foreground">3. Lexical Resource & Grammar</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Academic words with correct spelling, different kinds of complex structures.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Prompt Text Box */}
                 <div className="space-y-2">
