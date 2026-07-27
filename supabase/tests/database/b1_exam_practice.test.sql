@@ -938,7 +938,11 @@ select extensions.lives_ok(
   'profile admins can delete practice content'
 );
 select extensions.is(
-  (select count(*) from public.practice_activities),
+  (
+    select count(*)
+    from public.practice_activities
+    where source_key in ('b1-grammar-published', 'b1-grammar-draft')
+  ),
   2::bigint,
   'profile admins can read both published and draft practice content'
 );

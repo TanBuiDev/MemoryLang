@@ -3,15 +3,23 @@ import { readFile, readdir } from 'node:fs/promises'
 import test from 'node:test'
 
 const migrations = await readdir(new URL('../supabase/migrations/', import.meta.url))
-const matches = migrations.filter((name) =>
+const adminMatches = migrations.filter((name) =>
   name.endsWith('_harden_admin_secret_vault_access.sql'))
+const poolMatches = migrations.filter((name) =>
+  name.endsWith('_harden_multi_key_pool_vault_access.sql'))
 
-assert.equal(matches.length, 1, 'expected exactly one admin vault hardening migration')
+assert.equal(adminMatches.length, 1, 'expected exactly one admin vault hardening migration')
+assert.equal(poolMatches.length, 1, 'expected exactly one key-pool hardening migration')
 
-const migration = await readFile(
-  new URL(`../supabase/migrations/${matches[0]}`, import.meta.url),
+const adminMigration = await readFile(
+  new URL(`../supabase/migrations/${adminMatches[0]}`, import.meta.url),
   'utf8',
 )
+const poolMigration = await readFile(
+  new URL(`../supabase/migrations/${poolMatches[0]}`, import.meta.url),
+  'utf8',
+)
+const migration = `${adminMigration}\n${poolMigration}`
 const normalized = migration.replace(/\s+/gu, ' ').trim()
 
 const adminRpcSignatures = [
@@ -45,6 +53,29 @@ function functionDefinition(name) {
   )
   return migration.match(pattern)?.[0] ?? ''
 }
+
+test('orders hardening after each migration that owns the referenced objects', () => {
+  const adminVersion = Number.parseInt(adminMatches[0].slice(0, 14), 10)
+  const keyPoolSchemaVersion = 20260727120000
+  const poolVersion = Number.parseInt(poolMatches[0].slice(0, 14), 10)
+
+  assert.ok(adminVersion < keyPoolSchemaVersion)
+  assert.ok(poolVersion > keyPoolSchemaVersion)
+  assert.doesNotMatch(adminMigration, /admin_key_pools|key_pool|get_active_keys/iu)
+
+  for (const signature of [
+    ...adminRpcSignatures.filter((signature) =>
+      /key_pool|active_vision/iu.test(signature)),
+    ...serviceRpcSignatures,
+  ]) {
+    const name = signature.slice(0, signature.indexOf('('))
+    assert.match(
+      poolMigration,
+      new RegExp(`create or replace function public\\.${escaped(name)}\\(`, 'iu'),
+      `${signature} must be owned by the post-key-pool hardening migration`,
+    )
+  }
+})
 
 test('removes user-editable JWT authorization from vault policies and helpers', () => {
   assert.ok(normalized.length > 0, 'hardening migration must not be empty')
@@ -134,7 +165,11 @@ test('keeps raw service key RPCs service-role only', () => {
 test('revokes direct secret-table access and preserves only required read paths', () => {
   assert.match(
     normalized,
-    /revoke all on table public[.]admin_system_secrets, public[.]admin_key_pools, public[.]admin_key_usage_logs, public[.]ai_model_configs from anon, authenticated;/iu,
+    /revoke all on table public[.]admin_system_secrets, public[.]admin_key_usage_logs, public[.]ai_model_configs from anon, authenticated;/iu,
+  )
+  assert.match(
+    normalized,
+    /revoke all on table public[.]admin_key_pools from anon, authenticated;/iu,
   )
   assert.match(
     normalized,
