@@ -1,4 +1,4 @@
-import { CheckCircle2, Languages, Lightbulb } from 'lucide-react'
+import { CheckCircle2, Languages, Lightbulb, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input, Label, Textarea } from '@/components/ui/input'
 import type { AdminExamContentQuestion } from '@/services/supabase/adminExamContent.service'
@@ -16,10 +16,11 @@ export interface EditableChoiceQuestion extends Omit<AdminExamContentQuestion, '
 interface ChoiceListEditorProps {
   questions: EditableChoiceQuestion[]
   onChange: (questions: EditableChoiceQuestion[]) => void
+  onRequestDeleteQuestion?: (question: EditableChoiceQuestion) => void
   disabled?: boolean
 }
 
-export function ChoiceListEditor({ questions, onChange, disabled = false }: ChoiceListEditorProps) {
+export function ChoiceListEditor({ questions, onChange, onRequestDeleteQuestion, disabled = false }: ChoiceListEditorProps) {
   const updateQuestion = (questionId: string, patch: Partial<EditableChoiceQuestion>) => {
     onChange(questions.map((question) => question.id === questionId ? { ...question, ...patch } : question))
   }
@@ -34,7 +35,10 @@ export function ChoiceListEditor({ questions, onChange, disabled = false }: Choi
         <article key={question.id} className="neo-card space-y-4 bg-muted/30 p-4 shadow-[2px_2px_0_var(--border)]">
           <div className="flex items-center justify-between gap-2">
             <h4 className="text-sm font-black">Câu {question.source_number ?? questionIndex + 1}</h4>
-            <span className="border border-border bg-background px-2 py-0.5 text-[11px] font-black">{question.source_key}</span>
+            <div className="flex items-center gap-2">
+              <span className="border border-border bg-background px-2 py-0.5 text-[11px] font-black">{question.source_key}</span>
+              {onRequestDeleteQuestion && <Button type="button" variant="danger" disabled={disabled} onClick={() => onRequestDeleteQuestion(question)} aria-label={`Xóa câu ${question.source_number ?? questionIndex + 1}`} className="min-h-8 px-2 text-xs"><Trash2 size={14} /></Button>}
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor={`prompt-${question.id}`}>Nội dung câu hỏi</Label>

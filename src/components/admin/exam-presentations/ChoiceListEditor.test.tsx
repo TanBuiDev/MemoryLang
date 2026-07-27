@@ -32,4 +32,14 @@ describe('ChoiceListEditor', () => {
       }),
     ]))
   })
+
+  it('delegates deleting a question to the builder confirmation flow', async () => {
+    const onRequestDeleteQuestion = vi.fn()
+    const user = userEvent.setup()
+    render(<ChoiceListEditor questions={initialQuestions} onChange={vi.fn()} onRequestDeleteQuestion={onRequestDeleteQuestion} />)
+
+    await user.click(screen.getByRole('button', { name: 'Xóa câu 1' }))
+
+    expect(onRequestDeleteQuestion).toHaveBeenCalledWith(initialQuestions[0])
+  })
 })

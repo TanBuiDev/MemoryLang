@@ -127,6 +127,7 @@ export function AdminB1ExamContentBuilderPage() {
   const [longFormValue, setLongFormValue] = useState<LongFormPromptValue>({ prompt: '', instructions: '' })
   const [pendingDeleteSampleId, setPendingDeleteSampleId] = useState<string | null>(null)
   const [pendingDeleteSectionId, setPendingDeleteSectionId] = useState<string | null>(null)
+  const [pendingDeleteQuestionId, setPendingDeleteQuestionId] = useState<string | null>(null)
   const [isCreateSectionOpen, setIsCreateSectionOpen] = useState(false)
   const [newSectionTitle, setNewSectionTitle] = useState('')
   const [newSectionSkill, setNewSectionSkill] = useState<ExamSkill>('grammar')
@@ -342,6 +343,20 @@ export function AdminB1ExamContentBuilderPage() {
     },
   })
 
+  const deleteQuestion = useMutation({
+    mutationFn: (questionId: string) => adminExamContentService.deleteQuestion(questionId),
+    onSuccess: async (_result, questionId) => {
+      setEditedQuestions((current) => current.filter((question) => question.id !== questionId))
+      setTransformationQuestions((current) => current.filter((question) => question.id !== questionId))
+      setInlineGapDraft((current) => current ? {
+        segments: current.segments.filter((segment) => segment.type !== 'gap' || segment.gapId !== questionId),
+        gaps: current.gaps.filter((gap) => gap.id !== questionId),
+      } : current)
+      setPendingDeleteQuestionId(null)
+      await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+    },
+  })
+
   const newSectionPresentationOptions = Object.values(PRESENTATION_REGISTRY)
     .filter((definition) => isPresentationReadyForPublication(definition.type)
       && (newSectionSkill === 'writing' || newSectionSkill === 'speaking'
@@ -475,13 +490,13 @@ export function AdminB1ExamContentBuilderPage() {
                 ))}
               </div>
               {['choice_list', 'boolean_list', 'image_choice_list', 'passage_questions', 'passage_choice_inline'].includes(presentationType) && (
-                <ChoiceListEditor questions={editedQuestions} onChange={setEditedQuestions} disabled={savePresentation.isPending || createQuestion.isPending} />
+                <ChoiceListEditor questions={editedQuestions} onChange={setEditedQuestions} onRequestDeleteQuestion={(question) => setPendingDeleteQuestionId(question.id)} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
               )}
               {(presentationType === 'passage_text_inline' || presentationType === 'passage_choice_inline') && inlineGapDraft && (
-                <InlineGapEditor draft={inlineGapDraft} onChange={setInlineGapDraft} disabled={savePresentation.isPending || createQuestion.isPending} />
+                <InlineGapEditor draft={inlineGapDraft} onChange={setInlineGapDraft} onRequestDeleteGap={setPendingDeleteQuestionId} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
               )}
               {presentationType === 'sentence_transformation' && (
-                <TransformationEditor questions={transformationQuestions} onChange={setTransformationQuestions} disabled={savePresentation.isPending || createQuestion.isPending} />
+                <TransformationEditor questions={transformationQuestions} onChange={setTransformationQuestions} onRequestDeleteQuestion={(question) => setPendingDeleteQuestionId(question.id)} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
               )}
               {(presentationType === 'long_form_prompt' || presentationType === 'speaking_script_prompt') && (
                 <>
@@ -544,6 +559,19 @@ export function AdminB1ExamContentBuilderPage() {
           if (pendingDeleteSectionId) deleteSection.mutate(pendingDeleteSectionId)
         }}
         onCancel={() => setPendingDeleteSectionId(null)}
+      />
+      <ConfirmModal
+        open={Boolean(pendingDeleteQuestionId)}
+        title="Xóa câu hỏi này?"
+        description="Câu hỏi sẽ bị xóa khỏi section nguồn. Attempt học viên đã bắt đầu vẫn giữ snapshot riêng."
+        confirmLabel={deleteQuestion.isPending ? 'Đang xóa...' : 'Xóa câu hỏi'}
+        cancelLabel="Giữ lại"
+        variant="danger"
+        confirmDisabled={deleteQuestion.isPending}
+        onConfirm={() => {
+          if (pendingDeleteQuestionId) deleteQuestion.mutate(pendingDeleteQuestionId)
+        }}
+        onCancel={() => setPendingDeleteQuestionId(null)}
       />
       <ConfirmModal
         open={isCreateSectionOpen}

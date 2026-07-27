@@ -308,6 +308,14 @@ export const adminExamContentService = {
     return data as AdminExamContentQuestion
   },
 
+  async deleteQuestion(questionId: string): Promise<void> {
+    const { error } = await supabase
+      .from('practice_questions')
+      .delete()
+      .eq('id', questionId)
+    if (error) throw error
+  },
+
   async updateQuestion(
     questionId: string,
     input: Partial<Pick<AdminExamContentQuestion, 'prompt' | 'options' | 'translation' | 'explanation' | 'accepted_answers'>>,

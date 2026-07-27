@@ -1,4 +1,5 @@
-import { Languages, Lightbulb } from 'lucide-react'
+import { Languages, Lightbulb, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Input, Label, Textarea } from '@/components/ui/input'
 
 export interface EditableTransformationQuestion {
@@ -33,10 +34,11 @@ function serializePrompt(fields: TransformationFields) {
 interface TransformationEditorProps {
   questions: EditableTransformationQuestion[]
   onChange: (questions: EditableTransformationQuestion[]) => void
+  onRequestDeleteQuestion?: (question: EditableTransformationQuestion) => void
   disabled?: boolean
 }
 
-export function TransformationEditor({ questions, onChange, disabled = false }: TransformationEditorProps) {
+export function TransformationEditor({ questions, onChange, onRequestDeleteQuestion, disabled = false }: TransformationEditorProps) {
   const update = (question: EditableTransformationQuestion, patch: Partial<EditableTransformationQuestion>) => {
     onChange(questions.map((item) => item.id === question.id ? { ...item, ...patch } : item))
   }
@@ -49,6 +51,7 @@ export function TransformationEditor({ questions, onChange, disabled = false }: 
     {questions.map((question, index) => {
       const fields = parsePrompt(question.prompt)
       return <article key={question.id} className="neo-card grid gap-3 bg-muted/30 p-4 shadow-[2px_2px_0_var(--border)] md:grid-cols-2">
+        {onRequestDeleteQuestion && <div className="flex justify-end md:col-span-2"><Button type="button" variant="danger" disabled={disabled} onClick={() => onRequestDeleteQuestion(question)} aria-label={`Xóa câu ${index + 1}`} className="min-h-8 px-2 text-xs"><Trash2 size={14} /></Button></div>}
         <div className="space-y-1.5 md:col-span-2"><Label htmlFor={`original-${question.id}`}>Câu gốc câu {index + 1}</Label><Textarea id={`original-${question.id}`} value={fields.original} disabled={disabled} onChange={(event) => updateField(question, { original: event.target.value })} /></div>
         <div className="space-y-1.5"><Label htmlFor={`keyword-${question.id}`}>Từ khóa câu {index + 1}</Label><Input id={`keyword-${question.id}`} value={fields.keyword} disabled={disabled} onChange={(event) => updateField(question, { keyword: event.target.value })} /></div>
         <div className="space-y-1.5"><Label htmlFor={`answer-${question.id}`}>Đáp án chấp nhận</Label><Input id={`answer-${question.id}`} value={question.acceptedAnswers.join(', ')} disabled={disabled} onChange={(event) => update(question, { acceptedAnswers: event.target.value.split(/[,;\n]/).map((x) => x.trim()).filter(Boolean) })} /></div>

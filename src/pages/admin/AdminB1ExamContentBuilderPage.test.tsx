@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,7 +9,7 @@ import { AdminB1ExamContentBuilderPage } from './AdminB1ExamContentBuilderPage'
 vi.mock('@/services/supabase/adminExamContent.service', () => ({
   adminExamContentService: {
     getExamContent: vi.fn(), updateResourcePresentation: vi.fn(), updateQuestion: vi.fn(), updateResourceContent: vi.fn(), updatePromptText: vi.fn(),
-    listPromptSamples: vi.fn(), savePromptSample: vi.fn(), deletePromptSample: vi.fn(), deleteSection: vi.fn(), reorderSections: vi.fn(), createSection: vi.fn(), createQuestion: vi.fn(),
+    listPromptSamples: vi.fn(), savePromptSample: vi.fn(), deletePromptSample: vi.fn(), deleteSection: vi.fn(), deleteQuestion: vi.fn(), reorderSections: vi.fn(), createSection: vi.fn(), createQuestion: vi.fn(),
   },
 }))
 
@@ -54,6 +54,7 @@ describe('AdminB1ExamContentBuilderPage', () => {
     vi.mocked(adminExamContentService.createQuestion).mockResolvedValue({
       id: 'question-2', activity_id: 'activity-1', source_key: 'listening-1-q2', source_number: '2', question_type: 'multiple_choice', prompt: '', options: [], accepted_answers: [], order_index: 1,
     } as never)
+    vi.mocked(adminExamContentService.deleteQuestion).mockResolvedValue(undefined)
   })
 
   it('switches the editor guidance when an admin chooses inline text gaps', async () => {
@@ -142,6 +143,18 @@ describe('AdminB1ExamContentBuilderPage', () => {
       activityId: 'activity-1', sourceNumber: '2', presentationType: 'choice_list', orderIndex: 1,
       sourceKey: expect.stringMatching(/^listening-1-q2-/),
     }))
+  })
+
+  it('confirms before deleting an objective question from the section source', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByRole('heading', { name: 'Học viên làm bài' })
+    await user.click(screen.getByRole('button', { name: 'Xóa câu 1' }))
+    expect(screen.getByRole('heading', { name: 'Xóa câu hỏi này?' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Xóa câu hỏi' }))
+
+    await waitFor(() => expect(adminExamContentService.deleteQuestion).toHaveBeenCalledWith('question-1'))
   })
 
   it('saves structured passage blocks when inline text gaps are selected', async () => {

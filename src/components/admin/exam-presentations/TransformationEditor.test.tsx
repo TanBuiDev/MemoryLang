@@ -24,4 +24,14 @@ describe('TransformationEditor', () => {
     expect(onChange).toHaveBeenLastCalledWith([expect.objectContaining({ prompt: expect.stringContaining('(guilty)') })])
     expect(screen.queryByText(/JSON/i)).not.toBeInTheDocument()
   })
+
+  it('delegates deleting a transformation question to the builder confirmation flow', async () => {
+    const onRequestDeleteQuestion = vi.fn()
+    const user = userEvent.setup()
+    render(<TransformationEditor questions={questions} onChange={vi.fn()} onRequestDeleteQuestion={onRequestDeleteQuestion} />)
+
+    await user.click(screen.getByRole('button', { name: 'Xóa câu 1' }))
+
+    expect(onRequestDeleteQuestion).toHaveBeenCalledWith(questions[0])
+  })
 })

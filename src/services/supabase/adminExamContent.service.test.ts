@@ -175,6 +175,17 @@ describe('adminExamContentService', () => {
     })
   })
 
+  it('deletes only the selected objective question', async () => {
+    const remove = { delete: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
+    from.mockReturnValueOnce(remove as never)
+
+    await expect(adminExamContentService.deleteQuestion('question-2')).resolves.toBeUndefined()
+
+    expect(from).toHaveBeenCalledWith('practice_questions')
+    expect(remove.delete).toHaveBeenCalledOnce()
+    expect(remove.eq).toHaveBeenCalledWith('id', 'question-2')
+  })
+
   it('updates a Writing or Speaking prompt and its learner instructions', async () => {
     const update = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
     from.mockReturnValueOnce(update as never)

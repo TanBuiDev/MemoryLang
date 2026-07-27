@@ -37,4 +37,14 @@ describe('InlineGapEditor', () => {
     expect(screen.queryByRole('button', { name: /Thêm ô trống/i })).not.toBeInTheDocument()
     expect(screen.getByText(/Dùng nút “Thêm câu hỏi”/i)).toBeInTheDocument()
   })
+
+  it('delegates deleting an inline gap to the builder confirmation flow', async () => {
+    const onRequestDeleteGap = vi.fn()
+    const user = userEvent.setup()
+    render(<InlineGapEditor draft={initialDraft} onChange={vi.fn()} onRequestDeleteGap={onRequestDeleteGap} />)
+
+    await user.click(screen.getByRole('button', { name: 'Xóa ô trống 1' }))
+
+    expect(onRequestDeleteGap).toHaveBeenCalledWith('q-1')
+  })
 })

@@ -7,6 +7,7 @@ import type { InlineGapDraft, InlineGapDraftGap, InlineGapSegment } from '@/feat
 interface InlineGapEditorProps {
   draft: InlineGapDraft
   onChange: (draft: InlineGapDraft) => void
+  onRequestDeleteGap?: (gapId: string) => void
   disabled?: boolean
 }
 
@@ -14,7 +15,7 @@ function splitAnswers(value: string) {
   return value.split(/[,;\n]/).map((answer) => answer.trim()).filter(Boolean)
 }
 
-export function InlineGapEditor({ draft, onChange, disabled = false }: InlineGapEditorProps) {
+export function InlineGapEditor({ draft, onChange, onRequestDeleteGap, disabled = false }: InlineGapEditorProps) {
   const [answerInputs, setAnswerInputs] = useState<Record<string, string>>(() => Object.fromEntries(
     draft.gaps.map((gap) => [gap.id, gap.acceptedAnswers.join(', ')]),
   ))
@@ -71,7 +72,7 @@ export function InlineGapEditor({ draft, onChange, disabled = false }: InlineGap
                     updateGap(gap.id, { acceptedAnswers: splitAnswers(event.target.value) })
                   }} />
                 </div>
-                <Button type="button" variant="danger" disabled={disabled} onClick={() => removeGap(gap.id)} className="self-end px-3" aria-label={`Xóa ô trống ${gap.label}`}><Trash2 size={16} /></Button>
+                <Button type="button" variant="danger" disabled={disabled} onClick={() => onRequestDeleteGap ? onRequestDeleteGap(gap.id) : removeGap(gap.id)} className="self-end px-3" aria-label={`Xóa ô trống ${gap.label}`}><Trash2 size={16} /></Button>
               </div>
             )
           }
