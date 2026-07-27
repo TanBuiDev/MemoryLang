@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  CornerDownRight,
   FileEdit,
   FileText,
   Headphones,
@@ -577,15 +578,68 @@ export function ExamAttemptPage() {
               </div>
             )}
 
-            {/* Prompt Text for Writing / Speaking */}
+            {/* Prompt Text & GUIDELINES for Writing / Speaking */}
             {isPrompt && activeResource.prompt && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs font-black uppercase text-secondary">
-                  <PenTool size={14} />
-                  <span>Đề bài tự luận</span>
+              <div className="space-y-4">
+                {/* Guidelines / Subscale Scoring Rubric Card */}
+                <div className="border-2 border-border bg-card shadow-[3px_3px_0_var(--border)] overflow-hidden">
+                  <div className="bg-muted p-3 border-b-2 border-border font-black text-xs uppercase tracking-wider flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-secondary">
+                      <FileText size={15} /> GUIDELINES / TIÊU CHÍ CHẤM ĐIỂM (SUBSCALE)
+                    </span>
+                  </div>
+
+                  <div className="p-4 space-y-3 text-xs font-semibold leading-relaxed">
+                    {/* Task Response */}
+                    <div className="border-2 border-border bg-muted/40 p-3 space-y-2">
+                      <p className="font-black text-xs uppercase text-foreground">1. Task Response (Yêu cầu bài viết)</p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1 bg-background p-2.5 border border-border">
+                          <p className="font-bold text-secondary text-xs">Thư / Email (Letter/Email):</p>
+                          <ul className="list-disc list-inside space-y-1 text-muted-foreground text-[11px]">
+                            <li>Format of the letter/email is appropriate.</li>
+                            <li>Purpose of the letter/email is presented.</li>
+                            <li>Bullet points are presented, highlighted and extended.</li>
+                          </ul>
+                        </div>
+                        <div className="space-y-1 bg-background p-2.5 border border-border">
+                          <p className="font-bold text-secondary text-xs">Bài luận (Essay):</p>
+                          <ul className="list-disc list-inside space-y-1 text-muted-foreground text-[11px]">
+                            <li>Format: 3 main parts (Introduction, Body, Conclusion).</li>
+                            <li>Ideas are developed, extended and well supported.</li>
+                            <li>All issues in the question are answered well.</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Cohesion & Lexical */}
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="border-2 border-border bg-muted/30 p-2.5 space-y-1">
+                        <p className="font-black text-xs text-foreground">2. Cohesion & Coherence</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          The use of Conjunctions and Transitions to link ideas, sentences and phrases.
+                        </p>
+                      </div>
+                      <div className="border-2 border-border bg-muted/30 p-2.5 space-y-1">
+                        <p className="font-black text-xs text-foreground">3. Lexical Resource & Grammar</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Academic words with correct spelling, different kinds of complex structures.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="border-2 border-border bg-primary/20 p-5 font-semibold text-base leading-relaxed whitespace-pre-wrap shadow-[2px_2px_0_var(--border)]">
-                  {activeResource.prompt}
+
+                {/* Prompt Text Box */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase text-secondary">
+                    <PenTool size={14} />
+                    <span>Đề bài tự luận</span>
+                  </div>
+                  <div className="border-2 border-border bg-primary/10 p-5 font-semibold text-base leading-relaxed whitespace-pre-wrap shadow-[2px_2px_0_var(--border)]">
+                    {activeResource.prompt}
+                  </div>
                 </div>
               </div>
             )}
@@ -728,7 +782,13 @@ export function ExamAttemptPage() {
 
                       {/* Options List (Multiple Choice) */}
                       {(question.options?.length ?? 0) > 0 ? (
-                        <div className="grid gap-2.5 pt-1">
+                        <div
+                          className={`grid gap-2.5 pt-1 ${
+                            (question.options ?? []).every((opt) => (opt.text ?? '').trim().length <= 35)
+                              ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+                              : 'grid-cols-1 sm:grid-cols-2'
+                          }`}
+                        >
                           {question.options?.map((option) => {
                             const isOptionSelected = selectedAnswers[question.source_key] === option.key
                             return (
@@ -742,10 +802,10 @@ export function ExamAttemptPage() {
                                     [question.source_key]: option.key,
                                   }))
                                 }
-                                className={`w-full p-3 text-left border-2 border-border font-black text-sm flex items-start gap-3 transition-all cursor-pointer ${
+                                className={`w-full p-2.5 text-left border-2 border-border font-black text-sm flex items-center gap-2.5 transition-all cursor-pointer ${
                                   isOptionSelected
                                     ? 'bg-primary text-primary-foreground shadow-[3px_3px_0_var(--border)]'
-                                    : 'bg-background hover:bg-muted/60 text-foreground'
+                                    : 'bg-background hover:bg-muted/60 text-foreground shadow-[2px_2px_0_var(--border)]'
                                 }`}
                               >
                                 <span
@@ -757,30 +817,34 @@ export function ExamAttemptPage() {
                                 >
                                   {option.key}
                                 </span>
-                                <span className="pt-0.5 leading-snug">{option.text}</span>
+                                <span className="leading-snug truncate">{option.text}</span>
                               </button>
                             )
                           })}
                         </div>
                       ) : (
-                        /* Fill Blank / Text Input Question */
-                        <div className="pt-2">
-                          <Label htmlFor={`answer-${question.source_key}`} className="font-black text-xs">
-                            Đáp án của bạn
-                          </Label>
-                          <Input
-                            id={`answer-${question.source_key}`}
-                            value={selectedAnswers[question.source_key] ?? ''}
-                            disabled={isSubmitted}
-                            onChange={(e) =>
-                              setSelectedAnswers((prev) => ({
-                                ...prev,
-                                [question.source_key]: e.target.value,
-                              }))
-                            }
-                            placeholder={answerPlaceholder(question)}
-                            className="mt-1 font-bold text-sm"
-                          />
+                        /* Fill Blank / Text Input Question (Sentence Transformation) */
+                        <div className="border-2 border-border bg-muted/30 p-3.5 space-y-2 shadow-[2px_2px_0_var(--border)] mt-2">
+                          <div className="flex items-center gap-2 text-xs font-black text-secondary">
+                            <CornerDownRight size={15} />
+                            <span>Gõ câu viết lại / đáp án điền từ vào đây:</span>
+                          </div>
+                          <div className="relative flex items-center gap-2">
+                            <span className="font-mono font-black text-secondary text-lg shrink-0 select-none">↳</span>
+                            <Input
+                              id={`answer-${question.source_key}`}
+                              value={selectedAnswers[question.source_key] ?? ''}
+                              disabled={isSubmitted}
+                              onChange={(e) =>
+                                setSelectedAnswers((prev) => ({
+                                  ...prev,
+                                  [question.source_key]: e.target.value,
+                                }))
+                              }
+                              placeholder={answerPlaceholder(question)}
+                              className="font-bold text-base bg-background border-2 border-border focus:border-secondary focus:ring-0 shadow-[2px_2px_0_var(--border)]"
+                            />
+                          </div>
                         </div>
                       )}
                     </section>
