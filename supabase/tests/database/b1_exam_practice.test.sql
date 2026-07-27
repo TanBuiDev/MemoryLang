@@ -251,7 +251,14 @@ values (
   'monthly',
   now(),
   now() + interval '1 day'
-);
+)
+on conflict (user_id) do update
+set
+  plan_type = excluded.plan_type,
+  status = excluded.status,
+  billing_cycle = excluded.billing_cycle,
+  current_period_start = excluded.current_period_start,
+  current_period_end = excluded.current_period_end;
 
 insert into public.exams (
   id,
@@ -557,6 +564,32 @@ select extensions.ok(
       )
   ),
   'legacy exam policies contain no user_metadata or auth.jwt authorization'
+);
+
+select extensions.is(
+  (
+    select count(*)
+    from (
+      select tablename
+      from pg_policies
+      where schemaname = 'public'
+        and tablename in (
+          'exams',
+          'exam_passage_sets',
+          'exam_questions',
+          'exam_sections',
+          'practice_activities',
+          'practice_questions',
+          'practice_prompts'
+        )
+        and cmd in ('SELECT', 'ALL')
+        and 'authenticated' = any (roles)
+      group by tablename
+      having count(*) > 1
+    ) overlapping_select_policies
+  ),
+  0::bigint,
+  'exam and B1 tables have no overlapping authenticated SELECT policies'
 );
 
 select extensions.throws_ok(
