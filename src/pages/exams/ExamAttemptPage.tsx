@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Clock3,
   CornerDownRight,
+  Edit3,
   FileEdit,
   FileText,
   Headphones,
@@ -299,6 +300,66 @@ export function ExamAttemptPage() {
       showToast({ type: 'error', title: 'Chưa thể nộp bài', message: 'Vui lòng kiểm tra lại kết nối.' }),
   })
 
+  const renderContentWithInlineGaps = (
+    text: string,
+    questions: SnapshotQuestion[],
+  ) => {
+    const numberToKey: Record<string, string> = {}
+    questions.forEach((q, index) => {
+      const num = q.source_number ?? String(index + 1)
+      numberToKey[num] = q.source_key
+    })
+
+    const regex = /(\(\d+\)\s*_{2,})/g
+    const parts = text.split(regex)
+
+    return (
+      <div className="border-2 border-border bg-card p-5 sm:p-6 font-semibold text-base leading-loose whitespace-pre-wrap shadow-[3px_3px_0_var(--border)]">
+        <div className="flex items-center gap-2 text-xs font-black uppercase text-secondary mb-3 border-b-2 border-border pb-2">
+          <Edit3 size={15} />
+          <span>Điền đáp án trực tiếp vào văn bản:</span>
+        </div>
+        <div>
+          {parts.map((part, i) => {
+            const match = /^(\((\d+)\)\s*_{2,})$/.exec(part)
+            if (match) {
+              const num = match[2]
+              const questionKey = numberToKey[num] ?? questions[parseInt(num, 10) - 1]?.source_key
+
+              if (!questionKey) return <span key={i}>{part}</span>
+
+              const val = selectedAnswers[questionKey] ?? ''
+              return (
+                <span key={i} className="inline-flex items-center gap-1 mx-1 align-baseline">
+                  <span className="font-mono font-black text-secondary text-sm">({num})</span>
+                  <input
+                    type="text"
+                    value={val}
+                    disabled={isSubmitted}
+                    onChange={(e) => {
+                      const nextVal = e.target.value
+                      setSelectedAnswers((prev) => ({
+                        ...prev,
+                        [questionKey]: nextVal,
+                      }))
+                    }}
+                    placeholder="gõ đáp án..."
+                    className={`w-28 sm:w-36 px-2 py-0.5 text-center font-bold text-sm border-b-2 outline-none transition-all ${
+                      val.trim()
+                        ? 'border-secondary bg-primary/20 text-foreground font-black'
+                        : 'border-border bg-muted/60 focus:border-secondary'
+                    }`}
+                  />
+                </span>
+              )
+            }
+            return <span key={i}>{part}</span>
+          })}
+        </div>
+      </div>
+    )
+  }
+
   const selectSection = (index: number) => {
     setActiveSectionIndex(index)
     if (window.scrollY > 200) {
@@ -565,16 +626,32 @@ export function ExamAttemptPage() {
                   <BookOpen size={14} />
                   <span>Bài đọc (Passage)</span>
                 </div>
-                <div className="border-2 border-border bg-muted/60 p-5 font-semibold text-base leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto shadow-[2px_2px_0_var(--border)]">
-                  {activeResource.passage}
-                </div>
+                {/(\(\d+\)\s*_{2,})/.test(activeResource.passage) ? (
+                  renderContentWithInlineGaps(
+                    activeResource.passage,
+                    activeResource.questions ?? [],
+                  )
+                ) : (
+                  <div className="border-2 border-border bg-muted/60 p-5 font-semibold text-base leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto shadow-[2px_2px_0_var(--border)]">
+                    {activeResource.passage}
+                  </div>
+                )}
               </div>
             )}
 
             {/* Activity or Prompt Content */}
             {!isPrompt && activeResource.content && (
-              <div className="border-2 border-border bg-muted/40 p-4 font-semibold text-sm leading-relaxed whitespace-pre-wrap">
-                {activeResource.content}
+              <div>
+                {/(\(\d+\)\s*_{2,})/.test(activeResource.content) ? (
+                  renderContentWithInlineGaps(
+                    activeResource.content,
+                    activeResource.questions ?? [],
+                  )
+                ) : (
+                  <div className="border-2 border-border bg-muted/40 p-4 font-semibold text-sm leading-relaxed whitespace-pre-wrap">
+                    {activeResource.content}
+                  </div>
+                )}
               </div>
             )}
 
@@ -764,11 +841,6 @@ export function ExamAttemptPage() {
                             {question.prompt}
                           </span>
                         </div>
-                        {hasSelected && (
-                          <span className="shrink-0 text-[10px] font-black bg-secondary text-secondary-foreground px-2 py-0.5 rounded-xs flex items-center gap-1 border border-border">
-                            <Check size={11} /> Đã chọn
-                          </span>
-                        )}
                       </div>
 
                       {/* Question Image */}
