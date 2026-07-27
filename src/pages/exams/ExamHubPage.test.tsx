@@ -24,6 +24,7 @@ function renderPage() {
         <Routes>
           <Route path="/app/exams" element={<ExamHubPage />} />
           <Route path="/app/exams/attempt/:attemptId" element={<div>Attempt session reached</div>} />
+          <Route path="/app/exams/attempt/:attemptId/result" element={<div>Exam result reached</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -82,6 +83,30 @@ describe('ExamHubPage', () => {
 
     expect(await screen.findByText('Bài thi đang làm dở (1)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Tiếp tục làm bài/i })).toBeInTheDocument()
+  })
+
+  it('opens the matching result page from a submitted attempt', async () => {
+    vi.mocked(examPracticeService.listUserAttempts).mockResolvedValue([
+      {
+        id: 'att-submitted',
+        status: 'submitted',
+        started_at: '2026-07-27T10:00:00Z',
+        submitted_at: '2026-07-27T11:00:00Z',
+        updated_at: '2026-07-27T11:00:00Z',
+        elapsed_seconds: 1800,
+        target_duration_seconds: 7200,
+        overtime_seconds: 0,
+        exams: { title: 'B1 DeFull – Đề tổng hợp', cefr_level: 'B1', category: 'GENERAL', default_time_minutes: 120 },
+      },
+    ] as never)
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: /Lịch sử thi/i }))
+    await user.click(await screen.findByRole('button', { name: /Xem kết quả/i }))
+
+    expect(await screen.findByText('Exam result reached')).toBeInTheDocument()
   })
 
   it('closes an in-progress attempt after the learner confirms', async () => {

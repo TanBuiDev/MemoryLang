@@ -614,7 +614,7 @@ export function ExamHubPage() {
 
                     <Button
                       variant="secondary"
-                      onClick={() => navigate(`/app/exams/result/${att.id}`)}
+                      onClick={() => navigate(`/app/exams/attempt/${att.id}/result`)}
                       className="font-black flex items-center justify-center gap-2 self-start sm:self-center"
                     >
                       <FileText size={17} />
