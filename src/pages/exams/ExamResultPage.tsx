@@ -34,20 +34,34 @@ function getReviews(sections: Array<{ progress: Record<string, unknown> }>): B1A
 }
 
 function getSectionTitle(sourceKey: string) {
-  if (sourceKey === 'grammar-use-of-english' || sourceKey === 'grammar') return 'Grammar'
-  if (sourceKey === 'signs') return 'Signs'
-  if (sourceKey === 'sentence-transformation') return 'Sentence Transformation'
-  if (sourceKey.startsWith('listening-text-')) return `Listening Text ${sourceKey.replace('listening-text-', '')}`
-  if (sourceKey.startsWith('reading-text-')) return `Reading Text ${sourceKey.replace('reading-text-', '').replace(/-/g, ' ')}`
-  if (sourceKey.startsWith('cloze-text-')) return `Cloze Text ${sourceKey.replace('cloze-text-', '').replace(/-/g, ' ')}`
-  return sourceKey
+  const cleanKey = sourceKey.replace(/^section-\d+-/i, '')
+
+  if (cleanKey === 'grammar-use-of-english' || cleanKey === 'grammar') return 'Grammar'
+  if (cleanKey === 'signs') return 'Signs'
+  if (cleanKey === 'sentence-transformation') return 'Sentence Transformation'
+  if (cleanKey.startsWith('listening-text-')) {
+    const textNum = cleanKey.replace('listening-text-', '').replace(/-/g, ' ')
+    return `Listening Text ${textNum}`
+  }
+  if (cleanKey.startsWith('reading-text-')) {
+    const textNum = cleanKey.replace('reading-text-', '').replace(/-/g, ' ')
+    return `Reading Text ${textNum}`
+  }
+  if (cleanKey.startsWith('cloze-text-')) {
+    const textNum = cleanKey.replace('cloze-text-', '').replace(/-/g, ' ')
+    return `Cloze Text ${textNum}`
+  }
+  return cleanKey
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function getSkillIcon(sourceKey: string) {
-  if (sourceKey.startsWith('listening')) return Headphones
-  if (sourceKey.startsWith('reading') || sourceKey.startsWith('cloze')) return BookOpen
-  if (sourceKey === 'sentence-transformation') return Sparkles
-  if (sourceKey === 'writing' || sourceKey.startsWith('writing-')) return PenTool
+  const cleanKey = sourceKey.replace(/^section-\d+-/i, '')
+  if (cleanKey.startsWith('listening')) return Headphones
+  if (cleanKey.startsWith('reading') || cleanKey.startsWith('cloze')) return BookOpen
+  if (cleanKey === 'sentence-transformation') return Sparkles
+  if (cleanKey.startsWith('writing')) return PenTool
   return BookOpen
 }
 
