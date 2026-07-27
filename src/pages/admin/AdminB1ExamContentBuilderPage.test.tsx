@@ -7,7 +7,10 @@ import { adminExamContentService } from '@/services/supabase/adminExamContent.se
 import { AdminB1ExamContentBuilderPage } from './AdminB1ExamContentBuilderPage'
 
 vi.mock('@/services/supabase/adminExamContent.service', () => ({
-  adminExamContentService: { getExamContent: vi.fn(), updateResourcePresentation: vi.fn(), updateQuestion: vi.fn(), updateResourceContent: vi.fn() },
+  adminExamContentService: {
+    getExamContent: vi.fn(), updateResourcePresentation: vi.fn(), updateQuestion: vi.fn(), updateResourceContent: vi.fn(), updatePromptText: vi.fn(),
+    listPromptSamples: vi.fn(), savePromptSample: vi.fn(), deletePromptSample: vi.fn(),
+  },
 }))
 
 function renderPage() {
@@ -40,6 +43,9 @@ describe('AdminB1ExamContentBuilderPage', () => {
     vi.mocked(adminExamContentService.updateResourcePresentation).mockResolvedValue(undefined)
     vi.mocked(adminExamContentService.updateQuestion).mockResolvedValue(undefined)
     vi.mocked(adminExamContentService.updateResourceContent).mockResolvedValue(undefined)
+    vi.mocked(adminExamContentService.updatePromptText).mockResolvedValue(undefined)
+    vi.mocked(adminExamContentService.listPromptSamples).mockResolvedValue([])
+    vi.mocked(adminExamContentService.deletePromptSample).mockResolvedValue(undefined)
   })
 
   it('switches the editor guidance when an admin chooses inline text gaps', async () => {
@@ -74,5 +80,35 @@ describe('AdminB1ExamContentBuilderPage', () => {
       resourceKind: 'activity', contentBlocks: expect.any(Array),
     }))
     expect(adminExamContentService.updateQuestion).toHaveBeenCalledWith('question-1', expect.objectContaining({ accepted_answers: expect.any(Array) }))
+  })
+
+  it('lets an admin save a Writing sample for learner comparison', async () => {
+    vi.mocked(adminExamContentService.getExamContent).mockResolvedValueOnce({
+      id: 'exam-1', title: 'Đề B1', source_key: 'b1-de-full-copy', is_published: false,
+      sections: [{
+        id: 'section-writing', source_key: 'writing-7', skill: 'writing', title: 'Writing Topic 7',
+        resource_type: 'prompt', resource_id: 'prompt-1', order_index: 0, is_required: true, suggested_time_minutes: 20,
+        resource: {
+          id: 'prompt-1', source_key: 'writing-7', title: 'Writing Topic 7', skill: 'writing', kind: 'prompt',
+          presentation_type: 'long_form_prompt', grading_mode: 'sample_compare', is_published: false,
+          prompt: 'Write an application.', instructions: 'Write 100 words.', questions: [],
+        },
+      }],
+    } as never)
+    vi.mocked(adminExamContentService.savePromptSample).mockResolvedValue({
+      id: 'sample-1', prompt_id: 'prompt-1', title: 'Bài mẫu', content: 'Dear ...', created_at: '2026-07-28T00:00:00Z', updated_at: '2026-07-28T00:00:00Z',
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByRole('heading', { name: 'Trình xây dựng nội dung đề B1' })
+    await user.click(screen.getByRole('button', { name: 'Thêm bài mẫu' }))
+    await user.type(screen.getByLabelText('Tên bài mẫu'), 'Bài mẫu thư xin việc')
+    await user.type(screen.getByLabelText('Nội dung bài mẫu'), 'Dear ...,')
+    await user.click(screen.getByRole('button', { name: 'Lưu bài mẫu' }))
+
+    expect(adminExamContentService.savePromptSample).toHaveBeenCalledWith({
+      promptId: 'prompt-1', title: 'Bài mẫu thư xin việc', content: 'Dear ...,',
+    })
   })
 })

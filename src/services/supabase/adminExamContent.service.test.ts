@@ -91,4 +91,54 @@ describe('adminExamContentService', () => {
     expect(from).toHaveBeenCalledWith('practice_prompts')
     expect(update.update).toHaveBeenCalledWith({ prompt: 'Write about your hobby.', instructions: 'Write 100 words.' })
   })
+
+  it('loads prompt samples in a stable order for a Writing or Speaking prompt', async () => {
+    const samples = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({
+        data: [{ id: 'sample-1', prompt_id: 'prompt-1', title: 'Bài mẫu 1', content: 'Dear ...', created_at: '2026-07-28T00:00:00Z', updated_at: '2026-07-28T00:00:00Z' }],
+        error: null,
+      }),
+    }
+    from.mockReturnValueOnce(samples as never)
+
+    await expect(adminExamContentService.listPromptSamples('prompt-1')).resolves.toMatchObject([{ id: 'sample-1', title: 'Bài mẫu 1' }])
+
+    expect(from).toHaveBeenCalledWith('practice_prompt_samples')
+    expect(samples.eq).toHaveBeenCalledWith('prompt_id', 'prompt-1')
+    expect(samples.order).toHaveBeenCalledWith('created_at')
+  })
+
+  it('creates a prompt sample without requiring an admin to use raw content storage', async () => {
+    const insert = {
+      insert: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { id: 'sample-1', prompt_id: 'prompt-1', title: 'Bài mẫu 1', content: 'Dear ...', created_at: '2026-07-28T00:00:00Z', updated_at: '2026-07-28T00:00:00Z' },
+        error: null,
+      }),
+    }
+    from.mockReturnValueOnce(insert as never)
+
+    await expect(adminExamContentService.savePromptSample({
+      promptId: 'prompt-1', title: 'Bài mẫu 1', content: 'Dear ...',
+    })).resolves.toMatchObject({ id: 'sample-1', prompt_id: 'prompt-1' })
+
+    expect(insert.insert).toHaveBeenCalledWith({ prompt_id: 'prompt-1', title: 'Bài mẫu 1', content: 'Dear ...' })
+  })
+
+  it('updates and deletes an existing prompt sample', async () => {
+    const update = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { id: 'sample-1', prompt_id: 'prompt-1', title: 'Bài mẫu mới', content: 'Updated', created_at: '2026-07-28T00:00:00Z', updated_at: '2026-07-28T00:01:00Z' }, error: null }) }
+    const remove = { delete: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
+    from.mockReturnValueOnce(update as never).mockReturnValueOnce(remove as never)
+
+    await expect(adminExamContentService.savePromptSample({ id: 'sample-1', promptId: 'prompt-1', title: 'Bài mẫu mới', content: 'Updated' })).resolves.toMatchObject({ title: 'Bài mẫu mới' })
+    await expect(adminExamContentService.deletePromptSample('sample-1')).resolves.toBeUndefined()
+
+    expect(update.update).toHaveBeenCalledWith({ title: 'Bài mẫu mới', content: 'Updated' })
+    expect(update.eq).toHaveBeenCalledWith('id', 'sample-1')
+    expect(remove.delete).toHaveBeenCalledOnce()
+    expect(remove.eq).toHaveBeenCalledWith('id', 'sample-1')
+  })
 })

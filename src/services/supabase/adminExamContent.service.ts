@@ -1,6 +1,6 @@
 import { isGradingModeCompatible } from '@/features/exam-content/presentationRegistry'
 import { supabase } from '@/services/supabase/client'
-import type { ExamGradingMode, ExamPresentationType, ExamResourceType, ExamSkill } from '@/types/exam.types'
+import type { ExamGradingMode, ExamPresentationType, ExamResourceType, ExamSkill, PracticePromptSample } from '@/types/exam.types'
 
 export interface AdminExamContentQuestion {
   id: string
@@ -59,7 +59,7 @@ export interface AdminExamContentExam {
   sections: AdminExamContentSection[]
 }
 
-async function throwOnError<T>(result: { data: T; error: unknown }, fallback: string): Promise<T> {
+async function throwOnError<T>(result: { data: T | null; error: unknown }, fallback: string): Promise<T> {
   if (result.error) throw result.error
   if (result.data === null || result.data === undefined) throw new Error(fallback)
   return result.data
@@ -179,6 +179,53 @@ export const adminExamContentService = {
       .from('practice_prompts')
       .update(input)
       .eq('id', promptId)
+    if (error) throw error
+  },
+
+  async listPromptSamples(promptId: string): Promise<PracticePromptSample[]> {
+    return throwOnError<PracticePromptSample[]>(
+      await supabase
+        .from('practice_prompt_samples')
+        .select('*')
+        .eq('prompt_id', promptId)
+        .order('created_at'),
+      'Không thể tải bài mẫu.',
+    )
+  },
+
+  async savePromptSample(input: {
+    id?: string
+    promptId: string
+    title: string
+    content: string
+  }): Promise<PracticePromptSample> {
+    if (input.id) {
+      return throwOnError<PracticePromptSample>(
+        await supabase
+          .from('practice_prompt_samples')
+          .update({ title: input.title, content: input.content })
+          .eq('id', input.id)
+          .select()
+          .single(),
+        'Không thể cập nhật bài mẫu.',
+      )
+    }
+
+    return throwOnError<PracticePromptSample>(
+      await supabase
+        .from('practice_prompt_samples')
+        .insert({ prompt_id: input.promptId, title: input.title, content: input.content })
+        .select()
+        .single(),
+      'Không thể tạo bài mẫu.',
+    )
+  },
+
+  async deletePromptSample(sampleId: string): Promise<void> {
+    const { error } = await supabase
+      .from('practice_prompt_samples')
+      .delete()
+      .eq('id', sampleId)
     if (error) throw error
   },
 }

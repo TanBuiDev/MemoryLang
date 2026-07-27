@@ -6,8 +6,10 @@ import { ChoiceListEditor, type EditableChoiceQuestion } from '@/components/admi
 import { InlineGapEditor } from '@/components/admin/exam-presentations/InlineGapEditor'
 import { LongFormPromptEditor, type LongFormPromptValue } from '@/components/admin/exam-presentations/LongFormPromptEditor'
 import { PresentationPicker } from '@/components/admin/exam-presentations/PresentationPicker'
+import { PromptSampleEditor, type PromptSampleDraft } from '@/components/admin/exam-presentations/PromptSampleEditor'
 import { TransformationEditor, type EditableTransformationQuestion } from '@/components/admin/exam-presentations/TransformationEditor'
 import { Button } from '@/components/ui/button'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { getPresentationDefinition } from '@/features/exam-content/presentationRegistry'
 import { createInlineGapDraft, serializeInlineGapDraft, type InlineGapDraft, type InlineGapSegment } from '@/features/exam-content/inlineGapDraft'
 import { adminExamContentService, type AdminExamContentQuestion } from '@/services/supabase/adminExamContent.service'
@@ -101,6 +103,7 @@ export function AdminB1ExamContentBuilderPage() {
   const [inlineGapDraft, setInlineGapDraft] = useState<InlineGapDraft | null>(null)
   const [transformationQuestions, setTransformationQuestions] = useState<EditableTransformationQuestion[]>([])
   const [longFormValue, setLongFormValue] = useState<LongFormPromptValue>({ prompt: '', instructions: '' })
+  const [pendingDeleteSampleId, setPendingDeleteSampleId] = useState<string | null>(null)
 
   const examQuery = useQuery({
     queryKey: ['admin-b1-exam-content', id],
@@ -113,6 +116,11 @@ export function AdminB1ExamContentBuilderPage() {
   }, [examQuery.data?.sections, selectedSectionKey])
   const selectedResource = selectedSection?.resource ?? null
   const definition = getPresentationDefinition(presentationType)
+  const promptSamplesQuery = useQuery({
+    queryKey: ['admin-b1-prompt-samples', selectedResource?.id],
+    queryFn: () => adminExamContentService.listPromptSamples(selectedResource!.id),
+    enabled: selectedResource?.kind === 'prompt',
+  })
 
   useEffect(() => {
     if (!selectedResource) return
@@ -181,6 +189,29 @@ export function AdminB1ExamContentBuilderPage() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+    },
+  })
+
+  const savePromptSample = useMutation({
+    mutationFn: async (sample: PromptSampleDraft) => {
+      if (!selectedResource || selectedResource.kind !== 'prompt') throw new Error('Chỉ Writing hoặc Speaking mới có bài mẫu.')
+      return adminExamContentService.savePromptSample({
+        id: sample.id,
+        promptId: selectedResource.id,
+        title: sample.title.trim(),
+        content: sample.content,
+      })
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin-b1-prompt-samples', selectedResource?.id] })
+    },
+  })
+
+  const deletePromptSample = useMutation({
+    mutationFn: (sampleId: string) => adminExamContentService.deletePromptSample(sampleId),
+    onSuccess: async () => {
+      setPendingDeleteSampleId(null)
+      await queryClient.invalidateQueries({ queryKey: ['admin-b1-prompt-samples', selectedResource?.id] })
     },
   })
 
@@ -279,7 +310,15 @@ export function AdminB1ExamContentBuilderPage() {
                 <TransformationEditor questions={transformationQuestions} onChange={setTransformationQuestions} disabled={savePresentation.isPending} />
               )}
               {(presentationType === 'long_form_prompt' || presentationType === 'speaking_script_prompt') && (
-                <LongFormPromptEditor value={longFormValue} onChange={setLongFormValue} speaking={presentationType === 'speaking_script_prompt'} disabled={savePresentation.isPending} />
+                <>
+                  <LongFormPromptEditor value={longFormValue} onChange={setLongFormValue} speaking={presentationType === 'speaking_script_prompt'} disabled={savePresentation.isPending} />
+                  <PromptSampleEditor
+                    samples={promptSamplesQuery.data ?? []}
+                    onSave={(sample) => savePromptSample.mutate(sample)}
+                    onRequestDelete={(sample) => setPendingDeleteSampleId(sample.id)}
+                    disabled={savePresentation.isPending || savePromptSample.isPending || deletePromptSample.isPending}
+                  />
+                </>
               )}
               <div className="border-2 border-dashed border-border bg-muted/40 p-4 text-sm font-semibold leading-relaxed">
                 <CircleAlert className="mr-2 inline text-secondary" size={16} />
@@ -300,6 +339,19 @@ export function AdminB1ExamContentBuilderPage() {
           <main className="neo-card p-8 text-center font-bold text-muted-foreground">Section này chưa có resource để chỉnh sửa.</main>
         )}
       </div>
+      <ConfirmModal
+        open={Boolean(pendingDeleteSampleId)}
+        title="Xóa bài mẫu này?"
+        description="Bài mẫu sẽ không còn xuất hiện để học viên so sánh. Bài Writing/Speaking người học đã nộp không bị xóa."
+        confirmLabel={deletePromptSample.isPending ? 'Đang xóa...' : 'Xóa bài mẫu'}
+        cancelLabel="Giữ lại"
+        variant="danger"
+        confirmDisabled={deletePromptSample.isPending}
+        onConfirm={() => {
+          if (pendingDeleteSampleId) deletePromptSample.mutate(pendingDeleteSampleId)
+        }}
+        onCancel={() => setPendingDeleteSampleId(null)}
+      />
     </div>
   )
 }
