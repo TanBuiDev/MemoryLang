@@ -3,7 +3,7 @@ import { supabase } from '@/services/supabase/client'
 import { adminExamMediaService } from './adminExamMedia.service'
 
 vi.mock('@/services/supabase/client', () => ({
-  supabase: { from: vi.fn(), storage: { from: vi.fn() } },
+  supabase: { from: vi.fn(), rpc: vi.fn(), storage: { from: vi.fn() } },
 }))
 
 const from = vi.mocked(supabase.from)
@@ -40,5 +40,14 @@ describe('adminExamMediaService', () => {
     expect(from).toHaveBeenCalledWith('practice_questions')
     expect(update.update).toHaveBeenCalledWith({ translation: 'Bản dịch tiếng Việt', explanation: 'Lời giải chi tiết' })
     expect(update.eq).toHaveBeenCalledWith('id', 'question-1')
+  })
+
+  it('uses the guarded publish RPC instead of updating the B1 exam flag directly', async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({ data: null, error: null } as never)
+
+    await expect(adminExamMediaService.setB1ExamPublished(true)).resolves.toBeUndefined()
+
+    expect(supabase.rpc).toHaveBeenCalledWith('set_b1_exam_published_guarded', { p_is_published: true })
+    expect(from).not.toHaveBeenCalledWith('exams')
   })
 })

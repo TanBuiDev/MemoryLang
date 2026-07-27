@@ -112,7 +112,7 @@ export const adminExamMediaService = {
   },
 
   async setB1ExamPublished(isPublished: boolean): Promise<void> {
-    const { error } = await supabase.from('exams').update({ is_published: isPublished }).eq('source_key', 'b1-de-full-copy')
+    const { error } = await supabase.rpc('set_b1_exam_published_guarded', { p_is_published: isPublished })
     if (error) throw error
   },
 }
