@@ -36,6 +36,23 @@ describe('examPracticeService', () => {
     expect(query.is).toHaveBeenCalledWith('deleted_at', null)
   })
 
+  it('lists user attempts with exam metadata', async () => {
+    const query = {
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: [{ id: 'att-1', status: 'in_progress' }], error: null }),
+    }
+    from.mockReturnValueOnce(query as never)
+
+    await expect(examPracticeService.listUserAttempts()).resolves.toEqual([
+      { id: 'att-1', status: 'in_progress' },
+    ])
+
+    expect(from).toHaveBeenCalledWith('exam_attempts')
+    expect(query.select).toHaveBeenCalledWith('*, exams(title, cefr_level, category, default_time_minutes)')
+    expect(query.limit).toHaveBeenCalledWith(10)
+  })
+
   it('starts an attempt with the learner-selected shared duration', async () => {
     rpc.mockResolvedValueOnce({ data: { id: 'attempt-1' }, error: null } as never)
 

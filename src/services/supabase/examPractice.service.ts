@@ -21,6 +21,10 @@ export interface LearnerExamAttemptDetail {
   sections: ExamSectionAttempt[]
 }
 
+export type ExamAttemptWithExam = ExamAttempt & {
+  exams?: Pick<Exam, 'title' | 'cefr_level' | 'category' | 'default_time_minutes'> | null
+}
+
 export const examPracticeService = {
   async listAvailableExams(): Promise<Exam[]> {
     const { data, error } = await supabase
@@ -33,6 +37,17 @@ export const examPracticeService = {
 
     if (error) throw error
     return (data ?? []) as Exam[]
+  },
+
+  async listUserAttempts(): Promise<ExamAttemptWithExam[]> {
+    const { data, error } = await supabase
+      .from('exam_attempts')
+      .select('*, exams(title, cefr_level, category, default_time_minutes)')
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (error) throw error
+    return (data ?? []) as ExamAttemptWithExam[]
   },
 
   async startAttempt(examId: string, targetDurationSeconds: number): Promise<ExamAttempt> {
