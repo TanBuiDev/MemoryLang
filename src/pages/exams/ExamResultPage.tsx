@@ -664,8 +664,12 @@ export function ExamResultPage() {
                     </article>
                   )}
 
-                  {/* Question Review List */}
-                  {group.reviews.map((review, index) => {
+                  {/* Question Review List (Suppressed for inline gap activities where answers are filled directly inside text above) */}
+                  {!Boolean(
+                    (group.resource?.passage && /(\(\d+\)\s*[\._]{2,})/.test(group.resource.passage)) ||
+                    (group.resource?.content && /(\(\d+\)\s*[\._]{2,})/.test(group.resource.content))
+                  ) &&
+                    group.reviews.map((review, index) => {
                     const parsedTransformation = parseTransformationPrompt(review.question)
                     const questionOptions = questionOptionsMap[review.question_source_key] ?? []
                     const reviewRecord = review as unknown as Record<string, unknown>
