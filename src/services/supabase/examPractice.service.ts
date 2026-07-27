@@ -61,6 +61,14 @@ export const examPracticeService = {
     return data as ExamAttempt
   },
 
+  async abandonAttempt(attemptId: string): Promise<void> {
+    const { error } = await supabase.rpc('abandon_b1_exam_attempt', {
+      p_attempt_id: attemptId,
+    })
+
+    if (error) throw error
+  },
+
   async getAttempt(attemptId: string): Promise<LearnerExamAttemptDetail | null> {
     const { data: attempt, error: attemptError } = await supabase
       .from('exam_attempts')

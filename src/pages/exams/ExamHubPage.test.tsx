@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,6 +13,7 @@ vi.mock('@/services/supabase/examPractice.service', () => ({
     listAvailableExams: vi.fn(),
     listUserAttempts: vi.fn(),
     startAttempt: vi.fn(),
+    abandonAttempt: vi.fn(),
   },
 }))
 
@@ -81,5 +82,31 @@ describe('ExamHubPage', () => {
 
     expect(await screen.findByText('Bài thi đang làm dở (1)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Tiếp tục làm bài/i })).toBeInTheDocument()
+  })
+
+  it('closes an in-progress attempt after the learner confirms', async () => {
+    vi.mocked(examPracticeService.listUserAttempts).mockResolvedValue([
+      {
+        id: 'att-active',
+        status: 'in_progress',
+        started_at: '2026-07-27T10:00:00Z',
+        elapsed_seconds: 1800,
+        target_duration_seconds: 7200,
+        overtime_seconds: 0,
+        exams: { title: 'B1 DeFull – Đề tổng hợp', cefr_level: 'B1', category: 'GENERAL', default_time_minutes: 120 },
+      },
+    ] as never)
+    vi.mocked(examPracticeService.abandonAttempt).mockResolvedValue(undefined)
+    const user = userEvent.setup()
+
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: /Lịch sử thi/i }))
+    await user.click(await screen.findByRole('button', { name: /Đóng bài thi/i }))
+    expect(screen.getByRole('dialog', { name: /Đóng bài thi này/i })).toBeInTheDocument()
+
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Đóng bài thi$/i }))
+
+    expect(examPracticeService.abandonAttempt).toHaveBeenCalledWith('att-active')
   })
 })

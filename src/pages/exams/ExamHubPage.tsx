@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowRight,
   Award,
@@ -15,10 +15,12 @@ import {
   Search,
   Settings2,
   Sparkles,
+  Trash2,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { showToast } from '@/components/ui/toast'
@@ -67,6 +69,7 @@ function formatDate(dateStr: string) {
 
 export function ExamHubPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
 
@@ -75,6 +78,7 @@ export function ExamHubPage() {
   const [customMinutes, setCustomMinutes] = useState('120')
   const [searchQuery, setSearchQuery] = useState('')
   const [tierFilter, setTierFilter] = useState<'all' | 'free' | 'pro'>('all')
+  const [pendingAbandonAttemptId, setPendingAbandonAttemptId] = useState<string | null>(null)
 
   const examsQuery = useQuery({
     queryKey: ['b1-practice-exams'],
@@ -108,6 +112,25 @@ export function ExamHubPage() {
       showToast({
         type: 'error',
         title: 'Không thể bắt đầu đề',
+        message: error instanceof Error ? error.message : 'Vui lòng thử lại.',
+      }),
+  })
+
+  const abandonMutation = useMutation({
+    mutationFn: (attemptId: string) => examPracticeService.abandonAttempt(attemptId),
+    onSuccess: async () => {
+      setPendingAbandonAttemptId(null)
+      await queryClient.invalidateQueries({ queryKey: ['b1-user-attempts', user?.id] })
+      showToast({
+        type: 'success',
+        title: 'Đã đóng bài thi',
+        message: 'Bài làm dở đã được đóng và không còn trong danh sách tiếp tục.',
+      })
+    },
+    onError: (error) =>
+      showToast({
+        type: 'error',
+        title: 'Không thể đóng bài thi',
         message: error instanceof Error ? error.message : 'Vui lòng thử lại.',
       }),
   })
@@ -529,14 +552,25 @@ export function ExamHubPage() {
                       </p>
                     </div>
 
-                    <Button
-                      variant="primary"
-                      onClick={() => navigate(`/app/exams/attempt/${att.id}`)}
-                      className="font-black flex items-center justify-center gap-2 self-start sm:self-center"
-                    >
-                      <span>Tiếp tục làm bài</span>
-                      <ArrowRight size={17} />
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+                      <Button
+                        variant="ghost"
+                        onClick={() => setPendingAbandonAttemptId(att.id)}
+                        disabled={abandonMutation.isPending}
+                        className="font-black flex items-center justify-center gap-2"
+                      >
+                        <Trash2 size={16} />
+                        <span>Đóng bài thi</span>
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={() => navigate(`/app/exams/attempt/${att.id}`)}
+                        className="font-black flex items-center justify-center gap-2"
+                      >
+                        <span>Tiếp tục làm bài</span>
+                        <ArrowRight size={17} />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -593,6 +627,20 @@ export function ExamHubPage() {
           )}
         </div>
       )}
+
+      <ConfirmModal
+        open={Boolean(pendingAbandonAttemptId)}
+        title="Đóng bài thi này?"
+        description="Bạn sẽ không thể tiếp tục bài làm này. Các bài viết nháp đã tự lưu vẫn được giữ lại trong lịch sử bản nháp."
+        confirmLabel={abandonMutation.isPending ? 'Đang đóng...' : 'Đóng bài thi'}
+        cancelLabel="Tiếp tục làm"
+        variant="danger"
+        confirmDisabled={abandonMutation.isPending}
+        onConfirm={() => {
+          if (pendingAbandonAttemptId) abandonMutation.mutate(pendingAbandonAttemptId)
+        }}
+        onCancel={() => setPendingAbandonAttemptId(null)}
+      />
     </div>
   )
 }
