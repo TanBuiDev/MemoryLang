@@ -295,7 +295,39 @@ export function ExamAttemptPage() {
   })
 
   const submitAttempt = useMutation({
-    mutationFn: () => examPracticeService.submitAttempt(attemptId),
+    mutationFn: async () => {
+      await Promise.all(
+        sections
+          .filter((section) => section.resource_type === 'activity')
+          .map((section) =>
+            examPracticeService.saveSectionProgress({
+              attemptId,
+              sectionSourceKey: section.source_key,
+              progress: {
+                answers: Object.fromEntries(
+                  (section.resource.questions ?? []).flatMap((question) =>
+                    selectedAnswers[question.source_key]
+                      ? [[question.source_key, selectedAnswers[question.source_key]]]
+                      : [],
+                  ),
+                ),
+              },
+              status: 'in_progress',
+            }),
+          ),
+      )
+
+      if (isPrompt && activeSection) {
+        await examPracticeService.saveSectionProgress({
+          attemptId,
+          sectionSourceKey: activeSection.source_key,
+          progress: { content: draftContent },
+          status: 'in_progress',
+        })
+      }
+
+      return examPracticeService.submitAttempt(attemptId)
+    },
     onSuccess: async (result) => {
       setSubmitConfirmationOpen(false)
       await queryClient.invalidateQueries({ queryKey: ['b1-exam-attempt', attemptId] })
@@ -367,6 +399,7 @@ export function ExamAttemptPage() {
 
     const regex = /(\(\d+\)\s*_{2,})/g
     const parts = text.split(regex)
+    const renderedQuestionKeys = new Set<string>()
 
     return (
       <div className="border-2 border-border bg-card p-5 sm:p-6 font-semibold text-base leading-loose whitespace-pre-wrap shadow-[3px_3px_0_var(--border)]">
@@ -384,6 +417,20 @@ export function ExamAttemptPage() {
               if (!questionKey) return <span key={i}>{part}</span>
 
               const val = selectedAnswers[questionKey] ?? ''
+              const isRepeatedReference = renderedQuestionKeys.has(questionKey)
+              renderedQuestionKeys.add(questionKey)
+
+              if (isRepeatedReference) {
+                return (
+                  <span key={i} className="inline-flex items-center gap-1 mx-1 align-baseline">
+                    <span className="font-mono font-black text-secondary text-sm">({num})</span>
+                    <span className="min-w-28 sm:min-w-36 px-2 py-0.5 text-center font-bold text-sm border-b-2 border-border bg-muted/60 text-foreground">
+                      {val || '________'}
+                    </span>
+                  </span>
+                )
+              }
+
               return (
                 <span key={i} className="inline-flex items-center gap-1 mx-1 align-baseline">
                   <span className="font-mono font-black text-secondary text-sm">({num})</span>
@@ -1073,7 +1120,7 @@ export function ExamAttemptPage() {
                                       >
                                         {option.key}
                                       </span>
-                                      <span className="leading-snug truncate">{option.text}</span>
+                                      <span className="min-w-0 leading-snug break-words">{option.text}</span>
                                     </button>
                                   )
                                 })}

@@ -114,9 +114,23 @@ function cleanResourceText(text: string | null | undefined): string {
     .trim()
 }
 
+type QuestionOptionsMap = Record<string, Array<{ key: string; text: string }>>
+
+function getOptionText(questionSourceKey: string, optionKey: string, optionsMap: QuestionOptionsMap) {
+  return optionsMap[questionSourceKey]?.find((option) => option.key === optionKey)?.text ?? optionKey
+}
+
+function getCorrectAnswerText(review: B1AttemptQuestionReview, optionsMap: QuestionOptionsMap) {
+  if (review.accepted_answers.length > 0) return review.accepted_answers.join(', ')
+  return review.correct_option_keys
+    .map((optionKey) => getOptionText(review.question_source_key, optionKey, optionsMap))
+    .join(', ')
+}
+
 function renderPassageWithInlineAnswers(
   text: string,
   reviews: B1AttemptQuestionReview[],
+  optionsMap: QuestionOptionsMap,
 ) {
   const numberToReview: Record<string, B1AttemptQuestionReview> = {}
   reviews.forEach((r, idx) => {
@@ -146,8 +160,11 @@ function renderPassageWithInlineAnswers(
 
             if (!review) return <span key={i}>{part}</span>
 
-            const correctAnswer = [...review.accepted_answers, ...review.correct_option_keys].join(', ')
+            const correctAnswer = getCorrectAnswerText(review, optionsMap)
             const userTyped = (review.user_answer ?? '').trim()
+            const userAnswerText = userTyped
+              ? getOptionText(review.question_source_key, userTyped, optionsMap)
+              : ''
 
             return (
               <span key={i} className="inline-flex flex-wrap items-baseline gap-1 mx-1.5 align-baseline">
@@ -158,9 +175,9 @@ function renderPassageWithInlineAnswers(
                   </span>
                 ) : (
                   <span className="inline-flex flex-wrap items-baseline gap-1.5 font-black text-sm">
-                    {userTyped && (
+                    {userAnswerText && (
                       <span className="line-through text-danger opacity-75 px-1 py-0.5 bg-danger/10 border border-danger/30">
-                        {userTyped}
+                        {userAnswerText}
                       </span>
                     )}
                     <span className="bg-yellow-300 text-black border-2 border-black px-2 py-0.5 shadow-[1.5px_1.5px_0_#000]">
@@ -336,7 +353,7 @@ export function ExamResultPage() {
   const unansweredCount = rawReviews.filter((r) => !r.user_answer?.trim()).length
 
   // Build maps of question options, images, and section resources from exam_snapshot if available
-  const questionOptionsMap: Record<string, Array<{ key: string; text: string }>> = {}
+  const questionOptionsMap: QuestionOptionsMap = {}
   const questionImageMap: Record<string, string | null> = {}
   const sectionResourceMap: Record<string, SnapshotResource> = {}
   const snapshotSectionOrder: string[] = []
@@ -704,7 +721,7 @@ export function ExamResultPage() {
                   {/* Reading Passage Container */}
                   {group.resource?.passage && (
                     /(\(\d+\)\s*[\._]{2,})/.test(group.resource.passage) ? (
-                      renderPassageWithInlineAnswers(group.resource.passage, group.reviews)
+                      renderPassageWithInlineAnswers(group.resource.passage, group.reviews, questionOptionsMap)
                     ) : (
                       <div className="neo-card p-5 sm:p-6 bg-muted/60 border-2 border-border space-y-2.5 shadow-[3px_3px_0_var(--border)]">
                         <div className="flex items-center gap-2 text-xs font-black uppercase text-secondary border-b-2 border-border pb-2">
@@ -721,7 +738,7 @@ export function ExamResultPage() {
                   {/* Activity / Resource Content (when no passage) */}
                   {!group.resource?.passage && group.resource?.content && (
                     /(\(\d+\)\s*[\._]{2,})/.test(group.resource.content) ? (
-                      renderPassageWithInlineAnswers(group.resource.content, group.reviews)
+                      renderPassageWithInlineAnswers(group.resource.content, group.reviews, questionOptionsMap)
                     ) : (
                       <div className="neo-card p-4 bg-muted/40 border-2 border-border font-semibold text-sm leading-relaxed whitespace-pre-wrap shadow-[2px_2px_0_var(--border)]">
                         {group.resource.content}
@@ -911,7 +928,7 @@ export function ExamResultPage() {
                           >
                             {questionOptions.map((option) => {
                               const isCorrectOption = review.correct_option_keys.includes(option.key)
-                              const isUserChoice = review.user_answer === option.key
+                              const isUserChoice = review.user_answer.trim().toUpperCase() === option.key
                               const isUserChoiceWrong = isUserChoice && !review.is_correct
 
                               return (
@@ -936,7 +953,7 @@ export function ExamResultPage() {
                                   >
                                     {option.key}
                                   </span>
-                                  <span className="leading-snug truncate">{option.text}</span>
+                                  <span className="min-w-0 leading-snug break-words">{option.text}</span>
                                   {isCorrectOption && (
                                     <span className="ml-auto text-[11px] bg-black text-yellow-300 font-black px-1.5 py-0.5 rounded-xs shrink-0">
                                       Đáp án đúng

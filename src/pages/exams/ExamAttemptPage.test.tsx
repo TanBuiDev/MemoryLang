@@ -44,6 +44,8 @@ describe('ExamAttemptPage', () => {
       sections: [{ id: 'section-1', exam_section_source_key: 'writing-1', progress: {}, status: 'not_started' }],
     } as never)
     vi.mocked(examPracticeService.listDraftVersions).mockResolvedValue([])
+    vi.mocked(examPracticeService.saveSectionProgress).mockResolvedValue({ id: 'section-1' } as never)
+    vi.mocked(examPracticeService.submitAttempt).mockResolvedValue({ attempt_id: 'attempt-1', score: 1, max_score: 1, reviews: [] })
   })
 
   it('keeps the attempt open after the timer is over and shows the writing draft workspace', async () => {
@@ -57,7 +59,7 @@ describe('ExamAttemptPage', () => {
     expect(screen.queryByRole('button', { name: 'Lưu phần này' })).not.toBeInTheDocument()
   })
 
-  it('moves focus to the next answer when Enter is pressed in an inline listening gap', async () => {
+  it('renders one editable input per Listening question even when its number is repeated in the text', async () => {
     vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
       attempt: {
         id: 'attempt-1',
@@ -69,10 +71,10 @@ describe('ExamAttemptPage', () => {
             source_key: 'listening-1', skill: 'listening', title: 'Listening Text 1', resource_type: 'activity',
             resource: {
               id: 'activity-1', activity_type: 'fill_blank',
-              passage: 'Being a Kid (1) ____ and (2) ____.',
+              passage: 'Being a Kid (9) ____ and (10) ____. You do not have (10) ____ when you are an adult.',
               questions: [
-                { source_key: 'listening-1-q1', source_number: '1', prompt: 'Blank 1' },
-                { source_key: 'listening-1-q2', source_number: '2', prompt: 'Blank 2' },
+                { source_key: 'listening-1-q9', source_number: '9', prompt: 'Blank 9' },
+                { source_key: 'listening-1-q10', source_number: '10', prompt: 'Blank 10' },
               ],
             },
           }],
@@ -84,10 +86,46 @@ describe('ExamAttemptPage', () => {
     renderPage()
 
     const answers = await screen.findAllByPlaceholderText('gõ đáp án...')
+    expect(answers).toHaveLength(2)
     answers[0].focus()
     fireEvent.keyDown(answers[0], { key: 'Enter' })
 
     await waitFor(() => expect(document.activeElement).toBe(answers[1]))
+  })
+
+  it('saves the selected answer before submitting the attempt', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: {
+        id: 'attempt-1',
+        started_at: '2026-07-27T10:00:00.000Z',
+        target_duration_seconds: 3600,
+        exam_snapshot: {
+          exam: { title: 'B1 DeFull' },
+          sections: [{
+            source_key: 'reading-1', skill: 'reading', title: 'Reading', resource_type: 'activity',
+            resource: {
+              id: 'activity-1', activity_type: 'multiple_choice',
+              questions: [{
+                source_key: 'reading-1-q1', prompt: 'Choose one.',
+                options: [{ key: 'A', text: 'First' }, { key: 'B', text: 'Second' }],
+              }],
+            },
+          }],
+        },
+      },
+      sections: [{ id: 'section-1', exam_section_source_key: 'reading-1', progress: {}, status: 'not_started' }],
+    } as never)
+
+    renderPage()
+    fireEvent.click(await screen.findByText('First'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nộp bài & xem đáp án' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Nộp bài ngay' }))
+
+    await waitFor(() => expect(examPracticeService.submitAttempt).toHaveBeenCalledWith('attempt-1'))
+    expect(examPracticeService.saveSectionProgress).toHaveBeenCalledWith(expect.objectContaining({
+      sectionSourceKey: 'reading-1',
+      progress: { answers: { 'reading-1-q1': 'A' } },
+    }))
   })
 
   it('moves focus to the next sentence transformation answer when Enter is pressed', async () => {
