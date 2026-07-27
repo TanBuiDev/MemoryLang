@@ -19,6 +19,7 @@ import {
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { isInlineGapPresentation, resolveAttemptPresentation } from '@/features/exam-content/attemptPresentation'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
 import type { B1AttemptQuestionReview, PracticePromptSample } from '@/types/exam.types'
 import { compareExactText, compareWritingContent, groupWritingComparisonTokens, type WritingComparisonToken } from '@/utils/writingComparison'
@@ -202,6 +203,45 @@ interface SnapshotResource {
   passage?: string | null
   audio_url?: string | null
   prompt?: string | null
+  activity_type?: string | null
+  presentation_type?: string | null
+  content_blocks?: unknown
+}
+
+interface SnapshotSectionMetadata {
+  skill: string
+  resourceType: 'activity' | 'prompt'
+}
+
+function getInlinePassageText(resource: SnapshotResource | undefined): string | null {
+  if (!resource) return null
+
+  if (Array.isArray(resource.content_blocks)) {
+    const structuredBlock = resource.content_blocks.find((block): block is Record<string, unknown> => {
+      return Boolean(block) && typeof block === 'object' && (block as Record<string, unknown>).type === 'inline_gap_passage'
+    })
+    if (structuredBlock && Array.isArray(structuredBlock.segments)) {
+      return structuredBlock.segments
+        .map((segment) => {
+          if (!segment || typeof segment !== 'object') return ''
+          const record = segment as Record<string, unknown>
+          if (record.type === 'text' && typeof record.value === 'string') return record.value
+          if (record.type === 'gap') {
+            const label = typeof record.label === 'string' ? record.label : ''
+            return `(${label}) ____`
+          }
+          return ''
+        })
+        .join('')
+    }
+
+    const legacyBlock = resource.content_blocks.find((block): block is Record<string, unknown> => {
+      return Boolean(block) && typeof block === 'object' && typeof (block as Record<string, unknown>).value === 'string'
+    })
+    if (legacyBlock && typeof legacyBlock.value === 'string') return legacyBlock.value
+  }
+
+  return resource.passage ?? resource.content ?? null
 }
 
 function getWritingPromptId(snapshot: Record<string, unknown> | undefined) {
@@ -369,6 +409,7 @@ export function ExamResultPage() {
   const questionOptionsMap: QuestionOptionsMap = {}
   const questionImageMap: Record<string, string | null> = {}
   const sectionResourceMap: Record<string, SnapshotResource> = {}
+  const sectionMetadataMap: Record<string, SnapshotSectionMetadata> = {}
   const snapshotSectionOrder: string[] = []
 
   if (attempt?.exam_snapshot && typeof attempt.exam_snapshot === 'object') {
@@ -378,6 +419,10 @@ export function ExamResultPage() {
       sectionsList.forEach((sec: Record<string, unknown>) => {
         if (typeof sec.source_key === 'string') {
           snapshotSectionOrder.push(sec.source_key)
+          sectionMetadataMap[sec.source_key] = {
+            skill: typeof sec.skill === 'string' ? sec.skill : '',
+            resourceType: sec.resource_type === 'prompt' ? 'prompt' : 'activity',
+          }
           if (sec.resource && typeof sec.resource === 'object') {
             sectionResourceMap[sec.source_key] = sec.resource as SnapshotResource
           }
@@ -402,12 +447,19 @@ export function ExamResultPage() {
   const reviewGroups = sections
     .map((section) => {
       const sectionReviews = rawReviews.filter((r) => r.section_source_key === section.exam_section_source_key)
+      const resource = sectionResourceMap[section.exam_section_source_key]
+      const metadata = sectionMetadataMap[section.exam_section_source_key] ?? { skill: '', resourceType: 'activity' as const }
       return {
         sourceKey: section.exam_section_source_key,
         score: Number(section.score ?? 0),
         maxScore: Number(section.max_score ?? 0),
         reviews: sectionReviews,
-        resource: sectionResourceMap[section.exam_section_source_key],
+        resource,
+        presentationType: resolveAttemptPresentation({
+          resourceType: metadata.resourceType,
+          sectionSkill: metadata.skill,
+          resource: resource ?? {},
+        }),
         draftContent: typeof section.progress?.draft_content === 'string' ? section.progress.draft_content : null,
       }
     })
@@ -701,6 +753,13 @@ export function ExamResultPage() {
           ) : (
             filteredGroups.map((group) => {
               const Icon = getSkillIcon(group.sourceKey)
+              const inlinePassageText = isInlineGapPresentation(group.presentationType)
+                ? getInlinePassageText(group.resource)
+                : null
+              const legacyPassageText = group.resource?.passage ?? group.resource?.content ?? null
+              const shouldRenderInlinePassage = Boolean(inlinePassageText) || Boolean(
+                legacyPassageText && /(\(\d+\)\s*[\._]{2,})/.test(legacyPassageText),
+              )
               return (
                 <section key={group.sourceKey} className="space-y-4">
                   {/* Section Header */}
@@ -734,8 +793,8 @@ export function ExamResultPage() {
 
                   {/* Reading Passage Container */}
                   {group.resource?.passage && (
-                    /(\(\d+\)\s*[\._]{2,})/.test(group.resource.passage) ? (
-                      renderPassageWithInlineAnswers(group.resource.passage, group.reviews, questionOptionsMap)
+                    shouldRenderInlinePassage ? (
+                      renderPassageWithInlineAnswers(inlinePassageText ?? group.resource.passage, group.reviews, questionOptionsMap)
                     ) : (
                       <div className="neo-card p-5 sm:p-6 bg-muted/60 border-2 border-border space-y-2.5 shadow-[3px_3px_0_var(--border)]">
                         <div className="flex items-center gap-2 text-xs font-black uppercase text-secondary border-b-2 border-border pb-2">
@@ -751,13 +810,17 @@ export function ExamResultPage() {
 
                   {/* Activity / Resource Content (when no passage) */}
                   {!group.resource?.passage && group.resource?.content && (
-                    /(\(\d+\)\s*[\._]{2,})/.test(group.resource.content) ? (
-                      renderPassageWithInlineAnswers(group.resource.content, group.reviews, questionOptionsMap)
+                    shouldRenderInlinePassage ? (
+                      renderPassageWithInlineAnswers(inlinePassageText ?? group.resource.content, group.reviews, questionOptionsMap)
                     ) : (
                       <div className="neo-card p-4 bg-muted/40 border-2 border-border font-semibold text-sm leading-relaxed whitespace-pre-wrap shadow-[2px_2px_0_var(--border)]">
                         {group.resource.content}
                       </div>
                     )
+                  )}
+
+                  {!group.resource?.passage && !group.resource?.content && inlinePassageText && (
+                    renderPassageWithInlineAnswers(inlinePassageText, group.reviews, questionOptionsMap)
                   )}
 
                   {/* Resource Prompt (Writing / Speaking) */}
@@ -825,10 +888,7 @@ export function ExamResultPage() {
                   )}
 
                   {/* Question Review List (Suppressed for inline gap activities where answers are filled directly inside text above) */}
-                  {!Boolean(
-                    (group.resource?.passage && /(\(\d+\)\s*[\._]{2,})/.test(group.resource.passage)) ||
-                    (group.resource?.content && /(\(\d+\)\s*[\._]{2,})/.test(group.resource.content))
-                  ) &&
+                  {!shouldRenderInlinePassage &&
                     group.reviews.map((review, index) => {
                     const parsedTransformation = parseTransformationPrompt(review.question)
                     const questionOptions = questionOptionsMap[review.question_source_key] ?? []

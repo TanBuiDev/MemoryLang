@@ -129,6 +129,47 @@ describe('ExamResultPage', () => {
     expect(screen.queryByText('B')).not.toBeInTheDocument()
   })
 
+  it('renders a structured inline-passage snapshot using its presentation type', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: {
+        id: 'attempt-1', status: 'submitted',
+        exam_snapshot: {
+          sections: [{
+            source_key: 'cloze-1', skill: 'cloze', resource_type: 'activity',
+            resource: {
+              presentation_type: 'passage_choice_inline',
+              content_blocks: [{
+                type: 'inline_gap_passage',
+                segments: [
+                  { type: 'text', value: 'William called ' },
+                  { type: 'gap', gapId: 'cloze-1-q1', label: '1' },
+                  { type: 'text', value: ' an ambulance.' },
+                ],
+              }],
+              questions: [{
+                source_key: 'cloze-1-q1', source_number: '1', prompt: 'Blank 1',
+                options: [{ key: 'A', text: 'to' }, { key: 'B', text: 'for' }],
+              }],
+            },
+          }],
+        },
+      },
+      sections: [{
+        id: 'section-cloze', exam_section_source_key: 'cloze-1', score: 0, max_score: 1,
+        progress: { review: [{
+          section_source_key: 'cloze-1', question_source_key: 'cloze-1-q1', question: 'Blank 1',
+          user_answer: 'A', correct_option_keys: ['B'], accepted_answers: [], translation: null, explanation: null, is_correct: false,
+        }] },
+      }],
+    } as never)
+
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/app/exams/attempt/attempt-1/result']}><Routes><Route path="/app/exams/attempt/:attemptId/result" element={<ExamResultPage />} /></Routes></MemoryRouter></QueryClientProvider>)
+
+    expect(await screen.findByText('Văn bản và kết quả điền đáp án trực tiếp:')).toBeInTheDocument()
+    expect(screen.getByText('for')).toBeInTheDocument()
+    expect(screen.getByText('to')).toHaveClass('text-danger')
+  })
+
   it('creates a new attempt with the same timer when the learner starts over', async () => {
     vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
       attempt: {
