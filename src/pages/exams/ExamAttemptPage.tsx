@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, ChevronLeft, ChevronRight, Clock3, Send, Save } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label, Textarea } from '@/components/ui/input'
@@ -9,7 +9,7 @@ import { Select } from '@/components/ui/select'
 import { showToast } from '@/components/ui/toast'
 import { formatExamDuration, getAttemptTimerState } from '@/features/exam-practice/examTimer'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
-import type { B1AttemptSubmission, PracticeDraftVersion, PracticeQuestionType } from '@/types/exam.types'
+import type { PracticeDraftVersion, PracticeQuestionType } from '@/types/exam.types'
 
 interface SnapshotQuestion {
   source_key: string
@@ -61,6 +61,7 @@ function answerPlaceholder(question: SnapshotQuestion) {
 
 export function ExamAttemptPage() {
   const { attemptId = '' } = useParams()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const mainRef = useRef<HTMLElement>(null)
   const overtimeWarningShown = useRef(false)
@@ -72,7 +73,6 @@ export function ExamAttemptPage() {
   const [compareLeft, setCompareLeft] = useState('')
   const [compareRight, setCompareRight] = useState('')
   const [submitConfirmationOpen, setSubmitConfirmationOpen] = useState(false)
-  const [submission, setSubmission] = useState<B1AttemptSubmission | null>(null)
 
   const attemptQuery = useQuery({
     queryKey: ['b1-exam-attempt', attemptId],
@@ -172,11 +172,10 @@ export function ExamAttemptPage() {
   const submitAttempt = useMutation({
     mutationFn: () => examPracticeService.submitAttempt(attemptId),
     onSuccess: async (result) => {
-      setSubmission(result)
       setSubmitConfirmationOpen(false)
       await queryClient.invalidateQueries({ queryKey: ['b1-exam-attempt', attemptId] })
-      mainRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       showToast({ type: 'success', title: 'Đã nộp bài', message: `Bạn đúng ${result.score}/${result.max_score} câu khách quan.` })
+      navigate(`/app/exams/attempt/${attemptId}/result`, { replace: true })
     },
     onError: () => showToast({ type: 'error', title: 'Chưa thể nộp bài', message: 'Vui lòng thử lại.' }),
   })
@@ -213,8 +212,6 @@ export function ExamAttemptPage() {
           {!isPrompt && activeResource.content && <div className="mb-5 whitespace-pre-wrap font-semibold">{activeResource.content}</div>}
 
           {isPrompt ? <div className="space-y-5"><div className="border-2 border-border bg-primary/15 p-4 font-semibold whitespace-pre-wrap">{activeResource.prompt}</div><div><Label htmlFor="practice-draft">Bản nháp hiện tại</Label><Textarea id="practice-draft" value={draftContent} disabled={isSubmitted} onChange={(event) => setDraftContent(event.target.value)} placeholder="Viết bài của bạn ở đây…" className="mt-2 min-h-64" /><div className="mt-2 flex items-center justify-between gap-3"><span className="text-sm font-bold text-muted-foreground">{draftContent.trim() ? draftContent.trim().split(/\s+/u).length : 0} từ · Tự lưu khi bạn dừng gõ</span><Button onClick={() => saveDraft.mutate()} disabled={isSubmitted || !draftContent.trim() || saveDraft.isPending}><Save size={17} />Lưu thành phiên bản</Button></div></div><section className="border-t-2 border-border pt-5"><h3 className="text-lg font-black">So sánh phiên bản</h3><p className="mt-1 text-sm font-semibold text-muted-foreground">Chọn hai bản đã lưu để xem song song.</p>{draftsQuery.isLoading ? <p className="mt-3 text-sm font-bold">Đang tải phiên bản…</p> : drafts.length === 0 ? <p className="mt-3 text-sm font-bold">Chưa có phiên bản nào được lưu.</p> : <div className="mt-4 space-y-4"><div className="grid gap-3 sm:grid-cols-2"><Select value={compareLeft} onChange={setCompareLeft} options={versionOptions} placeholder="Chọn bản bên trái" /><Select value={compareRight} onChange={setCompareRight} options={versionOptions} placeholder="Chọn bản bên phải" /></div><div className="grid gap-4 md:grid-cols-2">{[findVersion(compareLeft), findVersion(compareRight)].map((version, index) => <article key={index} className="min-h-40 border-2 border-border bg-muted p-4"><p className="mb-2 text-sm font-black">{version ? `Phiên bản ${version.version_number}` : 'Chưa chọn phiên bản'}</p><p className="whitespace-pre-wrap text-sm font-semibold">{version?.content ?? '—'}</p></article>)}</div></div>}</section></div> : <div className="space-y-5">{(activeResource.questions ?? []).map((question, index) => <section key={question.source_key} className="border-2 border-border p-4"><p className="text-sm font-black text-secondary">Câu {question.source_number ?? index + 1}</p>{question.image_url && <img src={question.image_url} alt={`Hình minh họa câu ${question.source_number ?? index + 1}`} className="my-3 max-h-64 max-w-full border-2 border-border object-contain" />}<p className="mt-1 whitespace-pre-wrap font-black">{question.prompt}</p>{(question.options?.length ?? 0) > 0 ? <div className="mt-3 grid gap-2">{question.options?.map((option) => <Button key={option.key} variant={selectedAnswers[question.source_key] === option.key ? 'secondary' : 'ghost'} disabled={isSubmitted} className="justify-start text-left" onClick={() => setSelectedAnswers((answers) => ({ ...answers, [question.source_key]: option.key }))}>{option.key}. {option.text}</Button>)}</div> : <div className="mt-3"><Label htmlFor={`answer-${question.source_key}`}>Câu trả lời</Label><Input id={`answer-${question.source_key}`} value={selectedAnswers[question.source_key] ?? ''} disabled={isSubmitted} onChange={(event) => setSelectedAnswers((answers) => ({ ...answers, [question.source_key]: event.target.value }))} placeholder={answerPlaceholder(question)} className="mt-2 min-w-52" /></div>}</section>)}</div>}
-
-          {submission && <section className="mt-8 border-2 border-border bg-primary/15 p-4"><h3 className="text-xl font-black">Kết quả: {submission.score}/{submission.max_score}</h3><div className="mt-4 space-y-3">{submission.reviews.map((review) => <article key={review.question_source_key} className={`border-2 p-3 ${review.is_correct ? 'border-secondary bg-green-50' : 'border-danger bg-red-50'}`}><p className="font-black">{review.is_correct ? 'Đúng' : 'Chưa đúng'} · {review.question}</p><p className="mt-1 text-sm font-semibold">Bạn trả lời: {review.user_answer || 'Chưa trả lời'}</p><p className="text-sm font-semibold">Đáp án: {[...review.correct_option_keys, ...review.accepted_answers].join(', ') || 'Chưa có'}</p>{review.translation && <p className="mt-2 text-sm"><strong>Dịch:</strong> {review.translation}</p>}{review.explanation && <p className="mt-1 text-sm"><strong>Giải thích:</strong> {review.explanation}</p>}</article>)}</div></section>}
 
           <div className="mt-8 flex flex-wrap justify-between gap-3 border-t-2 border-border pt-5"><Button variant="ghost" disabled={activeSectionIndex === 0} onClick={() => selectSection(activeSectionIndex - 1)}><ChevronLeft size={17} />Phần trước</Button><div className="flex gap-3"><Button variant="danger" disabled={isSubmitted || submitAttempt.isPending} onClick={() => setSubmitConfirmationOpen(true)}><Send size={17} />Nộp bài & xem đáp án</Button><Button variant="secondary" disabled={activeSectionIndex === sections.length - 1} onClick={() => selectSection(activeSectionIndex + 1)}>Phần tiếp<ChevronRight size={17} /></Button></div></div>
           {!isSubmitted && <p className="mt-3 text-sm font-bold text-muted-foreground">Tiến độ được tự lưu sau khi bạn dừng thao tác.</p>}

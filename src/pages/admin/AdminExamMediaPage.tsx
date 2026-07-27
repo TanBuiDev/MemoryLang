@@ -6,7 +6,7 @@ import { Input, Label, Textarea } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { showToast } from '@/components/ui/toast'
 import { generateAudio } from '@/services/api/generateAudio.api'
-import { adminExamMediaService, type B1MediaResource } from '@/services/supabase/adminExamMedia.service'
+import { adminExamMediaService, type B1MediaResource, type B1QuestionReviewEditor } from '@/services/supabase/adminExamMedia.service'
 
 const languageOptions = [
   { value: 'de-DE', label: 'Tiếng Đức (de-DE)' },
@@ -19,8 +19,12 @@ export default function AdminExamMediaPage() {
   const [selected, setSelected] = useState<B1MediaResource | null>(null)
   const [audioUrl, setAudioUrl] = useState('')
   const [language, setLanguage] = useState('de-DE')
+  const [selectedQuestion, setSelectedQuestion] = useState<B1QuestionReviewEditor | null>(null)
+  const [questionTranslation, setQuestionTranslation] = useState('')
+  const [questionExplanation, setQuestionExplanation] = useState('')
   const resourcesQuery = useQuery({ queryKey: ['admin-b1-media'], queryFn: adminExamMediaService.listResources })
   const signsQuery = useQuery({ queryKey: ['admin-b1-signs'], queryFn: adminExamMediaService.listSigns })
+  const questionReviewsQuery = useQuery({ queryKey: ['admin-b1-question-reviews'], queryFn: adminExamMediaService.listQuestionReviews })
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['admin-b1-media'] })
   const updateAudio = useMutation({
     mutationFn: ({ resource, url }: { resource: B1MediaResource; url: string | null }) => adminExamMediaService.setAudioUrl(resource, url),
@@ -45,8 +49,17 @@ export default function AdminExamMediaPage() {
     onSuccess: () => showToast({ type: 'success', title: 'Đã cập nhật trạng thái xuất bản đề B1' }),
     onError: () => showToast({ type: 'error', title: 'Không thể xuất bản đề B1' }),
   })
+  const updateQuestionReview = useMutation({
+    mutationFn: () => adminExamMediaService.updateQuestionReview(selectedQuestion!.id, { translation: questionTranslation.trim() || null, explanation: questionExplanation.trim() || null }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin-b1-question-reviews'] })
+      showToast({ type: 'success', title: 'Đã lưu bản dịch và lời giải' })
+    },
+    onError: () => showToast({ type: 'error', title: 'Không thể lưu lời giải' }),
+  })
 
   const chooseResource = (resource: B1MediaResource) => { setSelected(resource); setAudioUrl(resource.audio_url ?? '') }
+  const chooseQuestion = (question: B1QuestionReviewEditor) => { setSelectedQuestion(question); setQuestionTranslation(question.translation ?? ''); setQuestionExplanation(question.explanation ?? '') }
   const selectedSupportsAudio = selected?.skill === 'listening' || selected?.skill === 'writing' || selected?.skill === 'speaking'
   const readyToPublish = (resourcesQuery.data ?? []).length > 0 && (resourcesQuery.data ?? []).every((resource) => resource.is_published)
   const onUpload = async (file?: File) => {
@@ -80,5 +93,6 @@ export default function AdminExamMediaPage() {
       </aside>
     </div>
     <section className="neo-card p-5"><div className="flex items-center gap-2"><ImagePlus size={20} /><div><h2 className="text-xl font-black">Ảnh Signs 1–10</h2><p className="text-sm font-semibold text-muted-foreground">Thêm thủ công ảnh cho từng biển báo có đáp án.</p></div></div><div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">{(signsQuery.data ?? []).map((sign) => <article key={sign.id} className="border-2 border-border bg-card p-3"><p className="font-black">{sign.source_number ?? sign.source_key}</p>{sign.image_url ? <img className="mt-2 aspect-square w-full object-contain" src={sign.image_url} alt={`Biển báo ${sign.source_number ?? sign.source_key}`} /> : <div className="mt-2 flex aspect-square items-center justify-center bg-muted text-xs font-bold">Chưa có ảnh</div>}<label className="mt-3 block"><span className="sr-only">Tải ảnh {sign.source_key}</span><Input type="file" accept="image/*" className="text-xs" onChange={(event) => void onSignUpload(sign.id, sign.source_key, event.target.files?.[0])} /></label></article>)}</div></section>
+    <section className="grid gap-6 lg:grid-cols-[1fr_420px]"><div className="neo-card p-5"><h2 className="text-xl font-black">Bản dịch và lời giải đáp án</h2><p className="mt-1 text-sm font-semibold text-muted-foreground">Chọn câu hỏi để người học nhìn thấy bản dịch và lời giải chi tiết sau khi nộp bài.</p><div className="mt-5 max-h-[34rem] space-y-2 overflow-y-auto">{(questionReviewsQuery.data ?? []).map((question) => <Button key={question.id} variant={selectedQuestion?.id === question.id ? 'secondary' : 'ghost'} className="h-auto w-full justify-start py-3 text-left" onClick={() => chooseQuestion(question)}><span><span className="block text-xs uppercase">{question.activity_title} · Câu {question.source_number ?? '—'}</span><span className="block whitespace-normal">{question.prompt}</span></span></Button>)}</div></div><aside className="neo-card h-fit p-5"><h2 className="text-xl font-black">{selectedQuestion ? `Câu ${selectedQuestion.source_number ?? '—'}` : 'Chọn một câu hỏi'}</h2>{selectedQuestion ? <div className="mt-4 space-y-4"><div><Label htmlFor="question-translation">Bản dịch tiếng Việt</Label><Textarea id="question-translation" value={questionTranslation} onChange={(event) => setQuestionTranslation(event.target.value)} className="mt-1 min-h-28" placeholder="Nhập bản dịch tự nhiên của câu hỏi và đáp án…" /></div><div><Label htmlFor="question-explanation">Lời giải chi tiết</Label><Textarea id="question-explanation" value={questionExplanation} onChange={(event) => setQuestionExplanation(event.target.value)} className="mt-1 min-h-40" placeholder="Giải thích vì sao đáp án đúng và kiến thức cần nhớ…" /></div><Button className="w-full" onClick={() => updateQuestionReview.mutate()} disabled={updateQuestionReview.isPending}>Lưu bản dịch và lời giải</Button></div> : <p className="mt-3 text-sm font-semibold text-muted-foreground">Chọn câu bên trái để biên soạn nội dung học tập.</p>}</aside></section>
   </div>
 }

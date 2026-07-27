@@ -27,4 +27,18 @@ describe('adminExamMediaService', () => {
     expect(from).toHaveBeenCalledWith('exam_sections')
     expect(sections.eq).toHaveBeenCalledWith('exam.source_key', 'b1-de-full-copy')
   })
+
+  it('updates Vietnamese translations and explanations for a B1 question', async () => {
+    const update = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
+    from.mockReturnValueOnce(update as never)
+
+    await expect(adminExamMediaService.updateQuestionReview('question-1', {
+      translation: 'Bản dịch tiếng Việt',
+      explanation: 'Lời giải chi tiết',
+    })).resolves.toBeUndefined()
+
+    expect(from).toHaveBeenCalledWith('practice_questions')
+    expect(update.update).toHaveBeenCalledWith({ translation: 'Bản dịch tiếng Việt', explanation: 'Lời giải chi tiết' })
+    expect(update.eq).toHaveBeenCalledWith('id', 'question-1')
+  })
 })

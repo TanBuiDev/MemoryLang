@@ -21,6 +21,16 @@ export interface B1SignQuestion {
   image_url: string | null
 }
 
+export interface B1QuestionReviewEditor {
+  id: string
+  source_key: string
+  source_number: string | null
+  prompt: string
+  translation: string | null
+  explanation: string | null
+  activity_title: string
+}
+
 export const adminExamMediaService = {
   async listResources(): Promise<B1MediaResource[]> {
     const { data, error } = await supabase
@@ -80,6 +90,24 @@ export const adminExamMediaService = {
 
   async setSignImage(questionId: string, imageUrl: string | null): Promise<void> {
     const { error } = await supabase.from('practice_questions').update({ image_url: imageUrl }).eq('id', questionId)
+    if (error) throw error
+  },
+
+  async listQuestionReviews(): Promise<B1QuestionReviewEditor[]> {
+    const { data, error } = await supabase
+      .from('practice_questions')
+      .select('id,source_key,source_number,prompt,translation,explanation,activity:practice_activities!inner(title,exam_sections!inner(exam:exams!inner(source_key)))')
+      .eq('activity.exam_sections.exam.source_key', 'b1-de-full-copy')
+      .order('order_index')
+    if (error) throw error
+    return (data ?? []).map((question: any) => ({
+      ...question,
+      activity_title: question.activity?.title ?? 'B1',
+    })) as B1QuestionReviewEditor[]
+  },
+
+  async updateQuestionReview(questionId: string, input: Pick<B1QuestionReviewEditor, 'translation' | 'explanation'>): Promise<void> {
+    const { error } = await supabase.from('practice_questions').update(input).eq('id', questionId)
     if (error) throw error
   },
 
