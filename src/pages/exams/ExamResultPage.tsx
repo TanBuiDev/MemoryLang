@@ -237,26 +237,30 @@ export function ExamResultPage() {
   }
 
   const { attempt, sections } = attemptQuery.data
-  const reviews = getReviews(sections)
+  const rawReviews = getReviews(sections)
   const score = sections.reduce((total, s) => total + Number(s.score ?? 0), 0)
   const maxScore = sections.reduce((total, s) => total + Number(s.max_score ?? 0), 0)
   const accuracyPct = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0
-  const correctCount = reviews.filter((r) => r.is_correct).length
-  const incorrectCount = reviews.filter((r) => !r.is_correct && r.user_answer?.trim()).length
-  const unansweredCount = reviews.filter((r) => !r.user_answer?.trim()).length
+  const correctCount = rawReviews.filter((r) => r.is_correct).length
+  const incorrectCount = rawReviews.filter((r) => !r.is_correct && r.user_answer?.trim()).length
+  const unansweredCount = rawReviews.filter((r) => !r.user_answer?.trim()).length
 
   // Build maps of question options, images, and section resources from exam_snapshot if available
   const questionOptionsMap: Record<string, Array<{ key: string; text: string }>> = {}
   const questionImageMap: Record<string, string | null> = {}
   const sectionResourceMap: Record<string, SnapshotResource> = {}
+  const snapshotSectionOrder: string[] = []
 
   if (attempt?.exam_snapshot && typeof attempt.exam_snapshot === 'object') {
     const snapshot = attempt.exam_snapshot as Record<string, unknown>
     const sectionsList = snapshot.sections
     if (Array.isArray(sectionsList)) {
       sectionsList.forEach((sec: Record<string, unknown>) => {
-        if (typeof sec.source_key === 'string' && sec.resource && typeof sec.resource === 'object') {
-          sectionResourceMap[sec.source_key] = sec.resource as SnapshotResource
+        if (typeof sec.source_key === 'string') {
+          snapshotSectionOrder.push(sec.source_key)
+          if (sec.resource && typeof sec.resource === 'object') {
+            sectionResourceMap[sec.source_key] = sec.resource as SnapshotResource
+          }
         }
         const res = sec?.resource as Record<string, unknown> | undefined
         if (res && Array.isArray(res.questions)) {
@@ -277,7 +281,7 @@ export function ExamResultPage() {
 
   const reviewGroups = sections
     .map((section) => {
-      const sectionReviews = reviews.filter((r) => r.section_source_key === section.exam_section_source_key)
+      const sectionReviews = rawReviews.filter((r) => r.section_source_key === section.exam_section_source_key)
       return {
         sourceKey: section.exam_section_source_key,
         score: Number(section.score ?? 0),
@@ -288,6 +292,17 @@ export function ExamResultPage() {
       }
     })
     .filter((group) => group.reviews.length > 0 || Boolean(group.draftContent))
+    .sort((a, b) => {
+      const idxA = snapshotSectionOrder.indexOf(a.sourceKey)
+      const idxB = snapshotSectionOrder.indexOf(b.sourceKey)
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB
+      if (idxA !== -1) return -1
+      if (idxB !== -1) return 1
+      return 0
+    })
+
+  // Ensure flat reviews array matches the canonical section ordering
+  const reviews = reviewGroups.flatMap((g) => g.reviews)
 
   // Requirement #2: Default selectedSectionKey to the FIRST section if not set explicitly
   const effectiveSectionKey = selectedSectionKey ?? (reviewGroups[0]?.sourceKey ?? null)
