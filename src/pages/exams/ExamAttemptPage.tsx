@@ -355,15 +355,17 @@ export function ExamAttemptPage() {
   const findVersion = (id: string): PracticeDraftVersion | undefined =>
     drafts.find((draft) => draft.id === id)
   const isSubmitted = attemptDetail.attempt.status === 'submitted'
-  const hasPassageOrContent = Boolean(
-    activeResource.passage || activeResource.instructions || activeResource.audio_url || (isPrompt ? activeResource.prompt : activeResource.content),
+  const hasSideContent = Boolean(
+    activeResource.passage ||
+    activeResource.audio_url ||
+    (isPrompt && activeResource.prompt),
   )
 
   const skillBadge = getSkillBadgeLabel(activeSection.skill)
   const SkillIcon = skillBadge.icon
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5 pb-12">
+    <div className="mx-auto max-w-[1400px] space-y-5 pb-12">
       {/* Sticky Navigation Header & Timer Bar */}
       <header className="neo-card sticky top-16 z-20 bg-card p-4 sm:p-5 shadow-[4px_4px_0_var(--border)]">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -437,8 +439,8 @@ export function ExamAttemptPage() {
         </div>
       )}
 
-      {/* Mobile Tab Toggle when Passage exists */}
-      {hasPassageOrContent && (
+      {/* Mobile Tab Toggle when Side Content exists */}
+      {hasSideContent && (
         <div className="lg:hidden flex border-b-2 border-border gap-2 pb-1">
           <Button
             variant={mobilePane === 'content' ? 'primary' : 'ghost'}
@@ -550,7 +552,7 @@ export function ExamAttemptPage() {
         </aside>
 
         {/* Middle Column: Passage / Prompt / Listening Media Pane (4 cols on desktop) */}
-        {hasPassageOrContent && (
+        {hasSideContent && (
           <aside
             className={`lg:col-span-4 space-y-4 sticky top-40 max-h-[calc(100vh-180px)] overflow-y-auto ${
               mobilePane === 'questions' ? 'hidden lg:block' : 'block'
@@ -625,8 +627,8 @@ export function ExamAttemptPage() {
         <main
           ref={mainRef}
           className={`${
-            hasPassageOrContent ? 'lg:col-span-5' : 'lg:col-span-9'
-          } ${mobilePane === 'content' && hasPassageOrContent ? 'hidden lg:block' : 'block'}`}
+            hasSideContent ? 'lg:col-span-5' : 'lg:col-span-9'
+          } ${mobilePane === 'content' && hasSideContent ? 'hidden lg:block' : 'block'}`}
         >
           <div className="neo-card p-5 sm:p-7 bg-card space-y-6 shadow-[4px_4px_0_var(--border)]">
             {/* Section Header */}
@@ -638,6 +640,18 @@ export function ExamAttemptPage() {
                 <h2 className="text-2xl font-black mt-0.5">{activeSection.title}</h2>
               </div>
             </div>
+
+            {/* Inline Instructions Banner when NO Side Content */}
+            {!hasSideContent && (activeResource.instructions || activeResource.content) && (
+              <div className="border-2 border-border bg-muted/40 p-4 font-semibold text-sm leading-relaxed whitespace-pre-wrap space-y-1">
+                {activeResource.instructions && (
+                  <p className="font-bold text-foreground">{activeResource.instructions}</p>
+                )}
+                {activeResource.content && (
+                  <p className="text-muted-foreground">{activeResource.content}</p>
+                )}
+              </div>
+            )}
 
             {/* Prompt Mode: Writing / Speaking Workspace */}
             {isPrompt ? (
