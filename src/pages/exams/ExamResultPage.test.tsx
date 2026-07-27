@@ -129,6 +129,17 @@ describe('ExamResultPage', () => {
     expect(screen.queryByText('B')).not.toBeInTheDocument()
   })
 
+  it('uses the snapshot section title instead of deriving a title from a source key', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: { id: 'attempt-1', status: 'submitted', exam_snapshot: { sections: [{ source_key: 'b1-section-opaque', title: 'Bài đọc về môi trường', skill: 'reading', resource_type: 'activity', resource: { questions: [] } }] } },
+      sections: [{ id: 'section-1', exam_section_source_key: 'b1-section-opaque', score: 1, max_score: 1, progress: { review: [{ section_source_key: 'b1-section-opaque', question_source_key: 'opaque-q1', question: 'Question', user_answer: 'A', correct_option_keys: ['A'], accepted_answers: [], translation: null, explanation: null, is_correct: true }] } }],
+    } as never)
+
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/app/exams/attempt/attempt-1/result']}><Routes><Route path="/app/exams/attempt/:attemptId/result" element={<ExamResultPage />} /></Routes></MemoryRouter></QueryClientProvider>)
+
+    expect(await screen.findByRole('heading', { name: 'Bài đọc về môi trường' })).toBeInTheDocument()
+  })
+
   it('renders a structured inline-passage snapshot using its presentation type', async () => {
     vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
       attempt: {

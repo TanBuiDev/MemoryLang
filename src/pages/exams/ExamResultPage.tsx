@@ -36,7 +36,8 @@ function getReviews(sections: Array<{ progress: Record<string, unknown> }>): B1A
     )
 }
 
-function getSectionTitle(sourceKey: string) {
+function getSectionTitle(sourceKey: string, snapshotTitle?: string | null) {
+  if (snapshotTitle?.trim()) return snapshotTitle.trim()
   const cleanKey = sourceKey.replace(/^section-\d+-/i, '')
 
   if (cleanKey === 'grammar-use-of-english' || cleanKey === 'grammar') return 'Grammar'
@@ -59,7 +60,11 @@ function getSectionTitle(sourceKey: string) {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-function getSkillIcon(sourceKey: string) {
+function getSkillIcon(skill: string, sourceKey: string) {
+  if (skill === 'listening') return Headphones
+  if (skill === 'reading' || skill === 'cloze' || skill === 'signs') return BookOpen
+  if (skill === 'transformation' || skill === 'grammar') return Sparkles
+  if (skill === 'writing' || skill === 'speaking') return PenTool
   const cleanKey = sourceKey.replace(/^section-\d+-/i, '')
   if (cleanKey.startsWith('listening')) return Headphones
   if (cleanKey.startsWith('reading') || cleanKey.startsWith('cloze')) return BookOpen
@@ -130,6 +135,7 @@ interface SnapshotResource {
 
 interface SnapshotSectionMetadata {
   skill: string
+  title: string | null
   resourceType: 'activity' | 'prompt'
 }
 
@@ -341,6 +347,7 @@ export function ExamResultPage() {
           snapshotSectionOrder.push(sec.source_key)
           sectionMetadataMap[sec.source_key] = {
             skill: typeof sec.skill === 'string' ? sec.skill : '',
+            title: typeof sec.title === 'string' ? sec.title : null,
             resourceType: sec.resource_type === 'prompt' ? 'prompt' : 'activity',
           }
           if (sec.resource && typeof sec.resource === 'object') {
@@ -368,13 +375,15 @@ export function ExamResultPage() {
     .map((section) => {
       const sectionReviews = rawReviews.filter((r) => r.section_source_key === section.exam_section_source_key)
       const resource = sectionResourceMap[section.exam_section_source_key]
-      const metadata = sectionMetadataMap[section.exam_section_source_key] ?? { skill: '', resourceType: 'activity' as const }
+      const metadata = sectionMetadataMap[section.exam_section_source_key] ?? { skill: '', title: null, resourceType: 'activity' as const }
       return {
         sourceKey: section.exam_section_source_key,
         score: Number(section.score ?? 0),
         maxScore: Number(section.max_score ?? 0),
         reviews: sectionReviews,
         resource,
+        title: metadata.title,
+        skill: metadata.skill,
         presentationType: resolveAttemptPresentation({
           resourceType: metadata.resourceType,
           sectionSkill: metadata.skill,
@@ -599,7 +608,7 @@ export function ExamResultPage() {
 
             <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
               {reviewGroups.map((group) => {
-                const Icon = getSkillIcon(group.sourceKey)
+                const Icon = getSkillIcon(group.skill, group.sourceKey)
                 const isSelected = effectiveSectionKey === group.sourceKey
                 return (
                   <button
@@ -614,7 +623,7 @@ export function ExamResultPage() {
                   >
                     <span className="flex items-center gap-1.5 truncate">
                       <Icon size={13} className="shrink-0" />
-                      <span className="truncate">{getSectionTitle(group.sourceKey)}</span>
+                      <span className="truncate">{getSectionTitle(group.sourceKey, group.title)}</span>
                     </span>
                     <span className="shrink-0 font-black text-[11px]">
                       {group.score}/{group.maxScore}
@@ -672,7 +681,7 @@ export function ExamResultPage() {
             </div>
           ) : (
             filteredGroups.map((group) => {
-              const Icon = getSkillIcon(group.sourceKey)
+              const Icon = getSkillIcon(group.skill, group.sourceKey)
               const inlinePassageText = isInlineGapPresentation(group.presentationType)
                 ? getInlinePassageText(group.resource)
                 : null
@@ -686,7 +695,7 @@ export function ExamResultPage() {
                   <header className="neo-card flex flex-wrap items-center justify-between gap-3 bg-muted p-4 border-2 border-border shadow-[3px_3px_0_var(--border)]">
                     <div className="flex items-center gap-2">
                       <Icon size={20} className="text-secondary" />
-                      <h2 className="text-xl font-black text-foreground">{getSectionTitle(group.sourceKey)}</h2>
+                      <h2 className="text-xl font-black text-foreground">{getSectionTitle(group.sourceKey, group.title)}</h2>
                     </div>
                     <span className="text-sm font-black bg-background text-secondary px-3 py-1 border-2 border-border shadow-[2px_2px_0_var(--border)]">
                       Điểm phần này: {group.score}/{group.maxScore}
