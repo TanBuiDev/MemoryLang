@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ChoiceListEditor, type EditableChoiceQuestion } from '@/components/admin/exam-presentations/ChoiceListEditor'
 import { InlineGapEditor } from '@/components/admin/exam-presentations/InlineGapEditor'
 import { PresentationPicker } from '@/components/admin/exam-presentations/PresentationPicker'
+import { TransformationEditor, type EditableTransformationQuestion } from '@/components/admin/exam-presentations/TransformationEditor'
 import { Button } from '@/components/ui/button'
 import { getPresentationDefinition } from '@/features/exam-content/presentationRegistry'
 import { createInlineGapDraft, serializeInlineGapDraft, type InlineGapDraft, type InlineGapSegment } from '@/features/exam-content/inlineGapDraft'
@@ -97,6 +98,7 @@ export function AdminB1ExamContentBuilderPage() {
   const [gradingMode, setGradingMode] = useState<ExamGradingMode>('single_choice')
   const [editedQuestions, setEditedQuestions] = useState<EditableChoiceQuestion[]>([])
   const [inlineGapDraft, setInlineGapDraft] = useState<InlineGapDraft | null>(null)
+  const [transformationQuestions, setTransformationQuestions] = useState<EditableTransformationQuestion[]>([])
 
   const examQuery = useQuery({
     queryKey: ['admin-b1-exam-content', id],
@@ -119,6 +121,13 @@ export function AdminB1ExamContentBuilderPage() {
     setGradingMode(selectedResource.grading_mode ?? nextDefinition.compatibleGradingModes[0])
     setEditedQuestions(toEditableChoiceQuestions(selectedResource.questions))
     setInlineGapDraft(toInlineGapDraft(selectedResource))
+    setTransformationQuestions(selectedResource.questions.map((question) => ({
+      id: question.id,
+      prompt: question.prompt,
+      acceptedAnswers: question.accepted_answers ?? [],
+      translation: question.translation ?? null,
+      explanation: question.explanation ?? null,
+    })))
   }, [selectedResource?.id, selectedResource?.presentation_type, selectedResource?.grading_mode, selectedResource?.kind])
 
   const savePresentation = useMutation({
@@ -130,11 +139,28 @@ export function AdminB1ExamContentBuilderPage() {
         presentationType,
         gradingMode,
       })
-      await Promise.all(editedQuestions.map((question) => adminExamContentService.updateQuestion(question.id, {
+      const questionsToSave: Array<{
+        id: string
+        prompt: string
+        options?: EditableChoiceQuestion['options']
+        translation: string | null
+        explanation: string | null
+        accepted_answers?: string[]
+      }> = presentationType === 'sentence_transformation'
+        ? transformationQuestions.map((question) => ({
+          id: question.id, prompt: question.prompt, options: undefined, translation: question.translation ?? null,
+          explanation: question.explanation ?? null, accepted_answers: question.acceptedAnswers,
+        }))
+        : editedQuestions.map((question) => ({
+          id: question.id, prompt: question.prompt, options: question.options, translation: question.translation ?? null,
+          explanation: question.explanation ?? null,
+        }))
+      await Promise.all(questionsToSave.map((question) => adminExamContentService.updateQuestion(question.id, {
         prompt: question.prompt,
-        options: question.options,
+        ...(question.options ? { options: question.options } : {}),
         translation: question.translation ?? null,
         explanation: question.explanation ?? null,
+        ...(question.accepted_answers ? { accepted_answers: question.accepted_answers } : {}),
       })))
       if ((presentationType === 'passage_text_inline' || presentationType === 'passage_choice_inline') && inlineGapDraft) {
         await Promise.all(inlineGapDraft.gaps
@@ -242,6 +268,9 @@ export function AdminB1ExamContentBuilderPage() {
               )}
               {(presentationType === 'passage_text_inline' || presentationType === 'passage_choice_inline') && inlineGapDraft && (
                 <InlineGapEditor draft={inlineGapDraft} onChange={setInlineGapDraft} disabled={savePresentation.isPending} />
+              )}
+              {presentationType === 'sentence_transformation' && (
+                <TransformationEditor questions={transformationQuestions} onChange={setTransformationQuestions} disabled={savePresentation.isPending} />
               )}
               <div className="border-2 border-dashed border-border bg-muted/40 p-4 text-sm font-semibold leading-relaxed">
                 <CircleAlert className="mr-2 inline text-secondary" size={16} />
