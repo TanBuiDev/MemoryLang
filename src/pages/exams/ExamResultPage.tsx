@@ -166,9 +166,11 @@ export function ExamResultPage() {
   const questionOptionsMap: Record<string, Array<{ key: string; text: string }>> = {}
   if (attempt?.exam_snapshot && typeof attempt.exam_snapshot === 'object') {
     const snapshot = attempt.exam_snapshot as Record<string, unknown>
-    if (Array.isArray(snapshot.resources)) {
-      snapshot.resources.forEach((res: Record<string, unknown>) => {
-        if (Array.isArray(res.questions)) {
+    const sectionsList = snapshot.sections
+    if (Array.isArray(sectionsList)) {
+      sectionsList.forEach((sec: Record<string, unknown>) => {
+        const res = sec?.resource as Record<string, unknown> | undefined
+        if (res && Array.isArray(res.questions)) {
           res.questions.forEach((q: Record<string, unknown>) => {
             if (typeof q.source_key === 'string' && Array.isArray(q.options)) {
               questionOptionsMap[q.source_key] = q.options as Array<{ key: string; text: string }>
@@ -645,7 +647,11 @@ export function ExamResultPage() {
                                 Đáp án chính xác:
                               </span>
                               <span className="text-sm font-black">
-                                {[...review.correct_option_keys, ...review.accepted_answers].join(', ') || 'Chưa có'}
+                                {review.correct_option_keys.length > 0 &&
+                                review.accepted_answers.length > 0 &&
+                                !review.accepted_answers[0].toLowerCase().startsWith(review.correct_option_keys[0].toLowerCase())
+                                  ? `${review.correct_option_keys.join(', ')}. ${review.accepted_answers.join(', ')}`
+                                  : [...review.correct_option_keys, ...review.accepted_answers].join(', ') || 'Chưa có'}
                               </span>
                             </div>
                           </div>
