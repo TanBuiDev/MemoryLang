@@ -2,11 +2,14 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   ArrowRight,
   Award,
+  BookOpen,
   CheckCircle2,
   Clock3,
   FileText,
+  Headphones,
   History,
   Layers,
+  PenTool,
   Play,
   RotateCcw,
   Search,
@@ -422,17 +425,21 @@ export function ExamHubPage() {
 
                   {/* Skill Badge Tags */}
                   <div className="flex flex-wrap gap-2 pt-1">
-                    <span className="border border-border bg-muted px-2 py-0.5 text-xs font-black rounded-sm">
-                      📝 Grammar & Vocabulary
+                    <span className="border border-border bg-muted px-2 py-0.5 text-xs font-black rounded-sm inline-flex items-center gap-1">
+                      <FileText size={13} className="text-secondary" />
+                      <span>Grammar & Vocabulary</span>
                     </span>
-                    <span className="border border-border bg-muted px-2 py-0.5 text-xs font-black rounded-sm">
-                      📖 Reading
+                    <span className="border border-border bg-muted px-2 py-0.5 text-xs font-black rounded-sm inline-flex items-center gap-1">
+                      <BookOpen size={13} className="text-secondary" />
+                      <span>Reading</span>
                     </span>
-                    <span className="border border-border bg-muted px-2 py-0.5 text-xs font-black rounded-sm">
-                      🎧 Listening
+                    <span className="border border-border bg-muted px-2 py-0.5 text-xs font-black rounded-sm inline-flex items-center gap-1">
+                      <Headphones size={13} className="text-secondary" />
+                      <span>Listening</span>
                     </span>
-                    <span className="border border-border bg-muted px-2 py-0.5 text-xs font-black rounded-sm">
-                      ✍️ Writing & Speaking
+                    <span className="border border-border bg-muted px-2 py-0.5 text-xs font-black rounded-sm inline-flex items-center gap-1">
+                      <PenTool size={13} className="text-secondary" />
+                      <span>Writing & Speaking</span>
                     </span>
                   </div>
                 </div>
