@@ -13,7 +13,7 @@ export default defineConfig({
     },
   },
   test: {
-    exclude: [...configDefaults.exclude, 'scripts/**/*.test.mjs'],
+    exclude: [...configDefaults.exclude, '.worktrees/**', 'scripts/**/*.test.mjs'],
   },
   build: {
     rollupOptions: {
