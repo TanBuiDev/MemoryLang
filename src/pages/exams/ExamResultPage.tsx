@@ -171,7 +171,7 @@ function renderPassageWithInlineAnswers(
                 <span className="font-mono font-black text-secondary text-sm">({num})</span>
                 {review.is_correct ? (
                   <span className="font-black text-secondary underline decoration-secondary decoration-2 underline-offset-4 px-1.5 py-0.5 bg-secondary/15 border border-secondary/40">
-                    {userTyped || correctAnswer}
+                    {userAnswerText || correctAnswer}
                   </span>
                 ) : (
                   <span className="inline-flex flex-wrap items-baseline gap-1.5 font-black text-sm">
