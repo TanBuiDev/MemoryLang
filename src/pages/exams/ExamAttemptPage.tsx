@@ -302,7 +302,9 @@ export function ExamAttemptPage() {
 
   const selectSection = (index: number) => {
     setActiveSectionIndex(index)
-    window.setTimeout(() => mainRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
+    if (window.scrollY > 200) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 
   const scrollToQuestion = (sourceKey: string) => {
@@ -762,12 +764,19 @@ export function ExamAttemptPage() {
                         hasSelected ? 'border-secondary' : 'border-border'
                       }`}
                     >
-                      <div className="flex items-center justify-between border-b border-border pb-2">
-                        <span className="text-xs font-black uppercase tracking-wider text-secondary flex items-center gap-1.5">
-                          <HelpCircle size={14} /> Câu {qNumber}
-                        </span>
+                      {/* Inline Question Number Badge & Prompt on the Same Line */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex flex-wrap items-baseline gap-2.5 flex-1 min-w-0">
+                          <span className="inline-flex items-center gap-1 shrink-0 text-xs font-black uppercase tracking-wider text-secondary bg-muted px-2 py-0.5 border border-border shadow-[1.5px_1.5px_0_var(--border)]">
+                            <HelpCircle size={13} className="text-secondary" />
+                            <span>Câu {qNumber}</span>
+                          </span>
+                          <span className="text-base font-black leading-snug text-foreground whitespace-pre-wrap">
+                            {question.prompt}
+                          </span>
+                        </div>
                         {hasSelected && (
-                          <span className="text-[10px] font-black bg-secondary text-secondary-foreground px-2 py-0.5 rounded-xs flex items-center gap-1">
+                          <span className="shrink-0 text-[10px] font-black bg-secondary text-secondary-foreground px-2 py-0.5 rounded-xs flex items-center gap-1 border border-border">
                             <Check size={11} /> Đã chọn
                           </span>
                         )}
@@ -781,11 +790,6 @@ export function ExamAttemptPage() {
                           className="my-3 max-h-64 max-w-full border-2 border-border object-contain"
                         />
                       )}
-
-                      {/* Question Prompt */}
-                      <p className="whitespace-pre-wrap text-base font-black leading-snug">
-                        {question.prompt}
-                      </p>
 
                       {/* Options List (Multiple Choice) */}
                       {(question.options?.length ?? 0) > 0 ? (
