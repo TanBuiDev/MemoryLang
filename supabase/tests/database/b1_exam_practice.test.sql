@@ -7,6 +7,9 @@ select extensions.has_table('public', 'exam_sections', 'exam sections table exis
 select extensions.has_table('public', 'practice_activities', 'practice activities table exists');
 select extensions.has_table('public', 'practice_questions', 'practice questions table exists');
 select extensions.has_table('public', 'practice_prompts', 'practice prompts table exists');
+select extensions.has_table('public', 'exam_attempts', 'learner exam attempts table exists');
+select extensions.has_table('public', 'exam_section_attempts', 'learner section attempts table exists');
+select extensions.has_table('public', 'practice_draft_versions', 'learner writing and speaking draft versions table exists');
 
 select extensions.has_column('public', 'exams', 'source_key', 'exams expose a stable source key');
 select extensions.has_column('public', 'exams', 'cefr_level', 'exams expose a CEFR level');
@@ -15,6 +18,30 @@ select extensions.has_column(
   'exams',
   'default_time_minutes',
   'exams expose a default practice duration'
+);
+select extensions.has_column(
+  'public',
+  'exam_attempts',
+  'target_duration_seconds',
+  'attempts preserve the learner-selected duration'
+);
+select extensions.has_column(
+  'public',
+  'exam_attempts',
+  'exam_snapshot',
+  'attempts preserve a content snapshot'
+);
+select extensions.has_column(
+  'public',
+  'exam_section_attempts',
+  'progress',
+  'section attempts persist autosaved progress'
+);
+select extensions.has_column(
+  'public',
+  'practice_draft_versions',
+  'version_number',
+  'draft versions preserve their sequence number'
 );
 
 select extensions.col_is_null(
@@ -120,6 +147,13 @@ select extensions.ok(
   (select relrowsecurity from pg_class where oid = 'public.practice_prompts'::regclass),
   'practice prompts have RLS enabled'
 );
+select extensions.ok(
+  (select relrowsecurity from pg_class where oid = 'public.exam_attempts'::regclass)
+    and (select relrowsecurity from pg_class where oid = 'public.exam_attempt_grading_snapshots'::regclass)
+    and (select relrowsecurity from pg_class where oid = 'public.exam_section_attempts'::regclass)
+    and (select relrowsecurity from pg_class where oid = 'public.practice_draft_versions'::regclass),
+  'learner attempt and draft tables have RLS enabled'
+);
 
 select extensions.ok(
   has_table_privilege('authenticated', 'public.exam_sections', 'SELECT')
@@ -149,6 +183,34 @@ select extensions.ok(
     and not has_table_privilege('anon', 'public.practice_questions', 'SELECT')
     and not has_table_privilege('anon', 'public.practice_prompts', 'SELECT'),
   'anonymous requests receive no practice-content table privileges'
+);
+select extensions.ok(
+  has_table_privilege('authenticated', 'public.exam_attempts', 'SELECT')
+    and has_table_privilege('authenticated', 'public.exam_section_attempts', 'SELECT')
+    and has_table_privilege('authenticated', 'public.practice_draft_versions', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.exam_attempt_grading_snapshots', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.exam_attempts', 'INSERT')
+    and not has_table_privilege('authenticated', 'public.exam_section_attempts', 'UPDATE')
+    and not has_table_privilege('authenticated', 'public.practice_draft_versions', 'INSERT'),
+  'learner writes use guarded RPCs and grading snapshots remain private'
+);
+select extensions.has_function(
+  'public',
+  'start_b1_exam_attempt',
+  array['uuid', 'integer'],
+  'start attempt RPC exists'
+);
+select extensions.has_function(
+  'public',
+  'save_b1_section_attempt_progress',
+  array['uuid', 'text', 'jsonb', 'text', 'uuid'],
+  'section autosave RPC exists'
+);
+select extensions.has_function(
+  'public',
+  'create_practice_draft_version',
+  array['uuid', 'text'],
+  'draft version RPC exists'
 );
 
 select extensions.ok(
@@ -945,6 +1007,143 @@ select extensions.is(
   ),
   2::bigint,
   'profile admins can read both published and draft practice content'
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '91000000-0000-0000-0000-000000000002',
+  true
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"91000000-0000-0000-0000-000000000002","role":"authenticated","user_metadata":{"role":"admin"}}',
+  true
+);
+
+select extensions.lives_ok(
+  $$
+    select public.start_b1_exam_attempt(
+      '92000000-0000-0000-0000-000000000001',
+      7200
+    )
+  $$,
+  'learners can start an accessible exam through the guarded RPC'
+);
+select extensions.is(
+  (
+    select count(*)
+    from public.exam_attempts
+    where exam_id = '92000000-0000-0000-0000-000000000001'
+  ),
+  1::bigint,
+  'learners can read only their own newly created attempt'
+);
+select extensions.is(
+  (
+    select target_duration_seconds
+    from public.exam_attempts
+    where exam_id = '92000000-0000-0000-0000-000000000001'
+  ),
+  7200,
+  'attempt keeps the learner-selected duration'
+);
+select extensions.is(
+  (
+    select jsonb_array_length(exam_snapshot -> 'sections')
+    from public.exam_attempts
+    where exam_id = '92000000-0000-0000-0000-000000000001'
+  ),
+  1,
+  'attempt snapshot contains only sections accessible to the learner'
+);
+select extensions.lives_ok(
+  $$
+    select public.save_b1_section_attempt_progress(
+      (
+        select id
+        from public.exam_attempts
+        where exam_id = '92000000-0000-0000-0000-000000000001'
+      ),
+      'b1-grammar-section',
+      '{"answers":{"b1-grammar-question-1":"A"}}'::jsonb,
+      'completed'
+    )
+  $$,
+  'learners can autosave their own section progress through the guarded RPC'
+);
+select extensions.is(
+  (
+    select status
+    from public.exam_section_attempts
+    where exam_section_source_key = 'b1-grammar-section'
+  ),
+  'completed',
+  'autosave changes the owned section state'
+);
+select extensions.lives_ok(
+  $$ select public.create_practice_draft_version('95000000-0000-0000-0000-000000000001', 'Version one.') $$,
+  'learners can save their first prompt version'
+);
+select extensions.lives_ok(
+  $$ select public.create_practice_draft_version('95000000-0000-0000-0000-000000000001', 'Version two.') $$,
+  'learners can save their second prompt version'
+);
+select extensions.lives_ok(
+  $$ select public.create_practice_draft_version('95000000-0000-0000-0000-000000000001', 'Version three.') $$,
+  'learners can save their third prompt version'
+);
+select extensions.lives_ok(
+  $$ select public.create_practice_draft_version('95000000-0000-0000-0000-000000000001', 'Version four.') $$,
+  'learners can save their fourth prompt version'
+);
+select extensions.lives_ok(
+  $$ select public.create_practice_draft_version('95000000-0000-0000-0000-000000000001', 'Version five.') $$,
+  'learners can save their fifth prompt version'
+);
+select extensions.throws_ok(
+  $$ select public.create_practice_draft_version('95000000-0000-0000-0000-000000000001', 'Version six.') $$,
+  '23514',
+  'a prompt can have at most five saved versions',
+  'the sixth draft version is refused'
+);
+select extensions.is(
+  (
+    select count(*)
+    from public.practice_draft_versions
+    where prompt_id = '95000000-0000-0000-0000-000000000001'
+  ),
+  5::bigint,
+  'the learner has exactly five immutable draft versions'
+);
+
+select set_config(
+  'request.jwt.claim.sub',
+  '91000000-0000-0000-0000-000000000003',
+  true
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"91000000-0000-0000-0000-000000000003","role":"authenticated"}',
+  true
+);
+select extensions.is(
+  (
+    select count(*)
+    from public.exam_attempts
+    where exam_id = '92000000-0000-0000-0000-000000000001'
+  ),
+  0::bigint,
+  'another learner cannot read an attempt they do not own'
+);
+select extensions.is(
+  (
+    select count(*)
+    from public.practice_draft_versions
+    where prompt_id = '95000000-0000-0000-0000-000000000001'
+  ),
+  0::bigint,
+  'another learner cannot read draft versions they do not own'
 );
 
 reset role;

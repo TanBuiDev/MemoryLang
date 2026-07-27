@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { isB1ContentArtifact } from './exam.types'
+import {
+  isB1ContentArtifact,
+  type ExamAttempt,
+  type ExamAttemptStatus,
+  type PracticeDraftVersion,
+} from './exam.types'
 
 function validLinkedArtifact() {
   return {
@@ -180,5 +185,45 @@ describe('isB1ContentArtifact', () => {
     }
 
     expect(isB1ContentArtifact(invalid)).toBe(false)
+  })
+})
+
+describe('learner B1 attempt contracts', () => {
+  it('models an in-progress attempt with a server-owned target duration', () => {
+    const status: ExamAttemptStatus = 'in_progress'
+    const attempt: ExamAttempt = {
+      id: 'attempt-1',
+      exam_id: 'exam-1',
+      user_id: 'user-1',
+      status,
+      target_duration_seconds: 7200,
+      exam_snapshot: { sections: [] },
+      current_section_source_key: null,
+      started_at: '2026-07-27T00:00:00.000Z',
+      last_activity_at: '2026-07-27T00:00:00.000Z',
+      submitted_at: null,
+      elapsed_seconds: 0,
+      overtime_seconds: 0,
+      created_at: '2026-07-27T00:00:00.000Z',
+      updated_at: '2026-07-27T00:00:00.000Z',
+    }
+
+    expect(attempt.target_duration_seconds).toBe(7200)
+    expect(attempt.status).toBe('in_progress')
+  })
+
+  it('models immutable writing and speaking draft snapshots', () => {
+    const version: PracticeDraftVersion = {
+      id: 'version-1',
+      user_id: 'user-1',
+      prompt_id: 'prompt-1',
+      version_number: 3,
+      content: 'My revised response.',
+      word_count: 4,
+      created_at: '2026-07-27T00:00:00.000Z',
+    }
+
+    expect(version.version_number).toBe(3)
+    expect(version.word_count).toBe(4)
   })
 })

@@ -65,6 +65,49 @@ export interface ExamDetail extends Exam {
 export type ExamSkill = 'grammar' | 'signs' | 'reading' | 'cloze' | 'transformation' | 'listening' | 'writing' | 'speaking'
 export type PracticeQuestionType = 'multiple_choice' | 'true_false' | 'fill_blank' | 'short_text'
 export type ExamResourceType = 'activity' | 'prompt'
+export type ExamAttemptStatus = 'in_progress' | 'submitted' | 'abandoned'
+export type ExamSectionAttemptStatus = 'not_started' | 'in_progress' | 'completed'
+
+export interface ExamAttempt {
+  id: string
+  exam_id: string
+  user_id: string
+  status: ExamAttemptStatus
+  target_duration_seconds: number
+  exam_snapshot: Record<string, unknown>
+  current_section_source_key: string | null
+  started_at: string
+  last_activity_at: string
+  submitted_at: string | null
+  elapsed_seconds: number
+  overtime_seconds: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ExamSectionAttempt {
+  id: string
+  attempt_id: string
+  exam_section_source_key: string
+  status: ExamSectionAttemptStatus
+  progress: Record<string, unknown>
+  score: number | null
+  max_score: number | null
+  draft_version_id: string | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface PracticeDraftVersion {
+  id: string
+  user_id: string
+  prompt_id: string
+  version_number: number
+  content: string
+  word_count: number
+  created_at: string
+}
 
 export interface B1QuestionSeed {
   source_key: string
