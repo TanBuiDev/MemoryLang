@@ -140,6 +140,12 @@ export function ExamAttemptPage() {
   const isFillBlankActivity =
     activeResource?.activity_type === 'fill_blank' ||
     (activeResource?.questions ?? []).every((q) => !q.options || q.options.length === 0)
+  const isInlineGapActivity =
+    isFillBlankActivity &&
+    Boolean(
+      (activeResource?.passage && /(\(\d+\)\s*_{2,})/.test(activeResource.passage)) ||
+      (activeResource?.content && /(\(\d+\)\s*_{2,})/.test(activeResource.content))
+    )
   const timer = attemptDetail
     ? getAttemptTimerState(
         attemptDetail.attempt.started_at,
@@ -924,7 +930,7 @@ export function ExamAttemptPage() {
                   )}
                 </section>
               </div>
-            ) : (
+            ) : !isInlineGapActivity ? (
                 /* Activity Mode: Questions List with Neobrutalist Option Cards */
                 <div className="space-y-6">
                   {(activeResource.questions ?? []).map((question, index) => {
@@ -1081,7 +1087,7 @@ export function ExamAttemptPage() {
                     )
                 })}
               </div>
-            )}
+            ) : null}
 
             {/* Bottom Footer Navigation Bar */}
             <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t-2 border-border pt-5">
