@@ -1,6 +1,27 @@
 export type ExamCategory = 'TOEIC' | 'IELTS' | 'TOEFL' | 'GENERAL'
 export type PassageType = 'none' | 'single' | 'double' | 'triple'
 export type ExamAccessTier = 'free' | 'pro'
+export type ExamPresentationType =
+  | 'choice_list'
+  | 'boolean_list'
+  | 'image_choice_list'
+  | 'passage_choice_inline'
+  | 'passage_text_inline'
+  | 'passage_questions'
+  | 'sentence_transformation'
+  | 'short_answer_list'
+  | 'long_form_prompt'
+  | 'speaking_script_prompt'
+  | 'matching'
+  | 'ordering'
+export type ExamGradingMode =
+  | 'single_choice'
+  | 'exact_text'
+  | 'normalized_text'
+  | 'manual'
+  | 'sample_compare'
+  | 'matching'
+  | 'ordered_list'
 
 export interface ExamPassage {
   id: string
