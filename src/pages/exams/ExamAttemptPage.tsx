@@ -29,6 +29,11 @@ import { Input, Label, Textarea } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { showToast } from '@/components/ui/toast'
 import { formatExamDuration, getAttemptTimerState } from '@/features/exam-practice/examTimer'
+import {
+  isInlineGapPresentation,
+  isLongFormPresentation,
+  resolveAttemptPresentation,
+} from '@/features/exam-content/attemptPresentation'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
 import type { PracticeDraftVersion, PracticeQuestionType } from '@/types/exam.types'
 
@@ -44,6 +49,8 @@ interface SnapshotQuestion {
 interface SnapshotResource {
   id: string
   activity_type?: string
+  presentation_type?: string | null
+  grading_mode?: string | null
   prompt?: string
   instructions?: string | null
   content?: string | null
@@ -136,12 +143,18 @@ export function ExamAttemptPage() {
   const activeProgress = attemptDetail?.sections.find(
     (section) => section.exam_section_source_key === activeSection?.source_key,
   )
-  const isPrompt = activeSection?.resource_type === 'prompt'
-  const isFillBlankActivity =
-    activeResource?.activity_type === 'fill_blank' ||
-    (activeResource?.questions ?? []).every((q) => !q.options || q.options.length === 0)
+  const presentationType = activeSection && activeResource
+    ? resolveAttemptPresentation({
+      resourceType: activeSection.resource_type,
+      sectionSkill: activeSection.skill,
+      resource: activeResource,
+    })
+    : null
+  const isPrompt = presentationType ? isLongFormPresentation(presentationType) : false
+  const isTextGapPresentation = presentationType === 'passage_text_inline'
   const isInlineGapActivity =
-    isFillBlankActivity &&
+    Boolean(presentationType && isInlineGapPresentation(presentationType)) &&
+    isTextGapPresentation &&
     Boolean(
       (activeResource?.passage && /(\(\d+\)\s*_{2,})/.test(activeResource.passage)) ||
       (activeResource?.content && /(\(\d+\)\s*_{2,})/.test(activeResource.content))
@@ -744,7 +757,7 @@ export function ExamAttemptPage() {
                   <BookOpen size={14} />
                   <span>Bài đọc (Passage)</span>
                 </div>
-                {isFillBlankActivity && /(\(\d+\)\s*_{2,})/.test(activeResource.passage) ? (
+                {isTextGapPresentation && /(\(\d+\)\s*_{2,})/.test(activeResource.passage) ? (
                   renderContentWithInlineGaps(
                     activeResource.passage,
                     activeResource.questions ?? [],
@@ -760,7 +773,7 @@ export function ExamAttemptPage() {
             {/* Activity or Prompt Content */}
             {!isPrompt && activeResource.content && (
               <div>
-                {isFillBlankActivity && /(\(\d+\)\s*_{2,})/.test(activeResource.content) ? (
+                {isTextGapPresentation && /(\(\d+\)\s*_{2,})/.test(activeResource.content) ? (
                   renderContentWithInlineGaps(
                     activeResource.content,
                     activeResource.questions ?? [],
@@ -999,7 +1012,9 @@ export function ExamAttemptPage() {
                   {(activeResource.questions ?? []).map((question, index) => {
                     const qNumber = question.source_number ?? String(index + 1)
                     const hasSelected = Boolean(selectedAnswers[question.source_key])
-                    const parsedTransformation = parseTransformationPrompt(question.prompt)
+                    const parsedTransformation = presentationType === 'sentence_transformation'
+                      ? parseTransformationPrompt(question.prompt)
+                      : null
 
                     return (
                       <section
