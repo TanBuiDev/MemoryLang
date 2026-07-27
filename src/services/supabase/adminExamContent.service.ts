@@ -1,0 +1,152 @@
+import { isGradingModeCompatible } from '@/features/exam-content/presentationRegistry'
+import { supabase } from '@/services/supabase/client'
+import type { ExamGradingMode, ExamPresentationType, ExamResourceType, ExamSkill } from '@/types/exam.types'
+
+export interface AdminExamContentQuestion {
+  id: string
+  activity_id: string
+  source_key: string
+  prompt: string
+  source_number?: string | null
+  question_type?: string
+  options?: unknown
+  accepted_answers?: string[]
+  translation?: string | null
+  explanation?: string | null
+  image_url?: string | null
+  order_index: number
+}
+
+export interface AdminExamContentResource {
+  id: string
+  source_key: string
+  title: string
+  skill: ExamSkill
+  kind: ExamResourceType
+  presentation_type: ExamPresentationType | null
+  grading_mode: ExamGradingMode | null
+  is_published: boolean
+  activity_type?: string | null
+  instructions?: string | null
+  content?: string | null
+  passage?: string | null
+  prompt?: string | null
+  audio_url?: string | null
+  content_blocks?: unknown
+  presentation_config?: Record<string, unknown>
+  review_config?: Record<string, unknown>
+  questions: AdminExamContentQuestion[]
+}
+
+export interface AdminExamContentSection {
+  id: string
+  source_key: string
+  skill: ExamSkill
+  title: string
+  resource_type: ExamResourceType
+  resource_id: string
+  order_index: number
+  is_required: boolean
+  suggested_time_minutes: number | null
+  resource: AdminExamContentResource | null
+}
+
+export interface AdminExamContentExam {
+  id: string
+  title: string
+  source_key: string | null
+  is_published: boolean
+  sections: AdminExamContentSection[]
+}
+
+async function throwOnError<T>(result: { data: T; error: unknown }, fallback: string): Promise<T> {
+  if (result.error) throw result.error
+  if (result.data === null || result.data === undefined) throw new Error(fallback)
+  return result.data
+}
+
+export const adminExamContentService = {
+  async getExamContent(examId: string): Promise<AdminExamContentExam> {
+    const exam = await throwOnError(
+      await supabase.from('exams').select('id,title,source_key,is_published').eq('id', examId).single(),
+      'Không tìm thấy đề thi.',
+    ) as Omit<AdminExamContentExam, 'sections'>
+    const sections = await throwOnError(
+      await supabase.from('exam_sections').select('*').eq('exam_id', examId).order('order_index'),
+      'Không thể tải cấu trúc đề thi.',
+    ) as AdminExamContentSection[]
+
+    const activityIds = sections
+      .filter((section) => section.resource_type === 'activity')
+      .map((section) => section.resource_id)
+    const promptIds = sections
+      .filter((section) => section.resource_type === 'prompt')
+      .map((section) => section.resource_id)
+
+    const activityRows = activityIds.length > 0
+      ? await throwOnError(
+        await supabase.from('practice_activities').select('*').in('id', activityIds),
+        'Không thể tải nội dung hoạt động.',
+      ) as Array<Omit<AdminExamContentResource, 'kind' | 'questions'>>
+      : []
+    const promptRows = promptIds.length > 0
+      ? await throwOnError(
+        await supabase.from('practice_prompts').select('*').in('id', promptIds),
+        'Không thể tải nội dung Writing/Speaking.',
+      ) as Array<Omit<AdminExamContentResource, 'kind' | 'questions'>>
+      : []
+    const questions = activityIds.length > 0
+      ? await throwOnError(
+        await supabase.from('practice_questions').select('*').in('activity_id', activityIds).order('order_index'),
+        'Không thể tải câu hỏi.',
+      ) as AdminExamContentQuestion[]
+      : []
+
+    const activitiesById = new Map(activityRows.map((resource) => [resource.id, resource]))
+    const promptsById = new Map(promptRows.map((resource) => [resource.id, resource]))
+    const questionsByActivityId = new Map<string, AdminExamContentQuestion[]>()
+    questions.forEach((question) => {
+      const current = questionsByActivityId.get(question.activity_id) ?? []
+      current.push(question)
+      questionsByActivityId.set(question.activity_id, current)
+    })
+
+    return {
+      ...exam,
+      sections: sections.map((section) => {
+        const rawResource = section.resource_type === 'activity'
+          ? activitiesById.get(section.resource_id)
+          : promptsById.get(section.resource_id)
+        return {
+          ...section,
+          resource: rawResource
+            ? {
+              ...rawResource,
+              kind: section.resource_type,
+              questions: section.resource_type === 'activity'
+                ? questionsByActivityId.get(rawResource.id) ?? []
+                : [],
+            }
+            : null,
+        }
+      }),
+    }
+  },
+
+  async updateResourcePresentation(input: {
+    resourceKind: ExamResourceType
+    resourceId: string
+    presentationType: ExamPresentationType
+    gradingMode: ExamGradingMode
+  }): Promise<void> {
+    if (!isGradingModeCompatible(input.presentationType, input.gradingMode)) {
+      throw new Error('Kiểu chấm điểm không tương thích với cách trình bày đã chọn.')
+    }
+    const table = input.resourceKind === 'activity' ? 'practice_activities' : 'practice_prompts'
+    const { error } = await supabase
+      .from(table)
+      .update({ presentation_type: input.presentationType, grading_mode: input.gradingMode })
+      .eq('id', input.resourceId)
+    if (error) throw error
+  },
+}
