@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ChoiceListEditor, type EditableChoiceQuestion } from '@/components/admin/exam-presentations/ChoiceListEditor'
 import { InlineGapEditor } from '@/components/admin/exam-presentations/InlineGapEditor'
+import { LongFormPromptEditor, type LongFormPromptValue } from '@/components/admin/exam-presentations/LongFormPromptEditor'
 import { PresentationPicker } from '@/components/admin/exam-presentations/PresentationPicker'
 import { TransformationEditor, type EditableTransformationQuestion } from '@/components/admin/exam-presentations/TransformationEditor'
 import { Button } from '@/components/ui/button'
@@ -99,6 +100,7 @@ export function AdminB1ExamContentBuilderPage() {
   const [editedQuestions, setEditedQuestions] = useState<EditableChoiceQuestion[]>([])
   const [inlineGapDraft, setInlineGapDraft] = useState<InlineGapDraft | null>(null)
   const [transformationQuestions, setTransformationQuestions] = useState<EditableTransformationQuestion[]>([])
+  const [longFormValue, setLongFormValue] = useState<LongFormPromptValue>({ prompt: '', instructions: '' })
 
   const examQuery = useQuery({
     queryKey: ['admin-b1-exam-content', id],
@@ -128,6 +130,7 @@ export function AdminB1ExamContentBuilderPage() {
       translation: question.translation ?? null,
       explanation: question.explanation ?? null,
     })))
+    setLongFormValue({ prompt: selectedResource.prompt ?? '', instructions: selectedResource.instructions ?? '' })
   }, [selectedResource?.id, selectedResource?.presentation_type, selectedResource?.grading_mode, selectedResource?.kind])
 
   const savePresentation = useMutation({
@@ -162,6 +165,9 @@ export function AdminB1ExamContentBuilderPage() {
         explanation: question.explanation ?? null,
         ...(question.accepted_answers ? { accepted_answers: question.accepted_answers } : {}),
       })))
+      if (selectedResource.kind === 'prompt') {
+        await adminExamContentService.updatePromptText(selectedResource.id, longFormValue)
+      }
       if ((presentationType === 'passage_text_inline' || presentationType === 'passage_choice_inline') && inlineGapDraft) {
         await Promise.all(inlineGapDraft.gaps
           .filter((gap) => selectedResource.questions.some((question) => question.id === gap.id))
@@ -271,6 +277,9 @@ export function AdminB1ExamContentBuilderPage() {
               )}
               {presentationType === 'sentence_transformation' && (
                 <TransformationEditor questions={transformationQuestions} onChange={setTransformationQuestions} disabled={savePresentation.isPending} />
+              )}
+              {(presentationType === 'long_form_prompt' || presentationType === 'speaking_script_prompt') && (
+                <LongFormPromptEditor value={longFormValue} onChange={setLongFormValue} speaking={presentationType === 'speaking_script_prompt'} disabled={savePresentation.isPending} />
               )}
               <div className="border-2 border-dashed border-border bg-muted/40 p-4 text-sm font-semibold leading-relaxed">
                 <CircleAlert className="mr-2 inline text-secondary" size={16} />

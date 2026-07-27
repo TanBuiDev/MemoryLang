@@ -173,4 +173,12 @@ export const adminExamContentService = {
       .eq('id', input.resourceId)
     if (error) throw error
   },
+
+  async updatePromptText(promptId: string, input: { prompt: string; instructions: string }): Promise<void> {
+    const { error } = await supabase
+      .from('practice_prompts')
+      .update(input)
+      .eq('id', promptId)
+    if (error) throw error
+  },
 }

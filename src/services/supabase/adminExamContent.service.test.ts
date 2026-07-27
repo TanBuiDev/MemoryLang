@@ -79,4 +79,16 @@ describe('adminExamContentService', () => {
 
     expect(update.update).toHaveBeenCalledWith({ accepted_answers: ['football', 'soccer'] })
   })
+
+  it('updates a Writing or Speaking prompt and its learner instructions', async () => {
+    const update = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
+    from.mockReturnValueOnce(update as never)
+
+    await expect(adminExamContentService.updatePromptText('prompt-1', {
+      prompt: 'Write about your hobby.', instructions: 'Write 100 words.',
+    })).resolves.toBeUndefined()
+
+    expect(from).toHaveBeenCalledWith('practice_prompts')
+    expect(update.update).toHaveBeenCalledWith({ prompt: 'Write about your hobby.', instructions: 'Write 100 words.' })
+  })
 })
