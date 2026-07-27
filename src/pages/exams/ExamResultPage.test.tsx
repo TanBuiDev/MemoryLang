@@ -31,7 +31,7 @@ describe('ExamResultPage', () => {
     expect(screen.getByText('Andrew đã xoay xở để được thăng chức.')).toBeInTheDocument()
     expect(screen.getByText(/manage \+ to-infinitive/)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Grammar' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Listening Text 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Listening Text 1/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Quay lại danh sách đề' })).toHaveAttribute('href', '/app/exams')
   })
 })

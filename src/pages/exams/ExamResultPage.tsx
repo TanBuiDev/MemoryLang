@@ -162,6 +162,23 @@ export function ExamResultPage() {
   const incorrectCount = reviews.filter((r) => !r.is_correct && r.user_answer?.trim()).length
   const unansweredCount = reviews.filter((r) => !r.user_answer?.trim()).length
 
+  // Build a map of question options from exam_snapshot if available
+  const questionOptionsMap: Record<string, Array<{ key: string; text: string }>> = {}
+  if (attempt?.exam_snapshot && typeof attempt.exam_snapshot === 'object') {
+    const snapshot = attempt.exam_snapshot as Record<string, unknown>
+    if (Array.isArray(snapshot.resources)) {
+      snapshot.resources.forEach((res: Record<string, unknown>) => {
+        if (Array.isArray(res.questions)) {
+          res.questions.forEach((q: Record<string, unknown>) => {
+            if (typeof q.source_key === 'string' && Array.isArray(q.options)) {
+              questionOptionsMap[q.source_key] = q.options as Array<{ key: string; text: string }>
+            }
+          })
+        }
+      })
+    }
+  }
+
   const reviewGroups = sections
     .map((section) => {
       const sectionReviews = reviews.filter((r) => r.section_source_key === section.exam_section_source_key)
@@ -175,8 +192,12 @@ export function ExamResultPage() {
     })
     .filter((group) => group.reviews.length > 0 || Boolean(group.draftContent))
 
+  // Requirement #2: Default selectedSectionKey to the FIRST section if not set explicitly
+  const effectiveSectionKey = selectedSectionKey ?? (reviewGroups[0]?.sourceKey ?? null)
+  const activeSectionFilter = effectiveSectionKey === 'ALL_SECTIONS' ? null : effectiveSectionKey
+
   const filteredGroups = reviewGroups
-    .filter((group) => !selectedSectionKey || group.sourceKey === selectedSectionKey)
+    .filter((group) => !activeSectionFilter || group.sourceKey === activeSectionFilter)
     .map((group) => ({
       ...group,
       reviews: group.reviews.filter((r) => {
@@ -360,10 +381,10 @@ export function ExamResultPage() {
               <span className="text-xs font-black uppercase text-secondary flex items-center gap-1.5">
                 <BookOpen size={14} /> Các phần thi ({reviewGroups.length})
               </span>
-              {selectedSectionKey && (
+              {effectiveSectionKey !== 'ALL_SECTIONS' && (
                 <button
                   type="button"
-                  onClick={() => setSelectedSectionKey(null)}
+                  onClick={() => setSelectedSectionKey('ALL_SECTIONS')}
                   className="text-[11px] font-black text-secondary underline hover:no-underline"
                 >
                   Xem tất cả
@@ -371,15 +392,15 @@ export function ExamResultPage() {
               )}
             </div>
 
-            <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+            <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
               {reviewGroups.map((group) => {
                 const Icon = getSkillIcon(group.sourceKey)
-                const isSelected = selectedSectionKey === group.sourceKey
+                const isSelected = effectiveSectionKey === group.sourceKey
                 return (
                   <button
                     key={group.sourceKey}
                     type="button"
-                    onClick={() => setSelectedSectionKey(isSelected ? null : group.sourceKey)}
+                    onClick={() => setSelectedSectionKey(group.sourceKey)}
                     className={`w-full p-2 text-left border-2 border-border font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-secondary text-secondary-foreground shadow-[2px_2px_0_var(--border)]'
@@ -475,8 +496,7 @@ export function ExamResultPage() {
                   {/* Question Review List */}
                   {group.reviews.map((review, index) => {
                     const parsedTransformation = parseTransformationPrompt(review.question)
-                    const correctAnswerText =
-                      [...review.correct_option_keys, ...review.accepted_answers].join(', ') || 'Chưa có'
+                    const questionOptions = questionOptionsMap[review.question_source_key] ?? []
 
                     return (
                       <article
@@ -537,6 +557,12 @@ export function ExamResultPage() {
                                 {review.user_answer || '(Chưa trả lời)'}
                               </span>
                               {parsedTransformation.suffixText && <span>{parsedTransformation.suffixText}</span>}
+
+                              {!review.is_correct && (
+                                <span className="ml-2 font-black text-xs bg-yellow-300 text-black border-2 border-black px-2 py-0.5 not-italic shadow-[1.5px_1.5px_0_#000]">
+                                  Đáp án chuẩn: {[...review.correct_option_keys, ...review.accepted_answers].join(', ')}
+                                </span>
+                              )}
                             </div>
                           </div>
                         ) : (
@@ -546,34 +572,84 @@ export function ExamResultPage() {
                           </h3>
                         )}
 
-                        {/* Comparative Answer Details */}
-                        <div className="grid gap-3 sm:grid-cols-2 pt-1 text-xs font-semibold">
+                        {/* Requirement #1: Options List with Yellow Highlight on Correct Answer (Matching PDF!) */}
+                        {questionOptions.length > 0 ? (
                           <div
-                            className={`border-2 p-3 space-y-1 ${
-                              review.is_correct
-                                ? 'border-secondary/40 bg-secondary/5'
-                                : 'border-danger/40 bg-danger/5'
+                            className={`grid gap-2.5 pt-2 ${
+                              questionOptions.every((opt) => (opt.text ?? '').trim().length <= 35)
+                                ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+                                : 'grid-cols-1 sm:grid-cols-2'
                             }`}
                           >
-                            <span className="font-black text-muted-foreground uppercase text-[11px] block">
-                              Bạn đã trả lời:
-                            </span>
-                            <span
-                              className={`text-sm font-black ${
-                                review.is_correct ? 'text-secondary' : 'text-danger'
+                            {questionOptions.map((option) => {
+                              const isCorrectOption = review.correct_option_keys.includes(option.key)
+                              const isUserChoice = review.user_answer === option.key
+                              const isUserChoiceWrong = isUserChoice && !review.is_correct
+
+                              return (
+                                <div
+                                  key={option.key}
+                                  className={`p-2.5 text-left border-2 font-black text-sm flex items-center gap-2.5 transition-all select-none ${
+                                    isCorrectOption
+                                      ? 'bg-yellow-300 text-black border-black shadow-[2.5px_2.5px_0_#000]'
+                                      : isUserChoiceWrong
+                                        ? 'bg-danger/15 text-danger border-danger line-through opacity-80'
+                                        : 'bg-background text-foreground border-border opacity-70'
+                                  }`}
+                                >
+                                  <span
+                                    className={`shrink-0 w-6 h-6 border-2 flex items-center justify-center text-xs font-black rounded-xs ${
+                                      isCorrectOption
+                                        ? 'bg-black text-yellow-300 border-black'
+                                        : isUserChoiceWrong
+                                          ? 'bg-danger text-white border-danger'
+                                          : 'bg-muted text-foreground border-border'
+                                    }`}
+                                  >
+                                    {option.key}
+                                  </span>
+                                  <span className="leading-snug truncate">{option.text}</span>
+                                  {isCorrectOption && (
+                                    <span className="ml-auto text-[11px] bg-black text-yellow-300 font-black px-1.5 py-0.5 rounded-xs shrink-0">
+                                      Đáp án đúng
+                                    </span>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        ) : !parsedTransformation ? (
+                          /* Fallback for Fill Blank without options array */
+                          <div className="grid gap-3 sm:grid-cols-2 pt-1 text-xs font-semibold">
+                            <div
+                              className={`border-2 p-3 space-y-1 ${
+                                review.is_correct
+                                  ? 'border-secondary/40 bg-secondary/5'
+                                  : 'border-danger/40 bg-danger/5'
                               }`}
                             >
-                              {review.user_answer || 'Chưa trả lời'}
-                            </span>
-                          </div>
+                              <span className="font-black text-muted-foreground uppercase text-[11px] block">
+                                Bạn đã trả lời:
+                              </span>
+                              <span
+                                className={`text-sm font-black ${
+                                  review.is_correct ? 'text-secondary' : 'text-danger'
+                                }`}
+                              >
+                                {review.user_answer || 'Chưa trả lời'}
+                              </span>
+                            </div>
 
-                          <div className="border-2 border-secondary/40 bg-secondary/10 p-3 space-y-1">
-                            <span className="font-black text-muted-foreground uppercase text-[11px] block">
-                              Đáp án chính xác:
-                            </span>
-                            <span className="text-sm font-black text-secondary">{correctAnswerText}</span>
+                            <div className="border-2 border-yellow-400 bg-yellow-300 text-black p-3 space-y-1 shadow-[2px_2px_0_#000]">
+                              <span className="font-black uppercase text-[11px] block">
+                                Đáp án chính xác:
+                              </span>
+                              <span className="text-sm font-black">
+                                {[...review.correct_option_keys, ...review.accepted_answers].join(', ') || 'Chưa có'}
+                              </span>
+                            </div>
                           </div>
-                        </div>
+                        ) : null}
 
                         {/* Translation Section */}
                         {review.translation && (
