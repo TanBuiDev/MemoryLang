@@ -257,9 +257,9 @@ export default function AdminExamsPage() {
               {/* Action buttons */}
               <div className="flex items-center gap-2 pt-2 border-t-2 border-dashed border-border">
                 <Button variant="primary" asChild className="flex-1 min-h-9 text-xs">
-                  <Link to={`/app/admin/exams/${exam.id}/builder`}>
+                  <Link to={exam.source_key === 'b1-de-full-copy' ? `/app/admin/exams/${exam.id}/content` : `/app/admin/exams/${exam.id}/builder`}>
                     <Layers size={14} />
-                    Xây dựng Đề
+                    {exam.source_key === 'b1-de-full-copy' ? 'Quản lý nội dung B1' : 'Xây dựng Đề'}
                     <ChevronRight size={14} />
                   </Link>
                 </Button>
