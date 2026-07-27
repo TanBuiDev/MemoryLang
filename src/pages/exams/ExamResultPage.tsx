@@ -19,6 +19,7 @@ import {
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { InlineGapPassageResult, type QuestionOptionsMap } from '@/components/exam/presentations/InlineGapPassageResult'
 import { isInlineGapPresentation, resolveAttemptPresentation } from '@/features/exam-content/attemptPresentation'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
 import type { B1AttemptQuestionReview, PracticePromptSample } from '@/types/exam.types'
@@ -113,87 +114,6 @@ function cleanResourceText(text: string | null | undefined): string {
       '',
     )
     .trim()
-}
-
-type QuestionOptionsMap = Record<string, Array<{ key: string; text: string }>>
-
-function getOptionText(questionSourceKey: string, optionKey: string, optionsMap: QuestionOptionsMap) {
-  return optionsMap[questionSourceKey]?.find((option) => option.key === optionKey)?.text ?? optionKey
-}
-
-function getCorrectAnswerText(review: B1AttemptQuestionReview, optionsMap: QuestionOptionsMap) {
-  if (review.accepted_answers.length > 0) return review.accepted_answers.join(', ')
-  return review.correct_option_keys
-    .map((optionKey) => getOptionText(review.question_source_key, optionKey, optionsMap))
-    .join(', ')
-}
-
-function renderPassageWithInlineAnswers(
-  text: string,
-  reviews: B1AttemptQuestionReview[],
-  optionsMap: QuestionOptionsMap,
-) {
-  const numberToReview: Record<string, B1AttemptQuestionReview> = {}
-  reviews.forEach((r, idx) => {
-    const matchNum = r.question_source_key.match(/-q?(\d+)$/i) || r.question.match(/(\d+)/)
-    const num = matchNum ? matchNum[1] : String(idx + 1)
-    numberToReview[num] = r
-    if (!numberToReview[String(idx + 1)]) {
-      numberToReview[String(idx + 1)] = r
-    }
-  })
-
-  const regex = /(\(\d+\)\s*[\._]{2,})/g
-  const parts = text.split(regex)
-
-  return (
-    <div className="neo-card p-5 sm:p-6 bg-card border-2 border-border font-semibold text-base leading-loose whitespace-pre-wrap shadow-[3px_3px_0_var(--border)]">
-      <div className="flex items-center gap-2 text-xs font-black uppercase text-secondary mb-3 border-b-2 border-border pb-2">
-        <BookOpen size={15} />
-        <span>Văn bản và kết quả điền đáp án trực tiếp:</span>
-      </div>
-      <div className="leading-relaxed">
-        {parts.map((part, i) => {
-          const match = /^(\((\d+)\)\s*[\._]{2,})$/.exec(part)
-          if (match) {
-            const num = match[2]
-            const review = numberToReview[num] ?? reviews[parseInt(num, 10) - 1]
-
-            if (!review) return <span key={i}>{part}</span>
-
-            const correctAnswer = getCorrectAnswerText(review, optionsMap)
-            const userTyped = (review.user_answer ?? '').trim()
-            const userAnswerText = userTyped
-              ? getOptionText(review.question_source_key, userTyped, optionsMap)
-              : ''
-
-            return (
-              <span key={i} className="inline-flex flex-wrap items-baseline gap-1 mx-1.5 align-baseline">
-                <span className="font-mono font-black text-secondary text-sm">({num})</span>
-                {review.is_correct ? (
-                  <span className="font-black text-secondary underline decoration-secondary decoration-2 underline-offset-4 px-1.5 py-0.5 bg-secondary/15 border border-secondary/40">
-                    {userAnswerText || correctAnswer}
-                  </span>
-                ) : (
-                  <span className="inline-flex flex-wrap items-baseline gap-1.5 font-black text-sm">
-                    {userAnswerText && (
-                      <span className="text-danger px-1 py-0.5 bg-danger/10 border border-danger/30">
-                        {userAnswerText}
-                      </span>
-                    )}
-                    <span className="bg-yellow-300 text-black border-2 border-black px-2 py-0.5 shadow-[1.5px_1.5px_0_#000]">
-                      {correctAnswer}
-                    </span>
-                  </span>
-                )}
-              </span>
-            )
-          }
-          return <span key={i}>{part}</span>
-        })}
-      </div>
-    </div>
-  )
 }
 
 interface SnapshotResource {
@@ -794,7 +714,7 @@ export function ExamResultPage() {
                   {/* Reading Passage Container */}
                   {group.resource?.passage && (
                     shouldRenderInlinePassage ? (
-                      renderPassageWithInlineAnswers(inlinePassageText ?? group.resource.passage, group.reviews, questionOptionsMap)
+                      <InlineGapPassageResult passage={inlinePassageText ?? group.resource.passage} reviews={group.reviews} optionsMap={questionOptionsMap} />
                     ) : (
                       <div className="neo-card p-5 sm:p-6 bg-muted/60 border-2 border-border space-y-2.5 shadow-[3px_3px_0_var(--border)]">
                         <div className="flex items-center gap-2 text-xs font-black uppercase text-secondary border-b-2 border-border pb-2">
@@ -811,7 +731,7 @@ export function ExamResultPage() {
                   {/* Activity / Resource Content (when no passage) */}
                   {!group.resource?.passage && group.resource?.content && (
                     shouldRenderInlinePassage ? (
-                      renderPassageWithInlineAnswers(inlinePassageText ?? group.resource.content, group.reviews, questionOptionsMap)
+                      <InlineGapPassageResult passage={inlinePassageText ?? group.resource.content} reviews={group.reviews} optionsMap={questionOptionsMap} />
                     ) : (
                       <div className="neo-card p-4 bg-muted/40 border-2 border-border font-semibold text-sm leading-relaxed whitespace-pre-wrap shadow-[2px_2px_0_var(--border)]">
                         {group.resource.content}
@@ -820,7 +740,7 @@ export function ExamResultPage() {
                   )}
 
                   {!group.resource?.passage && !group.resource?.content && inlinePassageText && (
-                    renderPassageWithInlineAnswers(inlinePassageText, group.reviews, questionOptionsMap)
+                    <InlineGapPassageResult passage={inlinePassageText} reviews={group.reviews} optionsMap={questionOptionsMap} />
                   )}
 
                   {/* Resource Prompt (Writing / Speaking) */}
