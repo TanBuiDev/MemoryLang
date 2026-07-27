@@ -547,36 +547,49 @@ export function ExamResultPage() {
                         {/* Question Content */}
                         {parsedTransformation ? (
                           /* Sentence Transformation 2-Line Format */
-                          <div className="space-y-3">
-                            <div className="flex flex-wrap items-center gap-2 text-base font-bold text-foreground">
-                              <span>{parsedTransformation.originalSentence}</span>
-                              {parsedTransformation.keyword && (
-                                <span className="inline-flex items-center font-black text-xs text-secondary bg-secondary/15 px-2 py-0.5 border border-border">
-                                  ({parsedTransformation.keyword})
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap items-baseline gap-2 pt-1 font-semibold text-base italic">
-                              <span className="font-mono font-black text-secondary text-xl not-italic select-none">↳</span>
-                              {parsedTransformation.prefixText && <span>{parsedTransformation.prefixText}</span>}
-                              <span
-                                className={`font-black underline px-2 py-0.5 border border-border not-italic ${
-                                  review.is_correct
-                                    ? 'bg-secondary/15 text-secondary'
-                                    : 'bg-danger/15 text-danger'
-                                }`}
-                              >
-                                {review.user_answer || '(Chưa trả lời)'}
-                              </span>
-                              {parsedTransformation.suffixText && <span>{parsedTransformation.suffixText}</span>}
+                          {...(() => {
+                            const correctAnswerText = [...review.accepted_answers, ...review.correct_option_keys].join(', ')
+                            const userTyped = (review.user_answer ?? '').trim()
 
-                              {!review.is_correct && (
-                                <span className="ml-2 font-black text-xs bg-yellow-300 text-black border-2 border-black px-2 py-0.5 not-italic shadow-[1.5px_1.5px_0_#000]">
-                                  Đáp án chuẩn: {[...review.correct_option_keys, ...review.accepted_answers].join(', ')}
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                            return (
+                              <div className="space-y-3">
+                                {/* Line 1: Original Sentence + (Keyword) Badge */}
+                                <div className="flex flex-wrap items-center gap-2 text-base font-bold text-foreground">
+                                  <span>{parsedTransformation.originalSentence}</span>
+                                  {parsedTransformation.keyword && (
+                                    <span className="inline-flex items-center font-black text-xs text-secondary bg-secondary/15 px-2 py-0.5 border border-border">
+                                      ({parsedTransformation.keyword})
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Line 2: Single Continuous Rewritten Sentence with Filled Content in Red (if incorrect) or Green */}
+                                <div className="flex flex-wrap items-baseline gap-1.5 pt-1 text-base font-bold text-foreground">
+                                  <span className="font-mono font-black text-secondary text-xl not-italic select-none mr-1">↳</span>
+                                  {parsedTransformation.prefixText && <span>{parsedTransformation.prefixText}</span>}
+
+                                  {review.is_correct ? (
+                                    <span className="font-black text-secondary underline decoration-secondary decoration-2 underline-offset-4 px-1">
+                                      {userTyped || correctAnswerText}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex flex-wrap items-baseline gap-1.5">
+                                      {userTyped && userTyped !== correctAnswerText && (
+                                        <span className="font-black text-danger line-through opacity-70 px-0.5">
+                                          {userTyped}
+                                        </span>
+                                      )}
+                                      <span className="font-black text-danger underline decoration-danger decoration-2 underline-offset-4 px-1">
+                                        {correctAnswerText}
+                                      </span>
+                                    </span>
+                                  )}
+
+                                  {parsedTransformation.suffixText && <span>{parsedTransformation.suffixText}</span>}
+                                </div>
+                              </div>
+                            )
+                          })()}
                         ) : (
                           /* Standard Question Prompt */
                           <h3 className="text-base font-black leading-snug text-foreground whitespace-pre-wrap">
