@@ -94,6 +94,12 @@ src/
 | `practice_questions` | Objective questions attached to practice activities, including nullable image support |
 | `practice_prompts` | Reusable Writing/Speaking prompts with optional image and audio media |
 
+### B1 practice content foundation
+
+`exams` is the orchestration record for reusable practice content. Its ordered `exam_sections` rows link an exam to objective `practice_activities` (whose items live in `practice_questions`) or reusable Writing/Speaking `practice_prompts`. The production B1 DeFull import is identified by `exams.source_key = 'b1-de-full-copy'`.
+
+The B1 DeFull dataset is intentionally draft-only until an admin completes its media and publication review. Signs 1–10 currently keep `practice_questions.image_url` null, and the imported Listening activities plus Writing/Speaking prompts keep `audio_url` null. The reproducible import path is the reviewed JSON artifact in `docs/data/` → deterministic generated seed SQL → versioned remote Supabase migration; edit the artifact and regenerate the seed instead of hand-editing deployed rows.
+
 ## Routing
 **Public:** `/` (full branded homepage with feature/workflow/product-preview sections), `/login`, `/register`, `/forgot-password`, `/onboarding`
 
