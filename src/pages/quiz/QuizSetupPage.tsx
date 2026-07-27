@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, X, ClipboardCheck, Sparkles, HelpCircle, Layers, History, Trash2, Play, AlertCircle } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -360,6 +360,24 @@ export function QuizSetupPage() {
                   <p className="text-xs font-bold text-slate-600">
                     {t('quiz.missingTranslationNotice', { count: missingTranslationVocabulary.length })}
                   </p>
+                  <ul className="space-y-2">
+                    {missingTranslationVocabulary.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex flex-col gap-2 rounded-lg border-2 border-slate-900 bg-white p-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <span className="text-xs font-black text-slate-900">{item.source_text}</span>
+                        <Button asChild variant="ghost" className="self-start text-xs sm:self-auto">
+                          <Link
+                            to={`/app/vocabulary/${item.id}`}
+                            aria-label={`Bổ sung bản dịch cho ${item.source_text}`}
+                          >
+                            Bổ sung bản dịch
+                          </Link>
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ) : null}
             </div>
