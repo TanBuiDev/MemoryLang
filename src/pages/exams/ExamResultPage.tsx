@@ -21,7 +21,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
 import type { B1AttemptQuestionReview, PracticePromptSample } from '@/types/exam.types'
-import { compareExactText, compareWritingContent, type WritingComparisonToken } from '@/utils/writingComparison'
+import { compareExactText, compareWritingContent, groupWritingComparisonTokens, type WritingComparisonToken } from '@/utils/writingComparison'
 
 function getReviews(sections: Array<{ progress: Record<string, unknown> }>): B1AttemptQuestionReview[] {
   return sections
@@ -239,9 +239,11 @@ function WritingTokens({ tokens, missing }: { tokens: WritingComparisonToken[]; 
 }
 
 function ExactTextTokens({ tokens, missing }: { tokens: WritingComparisonToken[]; missing: boolean }) {
+  const groupedTokens = groupWritingComparisonTokens(tokens)
+
   return (
     <span className="font-black whitespace-pre-wrap">
-      {tokens.map((token, index) => (
+      {groupedTokens.map((token, index) => (
         <span
           key={`${token.value}-${index}`}
           className={token.status === 'same'

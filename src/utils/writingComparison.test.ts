@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareExactText, compareWritingContent, normalizeWritingContent } from './writingComparison'
+import { compareExactText, compareWritingContent, groupWritingComparisonTokens, normalizeWritingContent } from './writingComparison'
 
 describe('writingComparison', () => {
   it('treats punctuation, whitespace, and line-break-only changes as a match', () => {
@@ -34,5 +34,17 @@ describe('writingComparison', () => {
 
     expect(comparison.isExactMatch).toBe(false)
     expect(comparison.expected).toContainEqual({ value: '!', status: 'missing' })
+  })
+
+  it('groups adjacent character statuses without losing their precise difference state', () => {
+    expect(groupWritingComparisonTokens([
+      { value: 'g', status: 'same' },
+      { value: 'e', status: 'same' },
+      { value: 't', status: 'same' },
+      { value: '!', status: 'missing' },
+    ])).toEqual([
+      { value: 'get', status: 'same' },
+      { value: '!', status: 'missing' },
+    ])
   })
 })

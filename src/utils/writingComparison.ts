@@ -17,6 +17,18 @@ export interface ExactTextComparison {
   expected: WritingComparisonToken[]
 }
 
+export function groupWritingComparisonTokens(tokens: WritingComparisonToken[]) {
+  return tokens.reduce<WritingComparisonToken[]>((groups, token) => {
+    const previous = groups.at(-1)
+    if (previous?.status === token.status) {
+      previous.value += token.value
+    } else {
+      groups.push({ ...token })
+    }
+    return groups
+  }, [])
+}
+
 function getWords(content: string) {
   return content.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu) ?? []
 }
