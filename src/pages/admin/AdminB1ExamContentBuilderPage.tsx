@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CheckCircle2, Layers, Save } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, FileAudio, Layers, Save } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ChoiceListEditor, type EditableChoiceQuestion } from '@/components/admin/exam-presentations/ChoiceListEditor'
@@ -257,9 +257,14 @@ export function AdminB1ExamContentBuilderPage() {
             <p className="mt-1 text-sm font-semibold text-primary-foreground/90">{examQuery.data.title}</p>
           </div>
         </div>
-        <span className={`border-2 border-border px-3 py-1 text-xs font-black ${examQuery.data.is_published ? 'bg-secondary text-secondary-foreground' : 'bg-background text-foreground'}`}>
-          {examQuery.data.is_published ? 'Đã xuất bản' : 'Bản nháp'}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="ghost" className="min-h-9 px-3 text-xs">
+            <Link to="/app/admin/exam-media"><FileAudio size={15} /> Quản lý media và TTS</Link>
+          </Button>
+          <span className={`border-2 border-border px-3 py-1 text-xs font-black ${examQuery.data.is_published ? 'bg-secondary text-secondary-foreground' : 'bg-background text-foreground'}`}>
+            {examQuery.data.is_published ? 'Đã xuất bản' : 'Bản nháp'}
+          </span>
+        </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">

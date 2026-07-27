@@ -66,6 +66,12 @@ describe('AdminB1ExamContentBuilderPage', () => {
     expect(screen.getByText(/thiếu audio bắt buộc/i)).toBeInTheDocument()
   })
 
+  it('links the builder to media and TTS management for the same B1 workflow', async () => {
+    renderPage()
+
+    expect(await screen.findByRole('link', { name: /Quản lý media và TTS/i })).toHaveAttribute('href', '/app/admin/exam-media')
+  })
+
   it('saves the visual choice editor fields together with the selected presentation', async () => {
     const user = userEvent.setup()
     renderPage()
