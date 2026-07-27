@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, FileAudio, Layers, Save } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, FileAudio, Layers, Plus, Save } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ChoiceListEditor, type EditableChoiceQuestion } from '@/components/admin/exam-presentations/ChoiceListEditor'
 import { InlineGapEditor } from '@/components/admin/exam-presentations/InlineGapEditor'
@@ -11,11 +11,13 @@ import { PromptSampleEditor, type PromptSampleDraft } from '@/components/admin/e
 import { TransformationEditor, type EditableTransformationQuestion } from '@/components/admin/exam-presentations/TransformationEditor'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { getPresentationDefinition } from '@/features/exam-content/presentationRegistry'
+import { Input, Label } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
+import { getPresentationDefinition, isPresentationReadyForPublication, PRESENTATION_REGISTRY } from '@/features/exam-content/presentationRegistry'
 import { getExamPublishReadiness } from '@/features/exam-content/publishReadiness'
 import { createInlineGapDraft, serializeInlineGapDraft, type InlineGapDraft, type InlineGapSegment } from '@/features/exam-content/inlineGapDraft'
 import { adminExamContentService, type AdminExamContentQuestion } from '@/services/supabase/adminExamContent.service'
-import type { ExamGradingMode, ExamPresentationType } from '@/types/exam.types'
+import type { ExamGradingMode, ExamPresentationType, ExamSkill } from '@/types/exam.types'
 
 const gradingModeLabels: Record<ExamGradingMode, string> = {
   single_choice: 'Chọn một đáp án',
@@ -25,6 +27,24 @@ const gradingModeLabels: Record<ExamGradingMode, string> = {
   sample_compare: 'So sánh bài mẫu',
   matching: 'Chấm cặp ghép',
   ordered_list: 'Chấm thứ tự',
+}
+
+const sectionSkillOptions: Array<{ value: ExamSkill; label: string }> = [
+  { value: 'grammar', label: 'Grammar & Use of English' }, { value: 'signs', label: 'Signs' },
+  { value: 'reading', label: 'Reading' }, { value: 'cloze', label: 'Cloze' },
+  { value: 'transformation', label: 'Sentence Transformation' }, { value: 'listening', label: 'Listening' },
+  { value: 'writing', label: 'Writing' }, { value: 'speaking', label: 'Speaking' },
+]
+
+function getDefaultPresentationForSkill(skill: ExamSkill): ExamPresentationType {
+  if (skill === 'speaking') return 'speaking_script_prompt'
+  if (skill === 'writing') return 'long_form_prompt'
+  return 'choice_list'
+}
+
+function createSectionSourceKey() {
+  const unique = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return `b1-section-${unique}`
 }
 
 function toEditableChoiceQuestions(questions: AdminExamContentQuestion[]): EditableChoiceQuestion[] {
@@ -106,6 +126,11 @@ export function AdminB1ExamContentBuilderPage() {
   const [transformationQuestions, setTransformationQuestions] = useState<EditableTransformationQuestion[]>([])
   const [longFormValue, setLongFormValue] = useState<LongFormPromptValue>({ prompt: '', instructions: '' })
   const [pendingDeleteSampleId, setPendingDeleteSampleId] = useState<string | null>(null)
+  const [isCreateSectionOpen, setIsCreateSectionOpen] = useState(false)
+  const [newSectionTitle, setNewSectionTitle] = useState('')
+  const [newSectionSkill, setNewSectionSkill] = useState<ExamSkill>('grammar')
+  const [newSectionPresentationType, setNewSectionPresentationType] = useState<ExamPresentationType>('choice_list')
+  const closeCreateSectionModal = useCallback(() => setIsCreateSectionOpen(false), [])
 
   const examQuery = useQuery({
     queryKey: ['admin-b1-exam-content', id],
@@ -254,6 +279,35 @@ export function AdminB1ExamContentBuilderPage() {
     },
   })
 
+  const createSection = useMutation({
+    mutationFn: () => {
+      const title = newSectionTitle.trim()
+      if (!title) throw new Error('Nhập tên section trước khi tạo.')
+      const nextOrder = Math.max(0, ...(examQuery.data?.sections.map((section) => section.order_index) ?? [])) + 1
+      return adminExamContentService.createSection({
+        examId: id,
+        sourceKey: createSectionSourceKey(),
+        title,
+        skill: newSectionSkill,
+        presentationType: newSectionPresentationType,
+        orderIndex: nextOrder,
+      })
+    },
+    onSuccess: async (section) => {
+      setSelectedSectionKey(section.source_key)
+      setNewSectionTitle('')
+      setIsCreateSectionOpen(false)
+      await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+    },
+  })
+
+  const newSectionPresentationOptions = Object.values(PRESENTATION_REGISTRY)
+    .filter((definition) => isPresentationReadyForPublication(definition.type)
+      && (newSectionSkill === 'writing' || newSectionSkill === 'speaking'
+        ? definition.resourceKind === 'prompt'
+        : definition.resourceKind === 'activity'))
+    .map((definition) => ({ value: definition.type, label: definition.label }))
+
   if (examQuery.isLoading) {
     return <div className="neo-card mx-auto max-w-7xl p-10 text-center font-black">Đang tải cấu trúc đề B1...</div>
   }
@@ -286,7 +340,10 @@ export function AdminB1ExamContentBuilderPage() {
 
       <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="neo-card h-fit space-y-3 bg-card p-4 shadow-[3px_3px_0_var(--border)]">
-          <h2 className="flex items-center gap-2 border-b-2 border-border pb-3 text-sm font-black uppercase"><Layers size={16} /> Cấu trúc đề</h2>
+          <div className="flex items-center justify-between gap-2 border-b-2 border-border pb-3">
+            <h2 className="flex items-center gap-2 text-sm font-black uppercase"><Layers size={16} /> Cấu trúc đề</h2>
+            <Button type="button" variant="primary" onClick={() => setIsCreateSectionOpen(true)} className="min-h-8 px-2 text-xs"><Plus size={14} /> Thêm section</Button>
+          </div>
           <div className="space-y-2">
             {examQuery.data.sections.map((section, index) => {
               const isSelected = selectedSection?.id === section.id
@@ -421,6 +478,28 @@ export function AdminB1ExamContentBuilderPage() {
           </ul>
         )}
       </section>
+      <ConfirmModal
+        open={isCreateSectionOpen}
+        title="Tạo section mới"
+        description="Section mới luôn ở trạng thái bản nháp và có một nội dung khởi đầu để bạn chỉnh sửa."
+        confirmLabel={createSection.isPending ? 'Đang tạo...' : 'Tạo section'}
+        cancelLabel="Hủy"
+        variant="primary"
+        confirmDisabled={!newSectionTitle.trim() || createSection.isPending}
+        onConfirm={() => createSection.mutate()}
+        onCancel={closeCreateSectionModal}
+      >
+        <div className="space-y-4">
+          <div className="space-y-1.5"><Label htmlFor="new-section-title">Tên section</Label><Input id="new-section-title" value={newSectionTitle} onChange={(event) => setNewSectionTitle(event.target.value)} placeholder="Ví dụ: Listening Part 2" /></div>
+          <div className="space-y-1.5"><Label htmlFor="new-section-skill">Kỹ năng</Label><Select id="new-section-skill" value={newSectionSkill} options={sectionSkillOptions} onChange={(value) => {
+            const skill = value as ExamSkill
+            setNewSectionSkill(skill)
+            setNewSectionPresentationType(getDefaultPresentationForSkill(skill))
+          }} /></div>
+          <div className="space-y-1.5"><Label htmlFor="new-section-presentation">Cách học viên làm bài</Label><Select id="new-section-presentation" value={newSectionPresentationType} options={newSectionPresentationOptions} onChange={(value) => setNewSectionPresentationType(value as ExamPresentationType)} /></div>
+          {createSection.isError && <p className="text-sm font-bold text-danger">Không thể tạo section: {createSection.error.message}</p>}
+        </div>
+      </ConfirmModal>
       <ConfirmModal
         open={Boolean(pendingDeleteSampleId)}
         title="Xóa bài mẫu này?"

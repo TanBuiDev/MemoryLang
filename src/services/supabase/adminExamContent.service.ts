@@ -1,4 +1,4 @@
-import { isGradingModeCompatible } from '@/features/exam-content/presentationRegistry'
+import { getPresentationDefinition, isGradingModeCompatible } from '@/features/exam-content/presentationRegistry'
 import { supabase } from '@/services/supabase/client'
 import type { ExamGradingMode, ExamPresentationType, ExamResourceType, ExamSkill, PracticePromptSample } from '@/types/exam.types'
 
@@ -64,6 +64,29 @@ async function throwOnError<T>(result: { data: T | null; error: unknown }, fallb
   if (result.error) throw result.error
   if (result.data === null || result.data === undefined) throw new Error(fallback)
   return result.data
+}
+
+function getStarterActivityType(presentationType: ExamPresentationType) {
+  if (presentationType === 'boolean_list') return 'true_false'
+  if (presentationType === 'passage_text_inline') return 'fill_blank'
+  if (presentationType === 'sentence_transformation') return 'short_text'
+  return 'multiple_choice'
+}
+
+function getStarterOptions(presentationType: ExamPresentationType) {
+  if (presentationType === 'boolean_list') {
+    return [
+      { key: 'A', text: 'Đúng', is_correct: true },
+      { key: 'B', text: 'Sai', is_correct: false },
+    ]
+  }
+  if (presentationType === 'passage_text_inline' || presentationType === 'sentence_transformation') return []
+  return [
+    { key: 'A', text: '', is_correct: true },
+    { key: 'B', text: '', is_correct: false },
+    { key: 'C', text: '', is_correct: false },
+    { key: 'D', text: '', is_correct: false },
+  ]
 }
 
 export const adminExamContentService = {
@@ -181,6 +204,74 @@ export const adminExamContentService = {
         .eq('id', sectionId)
       if (error) throw error
     }
+  },
+
+  async createSection(input: {
+    examId: string
+    sourceKey: string
+    title: string
+    skill: ExamSkill
+    presentationType: ExamPresentationType
+    orderIndex: number
+  }): Promise<AdminExamContentSection> {
+    const definition = getPresentationDefinition(input.presentationType)
+    const gradingMode = definition.compatibleGradingModes[0]
+    const resource = definition.resourceKind === 'activity'
+      ? await throwOnError<{ id: string }>(
+        await supabase.from('practice_activities').insert({
+          source_key: input.sourceKey,
+          skill: input.skill,
+          title: input.title,
+          activity_type: getStarterActivityType(input.presentationType),
+          presentation_type: input.presentationType,
+          grading_mode: gradingMode,
+          is_published: false,
+        }).select().single(),
+        'Không thể tạo nội dung section.',
+      )
+      : await throwOnError<{ id: string }>(
+        await supabase.from('practice_prompts').insert({
+          source_key: input.sourceKey,
+          skill: input.skill,
+          title: input.title,
+          prompt: '',
+          presentation_type: input.presentationType,
+          grading_mode: gradingMode,
+          is_published: false,
+        }).select().single(),
+        'Không thể tạo nội dung section.',
+      )
+
+    if (definition.resourceKind === 'activity') {
+      const activityType = getStarterActivityType(input.presentationType)
+      await throwOnError(
+        await supabase.from('practice_questions').insert({
+          activity_id: resource.id,
+          source_key: `${input.sourceKey}-q1`,
+          source_number: '1',
+          question_type: activityType,
+          prompt: '',
+          options: getStarterOptions(input.presentationType),
+          accepted_answers: [],
+          order_index: 0,
+        }).select().single(),
+        'Không thể tạo câu hỏi khởi đầu.',
+      )
+    }
+
+    return throwOnError<AdminExamContentSection>(
+      await supabase.from('exam_sections').insert({
+        exam_id: input.examId,
+        source_key: input.sourceKey,
+        skill: input.skill,
+        title: input.title,
+        resource_type: definition.resourceKind,
+        resource_id: resource.id,
+        order_index: input.orderIndex,
+        is_required: true,
+      }).select().single(),
+      'Không thể thêm section vào đề thi.',
+    )
   },
 
   async updateQuestion(

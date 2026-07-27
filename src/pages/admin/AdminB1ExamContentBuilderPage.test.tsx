@@ -9,7 +9,7 @@ import { AdminB1ExamContentBuilderPage } from './AdminB1ExamContentBuilderPage'
 vi.mock('@/services/supabase/adminExamContent.service', () => ({
   adminExamContentService: {
     getExamContent: vi.fn(), updateResourcePresentation: vi.fn(), updateQuestion: vi.fn(), updateResourceContent: vi.fn(), updatePromptText: vi.fn(),
-    listPromptSamples: vi.fn(), savePromptSample: vi.fn(), deletePromptSample: vi.fn(), reorderSections: vi.fn(),
+    listPromptSamples: vi.fn(), savePromptSample: vi.fn(), deletePromptSample: vi.fn(), reorderSections: vi.fn(), createSection: vi.fn(),
   },
 }))
 
@@ -47,6 +47,9 @@ describe('AdminB1ExamContentBuilderPage', () => {
     vi.mocked(adminExamContentService.listPromptSamples).mockResolvedValue([])
     vi.mocked(adminExamContentService.deletePromptSample).mockResolvedValue(undefined)
     vi.mocked(adminExamContentService.reorderSections).mockResolvedValue(undefined)
+    vi.mocked(adminExamContentService.createSection).mockResolvedValue({
+      id: 'section-new', source_key: 'new-section', skill: 'grammar', title: 'Section mới', resource_type: 'activity', resource_id: 'activity-new', order_index: 2, is_required: true, suggested_time_minutes: null, resource: null,
+    })
   })
 
   it('switches the editor guidance when an admin chooses inline text gaps', async () => {
@@ -96,6 +99,21 @@ describe('AdminB1ExamContentBuilderPage', () => {
     await user.click(screen.getByRole('button', { name: 'Di chuyển Listening Text 1 xuống' }))
 
     expect(adminExamContentService.reorderSections).toHaveBeenCalledWith(['section-2', 'section-1'])
+  })
+
+  it('creates a draft section from an admin-friendly title and defaults', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByRole('heading', { name: 'Trình xây dựng nội dung đề B1' })
+    await user.click(screen.getByRole('button', { name: 'Thêm section' }))
+    await user.type(screen.getByLabelText('Tên section'), 'Ngữ pháp mới')
+    await user.click(screen.getByRole('button', { name: 'Tạo section' }))
+
+    expect(adminExamContentService.createSection).toHaveBeenCalledWith(expect.objectContaining({
+      examId: 'exam-1', title: 'Ngữ pháp mới', skill: 'grammar', presentationType: 'choice_list', orderIndex: 1,
+      sourceKey: expect.stringMatching(/^b1-section-/),
+    }))
   })
 
   it('saves the visual choice editor fields together with the selected presentation', async () => {

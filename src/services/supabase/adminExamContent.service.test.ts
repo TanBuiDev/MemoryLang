@@ -117,6 +117,28 @@ describe('adminExamContentService', () => {
     expect(finalSecondUpdate.update).toHaveBeenCalledWith({ order_index: 2 })
   })
 
+  it('creates a draft objective section with an editable starter question', async () => {
+    const activity = { insert: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { id: 'activity-2' }, error: null }) }
+    const question = { insert: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { id: 'question-2' }, error: null }) }
+    const section = { insert: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { id: 'section-2', source_key: 'new-grammar', skill: 'grammar', title: 'Ngữ pháp mới', resource_type: 'activity', resource_id: 'activity-2', order_index: 18, is_required: true, suggested_time_minutes: null }, error: null }) }
+    from.mockReturnValueOnce(activity as never).mockReturnValueOnce(question as never).mockReturnValueOnce(section as never)
+
+    await expect(adminExamContentService.createSection({
+      examId: 'exam-1', sourceKey: 'new-grammar', title: 'Ngữ pháp mới', skill: 'grammar', presentationType: 'choice_list', orderIndex: 18,
+    })).resolves.toMatchObject({ id: 'section-2', resource_id: 'activity-2' })
+
+    expect(activity.insert).toHaveBeenCalledWith(expect.objectContaining({
+      source_key: 'new-grammar', skill: 'grammar', title: 'Ngữ pháp mới', activity_type: 'multiple_choice',
+      presentation_type: 'choice_list', grading_mode: 'single_choice', is_published: false,
+    }))
+    expect(question.insert).toHaveBeenCalledWith(expect.objectContaining({
+      activity_id: 'activity-2', source_key: 'new-grammar-q1', question_type: 'multiple_choice', order_index: 0,
+    }))
+    expect(section.insert).toHaveBeenCalledWith(expect.objectContaining({
+      exam_id: 'exam-1', source_key: 'new-grammar', resource_type: 'activity', resource_id: 'activity-2', order_index: 18,
+    }))
+  })
+
   it('updates a Writing or Speaking prompt and its learner instructions', async () => {
     const update = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
     from.mockReturnValueOnce(update as never)
