@@ -7,7 +7,10 @@ vi.mock('@/services/supabase/client', () => ({ supabase: { from: vi.fn() } }))
 const from = vi.mocked(supabase.from)
 
 describe('adminExamContentService', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    from.mockReset()
+  })
 
   it('loads ordered B1 sections with their typed activity resources and questions', async () => {
     const exam = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { id: 'exam-1', title: 'B1 Mock', source_key: 'b1-de-full-copy', is_published: false }, error: null }) }
@@ -22,6 +25,18 @@ describe('adminExamContentService', () => {
         source_key: 'grammar',
         resource: { id: 'activity-1', presentation_type: 'choice_list', questions: [{ id: 'question-1' }] },
       }],
+    })
+  })
+
+  it('loads Writing and Speaking samples with each prompt resource for publish validation', async () => {
+    const exam = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { id: 'exam-1', title: 'B1 Mock', source_key: 'b1-de-full-copy', is_published: false }, error: null }) }
+    const sections = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockResolvedValue({ data: [{ id: 'section-1', exam_id: 'exam-1', source_key: 'writing', skill: 'writing', title: 'Writing', resource_type: 'prompt', resource_id: 'prompt-1', order_index: 0, is_required: true }], error: null }) }
+    const prompts = { select: vi.fn().mockReturnThis(), in: vi.fn().mockResolvedValue({ data: [{ id: 'prompt-1', source_key: 'writing', title: 'Writing', skill: 'writing', presentation_type: 'long_form_prompt', grading_mode: 'sample_compare', is_published: false }], error: null }) }
+    const samples = { select: vi.fn().mockReturnThis(), in: vi.fn().mockResolvedValue({ data: [{ id: 'sample-1', prompt_id: 'prompt-1', title: 'Bài mẫu', content: 'Dear ...' }], error: null }) }
+    from.mockReturnValueOnce(exam as never).mockReturnValueOnce(sections as never).mockReturnValueOnce(prompts as never).mockReturnValueOnce(samples as never)
+
+    await expect(adminExamContentService.getExamContent('exam-1')).resolves.toMatchObject({
+      sections: [{ resource: { id: 'prompt-1', samples: [{ id: 'sample-1' }] } }],
     })
   })
 

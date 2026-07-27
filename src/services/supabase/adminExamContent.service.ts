@@ -35,6 +35,7 @@ export interface AdminExamContentResource {
   content_blocks?: unknown
   presentation_config?: Record<string, unknown>
   review_config?: Record<string, unknown>
+  samples?: PracticePromptSample[]
   questions: AdminExamContentQuestion[]
 }
 
@@ -95,6 +96,12 @@ export const adminExamContentService = {
         'Không thể tải nội dung Writing/Speaking.',
       ) as Array<Omit<AdminExamContentResource, 'kind' | 'questions'>>
       : []
+    const promptSamples = promptIds.length > 0
+      ? await throwOnError<PracticePromptSample[]>(
+        await supabase.from('practice_prompt_samples').select('*').in('prompt_id', promptIds),
+        'Không thể tải bài mẫu Writing/Speaking.',
+      )
+      : []
     const questions = activityIds.length > 0
       ? await throwOnError(
         await supabase.from('practice_questions').select('*').in('activity_id', activityIds).order('order_index'),
@@ -105,10 +112,16 @@ export const adminExamContentService = {
     const activitiesById = new Map(activityRows.map((resource) => [resource.id, resource]))
     const promptsById = new Map(promptRows.map((resource) => [resource.id, resource]))
     const questionsByActivityId = new Map<string, AdminExamContentQuestion[]>()
+    const samplesByPromptId = new Map<string, PracticePromptSample[]>()
     questions.forEach((question) => {
       const current = questionsByActivityId.get(question.activity_id) ?? []
       current.push(question)
       questionsByActivityId.set(question.activity_id, current)
+    })
+    promptSamples.forEach((sample) => {
+      const current = samplesByPromptId.get(sample.prompt_id) ?? []
+      current.push(sample)
+      samplesByPromptId.set(sample.prompt_id, current)
     })
 
     return {
@@ -126,6 +139,9 @@ export const adminExamContentService = {
               questions: section.resource_type === 'activity'
                 ? questionsByActivityId.get(rawResource.id) ?? []
                 : [],
+              ...(section.resource_type === 'prompt'
+                ? { samples: samplesByPromptId.get(rawResource.id) ?? [] }
+                : {}),
             }
             : null,
         }
