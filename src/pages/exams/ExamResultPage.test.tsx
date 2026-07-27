@@ -16,7 +16,10 @@ describe('ExamResultPage', () => {
       attempt: { id: 'attempt-1', status: 'submitted' },
       sections: [{
         id: 'section-1', exam_section_source_key: 'grammar', score: 1, max_score: 2,
-        progress: { review: [{ question_source_key: 'grammar-101', question: 'Andrew managed ____ a promotion.', user_answer: 'B', correct_option_keys: ['B'], accepted_answers: [], translation: 'Andrew đã xoay xở để được thăng chức.', explanation: 'manage + to-infinitive diễn tả xoay xở làm được việc gì.', is_correct: true }] },
+        progress: { review: [{ section_source_key: 'grammar', question_source_key: 'grammar-101', question: 'Andrew managed ____ a promotion.', user_answer: 'B', correct_option_keys: ['B'], accepted_answers: [], translation: 'Andrew đã xoay xở để được thăng chức.', explanation: 'manage + to-infinitive diễn tả xoay xở làm được việc gì.', is_correct: true }] },
+      }, {
+        id: 'section-2', exam_section_source_key: 'listening-text-1', score: 0, max_score: 1,
+        progress: { review: [{ section_source_key: 'listening-text-1', question_source_key: 'listening-text-1-1', question: 'I love playing ____.', user_answer: 'tennis', correct_option_keys: [], accepted_answers: ['soccer'], translation: 'Tôi thích chơi bóng đá.', explanation: 'Từ cần điền là soccer.', is_correct: false }] },
       }],
     } as never)
   })
@@ -27,5 +30,7 @@ describe('ExamResultPage', () => {
     expect(await screen.findByRole('heading', { name: 'Kết quả bài thi thử' })).toBeInTheDocument()
     expect(screen.getByText('Andrew đã xoay xở để được thăng chức.')).toBeInTheDocument()
     expect(screen.getByText(/manage \+ to-infinitive/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Grammar' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Listening Text 1' })).toBeInTheDocument()
   })
 })
