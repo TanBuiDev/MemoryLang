@@ -304,6 +304,42 @@ export function ExamAttemptPage() {
       showToast({ type: 'error', title: 'Chưa thể nộp bài', message: 'Vui lòng kiểm tra lại kết nối.' }),
   })
 
+  interface ParsedTransformation {
+    originalSentence: string
+    keyword: string | null
+    prefixText: string
+    suffixText: string
+  }
+
+  const parseTransformationPrompt = (promptText: string): ParsedTransformation | null => {
+    if (!promptText) return null
+    const lines = promptText.split('\n').map((l) => l.trim()).filter(Boolean)
+    if (lines.length < 2) return null
+
+    const line1 = lines[0]
+    const line2 = lines[1]
+
+    let keyword: string | null = null
+    let originalSentence = line1
+    const keywordMatch = line1.match(/\(([^)]+)\)\s*$/)
+    if (keywordMatch) {
+      keyword = keywordMatch[1]
+      originalSentence = line1.replace(/\(([^)]+)\)\s*$/, '').trim()
+    }
+
+    const gapSplitter = /[\u2026]|\.{3,}|_{3,}/
+    const parts = line2.split(gapSplitter)
+    const prefixText = parts[0]?.trim() ?? ''
+    const suffixText = parts.slice(1).join(' ').trim()
+
+    return {
+      originalSentence,
+      keyword,
+      prefixText,
+      suffixText,
+    }
+  }
+
   const cleanResourceText = (text: string | null | undefined): string => {
     if (!text) return ''
     return text
@@ -889,113 +925,160 @@ export function ExamAttemptPage() {
                 </section>
               </div>
             ) : (
-              /* Activity Mode: Questions List with Neobrutalist Option Cards */
-              <div className="space-y-6">
-                {(activeResource.questions ?? []).map((question, index) => {
-                  const qNumber = question.source_number ?? String(index + 1)
-                  const hasSelected = Boolean(selectedAnswers[question.source_key])
+                /* Activity Mode: Questions List with Neobrutalist Option Cards */
+                <div className="space-y-6">
+                  {(activeResource.questions ?? []).map((question, index) => {
+                    const qNumber = question.source_number ?? String(index + 1)
+                    const hasSelected = Boolean(selectedAnswers[question.source_key])
+                    const parsedTransformation = parseTransformationPrompt(question.prompt)
 
-                  return (
-                    <section
-                      key={question.source_key}
-                      ref={(el) => {
-                        questionRefs.current[question.source_key] = el
-                      }}
-                      className={`neo-card p-5 bg-card space-y-4 border-2 transition-all shadow-[3px_3px_0_var(--border)] ${
-                        hasSelected ? 'border-secondary' : 'border-border'
-                      }`}
-                    >
-                      {/* Inline Question Number Badge & Prompt on the Same Line */}
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex flex-wrap items-baseline gap-2.5 flex-1 min-w-0">
-                          <span className="inline-flex items-center gap-1 shrink-0 text-xs font-black uppercase tracking-wider text-secondary bg-muted px-2 py-0.5 border border-border shadow-[1.5px_1.5px_0_var(--border)]">
-                            <HelpCircle size={13} className="text-secondary" />
-                            <span>Câu {qNumber}</span>
-                          </span>
-                          <span className="text-base font-black leading-snug text-foreground whitespace-pre-wrap">
-                            {question.prompt}
-                          </span>
-                        </div>
-                      </div>
+                    return (
+                      <section
+                        key={question.source_key}
+                        id={`q-${question.source_key}`}
+                        className={`neo-card p-5 bg-card space-y-4 border-2 transition-all shadow-[3px_3px_0_var(--border)] ${
+                          hasSelected ? 'border-secondary' : 'border-border'
+                        }`}
+                      >
+                        {parsedTransformation ? (
+                          /* Sentence Transformation Custom 2-Line Layout matching exact exam format */
+                          <div className="space-y-3">
+                            {/* Line 1: Question Badge + Original Sentence + Keyword Badge */}
+                            <div className="flex flex-wrap items-center gap-2 text-base font-bold leading-relaxed text-foreground">
+                              <span className="inline-flex items-center gap-1 shrink-0 text-xs font-black uppercase tracking-wider text-secondary bg-muted px-2 py-0.5 border border-border shadow-[1.5px_1.5px_0_var(--border)]">
+                                <HelpCircle size={13} className="text-secondary" />
+                                <span>Câu {qNumber}</span>
+                              </span>
+                              <span>{parsedTransformation.originalSentence}</span>
+                              {parsedTransformation.keyword && (
+                                <span className="inline-flex items-center font-black text-xs text-secondary bg-secondary/15 px-2 py-0.5 border border-border">
+                                  ({parsedTransformation.keyword})
+                                </span>
+                              )}
+                            </div>
 
-                      {/* Question Image */}
-                      {question.image_url && (
-                        <img
-                          src={question.image_url}
-                          alt={`Hình minh họa câu ${qNumber}`}
-                          className="my-3 max-h-64 max-w-full border-2 border-border object-contain"
-                        />
-                      )}
+                            {/* Line 2: Continuous Rewrite Line starting with ↳ */}
+                            <div className="flex flex-wrap items-baseline gap-2 pt-2 border-t-2 border-border/40 font-semibold text-base">
+                              <span className="font-mono font-black text-secondary text-xl leading-none shrink-0 select-none">↳</span>
+                              {parsedTransformation.prefixText && (
+                                <span className="font-bold text-foreground italic">{parsedTransformation.prefixText}</span>
+                              )}
 
-                      {/* Options List (Multiple Choice) */}
-                      {(question.options?.length ?? 0) > 0 ? (
-                        <div
-                          className={`grid gap-2.5 pt-1 ${
-                            (question.options ?? []).every((opt) => (opt.text ?? '').trim().length <= 35)
-                              ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
-                              : 'grid-cols-1 sm:grid-cols-2'
-                          }`}
-                        >
-                          {question.options?.map((option) => {
-                            const isOptionSelected = selectedAnswers[question.source_key] === option.key
-                            return (
-                              <button
-                                key={option.key}
-                                type="button"
+                              <Input
+                                id={`answer-${question.source_key}`}
+                                value={selectedAnswers[question.source_key] ?? ''}
                                 disabled={isSubmitted}
-                                onClick={() =>
+                                onChange={(e) =>
                                   setSelectedAnswers((prev) => ({
                                     ...prev,
-                                    [question.source_key]: option.key,
+                                    [question.source_key]: e.target.value,
                                   }))
                                 }
-                                className={`w-full p-2.5 text-left border-2 border-border font-black text-sm flex items-center gap-2.5 transition-all cursor-pointer ${
-                                  isOptionSelected
-                                    ? 'bg-primary text-primary-foreground shadow-[3px_3px_0_var(--border)]'
-                                    : 'bg-background hover:bg-muted/60 text-foreground shadow-[2px_2px_0_var(--border)]'
+                                placeholder="..................................."
+                                className="inline-block flex-1 min-w-[200px] max-w-md h-10 px-3 font-bold text-base text-destructive bg-background border-2 border-border focus:border-secondary focus:ring-0 shadow-[2px_2px_0_var(--border)]"
+                              />
+
+                              {parsedTransformation.suffixText && (
+                                <span className="font-bold text-foreground italic">{parsedTransformation.suffixText}</span>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          /* Standard Question Layout */
+                          <>
+                            {/* Inline Question Number Badge & Prompt on the Same Line */}
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex flex-wrap items-baseline gap-2.5 flex-1 min-w-0">
+                                <span className="inline-flex items-center gap-1 shrink-0 text-xs font-black uppercase tracking-wider text-secondary bg-muted px-2 py-0.5 border border-border shadow-[1.5px_1.5px_0_var(--border)]">
+                                  <HelpCircle size={13} className="text-secondary" />
+                                  <span>Câu {qNumber}</span>
+                                </span>
+                                <span className="text-base font-black leading-snug text-foreground whitespace-pre-wrap">
+                                  {question.prompt}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Question Image */}
+                            {question.image_url && (
+                              <img
+                                src={question.image_url}
+                                alt={`Hình minh họa câu ${qNumber}`}
+                                className="my-3 max-h-64 max-w-full border-2 border-border object-contain"
+                              />
+                            )}
+
+                            {/* Options List (Multiple Choice) */}
+                            {(question.options?.length ?? 0) > 0 ? (
+                              <div
+                                className={`grid gap-2.5 pt-1 ${
+                                  (question.options ?? []).every((opt) => (opt.text ?? '').trim().length <= 35)
+                                    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+                                    : 'grid-cols-1 sm:grid-cols-2'
                                 }`}
                               >
-                                <span
-                                  className={`shrink-0 w-6 h-6 border-2 border-border flex items-center justify-center text-xs font-black rounded-xs ${
-                                    isOptionSelected
-                                      ? 'bg-secondary text-secondary-foreground'
-                                      : 'bg-muted text-foreground'
-                                  }`}
-                                >
-                                  {option.key}
-                                </span>
-                                <span className="leading-snug truncate">{option.text}</span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      ) : (
-                        /* Fill Blank / Text Input Question (Sentence Transformation) */
-                        <div className="border-2 border-border bg-muted/30 p-3.5 space-y-2 shadow-[2px_2px_0_var(--border)] mt-2">
-                          <div className="flex items-center gap-2 text-xs font-black text-secondary">
-                            <CornerDownRight size={15} />
-                            <span>Gõ câu viết lại / đáp án điền từ vào đây:</span>
-                          </div>
-                          <div className="relative flex items-center gap-2">
-                            <span className="font-mono font-black text-secondary text-lg shrink-0 select-none">↳</span>
-                            <Input
-                              id={`answer-${question.source_key}`}
-                              value={selectedAnswers[question.source_key] ?? ''}
-                              disabled={isSubmitted}
-                              onChange={(e) =>
-                                setSelectedAnswers((prev) => ({
-                                  ...prev,
-                                  [question.source_key]: e.target.value,
-                                }))
-                              }
-                              placeholder={answerPlaceholder(question)}
-                              className="font-bold text-base bg-background border-2 border-border focus:border-secondary focus:ring-0 shadow-[2px_2px_0_var(--border)]"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </section>
-                  )
+                                {question.options?.map((option) => {
+                                  const isOptionSelected = selectedAnswers[question.source_key] === option.key
+                                  return (
+                                    <button
+                                      key={option.key}
+                                      type="button"
+                                      disabled={isSubmitted}
+                                      onClick={() =>
+                                        setSelectedAnswers((prev) => ({
+                                          ...prev,
+                                          [question.source_key]: option.key,
+                                        }))
+                                      }
+                                      className={`w-full p-2.5 text-left border-2 border-border font-black text-sm flex items-center gap-2.5 transition-all cursor-pointer ${
+                                        isOptionSelected
+                                          ? 'bg-primary text-primary-foreground shadow-[3px_3px_0_var(--border)]'
+                                          : 'bg-background hover:bg-muted/60 text-foreground shadow-[2px_2px_0_var(--border)]'
+                                      }`}
+                                    >
+                                      <span
+                                        className={`shrink-0 w-6 h-6 border-2 border-border flex items-center justify-center text-xs font-black rounded-xs ${
+                                          isOptionSelected
+                                            ? 'bg-secondary text-secondary-foreground'
+                                            : 'bg-muted text-foreground'
+                                        }`}
+                                      >
+                                        {option.key}
+                                      </span>
+                                      <span className="leading-snug truncate">{option.text}</span>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            ) : (
+                              /* Fill Blank / Text Input Question */
+                              <div className="border-2 border-border bg-muted/30 p-3.5 space-y-2 shadow-[2px_2px_0_var(--border)] mt-2">
+                                <div className="flex items-center gap-2 text-xs font-black text-secondary">
+                                  <CornerDownRight size={15} />
+                                  <span>Gõ câu viết lại / đáp án điền từ vào đây:</span>
+                                </div>
+                                <div className="relative flex items-center gap-2">
+                                  <span className="font-mono font-black text-secondary text-lg shrink-0 select-none">↳</span>
+                                  <Input
+                                    id={`answer-${question.source_key}`}
+                                    value={selectedAnswers[question.source_key] ?? ''}
+                                    disabled={isSubmitted}
+                                    onChange={(e) =>
+                                      setSelectedAnswers((prev) => ({
+                                        ...prev,
+                                        [question.source_key]: e.target.value,
+                                      }))
+                                    }
+                                    placeholder={answerPlaceholder(question)}
+                                    className="font-bold text-base bg-background border-2 border-border focus:border-secondary focus:ring-0 shadow-[2px_2px_0_var(--border)]"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </section>
+                    )
                 })}
               </div>
             )}
