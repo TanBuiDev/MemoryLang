@@ -166,6 +166,16 @@ export const adminExamContentService = {
     if (error) throw error
   },
 
+  async reorderSections(sectionIds: string[]): Promise<void> {
+    for (const [index, sectionId] of sectionIds.entries()) {
+      const { error } = await supabase
+        .from('exam_sections')
+        .update({ order_index: index + 1 })
+        .eq('id', sectionId)
+      if (error) throw error
+    }
+  },
+
   async updateQuestion(
     questionId: string,
     input: Partial<Pick<AdminExamContentQuestion, 'prompt' | 'options' | 'translation' | 'explanation' | 'accepted_answers'>>,

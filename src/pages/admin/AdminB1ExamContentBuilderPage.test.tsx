@@ -9,7 +9,7 @@ import { AdminB1ExamContentBuilderPage } from './AdminB1ExamContentBuilderPage'
 vi.mock('@/services/supabase/adminExamContent.service', () => ({
   adminExamContentService: {
     getExamContent: vi.fn(), updateResourcePresentation: vi.fn(), updateQuestion: vi.fn(), updateResourceContent: vi.fn(), updatePromptText: vi.fn(),
-    listPromptSamples: vi.fn(), savePromptSample: vi.fn(), deletePromptSample: vi.fn(),
+    listPromptSamples: vi.fn(), savePromptSample: vi.fn(), deletePromptSample: vi.fn(), reorderSections: vi.fn(),
   },
 }))
 
@@ -46,6 +46,7 @@ describe('AdminB1ExamContentBuilderPage', () => {
     vi.mocked(adminExamContentService.updatePromptText).mockResolvedValue(undefined)
     vi.mocked(adminExamContentService.listPromptSamples).mockResolvedValue([])
     vi.mocked(adminExamContentService.deletePromptSample).mockResolvedValue(undefined)
+    vi.mocked(adminExamContentService.reorderSections).mockResolvedValue(undefined)
   })
 
   it('switches the editor guidance when an admin chooses inline text gaps', async () => {
@@ -70,6 +71,31 @@ describe('AdminB1ExamContentBuilderPage', () => {
     renderPage()
 
     expect(await screen.findByRole('link', { name: /Quản lý media và TTS/i })).toHaveAttribute('href', '/app/admin/exam-media')
+  })
+
+  it('moves a section down and persists the new exam order', async () => {
+    vi.mocked(adminExamContentService.getExamContent).mockResolvedValueOnce({
+      id: 'exam-1', title: 'Đề B1', source_key: 'b1-de-full-copy', is_published: false,
+      sections: [
+        {
+          id: 'section-1', source_key: 'listening-1', skill: 'listening', title: 'Listening Text 1',
+          resource_type: 'activity', resource_id: 'activity-1', order_index: 1, is_required: true, suggested_time_minutes: 10,
+          resource: null,
+        },
+        {
+          id: 'section-2', source_key: 'writing-7', skill: 'writing', title: 'Writing Topic 7',
+          resource_type: 'prompt', resource_id: 'prompt-1', order_index: 2, is_required: true, suggested_time_minutes: 20,
+          resource: null,
+        },
+      ],
+    } as never)
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByRole('heading', { name: 'Trình xây dựng nội dung đề B1' })
+    await user.click(screen.getByRole('button', { name: 'Di chuyển Listening Text 1 xuống' }))
+
+    expect(adminExamContentService.reorderSections).toHaveBeenCalledWith(['section-2', 'section-1'])
   })
 
   it('saves the visual choice editor fields together with the selected presentation', async () => {

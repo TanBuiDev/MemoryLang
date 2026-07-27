@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CheckCircle2, FileAudio, Layers, Save } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, FileAudio, Layers, Save } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ChoiceListEditor, type EditableChoiceQuestion } from '@/components/admin/exam-presentations/ChoiceListEditor'
@@ -214,6 +214,23 @@ export function AdminB1ExamContentBuilderPage() {
     },
   })
 
+  const reorderSections = useMutation({
+    mutationFn: (sectionIds: string[]) => adminExamContentService.reorderSections(sectionIds),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+    },
+  })
+
+  function moveSection(sectionId: string, direction: 'up' | 'down') {
+    const sections = examQuery.data?.sections ?? []
+    const currentIndex = sections.findIndex((section) => section.id === sectionId)
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= sections.length) return
+    const reordered = [...sections]
+    ;[reordered[currentIndex], reordered[targetIndex]] = [reordered[targetIndex], reordered[currentIndex]]
+    reorderSections.mutate(reordered.map((section) => section.id))
+  }
+
   const savePromptSample = useMutation({
     mutationFn: async (sample: PromptSampleDraft) => {
       if (!selectedResource || selectedResource.kind !== 'prompt') throw new Error('Chỉ Writing hoặc Speaking mới có bài mẫu.')
@@ -274,16 +291,35 @@ export function AdminB1ExamContentBuilderPage() {
             {examQuery.data.sections.map((section, index) => {
               const isSelected = selectedSection?.id === section.id
               return (
-                <Button
-                  key={section.id}
-                  type="button"
-                  variant={isSelected ? 'secondary' : 'ghost'}
-                  onClick={() => setSelectedSectionKey(section.source_key)}
-                  className="h-auto w-full justify-start whitespace-normal px-3 py-3 text-left"
-                >
-                  <span className="mr-2 text-xs opacity-70">{index + 1}.</span>
-                  <span className="min-w-0"><span className="block truncate text-sm">{section.title}</span><span className="block text-[11px] opacity-75">{section.skill}</span></span>
-                </Button>
+                <div key={section.id} className="flex items-stretch gap-1">
+                  <Button
+                    type="button"
+                    variant={isSelected ? 'secondary' : 'ghost'}
+                    onClick={() => setSelectedSectionKey(section.source_key)}
+                    className="h-auto min-w-0 flex-1 justify-start whitespace-normal px-3 py-3 text-left"
+                  >
+                    <span className="mr-2 text-xs opacity-70">{index + 1}.</span>
+                    <span className="min-w-0"><span className="block truncate text-sm">{section.title}</span><span className="block text-[11px] opacity-75">{section.skill}</span></span>
+                  </Button>
+                  <div className="flex flex-col gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      aria-label={`Di chuyển ${section.title} lên`}
+                      disabled={index === 0 || reorderSections.isPending}
+                      onClick={() => moveSection(section.id, 'up')}
+                      className="min-h-0 px-2 py-1"
+                    ><ArrowUp size={14} /></Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      aria-label={`Di chuyển ${section.title} xuống`}
+                      disabled={index === examQuery.data.sections.length - 1 || reorderSections.isPending}
+                      onClick={() => moveSection(section.id, 'down')}
+                      className="min-h-0 px-2 py-1"
+                    ><ArrowDown size={14} /></Button>
+                  </div>
+                </div>
               )
             })}
           </div>

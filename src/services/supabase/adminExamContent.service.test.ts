@@ -95,6 +95,21 @@ describe('adminExamContentService', () => {
     expect(update.update).toHaveBeenCalledWith({ accepted_answers: ['football', 'soccer'] })
   })
 
+  it('persists the requested B1 section order with consecutive positions', async () => {
+    const firstUpdate = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
+    const secondUpdate = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
+    from.mockReturnValueOnce(firstUpdate as never).mockReturnValueOnce(secondUpdate as never)
+
+    await expect(adminExamContentService.reorderSections(['section-2', 'section-1'])).resolves.toBeUndefined()
+
+    expect(from).toHaveBeenNthCalledWith(1, 'exam_sections')
+    expect(firstUpdate.update).toHaveBeenCalledWith({ order_index: 1 })
+    expect(firstUpdate.eq).toHaveBeenCalledWith('id', 'section-2')
+    expect(from).toHaveBeenNthCalledWith(2, 'exam_sections')
+    expect(secondUpdate.update).toHaveBeenCalledWith({ order_index: 2 })
+    expect(secondUpdate.eq).toHaveBeenCalledWith('id', 'section-1')
+  })
+
   it('updates a Writing or Speaking prompt and its learner instructions', async () => {
     const update = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
     from.mockReturnValueOnce(update as never)
