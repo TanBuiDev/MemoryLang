@@ -118,6 +118,7 @@ The learner attempt workspace autosaves objective answers and Writing/Speaking d
 - `/app/quiz` - Setup, session (`/session/:id`), result (`/result/:id`)
 - `/app/review` - Due today + difficult words
 - `/app/templates` - MVP 2 placeholder
+- `/app/exams` - B1 PET exam hub with flexible timer presets, exam catalog search/tier filtering, and in-progress/submitted attempt history
 - `/app/statistics` - Redirects to `/app/dashboard` because statistics are integrated into Overview
 - `/app/settings` - Profile, language, study, audio settings
 
