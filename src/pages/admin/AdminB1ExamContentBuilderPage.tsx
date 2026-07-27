@@ -327,7 +327,7 @@ export function AdminB1ExamContentBuilderPage() {
                   </Button>
                 ))}
               </div>
-              {['choice_list', 'boolean_list', 'image_choice_list', 'passage_questions'].includes(presentationType) && (
+              {['choice_list', 'boolean_list', 'image_choice_list', 'passage_questions', 'passage_choice_inline'].includes(presentationType) && (
                 <ChoiceListEditor questions={editedQuestions} onChange={setEditedQuestions} disabled={savePresentation.isPending} />
               )}
               {(presentationType === 'passage_text_inline' || presentationType === 'passage_choice_inline') && inlineGapDraft && (

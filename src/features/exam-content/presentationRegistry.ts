@@ -32,7 +32,7 @@ export const PRESENTATION_REGISTRY: Record<ExamPresentationType, PresentationDef
   },
   passage_choice_inline: {
     type: 'passage_choice_inline', label: 'Chọn đáp án trong đoạn văn', description: 'Mỗi ô trống trong passage nhận một lựa chọn.',
-    compatibleGradingModes: sharedChoiceModes, requiresStructuredGaps: true, resourceKind: 'activity', isReadyForPublication: false,
+    compatibleGradingModes: sharedChoiceModes, requiresStructuredGaps: true, resourceKind: 'activity',
   },
   passage_text_inline: {
     type: 'passage_text_inline', label: 'Điền từ trong đoạn văn', description: 'Học viên điền đáp án trực tiếp vào từng ô trống.',

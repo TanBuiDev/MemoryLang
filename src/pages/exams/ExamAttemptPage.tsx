@@ -24,6 +24,7 @@ import {
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { InlineChoicePassageAttempt } from '@/components/exam/presentations/InlineChoicePassageAttempt'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label, Textarea } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -183,11 +184,12 @@ export function ExamAttemptPage() {
     })
     : null
   const isPrompt = presentationType ? isLongFormPresentation(presentationType) : false
-  const isTextGapPresentation = presentationType === 'passage_text_inline'
-  const inlinePassageText = isTextGapPresentation ? getInlinePassageText(activeResource) : null
+  const isChoiceGapPresentation = presentationType === 'passage_choice_inline'
+  const inlinePassageText = presentationType && isInlineGapPresentation(presentationType)
+    ? getInlinePassageText(activeResource)
+    : null
   const isInlineGapActivity =
     Boolean(presentationType && isInlineGapPresentation(presentationType)) &&
-    isTextGapPresentation &&
     Boolean(inlinePassageText && /(\(\d+\)\s*_{2,})/.test(inlinePassageText))
   const timer = attemptDetail
     ? getAttemptTimerState(
@@ -579,6 +581,20 @@ export function ExamAttemptPage() {
     drafts.find((draft) => draft.id === id)
   const isSubmitted = attemptDetail.attempt.status === 'submitted'
 
+  const renderInlineGapActivity = () => {
+    const questions = activeResource.questions ?? []
+    if (isChoiceGapPresentation && inlinePassageText) {
+      return <InlineChoicePassageAttempt
+        passage={inlinePassageText}
+        questions={questions}
+        answers={selectedAnswers}
+        disabled={isSubmitted}
+        onAnswer={(questionKey, optionKey) => setSelectedAnswers((current) => ({ ...current, [questionKey]: optionKey }))}
+      />
+    }
+    return inlinePassageText ? renderContentWithInlineGaps(inlinePassageText, questions) : null
+  }
+
   const skillBadge = getSkillBadgeLabel(activeSection.skill)
   const SkillIcon = skillBadge.icon
 
@@ -787,11 +803,8 @@ export function ExamAttemptPage() {
                   <BookOpen size={14} />
                   <span>Bài đọc (Passage)</span>
                 </div>
-                {isTextGapPresentation && inlinePassageText && /(\(\d+\)\s*_{2,})/.test(inlinePassageText) ? (
-                  renderContentWithInlineGaps(
-                    inlinePassageText,
-                    activeResource.questions ?? [],
-                  )
+                {isInlineGapActivity ? (
+                  renderInlineGapActivity()
                 ) : (
                   <div className="border-2 border-border bg-muted/60 p-5 sm:p-6 font-semibold text-base leading-relaxed whitespace-pre-wrap shadow-[2px_2px_0_var(--border)]">
                     {activeResource.passage}
@@ -803,11 +816,8 @@ export function ExamAttemptPage() {
             {/* Activity or Prompt Content */}
             {!isPrompt && activeResource.content && (
               <div>
-                {isTextGapPresentation && inlinePassageText && /(\(\d+\)\s*_{2,})/.test(inlinePassageText) ? (
-                  renderContentWithInlineGaps(
-                    inlinePassageText,
-                    activeResource.questions ?? [],
-                  )
+                {isInlineGapActivity ? (
+                  renderInlineGapActivity()
                 ) : (
                   <div className="border-2 border-border bg-muted/40 p-4 font-semibold text-sm leading-relaxed whitespace-pre-wrap">
                     {activeResource.content}
@@ -817,7 +827,7 @@ export function ExamAttemptPage() {
             )}
 
             {!activeResource.passage && !activeResource.content && inlinePassageText && (
-              renderContentWithInlineGaps(inlinePassageText, activeResource.questions ?? [])
+              renderInlineGapActivity()
             )}
 
             {/* Prompt Text & GUIDELINES for Writing / Speaking */}
