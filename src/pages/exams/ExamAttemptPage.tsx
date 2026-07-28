@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button'
 import { InlineChoicePassageAttempt } from '@/components/exam/presentations/InlineChoicePassageAttempt'
 import { ChoiceListAttempt } from '@/components/exam/presentations/ChoiceListAttempt'
 import { ShortAnswerListAttempt } from '@/components/exam/presentations/ShortAnswerListAttempt'
+import { SentenceTransformationAttempt } from '@/components/exam/presentations/SentenceTransformationAttempt'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label, Textarea } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -388,42 +389,6 @@ export function ExamAttemptPage() {
     onError: () =>
       showToast({ type: 'error', title: 'Chưa thể nộp bài', message: 'Vui lòng kiểm tra lại kết nối.' }),
   })
-
-  interface ParsedTransformation {
-    originalSentence: string
-    keyword: string | null
-    prefixText: string
-    suffixText: string
-  }
-
-  const parseTransformationPrompt = (promptText: string): ParsedTransformation | null => {
-    if (!promptText) return null
-    const lines = promptText.split('\n').map((l) => l.trim()).filter(Boolean)
-    if (lines.length < 2) return null
-
-    const line1 = lines[0]
-    const line2 = lines[1]
-
-    let keyword: string | null = null
-    let originalSentence = line1
-    const keywordMatch = line1.match(/\(([^)]+)\)\s*$/)
-    if (keywordMatch) {
-      keyword = keywordMatch[1]
-      originalSentence = line1.replace(/\(([^)]+)\)\s*$/, '').trim()
-    }
-
-    const gapSplitter = /[\u2026]|\.{3,}|_{3,}/
-    const parts = line2.split(gapSplitter)
-    const prefixText = parts[0]?.trim() ?? ''
-    const suffixText = parts.slice(1).join(' ').trim()
-
-    return {
-      originalSentence,
-      keyword,
-      prefixText,
-      suffixText,
-    }
-  }
 
   const cleanResourceText = (text: string | null | undefined): string => {
     if (!text) return ''
@@ -1061,15 +1026,19 @@ export function ExamAttemptPage() {
                 disabled={isSubmitted}
                 onAnswer={(questionKey, answer) => setSelectedAnswers((current) => ({ ...current, [questionKey]: answer }))}
               />
+            ) : presentationType === 'sentence_transformation' ? (
+              <SentenceTransformationAttempt
+                questions={activeResource.questions ?? []}
+                answers={selectedAnswers}
+                disabled={isSubmitted}
+                onAnswer={(questionKey, answer) => setSelectedAnswers((current) => ({ ...current, [questionKey]: answer }))}
+              />
             ) : !isInlineGapActivity ? (
                 /* Activity Mode: Questions List with Neobrutalist Option Cards */
                 <div className="space-y-6">
                   {(activeResource.questions ?? []).map((question, index) => {
                     const qNumber = question.source_number ?? String(index + 1)
                     const hasSelected = Boolean(selectedAnswers[question.source_key])
-                    const parsedTransformation = presentationType === 'sentence_transformation'
-                      ? parseTransformationPrompt(question.prompt)
-                      : null
 
                     return (
                       <section
@@ -1079,58 +1048,8 @@ export function ExamAttemptPage() {
                           hasSelected ? 'border-secondary' : 'border-border'
                         }`}
                       >
-                        {parsedTransformation ? (
-                          /* Sentence Transformation Custom 2-Line Layout matching exact exam format */
-                          <div className="space-y-3">
-                            {/* Line 1: Question Badge + Original Sentence + Keyword Badge */}
-                            <div className="flex flex-wrap items-center gap-2 text-base font-bold leading-relaxed text-foreground">
-                              <span className="inline-flex items-center gap-1 shrink-0 text-xs font-black uppercase tracking-wider text-secondary bg-muted px-2 py-0.5 border border-border shadow-[1.5px_1.5px_0_var(--border)]">
-                                <HelpCircle size={13} className="text-secondary" />
-                                <span>Câu {qNumber}</span>
-                              </span>
-                              <span>{parsedTransformation.originalSentence}</span>
-                              {parsedTransformation.keyword && (
-                                <span className="inline-flex items-center font-black text-xs text-secondary bg-secondary/15 px-2 py-0.5 border border-border">
-                                  ({parsedTransformation.keyword})
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Line 2: Continuous Rewrite Line starting with ↳ */}
-                            <div className="flex flex-wrap items-baseline gap-2 pt-2 border-t-2 border-border/40 font-semibold text-base">
-                              <span className="font-mono font-black text-secondary text-xl leading-none shrink-0 select-none">↳</span>
-                              {parsedTransformation.prefixText && (
-                                <span className="font-bold text-foreground italic">{parsedTransformation.prefixText}</span>
-                              )}
-
-                              <Input
-                                id={`answer-${question.source_key}`}
-                                ref={(element) => {
-                                  questionRefs.current[question.source_key] = element
-                                }}
-                                value={selectedAnswers[question.source_key] ?? ''}
-                                disabled={isSubmitted}
-                                onChange={(e) =>
-                                  setSelectedAnswers((prev) => ({
-                                    ...prev,
-                                    [question.source_key]: e.target.value,
-                                  }))
-                                }
-                                onKeyDown={(event) =>
-                                  focusNextAnswer(event, activeResource.questions ?? [], question.source_key)
-                                }
-                                placeholder="..................................."
-                                className="inline-block flex-1 min-w-[200px] max-w-md h-10 px-3 font-bold text-base text-destructive bg-background border-2 border-border focus:border-secondary focus:ring-0 shadow-[2px_2px_0_var(--border)]"
-                              />
-
-                              {parsedTransformation.suffixText && (
-                                <span className="font-bold text-foreground italic">{parsedTransformation.suffixText}</span>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          /* Standard Question Layout */
-                          <>
+                        {/* Standard Question Layout */}
+                        <>
                             {/* Inline Question Number Badge & Prompt on the Same Line */}
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex flex-wrap items-baseline gap-2.5 flex-1 min-w-0">
@@ -1226,8 +1145,7 @@ export function ExamAttemptPage() {
                                 </div>
                               </div>
                             )}
-                          </>
-                        )}
+                        </>
                       </section>
                     )
                 })}
