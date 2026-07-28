@@ -209,6 +209,24 @@ describe('ExamResultPage', () => {
     expect(screen.getByText('to')).toHaveClass('text-danger')
   })
 
+  it('uses the dedicated short-answer result renderer from presentation metadata', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: { id: 'attempt-1', status: 'submitted', exam_snapshot: { sections: [{
+        source_key: 'short-answers', title: 'Trả lời ngắn', skill: 'reading', resource_type: 'activity',
+        resource: { presentation_type: 'short_answer_list', questions: [] },
+      }] } },
+      sections: [{ id: 'section-1', exam_section_source_key: 'short-answers', score: 0, max_score: 1, progress: { review: [{
+        section_source_key: 'short-answers', question_source_key: 'short-1', question: 'Name a fruit.', user_answer: 'apple', correct_option_keys: [], accepted_answers: ['banana'], translation: 'Kể tên một loại trái cây.', explanation: 'Đáp án mẫu là banana.', is_correct: false,
+      }] } }],
+    } as never)
+
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/app/exams/attempt/attempt-1/result']}><Routes><Route path="/app/exams/attempt/:attemptId/result" element={<ExamResultPage />} /></Routes></MemoryRouter></QueryClientProvider>)
+
+    expect(await screen.findByLabelText('Kết quả câu trả lời ngắn')).toBeInTheDocument()
+    expect(screen.getByText('apple')).toHaveClass('text-danger')
+    expect(screen.getByText('banana')).toHaveClass('bg-yellow-300')
+  })
+
   it('renders a matching review from presentation metadata with answer text instead of internal IDs', async () => {
     vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
       attempt: {

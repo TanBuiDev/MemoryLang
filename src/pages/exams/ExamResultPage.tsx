@@ -26,6 +26,7 @@ import { MatchingResult } from '@/components/exam/presentations/MatchingResult'
 import type { MatchingAttemptItem } from '@/components/exam/presentations/MatchingAttempt'
 import { OrderingResult, type OrderingResultItem } from '@/components/exam/presentations/OrderingResult'
 import { SentenceTransformationResult } from '@/components/exam/presentations/SentenceTransformationResult'
+import { ShortAnswerListResult } from '@/components/exam/presentations/ShortAnswerListResult'
 import { isInlineGapPresentation, resolveAttemptPresentation } from '@/features/exam-content/attemptPresentation'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
 import type { B1AttemptQuestionReview, PracticePromptSample } from '@/types/exam.types'
@@ -874,8 +875,12 @@ export function ExamResultPage() {
                     )
                   })()}
 
+                  {group.presentationType === 'short_answer_list' && (
+                    <ShortAnswerListResult reviews={group.reviews} />
+                  )}
+
                   {/* Question Review List (Suppressed for inline gap activities where answers are filled directly inside text above) */}
-                  {!shouldRenderInlinePassage && !['matching', 'ordering'].includes(group.presentationType) &&
+                  {!shouldRenderInlinePassage && !['matching', 'ordering', 'short_answer_list'].includes(group.presentationType) &&
                     group.reviews.map((review, index) => {
                     const parsedTransformation = parseTransformationPrompt(review.question)
                     const questionOptions = questionOptionsMap[review.question_source_key] ?? []
