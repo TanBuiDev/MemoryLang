@@ -22,8 +22,8 @@ Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder 
 | Migration/snapshot B1 | Hoàn thành và đã xác minh remote | `20260728002300_add_exam_presentation_registry.sql`, migration-contract test, verifier learner attempt; `migration list` khớp, dry-run rỗng, security advisors không có error | Browser E2E có đăng nhập. |
 | Publish gate | Hoàn thành | readiness client, guarded RPC `set_b1_exam_published_guarded`, test service | Audit remote cuối và thêm test lỗi policy/RLS nếu schema đổi. |
 | Admin builder | Hoàn thành phần lõi | picker, editor, preview, create/reorder/detach/add/delete question, tests | Clone/reuse section an toàn; editor media/image/passage phong phú hơn. |
-| Attempt renderer | Một phần | resolver metadata, renderer inline/choice/transformation/matching/ordering/short answer/long form, Enter regression, fallback cấu hình lỗi | Tiếp tục giảm các nhánh legacy. |
-| Result renderer | Một phần | inline, choice, transformation, matching, ordering, short answer, long form; sai nền đỏ; bài mẫu theo từng Writing/Speaking prompt; fallback cấu hình lỗi; title/icon metadata-first | Tách nốt fallback typed cho snapshot legacy. |
+| Attempt renderer | Hoàn thành compatibility | resolver metadata, renderer inline/choice/transformation/matching/ordering/short answer/long form, Enter regression, fallback cấu hình lỗi; snapshot legacy `content_blocks` | Chỉ còn refactor nội bộ để page nhỏ hơn, không còn blocker compatibility. |
+| Result renderer | Hoàn thành compatibility | inline, choice, transformation, matching, ordering, short answer, long form; sai nền đỏ; bài mẫu theo từng Writing/Speaking prompt; fallback cấu hình lỗi; title/icon metadata-first | Chỉ còn refactor nội bộ để page nhỏ hơn, không còn blocker compatibility. |
 | Media/TTS | Hoàn thành workflow B1 cơ bản + thay audio có xác nhận | `AdminExamMediaPage`, upload audio/sign, TTS, usage impact, alt text và preset crop Signs, warning/`ConfirmModal` khi thay audio đã publish, media service/test | Media asset library/version độc lập và xóa storage theo usage chưa hoàn chỉnh. |
 | 17 section B1 | Backfill có trong migration; regression B1 đạt | mapping `CASE`, `pnpm test` xanh 124 files/519 tests, `pnpm tsc -b`; migration remote khớp local đến `20260728103907` | Cần smoke test browser có đăng nhập để đếm/mapping đủ 17 section trên remote. |
 
@@ -538,7 +538,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 ### Task 3: Tách learner renderer theo presentation
 
-**Trạng thái audit:** Một phần. Đã có resolver metadata, `InlineChoicePassageAttempt`, `ChoiceListAttempt`, `ShortAnswerListAttempt`, `SentenceTransformationAttempt`, `MatchingAttempt`, `OrderingAttempt`, `LongFormPromptWorkspace` và regression Enter cho input theo danh sách/viết lại câu. Page chỉ giữ orchestration của draft/autosave.
+**Trạng thái audit:** Hoàn thành compatibility. Đã có resolver metadata, `InlineChoicePassageAttempt`, `ChoiceListAttempt`, `ShortAnswerListAttempt`, `SentenceTransformationAttempt`, `MatchingAttempt`, `OrderingAttempt`, `LongFormPromptWorkspace` và regression Enter cho input theo danh sách/viết lại câu. Resolver giữ fallback typed cho snapshot cũ theo resource type/skill/activity type, kể cả inline `content_blocks`; page chỉ giữ orchestration của draft/autosave.
 
 **Bằng chứng đã hoàn thành:**
 
@@ -561,7 +561,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 ### Task 4: Tách result renderer theo presentation
 
-**Trạng thái audit:** Một phần. Đã có `InlineGapPassageResult`, `ChoiceQuestionResult`, `SentenceTransformationResult`, `MatchingResult`, `OrderingResult`, `ShortAnswerListResult`, `LongFormPromptResult`, review sai nền đỏ, option text và so sánh bài mẫu theo từng Writing/Speaking prompt; title/icon hiện chỉ đọc từ metadata snapshot, fallback trung tính cho attempt cũ. Fallback typed đầy đủ vẫn chưa tách.
+**Trạng thái audit:** Hoàn thành compatibility. Đã có `InlineGapPassageResult`, `ChoiceQuestionResult`, `SentenceTransformationResult`, `MatchingResult`, `OrderingResult`, `ShortAnswerListResult`, `LongFormPromptResult`, review sai nền đỏ, option text và so sánh bài mẫu theo từng Writing/Speaking prompt; title/icon hiện chỉ đọc từ metadata snapshot, fallback trung tính cho attempt cũ. Validator cũng chấp nhận inline passage từ `content_blocks` của snapshot cũ.
 
 **Bằng chứng đã hoàn thành:**
 
@@ -654,7 +654,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 |---|---|
 | Tạo section không cần DB/JSON/HTML | Đạt cho workflow hiện tại. |
 | Chọn presentation và chỉ thấy field liên quan | Đạt phần presentation đã hỗ trợ. |
-| Attempt/result cùng `presentation_type`, không phụ thuộc `source_key` | Chưa đạt hoàn toàn; metadata-first + legacy fallback đang chuyển đổi. |
+| Attempt/result cùng `presentation_type`, không phụ thuộc `source_key` | Đạt compatibility: snapshot mới ưu tiên `presentation_type`; snapshot cũ dùng fallback typed theo resource metadata, không suy luận UI từ `source_key`. |
 | 17 section không mất hành vi B1 đã sửa | Đạt một phần qua regression riêng; chưa có audit E2E toàn bộ 17. |
 | Thêm matching/ordering chỉ cần registry + 3 components | Đạt; mỗi type có editor, attempt, result, validation, snapshot grading và publish gate. |
 | Không lộ answer key trước submit | Đạt qua snapshot/grading contract test và guarded RPC. |

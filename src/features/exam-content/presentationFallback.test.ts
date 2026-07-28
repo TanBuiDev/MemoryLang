@@ -12,6 +12,13 @@ describe('getPresentationConfigurationIssue', () => {
       .toBe('Phần điền đáp án này chưa có đoạn văn hợp lệ.')
   })
 
+  it('accepts a structured inline-passage block without a legacy passage field', () => {
+    expect(getPresentationConfigurationIssue('passage_text_inline', {
+      content_blocks: [{ type: 'inline_gap_passage', segments: [{ type: 'text', value: 'Hello' }] }],
+      questions: [{ source_key: 'q1' }],
+    } as never)).toBeNull()
+  })
+
   it('explains when a long-form prompt is empty', () => {
     expect(getPresentationConfigurationIssue('speaking_script_prompt', { prompt: '  ' }))
       .toBe('Phần bài nói này chưa có đề bài hợp lệ.')

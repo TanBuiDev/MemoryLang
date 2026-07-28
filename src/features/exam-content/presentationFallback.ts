@@ -4,6 +4,7 @@ interface PresentationResourcePreview {
   prompt?: string | null
   passage?: string | null
   content?: string | null
+  content_blocks?: unknown
   questions?: unknown[] | null
 }
 
@@ -13,6 +14,14 @@ function hasText(value: string | null | undefined) {
 
 function hasQuestions(resource: PresentationResourcePreview) {
   return Array.isArray(resource.questions) && resource.questions.length > 0
+}
+
+function hasInlineGapContentBlock(resource: PresentationResourcePreview) {
+  return Array.isArray(resource.content_blocks) && resource.content_blocks.some((block) => (
+    Boolean(block)
+    && typeof block === 'object'
+    && (block as Record<string, unknown>).type === 'inline_gap_passage'
+  ))
 }
 
 export function getPresentationConfigurationIssue(
@@ -28,7 +37,7 @@ export function getPresentationConfigurationIssue(
   }
 
   if (presentationType === 'passage_choice_inline' || presentationType === 'passage_text_inline') {
-    if (!hasText(resource.passage) && !hasText(resource.content)) {
+    if (!hasText(resource.passage) && !hasText(resource.content) && !hasInlineGapContentBlock(resource)) {
       return 'Phần điền đáp án này chưa có đoạn văn hợp lệ.'
     }
     if (!hasQuestions(resource)) return 'Phần điền đáp án này chưa có ô đáp án hợp lệ.'

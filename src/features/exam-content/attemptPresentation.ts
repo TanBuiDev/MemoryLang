@@ -9,11 +9,20 @@ interface AttemptPresentationInput {
     activity_type?: string | null
     passage?: string | null
     content?: string | null
+    content_blocks?: unknown
   }
 }
 
 function isPresentationType(value: string | null | undefined): value is ExamPresentationType {
   return Boolean(value && value in PRESENTATION_REGISTRY)
+}
+
+function hasInlineGapContentBlock(contentBlocks: unknown): boolean {
+  return Array.isArray(contentBlocks) && contentBlocks.some((block) => (
+    Boolean(block)
+    && typeof block === 'object'
+    && (block as Record<string, unknown>).type === 'inline_gap_passage'
+  ))
 }
 
 export function resolveAttemptPresentation({
@@ -33,7 +42,9 @@ export function resolveAttemptPresentation({
   if (sectionSkill === 'cloze') return 'passage_choice_inline'
   if (resource.activity_type === 'true_false') return 'boolean_list'
   if (resource.activity_type === 'fill_blank') {
-    return resource.passage || resource.content ? 'passage_text_inline' : 'short_answer_list'
+    return resource.passage || resource.content || hasInlineGapContentBlock(resource.content_blocks)
+      ? 'passage_text_inline'
+      : 'short_answer_list'
   }
   if (sectionSkill === 'reading' && resource.passage) return 'passage_questions'
   return 'choice_list'

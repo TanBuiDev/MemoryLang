@@ -25,4 +25,15 @@ describe('resolveAttemptPresentation', () => {
       resource: {},
     })).toBe('speaking_script_prompt')
   })
+
+  it('uses the inline-gap renderer for a legacy snapshot that only has structured content blocks', () => {
+    expect(resolveAttemptPresentation({
+      resourceType: 'activity',
+      sectionSkill: 'listening',
+      resource: {
+        activity_type: 'fill_blank',
+        content_blocks: [{ type: 'inline_gap_passage', segments: [{ type: 'text', value: 'I like ' }] }],
+      } as never,
+    })).toBe('passage_text_inline')
+  })
 })
