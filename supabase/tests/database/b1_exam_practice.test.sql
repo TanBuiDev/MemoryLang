@@ -1085,6 +1085,16 @@ select extensions.lives_ok(
   $$ select public.create_practice_draft_version('95000000-0000-0000-0000-000000000001', 'Version one.') $$,
   'learners can save their first prompt version'
 );
+select extensions.is(
+  (
+    select word_count
+    from public.practice_draft_versions
+    where prompt_id = '95000000-0000-0000-0000-000000000001'
+      and version_number = 1
+  ),
+  2,
+  'draft versions count whitespace-separated words correctly'
+);
 select extensions.lives_ok(
   $$ select public.create_practice_draft_version('95000000-0000-0000-0000-000000000001', 'Version two.') $$,
   'learners can save their second prompt version'

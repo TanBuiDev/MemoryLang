@@ -227,6 +227,9 @@ export function ExamAttemptPage() {
   const questionRefs = useRef<Record<string, HTMLElement | null>>({})
   const overtimeWarningShown = useRef(false)
   const progressHydrated = useRef(false)
+  const autosaveTimeoutRef = useRef<number | null>(null)
+  const autosavePromiseRef = useRef<Promise<unknown> | null>(null)
+  const submissionStartedRef = useRef(false)
 
   const [now, setNow] = useState(() => new Date())
   const [activeSectionIndex, setActiveSectionIndex] = useState(0)
@@ -370,12 +373,14 @@ export function ExamAttemptPage() {
         progress: input.progress,
         status: 'in_progress',
       }),
-    onError: () =>
+    onError: () => {
+      if (submissionStartedRef.current) return
       showToast({
         type: 'error',
         title: 'Không thể tự lưu tiến độ',
         message: 'Vui lòng kiểm tra kết nối rồi tiếp tục làm bài.',
-      }),
+      })
+    },
   })
 
   useEffect(() => {
@@ -391,11 +396,22 @@ export function ExamAttemptPage() {
       : {
           answers: Object.fromEntries(getSectionAnswerEntries(activeSection, selectedAnswers)),
         }
-    const timeoutId = window.setTimeout(
-      () => autosaveProgress.mutate({ sectionSourceKey: activeSection.source_key, progress }),
-      700,
-    )
-    return () => window.clearTimeout(timeoutId)
+    const timeoutId = window.setTimeout(() => {
+      if (submissionStartedRef.current) return
+      const autosavePromise = autosaveProgress.mutateAsync({
+        sectionSourceKey: activeSection.source_key,
+        progress,
+      })
+      autosavePromiseRef.current = autosavePromise
+      void autosavePromise.catch(() => undefined).finally(() => {
+        if (autosavePromiseRef.current === autosavePromise) autosavePromiseRef.current = null
+      })
+    }, 700)
+    autosaveTimeoutRef.current = timeoutId
+    return () => {
+      window.clearTimeout(timeoutId)
+      if (autosaveTimeoutRef.current === timeoutId) autosaveTimeoutRef.current = null
+    }
   }, [
     activeResource,
     activeSection,
@@ -432,6 +448,13 @@ export function ExamAttemptPage() {
 
   const submitAttempt = useMutation({
     mutationFn: async () => {
+      submissionStartedRef.current = true
+      if (autosaveTimeoutRef.current !== null) {
+        window.clearTimeout(autosaveTimeoutRef.current)
+        autosaveTimeoutRef.current = null
+      }
+      await autosavePromiseRef.current?.catch(() => undefined)
+
       await Promise.all(
         sections
           .filter((section) => section.resource_type === 'activity')
@@ -468,8 +491,10 @@ export function ExamAttemptPage() {
       })
       navigate(`/app/exams/attempt/${attemptId}/result`, { replace: true })
     },
-    onError: () =>
-      showToast({ type: 'error', title: 'Chưa thể nộp bài', message: 'Vui lòng kiểm tra lại kết nối.' }),
+    onError: () => {
+      submissionStartedRef.current = false
+      showToast({ type: 'error', title: 'Chưa thể nộp bài', message: 'Vui lòng kiểm tra lại kết nối.' })
+    },
   })
 
   const cleanResourceText = (text: string | null | undefined): string => {

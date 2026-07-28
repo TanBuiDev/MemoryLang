@@ -352,7 +352,12 @@ export function ExamResultPage() {
           sectionSkill: metadata.skill,
           resource: resource ?? {},
         }),
-        draftContent: typeof section.progress?.draft_content === 'string' ? section.progress.draft_content : null,
+        draftContent:
+          typeof section.progress?.draft_content === 'string'
+            ? section.progress.draft_content
+            : typeof section.progress?.content === 'string'
+              ? section.progress.content
+              : null,
       }
     })
     .filter((group) => group.reviews.length > 0 || Boolean(group.draftContent))

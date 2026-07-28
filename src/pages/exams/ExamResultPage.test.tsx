@@ -64,6 +64,29 @@ describe('ExamResultPage', () => {
     expect(await screen.findByText(/Nội dung bài viết khớp với bài mẫu/)).toBeInTheDocument()
   })
 
+  it('shows a submitted long-form response saved by the attempt autosave contract', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: {
+        id: 'attempt-1', status: 'submitted',
+        exam_snapshot: {
+          sections: [{
+            source_key: 'writing-topic-7', skill: 'writing', resource_type: 'prompt',
+            resource: { id: 'prompt-1', prompt: 'Apply for a part-time job.' },
+          }],
+        },
+      },
+      sections: [{
+        id: 'section-writing', exam_section_source_key: 'writing-topic-7', score: 0, max_score: 0,
+        progress: { content: 'Dear Sir or Madam,\nI am applying for this role.' },
+      }],
+    } as never)
+
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/app/exams/attempt/attempt-1/result']}><Routes><Route path="/app/exams/attempt/:attemptId/result" element={<ExamResultPage />} /></Routes></MemoryRouter></QueryClientProvider>)
+
+    expect(await screen.findByText('Bài tự luận đã nộp của bạn')).toBeInTheDocument()
+    expect(screen.getByText('Dear Sir or Madam,', { exact: false })).toBeInTheDocument()
+  })
+
   it('shows a submitted Speaking script with its own sample comparison', async () => {
     vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
       attempt: {

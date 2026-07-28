@@ -223,6 +223,37 @@ describe('ExamAttemptPage', () => {
     expect(screen.getByText('Monday')).toBeInTheDocument()
   })
 
+  it('cancels a queued autosave before submission changes the attempt status', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: {
+        id: 'attempt-1', status: 'in_progress', started_at: '2026-07-27T10:00:00.000Z', target_duration_seconds: 3600,
+        exam_snapshot: {
+          exam: { title: 'B1 DeFull' },
+          sections: [{
+            source_key: 'writing-1', skill: 'writing', title: 'Viết thư', resource_type: 'prompt',
+            resource: { id: 'prompt-1', prompt: 'Viết email cho bạn của bạn.' },
+          }],
+        },
+      },
+      sections: [{ id: 'section-1', exam_section_source_key: 'writing-1', progress: {}, status: 'not_started' }],
+    } as never)
+
+    let resolveSubmission: ((value: { attempt_id: string; score: number; max_score: number; reviews: never[] }) => void) | undefined
+    vi.mocked(examPracticeService.submitAttempt).mockImplementationOnce(() => new Promise((resolve) => {
+      resolveSubmission = resolve
+    }))
+
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: 'Nộp bài & xem đáp án' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Nộp bài ngay' }))
+
+    await waitFor(() => expect(examPracticeService.submitAttempt).toHaveBeenCalledWith('attempt-1'))
+    await new Promise((resolve) => window.setTimeout(resolve, 800))
+
+    expect(examPracticeService.saveSectionProgress).toHaveBeenCalledTimes(1)
+    resolveSubmission?.({ attempt_id: 'attempt-1', score: 0, max_score: 0, reviews: [] })
+  })
+
   it('renders a rich passage above passage questions from the snapshot content blocks', async () => {
     vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
       attempt: { id: 'attempt-1', started_at: '2026-07-27T10:00:00.000Z', target_duration_seconds: 3600, exam_snapshot: { exam: { title: 'B1' }, sections: [{ source_key: 'reading-rich', skill: 'reading', title: 'Reading', resource_type: 'activity', resource: { id: 'activity-1', presentation_type: 'passage_questions', content_blocks: [{ type: 'rich_text', value: '<p>Read <strong>carefully</strong>.</p>' }], questions: [{ source_key: 'q1', prompt: 'Question?', options: [{ key: 'A', text: 'Answer' }] }] } }] } },
