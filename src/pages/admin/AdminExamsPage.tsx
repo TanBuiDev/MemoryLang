@@ -11,6 +11,7 @@ import {
   Layers,
   Sparkles,
   ChevronRight,
+  FileAudio,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -263,6 +264,13 @@ export default function AdminExamsPage() {
                     <ChevronRight size={14} />
                   </Link>
                 </Button>
+                {exam.source_key === 'b1-de-full-copy' && (
+                  <Button variant="secondary" asChild className="min-h-9 px-3 text-xs" title="Quản lý Media & TTS đề B1">
+                    <Link to="/app/admin/exam-media">
+                      <FileAudio size={14} /> Media
+                    </Link>
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   onClick={() => openEditModal(exam)}
@@ -405,12 +413,15 @@ export default function AdminExamsPage() {
         </div>
       )}
 
-      {/* Confirmation Modal */}
+      {/* Delete Confirmation Modal */}
       <ConfirmModal
-        open={!!pendingDeleteId}
-        title="Xác nhận xóa đề thi?"
-        description="Hành động này sẽ xóa đề thi cùng toàn bộ các Cụm bài đọc và câu hỏi bên trong. Bạn không thể khôi phục sau khi xóa."
-        onConfirm={handleDeleteExam}
+        open={Boolean(pendingDeleteId)}
+        title="Xóa đề thi này?"
+        description="Toàn bộ cấu trúc các Parts, đoạn văn và câu hỏi thuộc đề thi này sẽ bị xóa khỏi hệ thống."
+        confirmLabel="Xóa đề thi"
+        cancelLabel="Hủy"
+        variant="danger"
+        onConfirm={() => void handleDeleteExam()}
         onCancel={() => setPendingDeleteId(null)}
       />
     </div>

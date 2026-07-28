@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, FileAudio, Layers, Plus, Save, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, Edit3, Eye, FileAudio, Layers, Plus, Save, ShieldAlert, ShieldCheck, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ChoiceListEditor, type EditableChoiceQuestion } from '@/components/admin/exam-presentations/ChoiceListEditor'
@@ -32,6 +32,17 @@ const gradingModeLabels: Record<ExamGradingMode, string> = {
   sample_compare: 'So sánh bài mẫu',
   matching: 'Chấm cặp ghép',
   ordered_list: 'Chấm thứ tự',
+}
+
+const skillBadges: Record<ExamSkill, { label: string; color: string }> = {
+  grammar: { label: 'Grammar', color: 'bg-blue-100 text-blue-900 border-blue-400' },
+  signs: { label: 'Signs', color: 'bg-amber-100 text-amber-900 border-amber-400' },
+  reading: { label: 'Reading', color: 'bg-emerald-100 text-emerald-900 border-emerald-400' },
+  cloze: { label: 'Cloze', color: 'bg-teal-100 text-teal-900 border-teal-400' },
+  transformation: { label: 'Rewrite', color: 'bg-purple-100 text-purple-900 border-purple-400' },
+  listening: { label: 'Listening', color: 'bg-indigo-100 text-indigo-900 border-indigo-400' },
+  writing: { label: 'Writing', color: 'bg-rose-100 text-rose-900 border-rose-400' },
+  speaking: { label: 'Speaking', color: 'bg-orange-100 text-orange-900 border-orange-400' },
 }
 
 const sectionSkillOptions: Array<{ value: ExamSkill; label: string }> = [
@@ -123,6 +134,7 @@ function getEditorGuidance(type: ExamPresentationType) {
 export function AdminB1ExamContentBuilderPage() {
   const { id = '' } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
+  const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'readiness'>('editor')
   const [selectedSectionKey, setSelectedSectionKey] = useState<string | null>(null)
   const [presentationType, setPresentationType] = useState<ExamPresentationType>('choice_list')
   const [gradingMode, setGradingMode] = useState<ExamGradingMode>('single_choice')
@@ -276,6 +288,7 @@ export function AdminB1ExamContentBuilderPage() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+      showToast({ type: 'success', title: 'Đã lưu cách trình bày và nội dung section!' })
     },
   })
 
@@ -316,6 +329,7 @@ export function AdminB1ExamContentBuilderPage() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['admin-b1-prompt-samples', selectedResource?.id] })
+      showToast({ type: 'success', title: 'Đã lưu bài mẫu thành công!' })
     },
   })
 
@@ -355,6 +369,7 @@ export function AdminB1ExamContentBuilderPage() {
       setNewSectionTitle('')
       setIsCreateSectionOpen(false)
       await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+      showToast({ type: 'success', title: 'Đã tạo section mới!' })
     },
   })
 
@@ -386,6 +401,7 @@ export function AdminB1ExamContentBuilderPage() {
         } : current)
       }
       await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+      showToast({ type: 'success', title: 'Đã thêm câu hỏi mới!' })
     },
   })
 
@@ -418,73 +434,104 @@ export function AdminB1ExamContentBuilderPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-6 pb-12">
-      <header className="neo-card flex flex-wrap items-start justify-between gap-4 bg-primary p-6 shadow-[4px_4px_0_var(--border)]">
-        <div className="space-y-2">
-          <Button asChild variant="ghost" className="min-h-8 px-2 text-xs">
-            <Link to="/app/admin/exams"><ArrowLeft size={14} /> Danh sách đề</Link>
+    <div className="mx-auto max-w-[1600px] space-y-6 pb-16">
+      {/* Top Banner / Header */}
+      <header className="neo-card bg-card p-5 border-3 border-border shadow-[4px_4px_0_var(--border)] flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button asChild variant="ghost" className="min-h-9 px-3 text-xs font-black">
+            <Link to="/app/admin/exams"><ArrowLeft size={16} /> Danh sách đề</Link>
           </Button>
           <div>
-            <p className="text-xs font-black uppercase text-primary-foreground/80">Quản trị đề B1</p>
-            <h1 className="text-3xl font-black text-primary-foreground">Trình xây dựng nội dung đề B1</h1>
-            <p className="mt-1 text-sm font-semibold text-primary-foreground/90">{examQuery.data.title}</p>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-black uppercase text-primary tracking-wider bg-primary/10 px-2 py-0.5 border border-primary/30">Quản trị đề B1</span>
+              <span className={`border border-border px-2 py-0.5 text-[11px] font-black ${examQuery.data.is_published ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-foreground'}`}>
+                {examQuery.data.is_published ? 'Đã xuất bản' : 'Bản nháp'}
+              </span>
+            </div>
+            <h1 className="text-2xl font-black text-foreground mt-0.5">Trình xây dựng nội dung đề B1</h1>
+            <p className="text-xs font-bold text-muted-foreground mt-0.5">{examQuery.data.title}</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="ghost" className="min-h-9 px-3 text-xs">
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Button asChild variant="secondary" className="min-h-9 px-3.5 text-xs font-black">
             <Link to="/app/admin/exam-media"><FileAudio size={15} /> Quản lý media và TTS</Link>
           </Button>
-          <span className={`border-2 border-border px-3 py-1 text-xs font-black ${examQuery.data.is_published ? 'bg-secondary text-secondary-foreground' : 'bg-background text-foreground'}`}>
-            {examQuery.data.is_published ? 'Đã xuất bản' : 'Bản nháp'}
-          </span>
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 border-2 border-border text-xs font-black ${publishReadiness.canPublish ? 'bg-emerald-100 text-emerald-950' : 'bg-rose-100 text-rose-950'}`}>
+            {publishReadiness.canPublish ? <ShieldCheck size={16} className="text-emerald-700" /> : <ShieldAlert size={16} className="text-rose-700" />}
+            <span>{publishReadiness.canPublish ? 'Đã sẵn sàng xuất bản' : `${publishReadiness.issues.length} việc cần bổ sung`}</span>
+          </div>
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <aside className="neo-card h-fit space-y-3 bg-card p-4 shadow-[3px_3px_0_var(--border)]">
-          <div className="flex items-center justify-between gap-2 border-b-2 border-border pb-3">
-            <h2 className="flex items-center gap-2 text-sm font-black uppercase"><Layers size={16} /> Cấu trúc đề</h2>
-            <Button type="button" variant="primary" onClick={() => setIsCreateSectionOpen(true)} className="min-h-8 px-2 text-xs"><Plus size={14} /> Thêm section</Button>
+      {/* Main Grid: Left Sidebar (Section List) + Right Workspace */}
+      <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+        {/* Left Sidebar: Section List */}
+        <aside className="neo-card h-fit space-y-4 bg-card p-4 shadow-[3px_3px_0_var(--border)] border-3 border-border">
+          <div className="flex items-center justify-between gap-2 border-b-3 border-border pb-3">
+            <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-muted-foreground">
+              <Layers size={16} className="text-primary" /> Cấu trúc đề ({examQuery.data.sections.length})
+            </h2>
+            <Button type="button" variant="primary" onClick={() => setIsCreateSectionOpen(true)} className="min-h-8 px-2.5 text-xs font-black">
+              <Plus size={14} /> Thêm section
+            </Button>
           </div>
+
           <div className="space-y-2">
             {examQuery.data.sections.map((section, index) => {
               const isSelected = selectedSection?.id === section.id
+              const badge = skillBadges[section.skill] ?? { label: section.skill, color: 'bg-muted text-foreground' }
+
               return (
-                <div key={section.id} className="flex items-stretch gap-1">
-                  <Button
+                <div
+                  key={section.id}
+                  className={`group flex items-center justify-between gap-2 p-2.5 border-2 transition-all ${
+                    isSelected
+                      ? 'border-primary bg-primary/10 shadow-[2px_2px_0_var(--border)]'
+                      : 'border-border bg-card hover:bg-muted/50'
+                  }`}
+                >
+                  <button
                     type="button"
-                    variant={isSelected ? 'secondary' : 'ghost'}
                     onClick={() => setSelectedSectionKey(section.source_key)}
-                    className="h-auto min-w-0 flex-1 justify-start whitespace-normal px-3 py-3 text-left"
+                    className="min-w-0 flex-1 text-left"
                   >
-                    <span className="mr-2 text-xs opacity-70">{index + 1}.</span>
-                    <span className="min-w-0"><span className="block truncate text-sm">{section.title}</span><span className="block text-[11px] opacity-75">{section.skill}</span></span>
-                  </Button>
-                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-xs font-black opacity-60">#{index + 1}</span>
+                      <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 border ${badge.color}`}>
+                        {badge.label}
+                      </span>
+                    </div>
+                    <p className={`text-xs font-black truncate ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                      {section.title}
+                    </p>
+                  </button>
+
+                  <div className="flex items-center gap-0.5 shrink-0">
                     <Button
                       type="button"
                       variant="ghost"
                       aria-label={`Di chuyển ${section.title} lên`}
                       disabled={index === 0 || reorderSections.isPending}
                       onClick={() => moveSection(section.id, 'up')}
-                      className="min-h-0 px-2 py-1"
-                    ><ArrowUp size={14} /></Button>
+                      className="h-7 w-7 min-h-0 p-0 text-muted-foreground hover:text-foreground"
+                    ><ArrowUp size={13} /></Button>
                     <Button
                       type="button"
                       variant="ghost"
                       aria-label={`Di chuyển ${section.title} xuống`}
                       disabled={index === examQuery.data.sections.length - 1 || reorderSections.isPending}
                       onClick={() => moveSection(section.id, 'down')}
-                      className="min-h-0 px-2 py-1"
-                    ><ArrowDown size={14} /></Button>
+                      className="h-7 w-7 min-h-0 p-0 text-muted-foreground hover:text-foreground"
+                    ><ArrowDown size={13} /></Button>
                     <Button
                       type="button"
                       variant="danger"
                       aria-label={`Gỡ ${section.title} khỏi đề`}
                       disabled={deleteSection.isPending}
                       onClick={() => setPendingDeleteSectionId(section.id)}
-                      className="min-h-0 px-2 py-1"
-                    ><Trash2 size={14} /></Button>
+                      className="h-7 w-7 min-h-0 p-0 text-white"
+                    ><Trash2 size={13} /></Button>
                   </div>
                 </div>
               )
@@ -492,122 +539,250 @@ export function AdminB1ExamContentBuilderPage() {
           </div>
         </aside>
 
+        {/* Right Main Workspace: Workspace Header + Tab Navigation + Tab Panels */}
         {selectedSection && selectedResource ? (
-          <main className="space-y-6">
-            <section className="neo-card space-y-3 bg-card p-5 shadow-[3px_3px_0_var(--border)]">
+          <main className="space-y-6 min-w-0">
+            {/* Workspace Header & Tab Bar */}
+            <div className="neo-card bg-card p-4 shadow-[3px_3px_0_var(--border)] border-3 border-border space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-border pb-3">
                 <div>
-                  <p className="text-xs font-black uppercase text-secondary">Section đang chỉnh</p>
-                  <h2 className="text-xl font-black">{selectedSection.title}</h2>
+                  <p className="text-[11px] font-black uppercase text-secondary tracking-wider">Section đang chỉnh</p>
+                  <h2 className="text-xl font-black text-foreground">{selectedSection.title}</h2>
                 </div>
-                <span className="border-2 border-border bg-muted px-2 py-1 text-xs font-black">{selectedResource.kind === 'prompt' ? 'Tự luận' : `${selectedResource.questions.length} câu hỏi`}</span>
+                <div className="flex items-center gap-2">
+                  <span className="border-2 border-border bg-muted px-2.5 py-1 text-xs font-black">
+                    {selectedResource.kind === 'prompt' ? 'Tự luận' : `${selectedResource.questions.length} câu hỏi`}
+                  </span>
+                </div>
               </div>
-              <PresentationPicker
-                resourceKind={selectedResource.kind}
-                value={presentationType}
-                onChange={(type) => {
-                  setPresentationType(type)
-                  setGradingMode(getPresentationDefinition(type).compatibleGradingModes[0])
-                }}
-              />
-            </section>
 
-            <section className="neo-card space-y-4 bg-card p-5 shadow-[3px_3px_0_var(--border)]">
-              <div className="border-b-2 border-border pb-3">
-                <h2 className="text-lg font-black">Cách chấm và trình soạn nội dung</h2>
-                <p className="mt-1 text-sm font-semibold text-muted-foreground">{getEditorGuidance(presentationType)}</p>
-              </div>
-              {selectedResource.kind === 'activity' && !['matching', 'ordering'].includes(presentationType) && (
-                <Button type="button" variant="secondary" disabled={createQuestion.isPending} onClick={() => createQuestion.mutate()}>
-                  <Plus size={16} /> {createQuestion.isPending ? 'Đang thêm...' : 'Thêm câu hỏi'}
+              {/* Workspace Tab Switcher */}
+              <div className="flex flex-wrap gap-2 border-b-2 border-border pb-2">
+                <Button
+                  type="button"
+                  variant={activeTab === 'editor' ? 'primary' : 'ghost'}
+                  onClick={() => setActiveTab('editor')}
+                  className="min-h-9 px-4 text-xs font-black"
+                >
+                  <Edit3 size={15} /> Biên soạn nội dung
                 </Button>
-              )}
-              <div className="flex flex-wrap gap-2" aria-label="Chọn cách chấm điểm">
-                {definition.compatibleGradingModes.map((mode) => (
-                  <Button
-                    key={mode}
-                    type="button"
-                    variant={gradingMode === mode ? 'secondary' : 'ghost'}
-                    onClick={() => setGradingMode(mode)}
-                    className="min-h-9 px-3 text-xs"
-                  >
-                    {gradingMode === mode && <CheckCircle2 size={14} />}{gradingModeLabels[mode]}
-                  </Button>
-                ))}
+                <Button
+                  type="button"
+                  variant={activeTab === 'preview' ? 'primary' : 'ghost'}
+                  onClick={() => setActiveTab('preview')}
+                  className="min-h-9 px-4 text-xs font-black"
+                >
+                  <Eye size={15} /> Xem trước góc nhìn học viên
+                </Button>
+                <Button
+                  type="button"
+                  variant={activeTab === 'readiness' ? 'primary' : 'ghost'}
+                  onClick={() => setActiveTab('readiness')}
+                  className={`min-h-9 px-4 text-xs font-black ${
+                    publishReadiness.issues.length > 0 ? 'text-rose-700' : ''
+                  }`}
+                >
+                  <ShieldCheck size={15} /> Kiểm tra xuất bản
+                  {publishReadiness.issues.length > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-rose-600 text-white font-black">
+                      {publishReadiness.issues.length}
+                    </span>
+                  )}
+                </Button>
               </div>
-              {['choice_list', 'boolean_list', 'image_choice_list', 'passage_choice_inline'].includes(presentationType) && (
-                <ChoiceListEditor questions={editedQuestions} onChange={setEditedQuestions} onRequestDeleteQuestion={(question) => setPendingDeleteQuestionId(question.id)} imageChoice={presentationType === 'image_choice_list'} onUploadImage={(question, file) => void uploadQuestionImage(question, file)} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
-              )}
-              {presentationType === 'passage_questions' && (
-                <div className="space-y-6">
-                  <section className="space-y-3" aria-label="Trình soạn bài đọc">
-                    <div><h3 className="text-lg font-black">Đoạn văn bài đọc</h3><p className="mt-1 text-sm font-semibold text-muted-foreground">Soạn trực quan nội dung học viên sẽ đọc trước khi trả lời câu hỏi.</p></div>
-                    <ReadingRichTextEditor value={passageHtml} onChange={setPassageHtml} />
-                  </section>
-                  <ChoiceListEditor questions={editedQuestions} onChange={setEditedQuestions} onRequestDeleteQuestion={(question) => setPendingDeleteQuestionId(question.id)} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
+            </div>
+
+            {/* TAB 1: BIÊN SOẠN (EDITOR) */}
+            <div className={activeTab === 'editor' ? 'space-y-6' : 'hidden'}>
+              {/* Presentation Picker Card */}
+              <section className="neo-card bg-card p-5 shadow-[3px_3px_0_var(--border)] border-3 border-border">
+                <PresentationPicker
+                  resourceKind={selectedResource.kind}
+                  value={presentationType}
+                  onChange={(type) => {
+                    setPresentationType(type)
+                    setGradingMode(getPresentationDefinition(type).compatibleGradingModes[0])
+                  }}
+                />
+              </section>
+
+              {/* Form Editor Card */}
+              <section className="neo-card space-y-5 bg-card p-5 shadow-[3px_3px_0_var(--border)] border-3 border-border">
+                <div className="border-b-2 border-border pb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-black">Cách chấm và trình soạn nội dung</h2>
+                    <p className="mt-0.5 text-xs font-semibold text-muted-foreground">{getEditorGuidance(presentationType)}</p>
+                  </div>
+                  {selectedResource.kind === 'activity' && !['matching', 'ordering'].includes(presentationType) && (
+                    <Button type="button" variant="secondary" disabled={createQuestion.isPending} onClick={() => createQuestion.mutate()} className="min-h-9 text-xs font-black">
+                      <Plus size={15} /> {createQuestion.isPending ? 'Đang thêm...' : 'Thêm câu hỏi'}
+                    </Button>
+                  )}
                 </div>
-              )}
-              {(presentationType === 'passage_text_inline' || presentationType === 'passage_choice_inline') && inlineGapDraft && (
-                <InlineGapEditor draft={inlineGapDraft} onChange={setInlineGapDraft} onRequestDeleteGap={setPendingDeleteQuestionId} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
-              )}
-              {presentationType === 'sentence_transformation' && (
-                <TransformationEditor questions={transformationQuestions} onChange={setTransformationQuestions} onRequestDeleteQuestion={(question) => setPendingDeleteQuestionId(question.id)} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
-              )}
-              {presentationType === 'matching' && (
-                <MatchingEditor value={matchingValue} onChange={setMatchingValue} disabled={savePresentation.isPending} />
-              )}
-              {presentationType === 'ordering' && (
-                <OrderingEditor value={orderingValue} onChange={setOrderingValue} disabled={savePresentation.isPending} />
-              )}
-              {(presentationType === 'long_form_prompt' || presentationType === 'speaking_script_prompt') && (
-                <>
-                  <LongFormPromptEditor value={longFormValue} onChange={setLongFormValue} speaking={presentationType === 'speaking_script_prompt'} disabled={savePresentation.isPending} />
-                  <PromptSampleEditor
-                    samples={promptSamplesQuery.data ?? []}
-                    onSave={(sample) => savePromptSample.mutate(sample)}
-                    onRequestDelete={(sample) => setPendingDeleteSampleId(sample.id)}
-                    disabled={savePresentation.isPending || savePromptSample.isPending || deletePromptSample.isPending}
+
+                {/* Grading Mode Selector */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase font-black opacity-70">Chọn cách chấm điểm:</Label>
+                  <div className="flex flex-wrap gap-2" aria-label="Chọn cách chấm điểm">
+                    {definition.compatibleGradingModes.map((mode) => (
+                      <Button
+                        key={mode}
+                        type="button"
+                        variant={gradingMode === mode ? 'secondary' : 'ghost'}
+                        onClick={() => setGradingMode(mode)}
+                        className="min-h-8 px-3 text-xs font-bold"
+                      >
+                        {gradingMode === mode && <CheckCircle2 size={14} />}{gradingModeLabels[mode]}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Form Editors based on Presentation Type */}
+                {['choice_list', 'boolean_list', 'image_choice_list', 'passage_choice_inline'].includes(presentationType) && (
+                  <ChoiceListEditor questions={editedQuestions} onChange={setEditedQuestions} onRequestDeleteQuestion={(question) => setPendingDeleteQuestionId(question.id)} imageChoice={presentationType === 'image_choice_list'} onUploadImage={(question, file) => void uploadQuestionImage(question, file)} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
+                )}
+                {presentationType === 'passage_questions' && (
+                  <div className="space-y-6">
+                    <section className="space-y-3" aria-label="Trình soạn bài đọc">
+                      <div><h3 className="text-base font-black">Đoạn văn bài đọc</h3><p className="mt-0.5 text-xs font-semibold text-muted-foreground">Soạn trực quan nội dung học viên sẽ đọc trước khi trả lời câu hỏi.</p></div>
+                      <ReadingRichTextEditor value={passageHtml} onChange={setPassageHtml} />
+                    </section>
+                    <ChoiceListEditor questions={editedQuestions} onChange={setEditedQuestions} onRequestDeleteQuestion={(question) => setPendingDeleteQuestionId(question.id)} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
+                  </div>
+                )}
+                {(presentationType === 'passage_text_inline' || presentationType === 'passage_choice_inline') && inlineGapDraft && (
+                  <InlineGapEditor draft={inlineGapDraft} onChange={setInlineGapDraft} onRequestDeleteGap={setPendingDeleteQuestionId} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
+                )}
+                {presentationType === 'sentence_transformation' && (
+                  <TransformationEditor questions={transformationQuestions} onChange={setTransformationQuestions} onRequestDeleteQuestion={(question) => setPendingDeleteQuestionId(question.id)} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
+                )}
+                {presentationType === 'matching' && (
+                  <MatchingEditor value={matchingValue} onChange={setMatchingValue} disabled={savePresentation.isPending} />
+                )}
+                {presentationType === 'ordering' && (
+                  <OrderingEditor value={orderingValue} onChange={setOrderingValue} disabled={savePresentation.isPending} />
+                )}
+                {(presentationType === 'long_form_prompt' || presentationType === 'speaking_script_prompt') && (
+                  <>
+                    <LongFormPromptEditor value={longFormValue} onChange={setLongFormValue} speaking={presentationType === 'speaking_script_prompt'} disabled={savePresentation.isPending} />
+                    <PromptSampleEditor
+                      samples={promptSamplesQuery.data ?? []}
+                      onSave={(sample) => savePromptSample.mutate(sample)}
+                      onRequestDelete={(sample) => setPendingDeleteSampleId(sample.id)}
+                      disabled={savePresentation.isPending || savePromptSample.isPending || deletePromptSample.isPending}
+                    />
+                  </>
+                )}
+
+                {/* Section Live Preview Container */}
+                <div className="border-t-2 border-border pt-4">
+                  <PresentationPreview
+                    presentationType={presentationType}
+                    title={selectedSection.title}
+                    instructions={longFormValue.instructions || selectedResource.instructions}
+                    passage={presentationType === 'passage_questions' ? passageHtml : selectedResource.passage ?? selectedResource.content}
+                    prompt={longFormValue.prompt || selectedResource.prompt}
+                    questions={previewQuestions}
                   />
-                </>
-              )}
-              <PresentationPreview
-                presentationType={presentationType}
-                title={selectedSection.title}
-                instructions={longFormValue.instructions || selectedResource.instructions}
-                passage={presentationType === 'passage_questions' ? passageHtml : selectedResource.passage ?? selectedResource.content}
-                prompt={longFormValue.prompt || selectedResource.prompt}
-                questions={previewQuestions}
-              />
-              {savePresentation.isError && <p className="text-sm font-bold text-danger">Không thể lưu: {savePresentation.error.message}</p>}
-              <Button
-                variant="primary"
-                disabled={savePresentation.isPending}
-                onClick={() => savePresentation.mutate()}
-                className="font-black"
-              >
-                <Save size={16} /> {savePresentation.isPending ? 'Đang lưu...' : 'Lưu cách trình bày'}
-              </Button>
-            </section>
+                </div>
+
+                {savePresentation.isError && <p className="text-sm font-bold text-danger">Không thể lưu: {savePresentation.error.message}</p>}
+
+                <div className="pt-2">
+                  <Button
+                    variant="primary"
+                    disabled={savePresentation.isPending}
+                    onClick={() => savePresentation.mutate()}
+                    className="font-black px-6 py-2.5"
+                  >
+                    <Save size={18} /> {savePresentation.isPending ? 'Đang lưu...' : 'Lưu cách trình bày'}
+                  </Button>
+                </div>
+              </section>
+            </div>
+
+            {/* TAB 2: XEM TRƯỚC (LIVE PREVIEW FULL) */}
+            <div className={activeTab === 'preview' ? 'space-y-6' : 'hidden'}>
+              <section className="neo-card space-y-4 bg-card p-6 shadow-[3px_3px_0_var(--border)] border-3 border-border">
+                <div className="border-b-2 border-border pb-3">
+                  <h2 className="text-lg font-black flex items-center gap-2">
+                    <Eye size={20} className="text-primary" /> Xem trước độc lập góc nhìn học viên
+                  </h2>
+                  <p className="mt-1 text-xs font-semibold text-muted-foreground">
+                    Kiểm tra cách học viên làm bài và xem lại đáp án sau khi nộp của section này.
+                  </p>
+                </div>
+
+                <div className="p-4 border-2 border-primary/20 bg-primary/5 font-semibold text-xs text-muted-foreground">
+                  Xem trước góc nhìn học viên được tích hợp trực tiếp tại cuối tab Biên soạn nội dung.
+                </div>
+              </section>
+            </div>
+
+            {/* TAB 3: KIỂM TRA XUẤT BẢN (RELEASE GATE) */}
+            <div className={activeTab === 'readiness' ? 'space-y-6' : 'hidden'}>
+              <section className={`neo-card space-y-4 p-6 shadow-[3px_3px_0_var(--border)] border-3 ${publishReadiness.canPublish ? 'border-emerald-500 bg-emerald-50/20' : 'border-rose-500 bg-card'}`}>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-border pb-3">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Release Gate Server Audit</p>
+                    <h2 className="text-xl font-black">Kiểm tra trước khi xuất bản</h2>
+                  </div>
+                  <span className={`border-2 border-border px-3 py-1 text-xs font-black ${publishReadiness.canPublish ? 'bg-emerald-500 text-white' : 'bg-rose-600 text-white'}`}>
+                    {publishReadiness.canPublish ? 'Sẵn sàng xuất bản' : `${publishReadiness.issues.length} việc cần hoàn thiện`}
+                  </span>
+                </div>
+
+                {publishReadiness.canPublish ? (
+                  <div className="p-4 bg-emerald-100 border-2 border-emerald-400 text-emerald-950 font-bold text-sm flex items-center gap-3">
+                    <CheckCircle2 size={22} className="text-emerald-700 shrink-0" />
+                    <span>Tất cả section bắt buộc đã có đầy đủ nội dung, đáp án, bản dịch, lời giải, audio và bài mẫu cần thiết. Đề thi đã sẵn sàng phát hành!</span>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold text-muted-foreground">Danh sách các vấn đề cần hoàn thiện trước khi mở xuất bản:</p>
+                    <ul className="space-y-2 text-xs font-semibold">
+                      {publishReadiness.issues.map((issue, index) => (
+                        <li key={`${issue.sectionId}-${index}`} className="border-2 border-rose-300 bg-rose-50 text-rose-950 p-3 flex items-start gap-2">
+                          <ShieldAlert size={16} className="text-rose-600 shrink-0 mt-0.5" />
+                          <span>{issue.message}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </section>
+            </div>
           </main>
         ) : (
-          <main className="neo-card p-8 text-center font-bold text-muted-foreground">Section này chưa có resource để chỉnh sửa.</main>
+          <main className="neo-card p-8 text-center font-bold text-muted-foreground border-3 border-border">
+            Section này chưa có resource để chỉnh sửa.
+          </main>
         )}
       </div>
-      <section className={`neo-card space-y-3 p-5 shadow-[3px_3px_0_var(--border)] ${publishReadiness.canPublish ? 'border-secondary bg-secondary/10' : 'border-danger bg-card'}`}>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-border pb-3">
-          <div><p className="text-xs font-black uppercase text-secondary">Release gate</p><h2 className="text-lg font-black">Kiểm tra trước khi xuất bản</h2></div>
-          <span className={`border-2 border-border px-3 py-1 text-xs font-black ${publishReadiness.canPublish ? 'bg-secondary text-secondary-foreground' : 'bg-danger text-white'}`}>
-            {publishReadiness.canPublish ? 'Sẵn sàng xuất bản' : `${publishReadiness.issues.length} việc cần hoàn thiện`}
-          </span>
+
+      {/* Bottom Summary Pill */}
+      <section className={`neo-card p-4 shadow-[3px_3px_0_var(--border)] border-3 flex items-center justify-between gap-4 ${publishReadiness.canPublish ? 'border-emerald-500 bg-emerald-50/10' : 'border-rose-400 bg-card'}`}>
+        <div className="flex items-center gap-3">
+          {publishReadiness.canPublish ? <ShieldCheck size={20} className="text-emerald-600" /> : <ShieldAlert size={20} className="text-rose-600" />}
+          <div>
+            <h2 className="text-sm font-black">Tổng quan tình trạng xuất bản</h2>
+            <p className="text-xs font-semibold text-muted-foreground">
+              {publishReadiness.canPublish ? 'Đề thi đủ điều kiện phát hành.' : `Đề thi có ${publishReadiness.issues.length} vấn đề cần hoàn thiện trước khi phát hành.`}
+            </p>
+          </div>
         </div>
-        {publishReadiness.canPublish ? (
-          <p className="font-semibold">Tất cả section bắt buộc đã có nội dung, đáp án, review, media và bài mẫu cần thiết.</p>
-        ) : (
-          <ul className="space-y-2 text-sm font-semibold">
-            {publishReadiness.issues.map((issue, index) => <li key={`${issue.sectionId}-${index}`} className="border-2 border-danger/40 bg-danger/10 px-3 py-2">{issue.message}</li>)}
-          </ul>
-        )}
+        <Button
+          type="button"
+          variant={publishReadiness.canPublish ? 'secondary' : 'primary'}
+          onClick={() => setActiveTab('readiness')}
+          className="min-h-8 text-xs font-black shrink-0"
+        >
+          {publishReadiness.canPublish ? 'Đã sẵn sàng' : 'Xem danh sách việc cần làm'}
+        </Button>
       </section>
+
+      {/* Confirm Modals */}
       <ConfirmModal
         open={Boolean(pendingDeleteSectionId)}
         title="Gỡ section này khỏi đề?"
