@@ -540,6 +540,13 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 **Trạng thái audit:** Một phần. Đã có resolver metadata, `InlineChoicePassageAttempt`, `ChoiceListAttempt`, `ShortAnswerListAttempt`, `SentenceTransformationAttempt` và regression Enter cho input theo danh sách/viết lại câu. Long-form Writing/Speaking vẫn còn gắn với orchestration của `ExamAttemptPage.tsx`; matching/ordering chưa có renderer đầy đủ.
 
+**Bằng chứng đã hoàn thành:**
+
+- [x] `InlineChoicePassageAttempt`, `ChoiceListAttempt`, `ShortAnswerListAttempt`, `SentenceTransformationAttempt` có test component; các input list/transformation hỗ trợ Enter sang câu kế tiếp.
+- [x] `ExamAttemptPage` resolve `presentation_type` trước, còn renderer cũ chỉ là compatibility path.
+- [ ] Tách Long-form Writing/Speaking khỏi page orchestration (draft, autosave, version comparison).
+- [ ] Có renderer/fallback typed cho `matching` và `ordering`; chỉ khi đó mới được bỏ publish block.
+
 **Files:**
 
 - Create: `src/components/exam/presentations/*`
@@ -555,6 +562,14 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 ### Task 4: Tách result renderer theo presentation
 
 **Trạng thái audit:** Một phần. Đã có `InlineGapPassageResult`, `ChoiceQuestionResult`, `SentenceTransformationResult`, review sai nền đỏ, option text và Writing comparison; snapshot title/skill đã được ưu tiên. Long-form/Speaking review, matching/ordering và fallback typed đầy đủ vẫn chưa tách.
+
+**Bằng chứng đã hoàn thành:**
+
+- [x] `ChoiceQuestionResult` hiển thị lựa chọn sai nền đỏ và đáp án đúng nền vàng, kèm toàn bộ option text.
+- [x] `InlineGapPassageResult` map option key sang nội dung đáp án trong đoạn văn.
+- [x] `SentenceTransformationResult` giữ so sánh ở mức token nhưng không tách rời bố cục câu viết lại.
+- [ ] Tách review Long-form/Speaking và bổ sung sample/reference cho Speaking.
+- [ ] Tạo fallback metadata-first cho mọi attempt legacy, rồi mới loại bỏ source-key inference còn lại.
 
 **Files:**
 
