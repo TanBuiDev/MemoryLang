@@ -14,18 +14,18 @@
 
 ### Kết luận ngắn
 
-Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder trực quan đã có. B1 hiện vận hành được bằng presentation metadata cho phần lớn nội dung đang có. `matching`, `ordering` và `short_answer_list` đã có đủ editor/attempt/result; hai dạng cấu hình-only có snapshot riêng tư và publish gate. Writing/Speaking đã tách workspace làm bài và review/bài mẫu thành renderer riêng. Tuy nhiên phase **chưa hoàn tất**: vẫn còn các nhánh legacy trong hai page lớn; editor passage/image/media chưa đạt toàn bộ UX đã thiết kế; và chưa có lượt audit remote end-to-end cuối cùng.
+Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder trực quan đã có. B1 hiện vận hành được bằng presentation metadata cho phần lớn nội dung đang có. `matching`, `ordering` và `short_answer_list` đã có đủ editor/attempt/result; hai dạng cấu hình-only có snapshot riêng tư và publish gate. Writing/Speaking đã tách workspace làm bài và review/bài mẫu thành renderer riêng. Remote schema, migration và security advisors đã được xác minh. Tuy nhiên phase **chưa hoàn tất**: vẫn còn các nhánh legacy trong hai page lớn; editor passage/image/media chưa đạt toàn bộ UX đã thiết kế; và chưa có lượt audit browser end-to-end có đăng nhập cuối cùng.
 
 | Hạng mục | Trạng thái | Bằng chứng hiện tại | Việc còn lại cần thiết |
 |---|---|---|---|
 | Registry, schema frontend | Hoàn thành | `presentationRegistry.ts`, Zod schema, test registry | Giữ registry là nơi duy nhất thêm presentation mới. |
-| Migration/snapshot B1 | Hoàn thành cục bộ; cần xác minh remote cuối | `20260728002300_add_exam_presentation_registry.sql`, migration-contract test, verifier learner attempt | Chạy lại dry-run, kiểm tra migration remote và security advisors trước release. |
+| Migration/snapshot B1 | Hoàn thành và đã xác minh remote | `20260728002300_add_exam_presentation_registry.sql`, migration-contract test, verifier learner attempt; `migration list` khớp, dry-run rỗng, security advisors không có error | Browser E2E có đăng nhập. |
 | Publish gate | Hoàn thành | readiness client, guarded RPC `set_b1_exam_published_guarded`, test service | Audit remote cuối và thêm test lỗi policy/RLS nếu schema đổi. |
 | Admin builder | Hoàn thành phần lõi | picker, editor, preview, create/reorder/detach/add/delete question, tests | Clone/reuse section an toàn; editor media/image/passage phong phú hơn. |
 | Attempt renderer | Một phần | resolver metadata, renderer inline/choice/transformation/matching/ordering/short answer/long form, Enter regression, fallback cấu hình lỗi | Tiếp tục giảm các nhánh legacy. |
 | Result renderer | Một phần | inline, choice, transformation, matching, ordering, short answer, long form; sai nền đỏ; bài mẫu theo từng Writing/Speaking prompt; fallback cấu hình lỗi | Loại bỏ hết source-key inference ngoài fallback legacy. |
 | Media/TTS | Hoàn thành workflow B1 cơ bản + thay audio có xác nhận | `AdminExamMediaPage`, upload audio/sign, TTS, usage impact, alt text và preset crop Signs, warning/`ConfirmModal` khi thay audio đã publish, media service/test | Media asset library/version độc lập và xóa storage theo usage chưa hoàn chỉnh. |
-| 17 section B1 | Backfill có trong migration; regression full xanh | mapping `CASE`, `pnpm test` 120 files/503 tests, migration remote khớp local đến `20260728103907` | Cần smoke test browser có đăng nhập để đếm/mapping đủ 17 section trên remote. |
+| 17 section B1 | Backfill có trong migration; regression B1 đạt | mapping `CASE`, test mục tiêu B1 và `pnpm tsc -b`; migration remote khớp local đến `20260728103907` | Cần smoke test browser có đăng nhập để đếm/mapping đủ 17 section trên remote. Suite toàn dự án hiện có lỗi Quiz không liên quan. |
 
 ### Các rủi ro không được che giấu
 
@@ -628,7 +628,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 - [x] Media workflow trực quan có upload audio/image, TTS create/preview và usage warning theo section/đề.
 - [x] Thay hoặc gỡ URL audio trên resource published yêu cầu confirm và hiển thị impact; storage-asset deletion vẫn chưa expose nên không thể xóa nhầm file đang dùng.
-- [ ] Commit: `feat: manage exam media and TTS assets`.
+- [x] Commit workflow media/TTS qua các commit nguyên tử, mới nhất `2636955 feat: add sign image crop presets`.
 
 ### Task 8: Backfill B1 và release gate
 
@@ -640,8 +640,8 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 - [x] Backfill mapping presentation cho 17 section ở mục 3.2 idempotently.
 - [ ] Hoàn thiện test snapshot mới, attempt UI, result UI và existing submission review cho mọi presentation (đang có regression từng phần).
-- [x] Verify remote migration khớp local đến `20260728103907`, `pnpm test` (120 files/503 tests) và `pnpm tsc -b`.
-- [ ] Browser E2E đăng nhập thật cho đủ 17 section và remote RLS/advisors ở lượt release cuối.
+- [x] Verify remote migration khớp local đến `20260728103907`, dry-run rỗng, security advisors không có error và `pnpm tsc -b`.
+- [ ] Browser E2E đăng nhập thật cho đủ 17 section ở lượt release cuối. Remote RLS/advisors đã được kiểm tra; suite toàn dự án hiện còn lỗi Quiz không liên quan cần xử lý riêng trước khi dùng làm release gate.
 - [x] Commit: `feat: migrate B1 content to presentation builder`.
 
 ---
