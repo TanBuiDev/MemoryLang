@@ -36,14 +36,17 @@ describe('PresentationPicker', () => {
     expect(screen.queryByRole('button', { name: /Điền từ trong đoạn văn/i })).not.toBeInTheDocument()
   })
 
-  it('keeps unfinished presentation types visible but prevents an admin from selecting them', async () => {
+  it('allows a complete matching presentation while keeping unfinished ordering unavailable', async () => {
     const onChange = vi.fn()
     const user = userEvent.setup()
     render(<PresentationPicker resourceKind="activity" value="choice_list" onChange={onChange} />)
 
-    const matching = screen.getByRole('button', { name: /Ghép cặp.*chưa sẵn sàng xuất bản/i })
-    expect(matching).toBeDisabled()
+    const matching = screen.getByRole('button', { name: /Ghép cặp/i })
+    expect(matching).toBeEnabled()
     await user.click(matching)
-    expect(onChange).not.toHaveBeenCalled()
+    expect(onChange).toHaveBeenCalledWith('matching')
+
+    const ordering = screen.getByRole('button', { name: /Sắp xếp.*chưa sẵn sàng xuất bản/i })
+    expect(ordering).toBeDisabled()
   })
 })

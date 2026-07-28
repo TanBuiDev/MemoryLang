@@ -41,9 +41,9 @@ describe('presentationRegistry', () => {
     expect(result.success).toBe(true)
   })
 
-  it('marks a presentation without learner and result renderers as unavailable for publication', () => {
+  it('marks only presentations without a complete renderer chain as unavailable for publication', () => {
     expect(isPresentationReadyForPublication('choice_list')).toBe(true)
-    expect(isPresentationReadyForPublication('matching')).toBe(false)
+    expect(isPresentationReadyForPublication('matching')).toBe(true)
     expect(isPresentationReadyForPublication('ordering')).toBe(false)
   })
 

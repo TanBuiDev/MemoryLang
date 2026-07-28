@@ -52,7 +52,7 @@ describe('getExamPublishReadiness', () => {
     expect(readiness.canPublish).toBe(true)
   })
 
-  it('blocks a required section whose presentation has no learner/result renderer yet', () => {
+  it('blocks a required matching section whose configuration is incomplete', () => {
     const readiness = getExamPublishReadiness({
       sections: [{ id: 'section-1', title: 'Ghép cặp', skill: 'reading', is_required: true, resource: {
         id: 'activity-1', kind: 'activity', presentation_type: 'matching', grading_mode: 'matching', audio_url: null,
@@ -61,6 +61,22 @@ describe('getExamPublishReadiness', () => {
     })
 
     expect(readiness.canPublish).toBe(false)
-    expect(readiness.issues).toContainEqual(expect.objectContaining({ message: expect.stringMatching(/chưa sẵn sàng xuất bản/i) }))
+    expect(readiness.issues).toContainEqual(expect.objectContaining({ message: expect.stringMatching(/cấu hình ghép cặp/i) }))
+  })
+
+  it('accepts a complete matching section without placeholder practice questions', () => {
+    const readiness = getExamPublishReadiness({
+      sections: [{ id: 'section-1', title: 'Ghép cặp', skill: 'reading', is_required: true, resource: {
+        id: 'activity-1', kind: 'activity', presentation_type: 'matching', grading_mode: 'matching', audio_url: null,
+        presentation_config: { matching: {
+          leftItems: [{ id: 'left-1', text: 'Monday' }],
+          rightItems: [{ id: 'right-1', text: 'Thứ Hai' }],
+          pairs: [{ leftId: 'left-1', rightId: 'right-1' }],
+        } },
+        questions: [],
+      }}],
+    })
+
+    expect(readiness.canPublish).toBe(true)
   })
 })

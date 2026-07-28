@@ -62,7 +62,7 @@ export const PRESENTATION_REGISTRY: Record<ExamPresentationType, PresentationDef
   },
   matching: {
     type: 'matching', label: 'Ghép cặp', description: 'Ghép hai danh sách nội dung tương ứng.',
-    compatibleGradingModes: ['matching'], requiresStructuredGaps: false, resourceKind: 'activity', isReadyForPublication: false,
+    compatibleGradingModes: ['matching'], requiresStructuredGaps: false, resourceKind: 'activity',
   },
   ordering: {
     type: 'ordering', label: 'Sắp xếp', description: 'Sắp xếp các mục theo thứ tự đúng.',

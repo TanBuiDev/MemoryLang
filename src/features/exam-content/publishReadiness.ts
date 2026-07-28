@@ -1,4 +1,4 @@
-import { isGradingModeCompatible, isPresentationReadyForPublication } from './presentationRegistry'
+import { isGradingModeCompatible, isPresentationReadyForPublication, validatePresentationContent } from './presentationRegistry'
 import type { ExamGradingMode, ExamPresentationType, ExamResourceType, ExamSkill } from '@/types/exam.types'
 
 export interface PublishReadinessIssue {
@@ -29,6 +29,7 @@ export interface PublishReadinessResource {
   content?: string | null
   passage?: string | null
   content_blocks?: unknown
+  presentation_config?: Record<string, unknown>
   samples?: Array<{ id: string }>
   questions: PublishReadinessQuestion[]
 }
@@ -88,6 +89,13 @@ export function getExamPublishReadiness(exam: PublishReadinessExam): { canPublis
       if (!resource.instructions?.trim()) issues.push({ severity: 'error', sectionId: section.id, message: `${section.title}: chưa có hướng dẫn cho học viên.` })
       if (resource.grading_mode === 'sample_compare' && !(resource.samples?.length)) {
         issues.push({ severity: 'error', sectionId: section.id, message: `${section.title}: cần ít nhất một bài mẫu để học viên so sánh.` })
+      }
+      continue
+    }
+    if (resource.presentation_type === 'matching') {
+      const matching = validatePresentationContent('matching', resource.presentation_config?.matching)
+      if (!matching.success) {
+        issues.push({ severity: 'error', sectionId: section.id, message: `${section.title}: cấu hình ghép cặp chưa đầy đủ hoặc không phải ánh xạ một-một.` })
       }
       continue
     }
