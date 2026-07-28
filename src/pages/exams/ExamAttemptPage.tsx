@@ -10,14 +10,12 @@ import {
   Clock3,
   CornerDownRight,
   Edit3,
-  FileEdit,
   FileText,
   Headphones,
   HelpCircle,
   Layers,
   ListChecks,
   PenTool,
-  Save,
   Send,
   Sparkles,
 } from 'lucide-react'
@@ -26,13 +24,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { InlineChoicePassageAttempt } from '@/components/exam/presentations/InlineChoicePassageAttempt'
 import { ChoiceListAttempt } from '@/components/exam/presentations/ChoiceListAttempt'
+import { LongFormPromptWorkspace } from '@/components/exam/presentations/LongFormPromptWorkspace'
 import { MatchingAttempt, type MatchingAttemptItem } from '@/components/exam/presentations/MatchingAttempt'
 import { OrderingAttempt, type OrderingAttemptItem } from '@/components/exam/presentations/OrderingAttempt'
 import { ShortAnswerListAttempt } from '@/components/exam/presentations/ShortAnswerListAttempt'
 import { SentenceTransformationAttempt } from '@/components/exam/presentations/SentenceTransformationAttempt'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { Input, Label, Textarea } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { showToast } from '@/components/ui/toast'
 import { formatExamDuration, getAttemptTimerState } from '@/features/exam-practice/examTimer'
 import {
@@ -41,7 +39,7 @@ import {
   resolveAttemptPresentation,
 } from '@/features/exam-content/attemptPresentation'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
-import type { PracticeDraftVersion, PracticeQuestionType } from '@/types/exam.types'
+import type { PracticeQuestionType } from '@/types/exam.types'
 
 interface SnapshotQuestion {
   source_key: string
@@ -614,12 +612,6 @@ export function ExamAttemptPage() {
       </div>
     )
 
-  const versionOptions = drafts.map((draft) => ({
-    value: draft.id,
-    label: `Phiên bản ${draft.version_number} · ${draft.word_count} từ`,
-  }))
-  const findVersion = (id: string): PracticeDraftVersion | undefined =>
-    drafts.find((draft) => draft.id === id)
   const isSubmitted = attemptDetail.attempt.status === 'submitted'
 
   const renderInlineGapActivity = () => {
@@ -1001,96 +993,19 @@ export function ExamAttemptPage() {
 
             {/* Prompt Mode: Writing / Speaking Workspace */}
             {isPrompt ? (
-              <div className="space-y-6">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <Label htmlFor="practice-draft" className="font-black text-sm">
-                      Bản nháp bài làm của bạn
-                    </Label>
-                    <span className="text-xs font-black text-secondary bg-muted px-2 py-0.5 border border-border">
-                      {draftContent.trim() ? draftContent.trim().split(/\s+/u).length : 0} từ
-                    </span>
-                  </div>
-
-                  <Textarea
-                    id="practice-draft"
-                    value={draftContent}
-                    disabled={isSubmitted}
-                    onChange={(e) => setDraftContent(e.target.value)}
-                    placeholder="Nhập nội dung bài viết của bạn ở đây..."
-                    className="mt-1 min-h-72 font-semibold text-base leading-relaxed p-4 border-2 border-border focus:ring-2 focus:ring-secondary"
-                  />
-
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                    <span className="text-xs font-semibold text-muted-foreground">
-                      Tự động lưu sau khi dừng thao tác gõ.
-                    </span>
-
-                    <Button
-                      onClick={() => saveDraft.mutate()}
-                      disabled={isSubmitted || !draftContent.trim() || saveDraft.isPending}
-                      variant="primary"
-                      className="font-black flex items-center gap-2"
-                    >
-                      <Save size={16} />
-                      <span>Lưu thành phiên bản</span>
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Draft Versions Comparison Section */}
-                <section className="border-t-2 border-border pt-5 space-y-4">
-                  <div>
-                    <h3 className="text-lg font-black flex items-center gap-2">
-                      <FileEdit size={18} className="text-secondary" />
-                      <span>So sánh các phiên bản bản nháp</span>
-                    </h3>
-                    <p className="text-xs font-semibold text-muted-foreground mt-0.5">
-                      Chọn hai phiên bản bạn đã lưu để đối chiếu song song.
-                    </p>
-                  </div>
-
-                  {draftsQuery.isLoading ? (
-                    <p className="text-sm font-bold text-muted-foreground animate-pulse">
-                      Đang tải phiên bản...
-                    </p>
-                  ) : drafts.length === 0 ? (
-                    <p className="text-xs font-bold text-muted-foreground bg-muted p-3 border border-border">
-                      Chưa có phiên bản nào được lưu. Hãy bấm &quot;Lưu thành phiên bản&quot; ở trên.
-                    </p>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <Select
-                          value={compareLeft}
-                          onChange={setCompareLeft}
-                          options={versionOptions}
-                          placeholder="Chọn bản bên trái"
-                        />
-                        <Select
-                          value={compareRight}
-                          onChange={setCompareRight}
-                          options={versionOptions}
-                          placeholder="Chọn bản bên phải"
-                        />
-                      </div>
-
-                      <div className="grid gap-4 md:grid-cols-2">
-                        {[findVersion(compareLeft), findVersion(compareRight)].map((version, index) => (
-                          <article key={index} className="min-h-40 border-2 border-border bg-muted/60 p-4 space-y-2">
-                            <p className="text-xs font-black uppercase text-secondary border-b border-border pb-1">
-                              {version ? `Phiên bản ${version.version_number} (${version.word_count} từ)` : 'Chưa chọn phiên bản'}
-                            </p>
-                            <p className="whitespace-pre-wrap text-xs font-semibold leading-relaxed text-foreground">
-                              {version?.content ?? '—'}
-                            </p>
-                          </article>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </section>
-              </div>
+              <LongFormPromptWorkspace
+                draftContent={draftContent}
+                onDraftChange={setDraftContent}
+                onSaveVersion={() => saveDraft.mutate()}
+                isSaving={saveDraft.isPending}
+                disabled={isSubmitted}
+                drafts={drafts}
+                isLoadingDrafts={draftsQuery.isLoading}
+                leftVersionId={compareLeft}
+                rightVersionId={compareRight}
+                onLeftVersionChange={setCompareLeft}
+                onRightVersionChange={setCompareRight}
+              />
             ) : ['choice_list', 'boolean_list', 'image_choice_list', 'passage_questions'].includes(presentationType ?? '') ? (
               <ChoiceListAttempt questions={activeResource.questions ?? []} answers={selectedAnswers} disabled={isSubmitted} onAnswer={(questionKey, optionKey) => setSelectedAnswers((current) => ({ ...current, [questionKey]: optionKey }))} />
             ) : presentationType === 'short_answer_list' ? (
