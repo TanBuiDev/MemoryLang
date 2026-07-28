@@ -1,6 +1,8 @@
 import { CheckCircle2, Languages, Lightbulb, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input, Label, Textarea } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
+import { IMAGE_CROP_OPTIONS } from '@/features/exam-content/imagePresentation'
 import type { AdminExamContentQuestion } from '@/services/supabase/adminExamContent.service'
 
 export interface AdminChoiceOption {
@@ -17,10 +19,12 @@ interface ChoiceListEditorProps {
   questions: EditableChoiceQuestion[]
   onChange: (questions: EditableChoiceQuestion[]) => void
   onRequestDeleteQuestion?: (question: EditableChoiceQuestion) => void
+  imageChoice?: boolean
+  onUploadImage?: (question: EditableChoiceQuestion, file: File) => void
   disabled?: boolean
 }
 
-export function ChoiceListEditor({ questions, onChange, onRequestDeleteQuestion, disabled = false }: ChoiceListEditorProps) {
+export function ChoiceListEditor({ questions, onChange, onRequestDeleteQuestion, imageChoice = false, onUploadImage, disabled = false }: ChoiceListEditorProps) {
   const updateQuestion = (questionId: string, patch: Partial<EditableChoiceQuestion>) => {
     onChange(questions.map((question) => question.id === questionId ? { ...question, ...patch } : question))
   }
@@ -40,6 +44,14 @@ export function ChoiceListEditor({ questions, onChange, onRequestDeleteQuestion,
               {onRequestDeleteQuestion && <Button type="button" variant="danger" disabled={disabled} onClick={() => onRequestDeleteQuestion(question)} aria-label={`Xóa câu ${question.source_number ?? questionIndex + 1}`} className="min-h-8 px-2 text-xs"><Trash2 size={14} /></Button>}
             </div>
           </div>
+          {imageChoice && <div className="grid gap-3 border-2 border-border bg-background p-3 sm:grid-cols-[12rem_1fr]">
+            {question.image_url ? <img src={question.image_url} alt={typeof question.metadata?.image_alt === 'string' ? question.metadata.image_alt : `Hình minh họa câu ${questionIndex + 1}`} className="aspect-square w-full object-contain" /> : <div className="flex aspect-square items-center justify-center bg-muted text-xs font-bold">Chưa có ảnh</div>}
+            <div className="space-y-3">
+              <div><Label htmlFor={`image-${question.id}`}>Tải ảnh minh họa câu {questionIndex + 1}</Label><Input id={`image-${question.id}`} type="file" accept="image/*" disabled={disabled} className="mt-1" onChange={(event) => { const file = event.target.files?.[0]; if (file) onUploadImage?.(question, file) }} /></div>
+              <div><Label htmlFor={`image-alt-${question.id}`}>Mô tả ảnh câu {questionIndex + 1}</Label><Input id={`image-alt-${question.id}`} value={typeof question.metadata?.image_alt === 'string' ? question.metadata.image_alt : ''} disabled={disabled} onChange={(event) => updateQuestion(question.id, { metadata: { ...question.metadata, image_alt: event.target.value } })} placeholder="Ví dụ: Biển cấm đỗ xe" /></div>
+              <div><Label htmlFor={`image-crop-${question.id}`}>Hiển thị ảnh câu {questionIndex + 1}</Label><Select id={`image-crop-${question.id}`} value={typeof question.metadata?.image_crop === 'string' ? question.metadata.image_crop : 'contain'} onChange={(imageCrop) => updateQuestion(question.id, { metadata: { ...question.metadata, image_crop: imageCrop } })} options={[...IMAGE_CROP_OPTIONS]} disabled={disabled} className="mt-1" /></div>
+            </div>
+          </div>}
           <div className="space-y-1.5">
             <Label htmlFor={`prompt-${question.id}`}>Nội dung câu hỏi</Label>
             <Textarea

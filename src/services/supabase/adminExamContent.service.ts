@@ -14,6 +14,7 @@ export interface AdminExamContentQuestion {
   translation?: string | null
   explanation?: string | null
   image_url?: string | null
+  metadata?: Record<string, unknown>
   order_index: number
 }
 
@@ -318,13 +319,21 @@ export const adminExamContentService = {
 
   async updateQuestion(
     questionId: string,
-    input: Partial<Pick<AdminExamContentQuestion, 'prompt' | 'options' | 'translation' | 'explanation' | 'accepted_answers'>>,
+    input: Partial<Pick<AdminExamContentQuestion, 'prompt' | 'options' | 'translation' | 'explanation' | 'accepted_answers' | 'image_url' | 'metadata'>>,
   ): Promise<void> {
     const { error } = await supabase
       .from('practice_questions')
       .update(input)
       .eq('id', questionId)
     if (error) throw error
+  },
+
+  async uploadQuestionImage(file: File, sourceKey: string): Promise<string> {
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'png'
+    const path = `b1-exam-images/${sourceKey}-${Date.now()}.${extension}`
+    const { error } = await supabase.storage.from('vocabulary-images').upload(path, file, { cacheControl: '31536000', upsert: false })
+    if (error) throw error
+    return supabase.storage.from('vocabulary-images').getPublicUrl(path).data.publicUrl
   },
 
   async updateResourceContent(input: {

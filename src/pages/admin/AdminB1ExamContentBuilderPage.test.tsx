@@ -9,7 +9,7 @@ import { AdminB1ExamContentBuilderPage } from './AdminB1ExamContentBuilderPage'
 vi.mock('@/services/supabase/adminExamContent.service', () => ({
   adminExamContentService: {
     getExamContent: vi.fn(), updateResourcePresentation: vi.fn(), updateResourcePresentationConfig: vi.fn(), updateQuestion: vi.fn(), updateResourceContent: vi.fn(), updatePromptText: vi.fn(),
-    listPromptSamples: vi.fn(), savePromptSample: vi.fn(), deletePromptSample: vi.fn(), deleteSection: vi.fn(), deleteQuestion: vi.fn(), reorderSections: vi.fn(), createSection: vi.fn(), createQuestion: vi.fn(),
+    listPromptSamples: vi.fn(), savePromptSample: vi.fn(), deletePromptSample: vi.fn(), deleteSection: vi.fn(), deleteQuestion: vi.fn(), reorderSections: vi.fn(), createSection: vi.fn(), createQuestion: vi.fn(), uploadQuestionImage: vi.fn(),
   },
 }))
 
@@ -45,6 +45,7 @@ describe('AdminB1ExamContentBuilderPage', () => {
     vi.mocked(adminExamContentService.updateQuestion).mockResolvedValue(undefined)
     vi.mocked(adminExamContentService.updateResourceContent).mockResolvedValue(undefined)
     vi.mocked(adminExamContentService.updatePromptText).mockResolvedValue(undefined)
+    vi.mocked(adminExamContentService.uploadQuestionImage).mockResolvedValue('https://cdn.example/sign.png')
     vi.mocked(adminExamContentService.listPromptSamples).mockResolvedValue([])
     vi.mocked(adminExamContentService.deletePromptSample).mockResolvedValue(undefined)
     vi.mocked(adminExamContentService.deleteSection).mockResolvedValue(undefined)
@@ -169,6 +170,19 @@ describe('AdminB1ExamContentBuilderPage', () => {
       resourceKind: 'activity', contentBlocks: expect.any(Array),
     }))
     expect(adminExamContentService.updateQuestion).toHaveBeenCalledWith('question-1', expect.objectContaining({ accepted_answers: expect.any(Array) }))
+  })
+
+  it('shows an image upload and alt-text editor for an image-choice question', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByRole('heading', { name: 'Trình xây dựng nội dung đề B1' })
+    await user.click(screen.getByRole('button', { name: /Ảnh hoặc biển báo và đáp án/i }))
+
+    expect(screen.getByLabelText('Tải ảnh minh họa câu 1')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mô tả ảnh câu 1')).toBeInTheDocument()
+    expect(screen.getByLabelText('Hiển thị ảnh câu 1')).toBeInTheDocument()
+    expect(screen.queryByText(/URL ảnh/i)).not.toBeInTheDocument()
   })
 
   it('saves visual matching pairs as presentation configuration', async () => {

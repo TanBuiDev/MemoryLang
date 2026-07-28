@@ -19,6 +19,7 @@ import { getPresentationDefinition, isPresentationReadyForPublication, PRESENTAT
 import { getExamPublishReadiness } from '@/features/exam-content/publishReadiness'
 import { createInlineGapDraft, serializeInlineGapDraft, type InlineGapDraft, type InlineGapSegment } from '@/features/exam-content/inlineGapDraft'
 import { adminExamContentService, type AdminExamContentQuestion } from '@/services/supabase/adminExamContent.service'
+import { showToast } from '@/components/ui/toast'
 import type { ExamGradingMode, ExamPresentationType, ExamSkill } from '@/types/exam.types'
 
 const gradingModeLabels: Record<ExamGradingMode, string> = {
@@ -218,6 +219,8 @@ export function AdminB1ExamContentBuilderPage() {
         translation: string | null
         explanation: string | null
         accepted_answers?: string[]
+        image_url?: string | null
+        metadata?: Record<string, unknown>
       }> = presentationType === 'sentence_transformation'
         ? transformationQuestions.map((question) => ({
           id: question.id, prompt: question.prompt, options: undefined, translation: question.translation ?? null,
@@ -226,6 +229,8 @@ export function AdminB1ExamContentBuilderPage() {
         : editedQuestions.map((question) => ({
           id: question.id, prompt: question.prompt, options: question.options, translation: question.translation ?? null,
           explanation: question.explanation ?? null,
+          image_url: question.image_url ?? null,
+          metadata: question.metadata ?? {},
         }))
       await Promise.all(questionsToSave.map((question) => adminExamContentService.updateQuestion(question.id, {
         prompt: question.prompt,
@@ -233,6 +238,8 @@ export function AdminB1ExamContentBuilderPage() {
         translation: question.translation ?? null,
         explanation: question.explanation ?? null,
         ...(question.accepted_answers ? { accepted_answers: question.accepted_answers } : {}),
+        ...(question.image_url !== undefined ? { image_url: question.image_url } : {}),
+        ...(question.metadata ? { metadata: question.metadata } : {}),
       })))
       if (selectedResource.kind === 'prompt') {
         await adminExamContentService.updatePromptText(selectedResource.id, longFormValue)
@@ -258,6 +265,14 @@ export function AdminB1ExamContentBuilderPage() {
       await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
     },
   })
+
+  const uploadQuestionImage = async (question: EditableChoiceQuestion, file: File) => {
+    try {
+      const imageUrl = await adminExamContentService.uploadQuestionImage(file, question.source_key)
+      setEditedQuestions((current) => current.map((item) => item.id === question.id ? { ...item, image_url: imageUrl } : item))
+      showToast({ type: 'success', title: 'Đã tải ảnh, hãy lưu cách trình bày để áp dụng.' })
+    } catch { showToast({ type: 'error', title: 'Không thể tải ảnh minh họa' }) }
+  }
 
   const reorderSections = useMutation({
     mutationFn: (sectionIds: string[]) => adminExamContentService.reorderSections(sectionIds),
@@ -508,7 +523,7 @@ export function AdminB1ExamContentBuilderPage() {
                 ))}
               </div>
               {['choice_list', 'boolean_list', 'image_choice_list', 'passage_questions', 'passage_choice_inline'].includes(presentationType) && (
-                <ChoiceListEditor questions={editedQuestions} onChange={setEditedQuestions} onRequestDeleteQuestion={(question) => setPendingDeleteQuestionId(question.id)} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
+                <ChoiceListEditor questions={editedQuestions} onChange={setEditedQuestions} onRequestDeleteQuestion={(question) => setPendingDeleteQuestionId(question.id)} imageChoice={presentationType === 'image_choice_list'} onUploadImage={(question, file) => void uploadQuestionImage(question, file)} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
               )}
               {(presentationType === 'passage_text_inline' || presentationType === 'passage_choice_inline') && inlineGapDraft && (
                 <InlineGapEditor draft={inlineGapDraft} onChange={setInlineGapDraft} onRequestDeleteGap={setPendingDeleteQuestionId} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
