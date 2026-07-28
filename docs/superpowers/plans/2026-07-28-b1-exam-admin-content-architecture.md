@@ -24,8 +24,8 @@ Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder 
 | Admin builder | Hoàn thành phần lõi | picker, editor, preview, create/reorder/detach/add/delete question, tests | Clone/reuse section an toàn; editor media/image/passage phong phú hơn. |
 | Attempt renderer | Một phần | resolver metadata, inline choice/text/transformation/matching/ordering component, Enter regression | Tách long form khỏi page orchestration; thêm invalid-config fallback. |
 | Result renderer | Một phần | inline, choice, transformation, matching, ordering, short answer; sai nền đỏ; bài mẫu theo từng Writing/Speaking prompt | Tách long-form renderer; loại bỏ hết source-key inference ngoài fallback legacy. |
-| Media/TTS | Hoàn thành workflow B1 cơ bản | `AdminExamMediaPage`, upload audio/sign, TTS, media service/test | Media library metadata, image alt/crop/usage impact chưa hoàn chỉnh. |
-| 17 section B1 | Backfill có trong migration | mapping `CASE` trong migration presentation registry | Cần smoke test remote đếm/mapping đủ 17 section và regression full suite. |
+| Media/TTS | Hoàn thành workflow B1 cơ bản + thay audio có xác nhận | `AdminExamMediaPage`, upload audio/sign, TTS, warning/`ConfirmModal` khi thay audio đã publish, media service/test | Media library metadata, image alt/crop/usage impact chưa hoàn chỉnh. |
+| 17 section B1 | Backfill có trong migration; regression full xanh | mapping `CASE`, `pnpm test` 120 files/503 tests, migration remote khớp local đến `20260728103907` | Cần smoke test browser có đăng nhập để đếm/mapping đủ 17 section trên remote. |
 
 ### Các rủi ro không được che giấu
 
@@ -618,7 +618,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 ### Task 7: Media/TTS quản trị
 
-**Trạng thái audit:** Hoàn thành workflow B1 cơ bản. Upload audio, upload sign image, TTS, preview, publish readiness và trang quản trị riêng đã có. Chưa hoàn thành media library độc lập có metadata, alt/crop, usage/impact list và quản trị thay thế/xóa theo usage.
+**Trạng thái audit:** Hoàn thành workflow B1 cơ bản. Upload audio, upload sign image, TTS, preview, publish readiness và trang quản trị riêng đã có. Thay audio của resource đã publish (URL/upload/TTS) luôn hiển thị impact warning và yêu cầu `ConfirmModal`; attempt cũ giữ snapshot nên không bị đổi. Chưa hoàn thành media library độc lập có metadata, alt/crop, usage/impact list và quản trị thay thế/xóa theo usage.
 
 **Files:**
 
@@ -640,7 +640,8 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 - [x] Backfill mapping presentation cho 17 section ở mục 3.2 idempotently.
 - [ ] Hoàn thiện test snapshot mới, attempt UI, result UI và existing submission review cho mọi presentation (đang có regression từng phần).
-- [ ] Verify remote migration, RLS/advisors, `pnpm test`, `pnpm tsc -b` như lượt release cuối.
+- [x] Verify remote migration khớp local đến `20260728103907`, `pnpm test` (120 files/503 tests) và `pnpm tsc -b`.
+- [ ] Browser E2E đăng nhập thật cho đủ 17 section và remote RLS/advisors ở lượt release cuối.
 - [x] Commit: `feat: migrate B1 content to presentation builder`.
 
 ---
