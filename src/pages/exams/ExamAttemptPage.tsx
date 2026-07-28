@@ -25,6 +25,7 @@ import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { InlineChoicePassageAttempt } from '@/components/exam/presentations/InlineChoicePassageAttempt'
+import { ShortAnswerListAttempt } from '@/components/exam/presentations/ShortAnswerListAttempt'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label, Textarea } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -1050,6 +1051,13 @@ export function ExamAttemptPage() {
                   )}
                 </section>
               </div>
+            ) : presentationType === 'short_answer_list' ? (
+              <ShortAnswerListAttempt
+                questions={activeResource.questions ?? []}
+                answers={selectedAnswers}
+                disabled={isSubmitted}
+                onAnswer={(questionKey, answer) => setSelectedAnswers((current) => ({ ...current, [questionKey]: answer }))}
+              />
             ) : !isInlineGapActivity ? (
                 /* Activity Mode: Questions List with Neobrutalist Option Cards */
                 <div className="space-y-6">
