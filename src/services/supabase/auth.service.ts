@@ -22,8 +22,8 @@ export const authService = {
     }),
   signInWithPassword: (email: string, password: string) => supabase.auth.signInWithPassword({ email, password }),
 
-  isAdminEmail: async (email: string): Promise<boolean> => {
-    const { data, error } = await supabase.rpc('is_admin_email', { check_email: email })
+  canUsePasswordLogin: async (email: string): Promise<boolean> => {
+    const { data, error } = await supabase.rpc('can_login_with_password', { check_email: email })
     if (error) return false
     return data as boolean
   },

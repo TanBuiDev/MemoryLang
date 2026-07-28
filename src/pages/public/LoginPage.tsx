@@ -21,8 +21,8 @@ export function LoginPage() {
       navigate('/app/dashboard')
       return
     }
-    const isAdmin = await authService.isAdminEmail(email)
-    if (isAdmin) {
+    const canUsePasswordLogin = await authService.canUsePasswordLogin(email)
+    if (!canUsePasswordLogin) {
       setMessage(t('auth.adminGoogleOnly'))
       return
     }

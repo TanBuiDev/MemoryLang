@@ -310,7 +310,7 @@ export const adminService = {
   async updateUserAdminStatus(userId: string, isAdmin: boolean): Promise<Profile> {
     const { data, error } = await supabase
       .from('profiles')
-      .update({ is_admin: isAdmin })
+      .update({ is_admin: isAdmin, ...(isAdmin ? {} : { allow_password_login: false }) })
       .eq('id', userId)
       .select('*')
       .single()
@@ -321,6 +321,25 @@ export const adminService = {
       'profile',
       userId,
       { display_name: data.display_name, email: data.email }
+    )
+    return data as Profile
+  },
+
+  async setAdminPasswordLogin(userId: string, allowPasswordLogin: boolean): Promise<Profile> {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ allow_password_login: allowPasswordLogin })
+      .eq('id', userId)
+      .eq('is_admin', true)
+      .select('*')
+      .single()
+    if (error) throw error
+
+    await this.logAction(
+      allowPasswordLogin ? 'enable_admin_password_login' : 'disable_admin_password_login',
+      'profile',
+      userId,
+      { display_name: data.display_name, email: data.email },
     )
     return data as Profile
   },

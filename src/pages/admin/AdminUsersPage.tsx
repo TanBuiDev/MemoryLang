@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Shield, ShieldAlert, User, UserX, Crown, Users } from 'lucide-react'
+import { KeyRound, Shield, ShieldAlert, User, UserX, Crown, Users } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
 import { DataTable } from '@/components/admin/DataTable'
 import { Button } from '@/components/ui/button'
@@ -64,11 +64,39 @@ export default function AdminUsersPage() {
           setActionLoading(userId)
           await adminService.updateUserAdminStatus(userId, !currentAdminStatus)
           setUsers((prev) =>
-            prev.map((u) => (u.id === userId ? { ...u, is_admin: !currentAdminStatus } : u))
+            prev.map((u) => (u.id === userId ? { ...u, is_admin: !currentAdminStatus, allow_password_login: !currentAdminStatus ? false : u.allow_password_login } : u))
           )
         } catch (err: any) {
           console.error(err)
           setError(err.message || 'Không thể thay đổi quyền quản trị')
+        } finally {
+          setActionLoading(null)
+        }
+      },
+    })
+  }
+
+  const handleToggleAdminPasswordLogin = (user: AdminUserProfile) => {
+    if (actionLoading || !user.is_admin) return
+    const nextValue = !user.allow_password_login
+
+    setConfirmModal({
+      open: true,
+      title: nextValue ? 'Cho phép admin đăng nhập bằng mật khẩu?' : 'Tắt đăng nhập bằng mật khẩu?',
+      description: nextValue
+        ? 'Admin này có thể dùng email và mật khẩu tại trang đăng nhập, ngoài lựa chọn Google.'
+        : 'Admin này chỉ có thể đăng nhập bằng Google. Phiên đang đăng nhập vẫn không bị ảnh hưởng.',
+      confirmLabel: nextValue ? 'Cho phép mật khẩu' : 'Tắt mật khẩu',
+      cancelLabel: 'Hủy',
+      onConfirm: async () => {
+        setConfirmModal(null)
+        try {
+          setActionLoading(user.id)
+          await adminService.setAdminPasswordLogin(user.id, nextValue)
+          setUsers((prev) => prev.map((entry) => entry.id === user.id ? { ...entry, allow_password_login: nextValue } : entry))
+        } catch (err: any) {
+          console.error(err)
+          setError(err.message || 'Không thể cập nhật quyền đăng nhập bằng mật khẩu')
         } finally {
           setActionLoading(null)
         }
@@ -190,6 +218,18 @@ export default function AdminUsersPage() {
                 </>
               )}
             </Button>
+            {row.is_admin && (
+              <Button
+                type="button"
+                variant={row.allow_password_login ? 'secondary' : 'ghost'}
+                disabled={actionLoading === row.id}
+                onClick={() => handleToggleAdminPasswordLogin(row)}
+                className="neo-button min-h-0 px-2.5 py-1 h-8 rounded-lg border-2 border-slate-900 text-xs font-black flex items-center gap-1.5 shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer"
+              >
+                <KeyRound size={14} />
+                <span>{row.allow_password_login ? 'Tắt mật khẩu' : 'Cho phép mật khẩu'}</span>
+              </Button>
+            )}
           </div>
         )
       },

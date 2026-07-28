@@ -199,7 +199,7 @@ SM-2 adapter with the two-button study UI. `know` maps to quality 4 and increase
 Custom system in `i18n/index.ts`. `useI18n()` returns `{ language, t }`. Keys: `section.key` format. Supports `vi` and `en`.
 
 ### Auth flow
-Supabase Auth (email/password + Google OAuth). `AuthBootstrap` in `providers.tsx` restores session on mount. Database trigger auto-creates profile on signup. `ProtectedRoute` guards: loading -> login redirect -> onboarding redirect -> render.
+Supabase Auth (email/password + Google OAuth). `AuthBootstrap` in `providers.tsx` restores session on mount. Database trigger auto-creates profile on signup. `ProtectedRoute` guards: loading -> login redirect -> onboarding redirect -> render. Admin accounts default to Google-only sign-in; after a user receives `is_admin`, another admin can enable that account's `profiles.allow_password_login` toggle from `/app/admin/users`. The login page checks `can_login_with_password(email)` before calling password auth, and database trigger protection prevents non-admins from changing `is_admin` or `allow_password_login` themselves.
 The linked Supabase project currently signs user access tokens with an asymmetric EC P-256 key (`ES256`), exposed through the project JWKS endpoint; backend token verification must support JWKS key rotation instead of assuming legacy `HS256` or `RS256`.
 
 ### Statistics API database boundary

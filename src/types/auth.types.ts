@@ -12,6 +12,7 @@ export interface Profile {
   onboarding_completed: boolean
   password_set: boolean
   is_admin?: boolean
+  allow_password_login?: boolean
   email?: string | null
   daily_goal?: number
   default_study_mode?: StudyMode
