@@ -17,15 +17,21 @@ describe('adminExamMediaService', () => {
       { resource_type: 'activity', activity: { id: 'a-2', source_key: 'grammar', title: 'Ngữ pháp', skill: 'grammar', content: 'x', audio_url: null, is_published: false }, prompt: null },
       { resource_type: 'prompt', activity: null, prompt: { id: 'p-1', source_key: 'speak', title: 'Nói', skill: 'speaking', prompt: 'Nói về bạn', audio_url: null, is_published: false } },
     ], error: null }) }
+    const usage = { select: vi.fn().mockReturnThis(), in: vi.fn().mockResolvedValue({ data: [
+      { resource_id: 'a-1', resource_type: 'activity', exam: [{ title: 'Đề B1 chính' }] },
+      { resource_id: 'a-1', resource_type: 'activity', exam: [{ title: 'Đề B1 phụ' }] },
+    ], error: null }) }
     from.mockReturnValueOnce(sections as never)
+    from.mockReturnValueOnce(usage as never)
 
     await expect(adminExamMediaService.listResources()).resolves.toMatchObject([
-      { id: 'a-1', kind: 'activity', text: 'Hallo' },
+      { id: 'a-1', kind: 'activity', text: 'Hallo', usage: { sectionCount: 2, exams: ['Đề B1 chính', 'Đề B1 phụ'] } },
       { id: 'a-2', kind: 'activity', text: 'x' },
       { id: 'p-1', kind: 'prompt', text: 'Nói về bạn' },
     ])
     expect(from).toHaveBeenCalledWith('exam_sections')
     expect(sections.eq).toHaveBeenCalledWith('exam.source_key', 'b1-de-full-copy')
+    expect(usage.in).toHaveBeenCalledWith('resource_id', ['a-1', 'a-2', 'p-1'])
   })
 
   it('updates Vietnamese translations and explanations for a B1 question', async () => {
