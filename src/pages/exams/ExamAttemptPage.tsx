@@ -38,6 +38,7 @@ import {
   isLongFormPresentation,
   resolveAttemptPresentation,
 } from '@/features/exam-content/attemptPresentation'
+import { getPresentationConfigurationIssue } from '@/features/exam-content/presentationFallback'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
 import type { PracticeQuestionType } from '@/types/exam.types'
 
@@ -263,6 +264,9 @@ export function ExamAttemptPage() {
     Boolean(presentationType && isInlineGapPresentation(presentationType)) &&
     Boolean(inlinePassageText && /(\(\d+\)\s*_{2,})/.test(inlinePassageText))
   const matchingItems = presentationType === 'matching' ? getMatchingItems(activeResource) : null
+  const presentationConfigurationIssue = presentationType
+    ? getPresentationConfigurationIssue(presentationType, activeResource ?? {})
+    : null
   const timer = attemptDetail
     ? getAttemptTimerState(
         attemptDetail.attempt.started_at,
@@ -992,7 +996,11 @@ export function ExamAttemptPage() {
             )}
 
             {/* Prompt Mode: Writing / Speaking Workspace */}
-            {isPrompt ? (
+            {presentationConfigurationIssue ? (
+              <div role="alert" className="neo-card border-danger bg-danger/10 p-5 text-sm font-semibold text-danger shadow-[3px_3px_0_var(--border)]">
+                {presentationConfigurationIssue}
+              </div>
+            ) : isPrompt ? (
               <LongFormPromptWorkspace
                 draftContent={draftContent}
                 onDraftChange={setDraftContent}

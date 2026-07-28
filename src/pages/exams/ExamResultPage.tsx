@@ -29,6 +29,7 @@ import { SentenceTransformationResult } from '@/components/exam/presentations/Se
 import { ShortAnswerListResult } from '@/components/exam/presentations/ShortAnswerListResult'
 import { LongFormPromptResult } from '@/components/exam/presentations/LongFormPromptResult'
 import { isInlineGapPresentation, resolveAttemptPresentation } from '@/features/exam-content/attemptPresentation'
+import { getPresentationConfigurationIssue } from '@/features/exam-content/presentationFallback'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
 import type { B1AttemptQuestionReview, PracticePromptSample } from '@/types/exam.types'
 
@@ -139,6 +140,7 @@ interface SnapshotResource {
   presentation_type?: string | null
   content_blocks?: unknown
   presentation_config?: Record<string, unknown>
+  questions?: unknown[]
 }
 
 interface SnapshotSectionMetadata {
@@ -666,6 +668,10 @@ export function ExamResultPage() {
                 ? getInlinePassageText(group.resource)
                 : null
               const legacyPassageText = group.resource?.passage ?? group.resource?.content ?? null
+              const presentationConfigurationIssue = getPresentationConfigurationIssue(
+                group.presentationType,
+                group.resource ?? {},
+              )
               const shouldRenderInlinePassage = Boolean(inlinePassageText) || Boolean(
                 legacyPassageText && /(\(\d+\)\s*[\._]{2,})/.test(legacyPassageText),
               )
@@ -681,6 +687,12 @@ export function ExamResultPage() {
                       Điểm phần này: {group.score}/{group.maxScore}
                     </span>
                   </header>
+
+                  {presentationConfigurationIssue && (
+                    <div role="alert" className="neo-card border-danger bg-danger/10 p-4 text-sm font-semibold text-danger shadow-[3px_3px_0_var(--border)]">
+                      {presentationConfigurationIssue}
+                    </div>
+                  )}
 
                   {/* Styled Audio Player when present */}
                   {group.resource?.audio_url && (

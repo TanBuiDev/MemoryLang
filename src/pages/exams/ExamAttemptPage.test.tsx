@@ -237,6 +237,20 @@ describe('ExamAttemptPage', () => {
     expect(await screen.findByText('Phần ghép cặp này chưa có cấu hình hợp lệ.')).toBeInTheDocument()
   })
 
+  it('shows a clear fallback for an empty choice-list section', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: { id: 'attempt-1', started_at: '2026-07-27T10:00:00.000Z', target_duration_seconds: 3600, exam_snapshot: { exam: { title: 'B1 DeFull' }, sections: [{
+        source_key: 'choice-invalid', skill: 'grammar', title: 'Ngữ pháp', resource_type: 'activity',
+        resource: { id: 'activity-1', presentation_type: 'choice_list', questions: [] },
+      }] } },
+      sections: [{ id: 'section-1', exam_section_source_key: 'choice-invalid', progress: {}, status: 'not_started' }],
+    } as never)
+
+    renderPage()
+
+    expect(await screen.findByText('Phần chọn đáp án này chưa có câu hỏi hợp lệ.')).toBeInTheDocument()
+  })
+
   it('autosaves matching selections with a section-scoped answer key', async () => {
     const user = userEvent.setup()
     vi.mocked(examPracticeService.getAttempt).mockResolvedValue({

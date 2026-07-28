@@ -92,6 +92,22 @@ describe('ExamResultPage', () => {
     expect(examPracticeService.listPromptSamples).toHaveBeenCalledWith('speaking-prompt-1')
   })
 
+  it('shows a clear fallback for a submitted section with invalid presentation content', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: { id: 'attempt-1', status: 'submitted', exam_snapshot: { exam: { title: 'B1' }, sections: [{
+        source_key: 'choice-invalid', skill: 'grammar', title: 'Ngữ pháp', resource_type: 'activity',
+        resource: { presentation_type: 'choice_list', questions: [] },
+      }] } },
+      sections: [{ id: 'section-1', exam_section_source_key: 'choice-invalid', score: 0, max_score: 1, progress: { review: [{
+        section_source_key: 'choice-invalid', question_source_key: 'missing-question', question: 'Câu lỗi', user_answer: '', correct_option_keys: [], accepted_answers: [], is_correct: false,
+      }] } }],
+    } as never)
+
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/app/exams/attempt/attempt-1/result']}><Routes><Route path="/app/exams/attempt/:attemptId/result" element={<ExamResultPage />} /></Routes></MemoryRouter></QueryClientProvider>)
+
+    expect(await screen.findByText('Phần chọn đáp án này chưa có câu hỏi hợp lệ.')).toBeInTheDocument()
+  })
+
   it('shows the selected wrong option and option text inside a Cloze passage', async () => {
     vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
       attempt: {
