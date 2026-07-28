@@ -23,4 +23,11 @@ describe('matching attempt migration', () => {
     expect(sql).toContain('revoke all on function public.submit_b1_exam_attempt(uuid) from public, anon')
     expect(sql).toContain('grant execute on function public.submit_b1_exam_attempt(uuid) to authenticated')
   })
+
+  it('validates pair references through JSON values rather than CTE records', () => {
+    const sql = readFileSync(migrationPath, 'utf8')
+
+    expect(sql).toContain("item.value ->> 'id' = pair.value ->> 'leftId'")
+    expect(sql).toContain("item.value ->> 'id' = pair.value ->> 'rightId'")
+  })
 })

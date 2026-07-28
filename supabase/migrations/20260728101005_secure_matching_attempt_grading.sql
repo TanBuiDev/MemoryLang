@@ -274,7 +274,7 @@ as $$
     and not exists (select 1 from left_items where jsonb_typeof(value) <> 'object' or btrim(coalesce(value ->> 'id', '')) = '' or btrim(coalesce(value ->> 'text', '')) = '')
     and not exists (select 1 from right_items where jsonb_typeof(value) <> 'object' or btrim(coalesce(value ->> 'id', '')) = '' or btrim(coalesce(value ->> 'text', '')) = '')
     and not exists (select 1 from pairs where jsonb_typeof(value) <> 'object' or btrim(coalesce(value ->> 'leftId', '')) = '' or btrim(coalesce(value ->> 'rightId', '')) = '')
-    and not exists (select 1 from pairs pair where not exists (select 1 from left_items item where item ->> 'id' = pair.value ->> 'leftId') or not exists (select 1 from right_items item where item ->> 'id' = pair.value ->> 'rightId'))
+    and not exists (select 1 from pairs pair where not exists (select 1 from left_items item where item.value ->> 'id' = pair.value ->> 'leftId') or not exists (select 1 from right_items item where item.value ->> 'id' = pair.value ->> 'rightId'))
     and not exists (select 1 from pairs group by value ->> 'leftId' having count(*) <> 1)
     and not exists (select 1 from pairs group by value ->> 'rightId' having count(*) <> 1)
   , false);
