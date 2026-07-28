@@ -41,10 +41,10 @@ describe('presentationRegistry', () => {
     expect(result.success).toBe(true)
   })
 
-  it('marks only presentations without a complete renderer chain as unavailable for publication', () => {
+  it('marks every presentation with a complete renderer chain as available for publication', () => {
     expect(isPresentationReadyForPublication('choice_list')).toBe(true)
     expect(isPresentationReadyForPublication('matching')).toBe(true)
-    expect(isPresentationReadyForPublication('ordering')).toBe(false)
+    expect(isPresentationReadyForPublication('ordering')).toBe(true)
   })
 
   it('validates explicit matching pairs and an ordered item list', () => {

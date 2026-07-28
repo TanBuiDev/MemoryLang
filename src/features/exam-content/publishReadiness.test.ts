@@ -79,4 +79,21 @@ describe('getExamPublishReadiness', () => {
 
     expect(readiness.canPublish).toBe(true)
   })
+
+  it('accepts a complete ordering section without placeholder practice questions', () => {
+    const readiness = getExamPublishReadiness({
+      sections: [{ id: 'section-1', title: 'Sắp xếp', skill: 'reading', is_required: true, resource: {
+        id: 'activity-1', kind: 'activity', presentation_type: 'ordering', grading_mode: 'ordered_list', audio_url: null,
+        presentation_config: { ordering: {
+          items: [
+            { id: 'step-1', text: 'Đầu tiên', correctPosition: 1 },
+            { id: 'step-2', text: 'Sau đó', correctPosition: 2 },
+          ],
+        } },
+        questions: [],
+      }}],
+    })
+
+    expect(readiness.canPublish).toBe(true)
+  })
 })

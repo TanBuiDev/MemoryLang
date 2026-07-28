@@ -242,7 +242,7 @@ export const adminExamContentService = {
         'Không thể tạo nội dung section.',
       )
 
-    if (definition.resourceKind === 'activity') {
+    if (definition.resourceKind === 'activity' && !['matching', 'ordering'].includes(input.presentationType)) {
       const activityType = getStarterActivityType(input.presentationType)
       await throwOnError(
         await supabase.from('practice_questions').insert({

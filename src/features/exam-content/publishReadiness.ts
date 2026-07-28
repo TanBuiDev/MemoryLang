@@ -99,6 +99,13 @@ export function getExamPublishReadiness(exam: PublishReadinessExam): { canPublis
       }
       continue
     }
+    if (resource.presentation_type === 'ordering') {
+      const ordering = validatePresentationContent('ordering', resource.presentation_config?.ordering)
+      if (!ordering.success) {
+        issues.push({ severity: 'error', sectionId: section.id, message: `${section.title}: cấu hình sắp xếp chưa đầy đủ hoặc thứ tự đúng không liên tiếp.` })
+      }
+      continue
+    }
     if (!resource.questions.length) {
       issues.push({ severity: 'error', sectionId: section.id, message: `${section.title}: chưa có câu hỏi.` })
       continue

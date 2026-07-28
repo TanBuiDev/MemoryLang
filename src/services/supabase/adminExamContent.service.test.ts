@@ -152,6 +152,21 @@ describe('adminExamContentService', () => {
     }))
   })
 
+  it('creates an ordering section without a placeholder practice question', async () => {
+    const activity = { insert: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { id: 'activity-ordering' }, error: null }) }
+    const section = { insert: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { id: 'section-ordering', source_key: 'new-ordering', skill: 'reading', title: 'Sắp xếp', resource_type: 'activity', resource_id: 'activity-ordering', order_index: 19, is_required: true, suggested_time_minutes: null }, error: null }) }
+    from.mockReturnValueOnce(activity as never).mockReturnValueOnce(section as never)
+
+    await expect(adminExamContentService.createSection({
+      examId: 'exam-1', sourceKey: 'new-ordering', title: 'Sắp xếp', skill: 'reading', presentationType: 'ordering', orderIndex: 19,
+    })).resolves.toMatchObject({ id: 'section-ordering', resource_id: 'activity-ordering' })
+
+    expect(from).not.toHaveBeenCalledWith('practice_questions')
+    expect(section.insert).toHaveBeenCalledWith(expect.objectContaining({
+      exam_id: 'exam-1', source_key: 'new-ordering', resource_id: 'activity-ordering', order_index: 19,
+    }))
+  })
+
   it('removes only the section link without deleting its reusable resource', async () => {
     const remove = { delete: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
     from.mockReturnValueOnce(remove as never)

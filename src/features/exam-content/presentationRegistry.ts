@@ -66,7 +66,7 @@ export const PRESENTATION_REGISTRY: Record<ExamPresentationType, PresentationDef
   },
   ordering: {
     type: 'ordering', label: 'Sắp xếp', description: 'Sắp xếp các mục theo thứ tự đúng.',
-    compatibleGradingModes: ['ordered_list'], requiresStructuredGaps: false, resourceKind: 'activity', isReadyForPublication: false,
+    compatibleGradingModes: ['ordered_list'], requiresStructuredGaps: false, resourceKind: 'activity',
   },
 }
 
