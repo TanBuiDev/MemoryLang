@@ -153,7 +153,7 @@ export function AdminB1ExamContentBuilderPage() {
   const [matchingValue, setMatchingValue] = useState<MatchingEditorValue>({ leftItems: [], rightItems: [], pairs: [] })
   const [orderingValue, setOrderingValue] = useState<OrderingEditorValue>({ items: [] })
 
-  // Drag and Drop state & ref for section reordering
+  // Drag and Drop real-time optimistic state & refs
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const draggedIndexRef = useRef<number | null>(null)
@@ -165,10 +165,27 @@ export function AdminB1ExamContentBuilderPage() {
     queryFn: () => adminExamContentService.getExamContent(id),
     enabled: Boolean(id),
   })
+
+  const sectionsList = useMemo(() => examQuery.data?.sections ?? [], [examQuery.data?.sections])
+
+  // Compute real-time live preview of sections while dragging over items
+  const displaySections = useMemo(() => {
+    if (draggedIndex === null || dragOverIndex === null || draggedIndex === dragOverIndex) {
+      return sectionsList
+    }
+    if (draggedIndex < 0 || draggedIndex >= sectionsList.length || dragOverIndex < 0 || dragOverIndex >= sectionsList.length) {
+      return sectionsList
+    }
+    const temp = [...sectionsList]
+    const [moved] = temp.splice(draggedIndex, 1)
+    temp.splice(dragOverIndex, 0, moved)
+    return temp
+  }, [sectionsList, draggedIndex, dragOverIndex])
+
   const selectedSection = useMemo(() => {
-    const sections = examQuery.data?.sections ?? []
-    return sections.find((section) => section.source_key === selectedSectionKey) ?? sections[0] ?? null
-  }, [examQuery.data?.sections, selectedSectionKey])
+    return sectionsList.find((section) => section.source_key === selectedSectionKey) ?? sectionsList[0] ?? null
+  }, [sectionsList, selectedSectionKey])
+
   const selectedResource = selectedSection?.resource ?? null
   const definition = getPresentationDefinition(presentationType)
   const publishReadiness = useMemo(
@@ -308,12 +325,30 @@ export function AdminB1ExamContentBuilderPage() {
 
   const reorderSections = useMutation({
     mutationFn: (sectionIds: string[]) => adminExamContentService.reorderSections(sectionIds),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+    onMutate: async (newOrderIds) => {
+      await queryClient.cancelQueries({ queryKey: ['admin-b1-exam-content', id] })
+      const previousExamData = queryClient.getQueryData(['admin-b1-exam-content', id])
+      queryClient.setQueryData(['admin-b1-exam-content', id], (old: unknown) => {
+        if (!old || typeof old !== 'object' || !Array.isArray((old as Record<string, unknown>).sections)) return old
+        const examRecord = old as { sections: Array<{ id: string }> }
+        const sectionMap = new Map(examRecord.sections.map((s) => [s.id, s]))
+        const reordered = newOrderIds.map((secId) => sectionMap.get(secId)).filter(Boolean)
+        return { ...examRecord, sections: reordered }
+      })
+      return { previousExamData }
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousExamData) {
+        queryClient.setQueryData(['admin-b1-exam-content', id], context.previousExamData)
+      }
+      showToast({ type: 'error', title: 'Không thể lưu thứ tự section' })
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
     },
   })
 
-  // Drag and Drop handlers with ref for synchronous index tracking
+  // Drag and Drop handlers with instant optimistic UI update
   const handleDragStart = (e: React.DragEvent, index: number) => {
     draggedIndexRef.current = index
     setDraggedIndex(index)
@@ -322,30 +357,45 @@ export function AdminB1ExamContentBuilderPage() {
       e.dataTransfer.effectAllowed = 'move'
     }
   }
+
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault()
-    if (draggedIndexRef.current !== index) {
+    if (draggedIndexRef.current !== null && draggedIndexRef.current !== index) {
       setDragOverIndex(index)
     }
   }
+
   const handleDragEnd = () => {
     draggedIndexRef.current = null
     setDraggedIndex(null)
     setDragOverIndex(null)
   }
+
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault()
     const dataIndex = e.dataTransfer?.getData?.('text/plain') ?? ''
     const sourceIndex = draggedIndexRef.current ?? (dataIndex !== '' ? Number(dataIndex) : null)
-    if (sourceIndex === null || sourceIndex === dropIndex || Number.isNaN(sourceIndex)) return
-    const sections = examQuery.data?.sections ?? []
-    const reordered = [...sections]
-    const [removed] = reordered.splice(sourceIndex, 1)
-    reordered.splice(dropIndex, 0, removed)
-    reorderSections.mutate(reordered.map((section) => section.id))
+
+    // Reset drag indicators immediately for responsive UX
     draggedIndexRef.current = null
     setDraggedIndex(null)
     setDragOverIndex(null)
+
+    if (sourceIndex === null || sourceIndex === dropIndex || Number.isNaN(sourceIndex)) return
+    if (sourceIndex < 0 || sourceIndex >= sectionsList.length || dropIndex < 0 || dropIndex >= sectionsList.length) return
+
+    const reordered = [...sectionsList]
+    const [removed] = reordered.splice(sourceIndex, 1)
+    reordered.splice(dropIndex, 0, removed)
+
+    // Instantly update React Query Cache at 0ms delay!
+    queryClient.setQueryData(['admin-b1-exam-content', id], (old: unknown) => {
+      if (!old || typeof old !== 'object') return old
+      return { ...old, sections: reordered }
+    })
+
+    // Trigger server mutation asynchronously in background
+    reorderSections.mutate(reordered.map((section) => section.id))
     showToast({ type: 'success', title: 'Đã cập nhật thứ tự các section!' })
   }
 
@@ -498,11 +548,11 @@ export function AdminB1ExamContentBuilderPage() {
 
       {/* Main Grid: Left Sidebar (Section List) + Right Workspace */}
       <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
-        {/* Left Sidebar: Section List with Drag & Drop */}
+        {/* Left Sidebar: Section List with Real-time Optimistic Drag & Drop */}
         <aside className="neo-card h-fit space-y-4 bg-card p-4 shadow-[3px_3px_0_var(--border)] border-3 border-border">
           <div className="flex items-center justify-between gap-2 border-b-3 border-border pb-3">
             <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-muted-foreground">
-              <Layers size={16} className="text-primary" /> Cấu trúc đề ({examQuery.data.sections.length})
+              <Layers size={16} className="text-primary" /> Cấu trúc đề ({displaySections.length})
             </h2>
             <Button type="button" variant="primary" onClick={() => setIsCreateSectionOpen(true)} className="min-h-8 px-2.5 text-xs font-black">
               <Plus size={14} /> Thêm section
@@ -514,7 +564,7 @@ export function AdminB1ExamContentBuilderPage() {
           </p>
 
           <div className="space-y-2">
-            {examQuery.data.sections.map((section, index) => {
+            {displaySections.map((section, index) => {
               const isSelected = selectedSection?.id === section.id
               const badge = skillBadges[section.skill] ?? { label: section.skill, color: 'bg-muted text-foreground' }
 
@@ -528,7 +578,7 @@ export function AdminB1ExamContentBuilderPage() {
                   onDragLeave={() => setDragOverIndex(null)}
                   onDrop={(e) => handleDrop(e, index)}
                   onDragEnd={handleDragEnd}
-                  className={`group flex items-center justify-between gap-2 p-2.5 border-2 transition-all cursor-grab active:cursor-grabbing ${
+                  className={`group flex items-center justify-between gap-2 p-2.5 border-2 transition-all duration-200 ease-in-out cursor-grab active:cursor-grabbing ${
                     draggedIndex === index ? 'opacity-40 border-dashed border-primary bg-muted' : ''
                   } ${
                     dragOverIndex === index ? 'border-primary bg-primary/20 scale-[1.02] shadow-md' : ''
