@@ -64,6 +64,34 @@ describe('ExamResultPage', () => {
     expect(await screen.findByText(/Nội dung bài viết khớp với bài mẫu/)).toBeInTheDocument()
   })
 
+  it('shows a submitted Speaking script with its own sample comparison', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: {
+        id: 'attempt-1', status: 'submitted',
+        exam_snapshot: {
+          sections: [{
+            source_key: 'speaking-topic-33', skill: 'speaking', resource_type: 'prompt',
+            resource: { id: 'speaking-prompt-1', presentation_type: 'speaking_script_prompt', prompt: 'Describe a park.' },
+          }],
+        },
+      },
+      sections: [{
+        id: 'section-speaking', exam_section_source_key: 'speaking-topic-33', score: 0, max_score: 0,
+        progress: { draft_content: 'I like a park near my home.' },
+      }],
+    } as never)
+    vi.mocked(examPracticeService.listPromptSamples).mockResolvedValue([{
+      id: 'sample-speaking-1', prompt_id: 'speaking-prompt-1', title: 'Bài nói mẫu',
+      content: 'I like a park near my home', created_at: '', updated_at: '',
+    }])
+
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/app/exams/attempt/attempt-1/result']}><Routes><Route path="/app/exams/attempt/:attemptId/result" element={<ExamResultPage />} /></Routes></MemoryRouter></QueryClientProvider>)
+
+    expect(await screen.findByText('So sánh với bài mẫu')).toBeInTheDocument()
+    expect(await screen.findByText(/Nội dung bài viết khớp với bài mẫu/)).toBeInTheDocument()
+    expect(examPracticeService.listPromptSamples).toHaveBeenCalledWith('speaking-prompt-1')
+  })
+
   it('shows the selected wrong option and option text inside a Cloze passage', async () => {
     vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
       attempt: {

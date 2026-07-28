@@ -17,6 +17,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useState } from 'react'
+import { useQueries } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { InlineGapPassageResult, type QuestionOptionsMap } from '@/components/exam/presentations/InlineGapPassageResult'
@@ -215,19 +216,18 @@ function parseOrderingAnswer(value: string): string[] {
   }
 }
 
-function getWritingPromptId(snapshot: Record<string, unknown> | undefined) {
+function getPromptIds(snapshot: Record<string, unknown> | undefined): string[] {
   const sectionList = snapshot?.sections
-  if (!Array.isArray(sectionList)) return null
+  if (!Array.isArray(sectionList)) return []
 
-  const writingSection = sectionList.find((section) => {
-    if (!section || typeof section !== 'object') return false
+  return [...new Set(sectionList.flatMap((section) => {
+    if (!section || typeof section !== 'object') return []
     const record = section as Record<string, unknown>
-    return record.resource_type === 'prompt' && record.skill === 'writing'
-  }) as Record<string, unknown> | undefined
-  const resource = writingSection?.resource
-  return resource && typeof resource === 'object' && typeof (resource as SnapshotResource).id === 'string'
-    ? (resource as SnapshotResource).id
-    : null
+    const resource = record.resource
+    return record.resource_type === 'prompt' && resource && typeof resource === 'object' && typeof (resource as SnapshotResource).id === 'string'
+      ? [(resource as SnapshotResource).id!]
+      : []
+  }))]
 }
 
 function WritingTokens({ tokens, missing }: { tokens: WritingComparisonToken[]; missing: boolean }) {
@@ -280,18 +280,20 @@ export function ExamResultPage() {
   const navigate = useNavigate()
   const [activeFilter, setActiveFilter] = useState<'all' | 'correct' | 'incorrect'>('all')
   const [selectedSectionKey, setSelectedSectionKey] = useState<string | null>(null)
-  const [selectedWritingSampleId, setSelectedWritingSampleId] = useState<string | null>(null)
+  const [selectedPromptSampleIds, setSelectedPromptSampleIds] = useState<Record<string, string | null>>({})
 
   const attemptQuery = useQuery({
     queryKey: ['b1-exam-attempt', attemptId],
     queryFn: () => examPracticeService.getAttempt(attemptId),
     enabled: Boolean(attemptId),
   })
-  const writingPromptId = getWritingPromptId(attemptQuery.data?.attempt.exam_snapshot)
-  const writingSamplesQuery = useQuery({
-    queryKey: ['practice-prompt-samples', writingPromptId],
-    queryFn: () => examPracticeService.listPromptSamples(writingPromptId!),
-    enabled: Boolean(writingPromptId) && attemptQuery.data?.attempt.status === 'submitted',
+  const promptIds = getPromptIds(attemptQuery.data?.attempt.exam_snapshot)
+  const promptSamplesQueries = useQueries({
+    queries: promptIds.map((promptId) => ({
+      queryKey: ['practice-prompt-samples', promptId],
+      queryFn: () => examPracticeService.listPromptSamples(promptId),
+      enabled: attemptQuery.data?.attempt.status === 'submitted',
+    })),
   })
   const restartAttempt = useMutation({
     mutationFn: () => {
@@ -344,9 +346,8 @@ export function ExamResultPage() {
   }
 
   const { attempt, sections } = attemptQuery.data
-  const writingSamples = writingSamplesQuery.data ?? []
-  const selectedWritingSample = writingSamples.find((sample) => sample.id === selectedWritingSampleId)
-    ?? writingSamples[0]
+  const promptSamplesById = Object.fromEntries(promptIds.map((promptId, index) => [promptId, promptSamplesQueries[index]?.data ?? []])) as Record<string, PracticePromptSample[]>
+  const promptSamplesLoadingById = Object.fromEntries(promptIds.map((promptId, index) => [promptId, promptSamplesQueries[index]?.isLoading ?? false])) as Record<string, boolean>
   const rawReviews = getReviews(sections)
   const score = sections.reduce((total, s) => total + Number(s.score ?? 0), 0)
   const maxScore = sections.reduce((total, s) => total + Number(s.max_score ?? 0), 0)
@@ -799,44 +800,50 @@ export function ExamResultPage() {
                         {group.draftContent}
                       </div>
 
-                      {group.resource?.id === writingPromptId && (
-                        <div className="space-y-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <h3 className="text-sm font-black text-foreground">So sánh với bài mẫu</h3>
-                            {writingSamplesQuery.isLoading && (
-                              <span className="text-xs font-bold text-muted-foreground">Đang tải bài mẫu...</span>
-                            )}
-                          </div>
-
-                          {writingSamples.length > 0 ? (
-                            <>
-                              <div className="flex flex-wrap gap-2">
-                                {writingSamples.map((sample) => (
-                                  <Button
-                                    key={sample.id}
-                                    type="button"
-                                    variant={selectedWritingSample?.id === sample.id ? 'secondary' : 'ghost'}
-                                    onClick={() => setSelectedWritingSampleId(sample.id)}
-                                    className="min-h-8 px-3 py-1 text-xs"
-                                  >
-                                    {sample.title}
-                                  </Button>
-                                ))}
-                              </div>
-                              {selectedWritingSample && (
-                                <WritingSampleComparison
-                                  draftContent={group.draftContent}
-                                  sample={selectedWritingSample}
-                                />
+                      {group.resource?.id && (() => {
+                        const promptId = group.resource.id
+                        const samples = promptSamplesById[promptId] ?? []
+                        const selectedSample = samples.find((sample) => sample.id === selectedPromptSampleIds[promptId]) ?? samples[0]
+                        const isLoadingSamples = promptSamplesLoadingById[promptId] ?? false
+                        return (
+                          <div className="space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <h3 className="text-sm font-black text-foreground">So sánh với bài mẫu</h3>
+                              {isLoadingSamples && (
+                                <span className="text-xs font-bold text-muted-foreground">Đang tải bài mẫu...</span>
                               )}
-                            </>
-                          ) : !writingSamplesQuery.isLoading ? (
-                            <p className="border-2 border-border bg-muted/40 p-3 text-sm font-semibold text-muted-foreground">
-                              Chưa có bài mẫu được xuất bản cho đề Writing này.
-                            </p>
-                          ) : null}
-                        </div>
-                      )}
+                            </div>
+
+                            {samples.length > 0 ? (
+                              <>
+                                <div className="flex flex-wrap gap-2">
+                                  {samples.map((sample) => (
+                                    <Button
+                                      key={sample.id}
+                                      type="button"
+                                      variant={selectedSample?.id === sample.id ? 'secondary' : 'ghost'}
+                                      onClick={() => setSelectedPromptSampleIds((current) => ({ ...current, [promptId]: sample.id }))}
+                                      className="min-h-8 px-3 py-1 text-xs"
+                                    >
+                                      {sample.title}
+                                    </Button>
+                                  ))}
+                                </div>
+                                {selectedSample && (
+                                  <WritingSampleComparison
+                                    draftContent={group.draftContent}
+                                    sample={selectedSample}
+                                  />
+                                )}
+                              </>
+                            ) : !isLoadingSamples ? (
+                              <p className="border-2 border-border bg-muted/40 p-3 text-sm font-semibold text-muted-foreground">
+                                Chưa có bài mẫu được xuất bản cho đề này.
+                              </p>
+                            ) : null}
+                          </div>
+                        )
+                      })()}
                     </article>
                   )}
 
