@@ -21,4 +21,10 @@ describe('PresentationPreview', () => {
     expect(screen.getByText('Correct answer').closest('div')).toHaveClass('bg-primary')
     expect(screen.queryByText(/JSON|HTML/i)).not.toBeInTheDocument()
   })
+
+  it('previews an image-choice question with its persisted crop', () => {
+    render(<PresentationPreview presentationType="image_choice_list" questions={[{ id: 'q-1', prompt: 'Choose.', image_url: 'https://example.com/sign.png', metadata: { image_crop: 'top' }, acceptedAnswers: [] }]} />)
+    expect(screen.getByRole('img')).toHaveClass('object-cover')
+    expect(screen.getByRole('img')).toHaveStyle({ objectPosition: 'top' })
+  })
 })

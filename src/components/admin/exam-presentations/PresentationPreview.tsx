@@ -1,11 +1,14 @@
 import { Eye, FileCheck2, NotebookPen } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { getImagePresentation } from '@/features/exam-content/imagePresentation'
 import type { ExamPresentationType } from '@/types/exam.types'
 
 export interface PreviewQuestion {
   id: string
   prompt: string
+  image_url?: string | null
+  metadata?: Record<string, unknown>
   options?: Array<{ key: string; text: string; is_correct: boolean }>
   acceptedAnswers: string[]
 }
@@ -23,8 +26,10 @@ function ChoicePreview({ questions, result }: { questions: PreviewQuestion[]; re
   return <div className="space-y-4">
     {questions.map((question, index) => {
       const incorrectOption = question.options?.find((option) => !option.is_correct)
+      const imagePresentation = getImagePresentation(question.metadata)
       return <article key={question.id} className="border-2 border-border bg-card p-4">
         <p className="font-black">Câu {index + 1}. {question.prompt}</p>
+        {question.image_url && <img src={question.image_url} alt={`Hình minh họa câu ${index + 1}`} className={`mt-3 max-h-64 w-full border-2 border-border ${imagePresentation.fitClass}`} style={{ objectPosition: imagePresentation.objectPosition }} />}
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {question.options?.map((option) => {
             const isCorrect = option.is_correct

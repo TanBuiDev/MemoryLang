@@ -172,6 +172,8 @@ export function AdminB1ExamContentBuilderPage() {
       id: question.id,
       prompt: question.prompt,
       options: question.options,
+      image_url: question.image_url,
+      metadata: question.metadata,
       acceptedAnswers: inlineAnswers.get(question.id) ?? [],
     }))
   }, [editedQuestions, inlineGapDraft?.gaps, presentationType, transformationQuestions])
