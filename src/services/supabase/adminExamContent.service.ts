@@ -340,6 +340,19 @@ export const adminExamContentService = {
     if (error) throw error
   },
 
+  async updateResourcePresentationConfig(input: {
+    resourceKind: ExamResourceType
+    resourceId: string
+    presentationConfig: Record<string, unknown>
+  }): Promise<void> {
+    const table = input.resourceKind === 'activity' ? 'practice_activities' : 'practice_prompts'
+    const { error } = await supabase
+      .from(table)
+      .update({ presentation_config: input.presentationConfig })
+      .eq('id', input.resourceId)
+    if (error) throw error
+  },
+
   async updatePromptText(promptId: string, input: { prompt: string; instructions: string }): Promise<void> {
     const { error } = await supabase
       .from('practice_prompts')

@@ -86,6 +86,19 @@ describe('adminExamContentService', () => {
     expect(update.update).toHaveBeenCalledWith({ content_blocks: blocks })
   })
 
+  it('persists visual matching configuration on the activity resource', async () => {
+    const update = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
+    from.mockReturnValueOnce(update as never)
+    const matching = { leftItems: [{ id: 'left-1', text: 'Monday' }], rightItems: [{ id: 'right-1', text: 'Thứ Hai' }], pairs: [{ leftId: 'left-1', rightId: 'right-1' }] }
+
+    await expect(adminExamContentService.updateResourcePresentationConfig({
+      resourceKind: 'activity', resourceId: 'activity-1', presentationConfig: { matching },
+    })).resolves.toBeUndefined()
+
+    expect(from).toHaveBeenCalledWith('practice_activities')
+    expect(update.update).toHaveBeenCalledWith({ presentation_config: { matching } })
+  })
+
   it('updates accepted text answers for a visual inline gap', async () => {
     const update = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
     from.mockReturnValueOnce(update as never)
