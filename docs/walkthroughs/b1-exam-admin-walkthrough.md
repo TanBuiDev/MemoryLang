@@ -1,6 +1,6 @@
 # Walkthrough quản trị đề thi B1
 
-**Cập nhật:** 28/07/2026  
+**Cập nhật:** 28/07/2026<br>
 **Đối tượng:** Quản trị viên nội dung đề thi B1
 
 Tài liệu này tóm tắt các chức năng B1 đã triển khai và hướng dẫn kiểm tra, tạo, chỉnh sửa, quản lý media và xuất bản đề. Mục tiêu là để admin quản lý đề bằng giao diện trực quan, không cần nhập JSON, HTML hoặc thao tác trực tiếp với cơ sở dữ liệu.
