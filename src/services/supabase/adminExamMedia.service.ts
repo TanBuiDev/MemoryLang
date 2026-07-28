@@ -23,6 +23,8 @@ export interface B1SignQuestion {
   source_number: string | null
   prompt: string
   image_url: string | null
+  image_alt: string
+  metadata: Record<string, unknown>
 }
 
 export interface B1QuestionReviewEditor {
@@ -102,11 +104,15 @@ export const adminExamMediaService = {
   async listSigns(): Promise<B1SignQuestion[]> {
     const { data, error } = await supabase
       .from('practice_questions')
-      .select('id,source_key,source_number,prompt,image_url,activity:practice_activities!inner(source_key)')
+      .select('id,source_key,source_number,prompt,image_url,metadata,activity:practice_activities!inner(source_key)')
       .eq('activity.source_key', 'signs')
       .order('order_index')
     if (error) throw error
-    return (data ?? []) as B1SignQuestion[]
+    return (data ?? []).map((sign: any) => ({
+      ...sign,
+      metadata: sign.metadata && typeof sign.metadata === 'object' ? sign.metadata : {},
+      image_alt: typeof sign.metadata?.image_alt === 'string' ? sign.metadata.image_alt : '',
+    })) as B1SignQuestion[]
   },
 
   async uploadSignImage(file: File, sourceKey: string): Promise<string> {
@@ -119,6 +125,14 @@ export const adminExamMediaService = {
 
   async setSignImage(questionId: string, imageUrl: string | null): Promise<void> {
     const { error } = await supabase.from('practice_questions').update({ image_url: imageUrl }).eq('id', questionId)
+    if (error) throw error
+  },
+
+  async updateSignImageAlt(sign: B1SignQuestion, imageAlt: string): Promise<void> {
+    const { error } = await supabase
+      .from('practice_questions')
+      .update({ metadata: { ...sign.metadata, image_alt: imageAlt.trim() } })
+      .eq('id', sign.id)
     if (error) throw error
   },
 

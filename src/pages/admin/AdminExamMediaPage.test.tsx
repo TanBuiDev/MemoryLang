@@ -8,7 +8,7 @@ vi.mock('@/services/supabase/adminExamMedia.service', () => ({
   adminExamMediaService: {
     listResources: vi.fn(), listSigns: vi.fn(), listQuestionReviews: vi.fn(),
     setAudioUrl: vi.fn(), setPublished: vi.fn(), setB1ExamPublished: vi.fn(),
-    uploadAudio: vi.fn(), uploadSignImage: vi.fn(), setSignImage: vi.fn(), updateQuestionReview: vi.fn(),
+    uploadAudio: vi.fn(), uploadSignImage: vi.fn(), setSignImage: vi.fn(), updateSignImageAlt: vi.fn(), updateQuestionReview: vi.fn(),
   },
 }))
 vi.mock('@/services/api/generateAudio.api', () => ({ generateAudio: vi.fn() }))
@@ -44,5 +44,21 @@ describe('AdminExamMediaPage', () => {
 
     expect(await screen.findByText(/Đang được dùng trong 2 section/i)).toBeInTheDocument()
     expect(screen.getByText(/B1 DeFull.*B1 luyện tập/i)).toBeInTheDocument()
+  })
+
+  it('lets an admin add accessible alt text for a sign image', async () => {
+    vi.mocked(adminExamMediaService.listResources).mockResolvedValue([])
+    vi.mocked(adminExamMediaService.listSigns).mockResolvedValue([{
+      id: 'sign-1', source_key: 'sign-1', source_number: '1', prompt: 'What does this sign mean?', image_url: 'https://cdn.example/sign.png', image_alt: '', metadata: {},
+    }])
+    vi.mocked(adminExamMediaService.listQuestionReviews).mockResolvedValue([])
+
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AdminExamMediaPage /></QueryClientProvider>)
+
+    const input = await screen.findByLabelText('Mô tả ảnh biển báo 1')
+    expect(input).toBeInTheDocument()
+    fireEvent.change(input, { target: { value: 'Biển cấm đỗ xe' } })
+    fireEvent.blur(input)
+    expect(adminExamMediaService.updateSignImageAlt).toHaveBeenCalledWith(expect.objectContaining({ id: 'sign-1' }), 'Biển cấm đỗ xe')
   })
 })
