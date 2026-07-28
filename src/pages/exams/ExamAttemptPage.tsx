@@ -25,6 +25,7 @@ import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { InlineChoicePassageAttempt } from '@/components/exam/presentations/InlineChoicePassageAttempt'
+import { ChoiceListAttempt } from '@/components/exam/presentations/ChoiceListAttempt'
 import { ShortAnswerListAttempt } from '@/components/exam/presentations/ShortAnswerListAttempt'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label, Textarea } from '@/components/ui/input'
@@ -1051,6 +1052,8 @@ export function ExamAttemptPage() {
                   )}
                 </section>
               </div>
+            ) : ['choice_list', 'boolean_list', 'image_choice_list', 'passage_questions'].includes(presentationType ?? '') ? (
+              <ChoiceListAttempt questions={activeResource.questions ?? []} answers={selectedAnswers} disabled={isSubmitted} onAnswer={(questionKey, optionKey) => setSelectedAnswers((current) => ({ ...current, [questionKey]: optionKey }))} />
             ) : presentationType === 'short_answer_list' ? (
               <ShortAnswerListAttempt
                 questions={activeResource.questions ?? []}
