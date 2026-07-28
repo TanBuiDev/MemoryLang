@@ -14,7 +14,7 @@
 
 ### Kết luận ngắn
 
-Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder trực quan đã có. B1 hiện vận hành được bằng presentation metadata cho phần lớn nội dung đang có. `matching`, `ordering` và `short_answer_list` đã có đủ editor/attempt/result; hai dạng cấu hình-only có snapshot riêng tư và publish gate. Tuy nhiên phase **chưa hoàn tất**: learner/result renderer vẫn còn các nhánh legacy trong hai page lớn; editor passage/image/media chưa đạt toàn bộ UX đã thiết kế; và chưa có lượt audit remote end-to-end cuối cùng.
+Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder trực quan đã có. B1 hiện vận hành được bằng presentation metadata cho phần lớn nội dung đang có. `matching`, `ordering` và `short_answer_list` đã có đủ editor/attempt/result; hai dạng cấu hình-only có snapshot riêng tư và publish gate. Writing/Speaking đã tách workspace làm bài và review/bài mẫu thành renderer riêng. Tuy nhiên phase **chưa hoàn tất**: vẫn còn các nhánh legacy trong hai page lớn; editor passage/image/media chưa đạt toàn bộ UX đã thiết kế; và chưa có lượt audit remote end-to-end cuối cùng.
 
 | Hạng mục | Trạng thái | Bằng chứng hiện tại | Việc còn lại cần thiết |
 |---|---|---|---|
@@ -22,8 +22,8 @@ Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder 
 | Migration/snapshot B1 | Hoàn thành cục bộ; cần xác minh remote cuối | `20260728002300_add_exam_presentation_registry.sql`, migration-contract test, verifier learner attempt | Chạy lại dry-run, kiểm tra migration remote và security advisors trước release. |
 | Publish gate | Hoàn thành | readiness client, guarded RPC `set_b1_exam_published_guarded`, test service | Audit remote cuối và thêm test lỗi policy/RLS nếu schema đổi. |
 | Admin builder | Hoàn thành phần lõi | picker, editor, preview, create/reorder/detach/add/delete question, tests | Clone/reuse section an toàn; editor media/image/passage phong phú hơn. |
-| Attempt renderer | Một phần | resolver metadata, inline choice/text/transformation/matching/ordering component, Enter regression | Tách long form khỏi page orchestration; thêm invalid-config fallback. |
-| Result renderer | Một phần | inline, choice, transformation, matching, ordering, short answer; sai nền đỏ; bài mẫu theo từng Writing/Speaking prompt | Tách long-form renderer; loại bỏ hết source-key inference ngoài fallback legacy. |
+| Attempt renderer | Một phần | resolver metadata, renderer inline/choice/transformation/matching/ordering/short answer/long form, Enter regression | Thêm invalid-config fallback; tiếp tục giảm các nhánh legacy. |
+| Result renderer | Một phần | inline, choice, transformation, matching, ordering, short answer, long form; sai nền đỏ; bài mẫu theo từng Writing/Speaking prompt | Loại bỏ hết source-key inference ngoài fallback legacy. |
 | Media/TTS | Hoàn thành workflow B1 cơ bản + thay audio có xác nhận | `AdminExamMediaPage`, upload audio/sign, TTS, warning/`ConfirmModal` khi thay audio đã publish, media service/test | Media library metadata, image alt/crop/usage impact chưa hoàn chỉnh. |
 | 17 section B1 | Backfill có trong migration; regression full xanh | mapping `CASE`, `pnpm test` 120 files/503 tests, migration remote khớp local đến `20260728103907` | Cần smoke test browser có đăng nhập để đếm/mapping đủ 17 section trên remote. |
 
@@ -31,7 +31,7 @@ Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder 
 
 - `ExamAttemptPage.tsx` và `ExamResultPage.tsx` vẫn là page lớn; chỉ một phần renderer được extract. Đây là rủi ro chính khi thêm presentation mới.
 - `source_key` vẫn được dùng làm fallback cho attempt legacy và liên kết progress/review. Không được dùng nó để chọn UI mới; các nhánh còn lại phải tiếp tục chuyển sang `presentation_type`.
-- Long-form vẫn nằm trong page orchestration; các nhánh legacy còn lại không được dùng làm contract cho presentation mới.
+- Long-form đã là renderer riêng; các nhánh legacy còn lại không được dùng làm contract cho presentation mới.
 - Builder hiện thêm/xóa resource source trực tiếp theo policy hiện có; chưa có RPC clone nguyên tử để đảm bảo workflow tái sử dụng section không tạo resource mồ côi khi lỗi giữa chừng.
 
 ---
@@ -538,13 +538,13 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 ### Task 3: Tách learner renderer theo presentation
 
-**Trạng thái audit:** Một phần. Đã có resolver metadata, `InlineChoicePassageAttempt`, `ChoiceListAttempt`, `ShortAnswerListAttempt`, `SentenceTransformationAttempt`, `MatchingAttempt`, `OrderingAttempt` và regression Enter cho input theo danh sách/viết lại câu. Long-form Writing/Speaking vẫn còn gắn với orchestration của `ExamAttemptPage.tsx`.
+**Trạng thái audit:** Một phần. Đã có resolver metadata, `InlineChoicePassageAttempt`, `ChoiceListAttempt`, `ShortAnswerListAttempt`, `SentenceTransformationAttempt`, `MatchingAttempt`, `OrderingAttempt`, `LongFormPromptWorkspace` và regression Enter cho input theo danh sách/viết lại câu. Page chỉ giữ orchestration của draft/autosave.
 
 **Bằng chứng đã hoàn thành:**
 
 - [x] `InlineChoicePassageAttempt`, `ChoiceListAttempt`, `ShortAnswerListAttempt`, `SentenceTransformationAttempt` có test component; các input list/transformation hỗ trợ Enter sang câu kế tiếp.
 - [x] `ExamAttemptPage` resolve `presentation_type` trước, còn renderer cũ chỉ là compatibility path.
-- [ ] Tách Long-form Writing/Speaking khỏi page orchestration (draft, autosave, version comparison).
+- [x] `LongFormPromptWorkspace` tách UI Writing/Speaking: soạn draft, đếm từ, checkpoint phiên bản và so sánh hai phiên bản; autosave vẫn do orchestration hiện hữu gọi service.
 - [x] `MatchingAttempt`/`OrderingAttempt` có renderer typed; publish block chỉ còn áp dụng khi config không hợp lệ.
 
 **Files:**
@@ -553,22 +553,22 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 - Modify: `src/pages/exams/ExamAttemptPage.tsx`
 - Test: `src/components/exam/presentations/*.test.tsx`, `src/pages/exams/ExamAttemptPage.test.tsx`
 
-- [ ] Viết test fail cho `choice_list`, `passage_text_inline`, `sentence_transformation`, `long_form_prompt`.
-- [ ] Di chuyển renderer legacy vào components typed, giữ Enter/focus/autosave behavior hiện tại.
+- [x] Có regression component cho `choice_list`, `sentence_transformation`, `long_form_prompt`; inline presentation có regression riêng.
+- [x] Di chuyển các renderer typed hiện có, giữ Enter/focus/autosave behavior hiện tại.
 - [ ] Mỗi presentation phải có fallback dễ hiểu khi resource config invalid; learner không thấy stack error.
-- [ ] Chạy test và `pnpm tsc -b`.
-- [ ] Commit: `refactor: render B1 attempts by presentation type`.
+- [x] Chạy test component liên quan và `pnpm tsc -b`.
+- [x] Commit theo presentation nhỏ: `f6a92ae refactor: extract long form exam workspace`.
 
 ### Task 4: Tách result renderer theo presentation
 
-**Trạng thái audit:** Một phần. Đã có `InlineGapPassageResult`, `ChoiceQuestionResult`, `SentenceTransformationResult`, `MatchingResult`, `OrderingResult`, `ShortAnswerListResult`, review sai nền đỏ, option text và so sánh bài mẫu theo từng Writing/Speaking prompt; snapshot title/skill đã được ưu tiên. Long-form renderer và fallback typed đầy đủ vẫn chưa tách.
+**Trạng thái audit:** Một phần. Đã có `InlineGapPassageResult`, `ChoiceQuestionResult`, `SentenceTransformationResult`, `MatchingResult`, `OrderingResult`, `ShortAnswerListResult`, `LongFormPromptResult`, review sai nền đỏ, option text và so sánh bài mẫu theo từng Writing/Speaking prompt; snapshot title/skill đã được ưu tiên. Fallback typed đầy đủ vẫn chưa tách.
 
 **Bằng chứng đã hoàn thành:**
 
 - [x] `ChoiceQuestionResult` hiển thị lựa chọn sai nền đỏ và đáp án đúng nền vàng, kèm toàn bộ option text.
 - [x] `InlineGapPassageResult` map option key sang nội dung đáp án trong đoạn văn.
 - [x] `SentenceTransformationResult` giữ so sánh ở mức token nhưng không tách rời bố cục câu viết lại.
-- [ ] Tách review Long-form/Speaking và bổ sung sample/reference cho Speaking.
+- [x] `LongFormPromptResult` tách review Writing/Speaking; sample được tải độc lập theo từng prompt, bao gồm Speaking.
 - [ ] Tạo fallback metadata-first cho mọi attempt legacy, rồi mới loại bỏ source-key inference còn lại.
 
 **Files:**
@@ -577,11 +577,11 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 - Modify: `src/pages/exams/ExamResultPage.tsx`
 - Test: `src/pages/exams/ExamResultPage.test.tsx`
 
-- [ ] Viết test fail cho wrong-selected red state, inline option text, punctuation profile, Writing/Speaking sample comparison.
+- [x] Có regression cho wrong-selected red state, inline option text, punctuation-tolerant Writing/Speaking sample comparison.
 - [ ] Chuyển logic source-key inference sang presentation metadata.
 - [ ] Kiểm tra review của attempt legacy vẫn hiển thị được qua fallback mapping.
-- [ ] Chạy test và `pnpm tsc -b`.
-- [ ] Commit: `refactor: render B1 reviews by presentation type`.
+- [x] Chạy test component liên quan và `pnpm tsc -b`.
+- [x] Commit theo presentation nhỏ: `ab01f0f refactor: extract long form result renderer`.
 
 ## Chunk 3: Admin experience
 
