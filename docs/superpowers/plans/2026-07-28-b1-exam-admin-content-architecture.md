@@ -25,7 +25,7 @@ Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder 
 | Attempt renderer | Một phần | resolver metadata, renderer inline/choice/transformation/matching/ordering/short answer/long form, Enter regression, fallback cấu hình lỗi | Tiếp tục giảm các nhánh legacy. |
 | Result renderer | Một phần | inline, choice, transformation, matching, ordering, short answer, long form; sai nền đỏ; bài mẫu theo từng Writing/Speaking prompt; fallback cấu hình lỗi | Loại bỏ hết source-key inference ngoài fallback legacy. |
 | Media/TTS | Hoàn thành workflow B1 cơ bản + thay audio có xác nhận | `AdminExamMediaPage`, upload audio/sign, TTS, usage impact, alt text và preset crop Signs, warning/`ConfirmModal` khi thay audio đã publish, media service/test | Media asset library/version độc lập và xóa storage theo usage chưa hoàn chỉnh. |
-| 17 section B1 | Backfill có trong migration; regression B1 đạt | mapping `CASE`, test mục tiêu B1 và `pnpm tsc -b`; migration remote khớp local đến `20260728103907` | Cần smoke test browser có đăng nhập để đếm/mapping đủ 17 section trên remote. Suite toàn dự án hiện có lỗi Quiz không liên quan. |
+| 17 section B1 | Backfill có trong migration; regression B1 đạt | mapping `CASE`, `pnpm test` xanh 124 files/516 tests, `pnpm tsc -b`; migration remote khớp local đến `20260728103907` | Cần smoke test browser có đăng nhập để đếm/mapping đủ 17 section trên remote. |
 
 ### Các rủi ro không được che giấu
 
@@ -641,7 +641,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 - [x] Backfill mapping presentation cho 17 section ở mục 3.2 idempotently.
 - [ ] Hoàn thiện test snapshot mới, attempt UI, result UI và existing submission review cho mọi presentation (đang có regression từng phần).
 - [x] Verify remote migration khớp local đến `20260728103907`, dry-run rỗng, security advisors không có error và `pnpm tsc -b`.
-- [ ] Browser E2E đăng nhập thật cho đủ 17 section ở lượt release cuối. Remote RLS/advisors đã được kiểm tra; suite toàn dự án hiện còn lỗi Quiz không liên quan cần xử lý riêng trước khi dùng làm release gate.
+- [ ] Browser E2E đăng nhập thật cho đủ 17 section ở lượt release cuối. Remote RLS/advisors đã được kiểm tra; `pnpm test` xanh 124 files/516 tests và `pnpm tsc -b` đạt.
 - [x] Commit: `feat: migrate B1 content to presentation builder`.
 
 ---
