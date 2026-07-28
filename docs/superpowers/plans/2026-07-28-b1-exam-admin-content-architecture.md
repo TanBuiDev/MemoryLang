@@ -22,9 +22,9 @@ Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder 
 | Migration/snapshot B1 | Hoàn thành cục bộ; cần xác minh remote cuối | `20260728002300_add_exam_presentation_registry.sql`, migration-contract test, verifier learner attempt | Chạy lại dry-run, kiểm tra migration remote và security advisors trước release. |
 | Publish gate | Hoàn thành | readiness client, guarded RPC `set_b1_exam_published_guarded`, test service | Audit remote cuối và thêm test lỗi policy/RLS nếu schema đổi. |
 | Admin builder | Hoàn thành phần lõi | picker, editor, preview, create/reorder/detach/add/delete question, tests | Clone/reuse section an toàn; editor media/image/passage phong phú hơn. |
-| Attempt renderer | Một phần | resolver metadata, renderer inline/choice/transformation/matching/ordering/short answer/long form, Enter regression | Thêm invalid-config fallback; tiếp tục giảm các nhánh legacy. |
-| Result renderer | Một phần | inline, choice, transformation, matching, ordering, short answer, long form; sai nền đỏ; bài mẫu theo từng Writing/Speaking prompt | Loại bỏ hết source-key inference ngoài fallback legacy. |
-| Media/TTS | Hoàn thành workflow B1 cơ bản + thay audio có xác nhận | `AdminExamMediaPage`, upload audio/sign, TTS, warning/`ConfirmModal` khi thay audio đã publish, media service/test | Media library metadata, image alt/crop/usage impact chưa hoàn chỉnh. |
+| Attempt renderer | Một phần | resolver metadata, renderer inline/choice/transformation/matching/ordering/short answer/long form, Enter regression, fallback cấu hình lỗi | Tiếp tục giảm các nhánh legacy. |
+| Result renderer | Một phần | inline, choice, transformation, matching, ordering, short answer, long form; sai nền đỏ; bài mẫu theo từng Writing/Speaking prompt; fallback cấu hình lỗi | Loại bỏ hết source-key inference ngoài fallback legacy. |
+| Media/TTS | Hoàn thành workflow B1 cơ bản + thay audio có xác nhận | `AdminExamMediaPage`, upload audio/sign, TTS, usage impact, alt text Signs, warning/`ConfirmModal` khi thay audio đã publish, media service/test | Media asset library/version độc lập, crop và xóa storage theo usage chưa hoàn chỉnh. |
 | 17 section B1 | Backfill có trong migration; regression full xanh | mapping `CASE`, `pnpm test` 120 files/503 tests, migration remote khớp local đến `20260728103907` | Cần smoke test browser có đăng nhập để đếm/mapping đủ 17 section trên remote. |
 
 ### Các rủi ro không được che giấu
@@ -531,7 +531,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 - [x] Viết test/smoke case xác nhận learner snapshot không chứa answer key nhưng chứa presentation metadata.
 - [x] Thêm columns/constraints và guarded RPC adaptation (`SECURITY DEFINER`, fixed `search_path`, grants đúng role).
 - [x] Dry-run migration qua `scripts/check-supabase-migration-dry-run.mjs` trong lượt triển khai migration ban đầu.
-- [ ] Lặp lại verify remote: dry-run expected migration, run advisors và kiểm tra snapshot trên project remote hiện tại.
+- [x] Remote migration list khớp local đến `20260728103907`; `db push --dry-run` báo up-to-date, `db lint --fail-on error` và security advisors error-level đều qua. Snapshot runtime vẫn cần browser đăng nhập/RLS test.
 - [x] Commit: `feat: persist exam presentation metadata`.
 
 ## Chunk 2: Renderer migration có parity
@@ -555,7 +555,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 - [x] Có regression component cho `choice_list`, `sentence_transformation`, `long_form_prompt`; inline presentation có regression riêng.
 - [x] Di chuyển các renderer typed hiện có, giữ Enter/focus/autosave behavior hiện tại.
-- [ ] Mỗi presentation phải có fallback dễ hiểu khi resource config invalid; learner không thấy stack error.
+- [x] `getPresentationConfigurationIssue` bao phủ empty objective, inline passage, Writing/Speaking; Matching/Ordering giữ validator typed riêng. Attempt/result đều render `role="alert"` thay vì vùng trống.
 - [x] Chạy test component liên quan và `pnpm tsc -b`.
 - [x] Commit theo presentation nhỏ: `f6a92ae refactor: extract long form exam workspace`.
 
@@ -618,7 +618,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 ### Task 7: Media/TTS quản trị
 
-**Trạng thái audit:** Hoàn thành workflow B1 cơ bản. Upload audio, upload sign image, TTS, preview, publish readiness và trang quản trị riêng đã có. Thay audio của resource đã publish (URL/upload/TTS) luôn hiển thị impact warning và yêu cầu `ConfirmModal`; attempt cũ giữ snapshot nên không bị đổi. Chưa hoàn thành media library độc lập có metadata, alt/crop, usage/impact list và quản trị thay thế/xóa theo usage.
+**Trạng thái audit:** Hoàn thành workflow B1 cơ bản. Upload audio, upload sign image, TTS, preview, publish readiness và trang quản trị riêng đã có. Thay audio của resource đã publish (URL/upload/TTS) luôn hiển thị impact warning và yêu cầu `ConfirmModal`; attempt cũ giữ snapshot nên không bị đổi. Danh sách resource hiển thị số section/tên đề sử dụng chung, Signs có alt text lưu trong metadata. Chưa hoàn thành media asset library/version độc lập, crop và xóa storage theo usage.
 
 **Files:**
 
@@ -626,8 +626,8 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 - Modify: presentation editors, admin navigation
 - Test: upload/link/TTS preview/required media validation
 
-- [ ] Xây media picker trực quan, upload audio/image, TTS create/preview và usage warning.
-- [ ] Không xóa media đang được published resource dùng nếu chưa có confirm và impact list.
+- [x] Media workflow trực quan có upload audio/image, TTS create/preview và usage warning theo section/đề.
+- [x] Thay hoặc gỡ URL audio trên resource published yêu cầu confirm và hiển thị impact; storage-asset deletion vẫn chưa expose nên không thể xóa nhầm file đang dùng.
 - [ ] Commit: `feat: manage exam media and TTS assets`.
 
 ### Task 8: Backfill B1 và release gate
