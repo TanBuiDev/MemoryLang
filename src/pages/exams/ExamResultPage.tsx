@@ -20,6 +20,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { InlineGapPassageResult, type QuestionOptionsMap } from '@/components/exam/presentations/InlineGapPassageResult'
+import { ChoiceQuestionResult } from '@/components/exam/presentations/ChoiceQuestionResult'
 import { isInlineGapPresentation, resolveAttemptPresentation } from '@/features/exam-content/attemptPresentation'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
 import type { B1AttemptQuestionReview, PracticePromptSample } from '@/types/exam.types'
@@ -922,50 +923,11 @@ export function ExamResultPage() {
 
                         {/* Requirement #1: Options List with Yellow Highlight on Correct Answer (Matching PDF!) */}
                         {questionOptions.length > 0 ? (
-                          <div
-                            className={`grid gap-2.5 pt-2 ${
-                              questionOptions.every((opt) => (opt.text ?? '').trim().length <= 35)
-                                ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
-                                : 'grid-cols-1 sm:grid-cols-2'
-                            }`}
-                          >
-                            {questionOptions.map((option) => {
-                              const isCorrectOption = review.correct_option_keys.includes(option.key)
-                              const isUserChoice = review.user_answer.trim().toUpperCase() === option.key
-                              const isUserChoiceWrong = isUserChoice && !review.is_correct
-
-                              return (
-                                <div
-                                  key={option.key}
-                                  className={`p-2.5 text-left border-2 font-black text-sm flex items-center gap-2.5 transition-all select-none ${
-                                    isCorrectOption
-                                      ? 'bg-yellow-300 text-black border-black shadow-[2.5px_2.5px_0_#000]'
-                                      : isUserChoiceWrong
-                                        ? 'bg-danger text-white border-danger shadow-[2.5px_2.5px_0_var(--border)]'
-                                        : 'bg-background text-foreground border-border opacity-70'
-                                  }`}
-                                >
-                                  <span
-                                    className={`shrink-0 w-6 h-6 border-2 flex items-center justify-center text-xs font-black rounded-xs ${
-                                      isCorrectOption
-                                        ? 'bg-black text-yellow-300 border-black'
-                                        : isUserChoiceWrong
-                                          ? 'bg-danger text-white border-danger'
-                                          : 'bg-muted text-foreground border-border'
-                                    }`}
-                                  >
-                                    {option.key}
-                                  </span>
-                                  <span className="min-w-0 leading-snug break-words">{option.text}</span>
-                                  {isCorrectOption && (
-                                    <span className="ml-auto text-[11px] bg-black text-yellow-300 font-black px-1.5 py-0.5 rounded-xs shrink-0">
-                                      Đáp án đúng
-                                    </span>
-                                  )}
-                                </div>
-                              )
-                            })}
-                          </div>
+                          <ChoiceQuestionResult
+                            options={questionOptions}
+                            userAnswer={review.user_answer}
+                            correctOptionKeys={review.correct_option_keys}
+                          />
                         ) : !parsedTransformation ? (
                           /* Fallback for Fill Blank without options array */
                           <div className="grid gap-3 sm:grid-cols-2 pt-1 text-xs font-semibold">
