@@ -14,7 +14,7 @@
 
 ### Kết luận ngắn
 
-Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder trực quan đã có. B1 hiện vận hành được bằng presentation metadata cho phần lớn nội dung đang có. `matching` và `ordering` đã có đủ editor/attempt/result, snapshot riêng tư và publish gate. Tuy nhiên phase **chưa hoàn tất**: learner/result renderer vẫn còn các nhánh legacy trong hai page lớn; `short_answer_list` chưa có Result renderer chuyên biệt; editor passage/image/media chưa đạt toàn bộ UX đã thiết kế; và chưa có lượt audit remote end-to-end cuối cùng.
+Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder trực quan đã có. B1 hiện vận hành được bằng presentation metadata cho phần lớn nội dung đang có. `matching`, `ordering` và `short_answer_list` đã có đủ editor/attempt/result; hai dạng cấu hình-only có snapshot riêng tư và publish gate. Tuy nhiên phase **chưa hoàn tất**: learner/result renderer vẫn còn các nhánh legacy trong hai page lớn; editor passage/image/media chưa đạt toàn bộ UX đã thiết kế; và chưa có lượt audit remote end-to-end cuối cùng.
 
 | Hạng mục | Trạng thái | Bằng chứng hiện tại | Việc còn lại cần thiết |
 |---|---|---|---|
@@ -23,7 +23,7 @@ Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder 
 | Publish gate | Hoàn thành | readiness client, guarded RPC `set_b1_exam_published_guarded`, test service | Audit remote cuối và thêm test lỗi policy/RLS nếu schema đổi. |
 | Admin builder | Hoàn thành phần lõi | picker, editor, preview, create/reorder/detach/add/delete question, tests | Clone/reuse section an toàn; editor media/image/passage phong phú hơn. |
 | Attempt renderer | Một phần | resolver metadata, inline choice/text/transformation/matching/ordering component, Enter regression | Tách long form khỏi page orchestration; thêm invalid-config fallback. |
-| Result renderer | Một phần | inline, choice, transformation, matching, ordering; sai nền đỏ; bài mẫu theo từng Writing/Speaking prompt | Tách long-form/short-answer renderer; loại bỏ hết source-key inference ngoài fallback legacy. |
+| Result renderer | Một phần | inline, choice, transformation, matching, ordering, short answer; sai nền đỏ; bài mẫu theo từng Writing/Speaking prompt | Tách long-form renderer; loại bỏ hết source-key inference ngoài fallback legacy. |
 | Media/TTS | Hoàn thành workflow B1 cơ bản | `AdminExamMediaPage`, upload audio/sign, TTS, media service/test | Media library metadata, image alt/crop/usage impact chưa hoàn chỉnh. |
 | 17 section B1 | Backfill có trong migration | mapping `CASE` trong migration presentation registry | Cần smoke test remote đếm/mapping đủ 17 section và regression full suite. |
 
@@ -31,7 +31,7 @@ Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder 
 
 - `ExamAttemptPage.tsx` và `ExamResultPage.tsx` vẫn là page lớn; chỉ một phần renderer được extract. Đây là rủi ro chính khi thêm presentation mới.
 - `source_key` vẫn được dùng làm fallback cho attempt legacy và liên kết progress/review. Không được dùng nó để chọn UI mới; các nhánh còn lại phải tiếp tục chuyển sang `presentation_type`.
-- `short_answer_list` vẫn chưa có Result renderer chuyên biệt; các nhánh legacy còn lại không được dùng làm contract cho presentation mới.
+- Long-form vẫn nằm trong page orchestration; các nhánh legacy còn lại không được dùng làm contract cho presentation mới.
 - Builder hiện thêm/xóa resource source trực tiếp theo policy hiện có; chưa có RPC clone nguyên tử để đảm bảo workflow tái sử dụng section không tạo resource mồ côi khi lỗi giữa chừng.
 
 ---
@@ -561,7 +561,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 ### Task 4: Tách result renderer theo presentation
 
-**Trạng thái audit:** Một phần. Đã có `InlineGapPassageResult`, `ChoiceQuestionResult`, `SentenceTransformationResult`, `MatchingResult`, `OrderingResult`, review sai nền đỏ, option text và so sánh bài mẫu theo từng Writing/Speaking prompt; snapshot title/skill đã được ưu tiên. Long-form/short-answer renderer và fallback typed đầy đủ vẫn chưa tách.
+**Trạng thái audit:** Một phần. Đã có `InlineGapPassageResult`, `ChoiceQuestionResult`, `SentenceTransformationResult`, `MatchingResult`, `OrderingResult`, `ShortAnswerListResult`, review sai nền đỏ, option text và so sánh bài mẫu theo từng Writing/Speaking prompt; snapshot title/skill đã được ưu tiên. Long-form renderer và fallback typed đầy đủ vẫn chưa tách.
 
 **Bằng chứng đã hoàn thành:**
 
