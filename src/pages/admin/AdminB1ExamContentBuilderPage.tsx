@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, Edit3, Eye, FileAudio, Layers, Plus, Save, ShieldAlert, ShieldCheck, Trash2 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ArrowLeft, CheckCircle2, Edit3, Eye, FileAudio, GripVertical, Layers, Plus, Save, ShieldAlert, ShieldCheck, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ChoiceListEditor, type EditableChoiceQuestion } from '@/components/admin/exam-presentations/ChoiceListEditor'
 import { ReadingRichTextEditor } from '@/components/reading/ReadingRichTextEditor'
@@ -152,6 +152,12 @@ export function AdminB1ExamContentBuilderPage() {
   const [newSectionPresentationType, setNewSectionPresentationType] = useState<ExamPresentationType>('choice_list')
   const [matchingValue, setMatchingValue] = useState<MatchingEditorValue>({ leftItems: [], rightItems: [], pairs: [] })
   const [orderingValue, setOrderingValue] = useState<OrderingEditorValue>({ items: [] })
+
+  // Drag and Drop state & ref for section reordering
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const draggedIndexRef = useRef<number | null>(null)
+
   const closeCreateSectionModal = useCallback(() => setIsCreateSectionOpen(false), [])
 
   const examQuery = useQuery({
@@ -212,7 +218,7 @@ export function AdminB1ExamContentBuilderPage() {
     setLongFormValue({ prompt: selectedResource.prompt ?? '', instructions: selectedResource.instructions ?? '' })
     setPassageHtml(getRichPassageHtml(selectedResource.content_blocks) ?? selectedResource.passage ?? selectedResource.content ?? '')
     const matching = selectedResource.presentation_config?.matching
-    if (matching && typeof matching === 'object' && Array.isArray((matching as MatchingEditorValue).leftItems) && Array.isArray((matching as MatchingEditorValue).rightItems) && Array.isArray((matching as MatchingEditorValue).pairs)) {
+    if (matching && typeof matching === 'object' && Array.isArray((matching as MatchingEditorValue).leftItems) && Array.isArray((matching as MatchingEditorValue).pairs)) {
       setMatchingValue(matching as MatchingEditorValue)
     } else setMatchingValue({ leftItems: [], rightItems: [], pairs: [] })
     const ordering = selectedResource.presentation_config?.ordering
@@ -307,14 +313,40 @@ export function AdminB1ExamContentBuilderPage() {
     },
   })
 
-  function moveSection(sectionId: string, direction: 'up' | 'down') {
+  // Drag and Drop handlers with ref for synchronous index tracking
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    draggedIndexRef.current = index
+    setDraggedIndex(index)
+    e.dataTransfer?.setData?.('text/plain', String(index))
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move'
+    }
+  }
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    if (draggedIndexRef.current !== index) {
+      setDragOverIndex(index)
+    }
+  }
+  const handleDragEnd = () => {
+    draggedIndexRef.current = null
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+  }
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault()
+    const dataIndex = e.dataTransfer?.getData?.('text/plain') ?? ''
+    const sourceIndex = draggedIndexRef.current ?? (dataIndex !== '' ? Number(dataIndex) : null)
+    if (sourceIndex === null || sourceIndex === dropIndex || Number.isNaN(sourceIndex)) return
     const sections = examQuery.data?.sections ?? []
-    const currentIndex = sections.findIndex((section) => section.id === sectionId)
-    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
-    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= sections.length) return
     const reordered = [...sections]
-    ;[reordered[currentIndex], reordered[targetIndex]] = [reordered[targetIndex], reordered[currentIndex]]
+    const [removed] = reordered.splice(sourceIndex, 1)
+    reordered.splice(dropIndex, 0, removed)
     reorderSections.mutate(reordered.map((section) => section.id))
+    draggedIndexRef.current = null
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+    showToast({ type: 'success', title: 'Đã cập nhật thứ tự các section!' })
   }
 
   const savePromptSample = useMutation({
@@ -434,7 +466,7 @@ export function AdminB1ExamContentBuilderPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-6 pb-16">
+    <div className="w-full space-y-6 pb-16">
       {/* Top Banner / Header */}
       <header className="neo-card bg-card p-5 border-3 border-border shadow-[4px_4px_0_var(--border)] flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -465,8 +497,8 @@ export function AdminB1ExamContentBuilderPage() {
       </header>
 
       {/* Main Grid: Left Sidebar (Section List) + Right Workspace */}
-      <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-        {/* Left Sidebar: Section List */}
+      <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+        {/* Left Sidebar: Section List with Drag & Drop */}
         <aside className="neo-card h-fit space-y-4 bg-card p-4 shadow-[3px_3px_0_var(--border)] border-3 border-border">
           <div className="flex items-center justify-between gap-2 border-b-3 border-border pb-3">
             <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-muted-foreground">
@@ -477,6 +509,10 @@ export function AdminB1ExamContentBuilderPage() {
             </Button>
           </div>
 
+          <p className="text-[11px] font-bold text-muted-foreground italic">
+            Kéo thả biểu tượng ⠿ để thay đổi thứ tự các section.
+          </p>
+
           <div className="space-y-2">
             {examQuery.data.sections.map((section, index) => {
               const isSelected = selectedSection?.id === section.id
@@ -485,54 +521,52 @@ export function AdminB1ExamContentBuilderPage() {
               return (
                 <div
                   key={section.id}
-                  className={`group flex items-center justify-between gap-2 p-2.5 border-2 transition-all ${
-                    isSelected
+                  data-testid={`section-item-${index}`}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={() => setDragOverIndex(null)}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragEnd={handleDragEnd}
+                  className={`group flex items-center justify-between gap-2 p-2.5 border-2 transition-all cursor-grab active:cursor-grabbing ${
+                    draggedIndex === index ? 'opacity-40 border-dashed border-primary bg-muted' : ''
+                  } ${
+                    dragOverIndex === index ? 'border-primary bg-primary/20 scale-[1.02] shadow-md' : ''
+                  } ${
+                    isSelected && draggedIndex !== index
                       ? 'border-primary bg-primary/10 shadow-[2px_2px_0_var(--border)]'
                       : 'border-border bg-card hover:bg-muted/50'
                   }`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSectionKey(section.source_key)}
-                    className="min-w-0 flex-1 text-left"
-                  >
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-xs font-black opacity-60">#{index + 1}</span>
-                      <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 border ${badge.color}`}>
-                        {badge.label}
-                      </span>
-                    </div>
-                    <p className={`text-xs font-black truncate ${isSelected ? 'text-primary' : 'text-foreground'}`}>
-                      {section.title}
-                    </p>
-                  </button>
-
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    <Button
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="text-muted-foreground hover:text-foreground shrink-0 cursor-grab active:cursor-grabbing" title="Kéo thả để sắp xếp thứ tự">
+                      <GripVertical size={16} />
+                    </span>
+                    <button
                       type="button"
-                      variant="ghost"
-                      aria-label={`Di chuyển ${section.title} lên`}
-                      disabled={index === 0 || reorderSections.isPending}
-                      onClick={() => moveSection(section.id, 'up')}
-                      className="h-7 w-7 min-h-0 p-0 text-muted-foreground hover:text-foreground"
-                    ><ArrowUp size={13} /></Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      aria-label={`Di chuyển ${section.title} xuống`}
-                      disabled={index === examQuery.data.sections.length - 1 || reorderSections.isPending}
-                      onClick={() => moveSection(section.id, 'down')}
-                      className="h-7 w-7 min-h-0 p-0 text-muted-foreground hover:text-foreground"
-                    ><ArrowDown size={13} /></Button>
-                    <Button
-                      type="button"
-                      variant="danger"
-                      aria-label={`Gỡ ${section.title} khỏi đề`}
-                      disabled={deleteSection.isPending}
-                      onClick={() => setPendingDeleteSectionId(section.id)}
-                      className="h-7 w-7 min-h-0 p-0 text-white"
-                    ><Trash2 size={13} /></Button>
+                      onClick={() => setSelectedSectionKey(section.source_key)}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-xs font-black opacity-60">#{index + 1}</span>
+                        <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 border ${badge.color}`}>
+                          {badge.label}
+                        </span>
+                      </div>
+                      <p className={`text-xs font-black truncate ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                        {section.title}
+                      </p>
+                    </button>
                   </div>
+
+                  <Button
+                    type="button"
+                    variant="danger"
+                    aria-label={`Gỡ ${section.title} khỏi đề`}
+                    disabled={deleteSection.isPending}
+                    onClick={() => setPendingDeleteSectionId(section.id)}
+                    className="h-7 w-7 min-h-0 p-0 text-white shrink-0"
+                  ><Trash2 size={13} /></Button>
                 </div>
               )
             })}
