@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ChoiceListEditor, type EditableChoiceQuestion } from '@/components/admin/exam-presentations/ChoiceListEditor'
 import { InlineGapEditor } from '@/components/admin/exam-presentations/InlineGapEditor'
 import { LongFormPromptEditor, type LongFormPromptValue } from '@/components/admin/exam-presentations/LongFormPromptEditor'
+import { MatchingEditor, type MatchingEditorValue } from '@/components/admin/exam-presentations/MatchingEditor'
 import { PresentationPicker } from '@/components/admin/exam-presentations/PresentationPicker'
 import { PresentationPreview } from '@/components/admin/exam-presentations/PresentationPreview'
 import { PromptSampleEditor, type PromptSampleDraft } from '@/components/admin/exam-presentations/PromptSampleEditor'
@@ -132,6 +133,7 @@ export function AdminB1ExamContentBuilderPage() {
   const [newSectionTitle, setNewSectionTitle] = useState('')
   const [newSectionSkill, setNewSectionSkill] = useState<ExamSkill>('grammar')
   const [newSectionPresentationType, setNewSectionPresentationType] = useState<ExamPresentationType>('choice_list')
+  const [matchingValue, setMatchingValue] = useState<MatchingEditorValue>({ leftItems: [], rightItems: [], pairs: [] })
   const closeCreateSectionModal = useCallback(() => setIsCreateSectionOpen(false), [])
 
   const examQuery = useQuery({
@@ -188,6 +190,10 @@ export function AdminB1ExamContentBuilderPage() {
       explanation: question.explanation ?? null,
     })))
     setLongFormValue({ prompt: selectedResource.prompt ?? '', instructions: selectedResource.instructions ?? '' })
+    const matching = selectedResource.presentation_config?.matching
+    if (matching && typeof matching === 'object' && Array.isArray((matching as MatchingEditorValue).leftItems) && Array.isArray((matching as MatchingEditorValue).rightItems) && Array.isArray((matching as MatchingEditorValue).pairs)) {
+      setMatchingValue(matching as MatchingEditorValue)
+    } else setMatchingValue({ leftItems: [], rightItems: [], pairs: [] })
   }, [selectedResource?.id, selectedResource?.presentation_type, selectedResource?.grading_mode, selectedResource?.kind])
 
   const savePresentation = useMutation({
@@ -234,6 +240,9 @@ export function AdminB1ExamContentBuilderPage() {
           resourceId: selectedResource.id,
           contentBlocks: serializeInlineGapDraft(inlineGapDraft).blocks,
         })
+      }
+      if (presentationType === 'matching') {
+        await adminExamContentService.updateResourcePresentationConfig({ resourceKind: selectedResource.kind, resourceId: selectedResource.id, presentationConfig: { matching: matchingValue } })
       }
     },
     onSuccess: async () => {
@@ -497,6 +506,9 @@ export function AdminB1ExamContentBuilderPage() {
               )}
               {presentationType === 'sentence_transformation' && (
                 <TransformationEditor questions={transformationQuestions} onChange={setTransformationQuestions} onRequestDeleteQuestion={(question) => setPendingDeleteQuestionId(question.id)} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
+              )}
+              {presentationType === 'matching' && (
+                <MatchingEditor value={matchingValue} onChange={setMatchingValue} disabled={savePresentation.isPending} />
               )}
               {(presentationType === 'long_form_prompt' || presentationType === 'speaking_script_prompt') && (
                 <>

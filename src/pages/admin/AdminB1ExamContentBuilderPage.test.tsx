@@ -8,7 +8,7 @@ import { AdminB1ExamContentBuilderPage } from './AdminB1ExamContentBuilderPage'
 
 vi.mock('@/services/supabase/adminExamContent.service', () => ({
   adminExamContentService: {
-    getExamContent: vi.fn(), updateResourcePresentation: vi.fn(), updateQuestion: vi.fn(), updateResourceContent: vi.fn(), updatePromptText: vi.fn(),
+    getExamContent: vi.fn(), updateResourcePresentation: vi.fn(), updateResourcePresentationConfig: vi.fn(), updateQuestion: vi.fn(), updateResourceContent: vi.fn(), updatePromptText: vi.fn(),
     listPromptSamples: vi.fn(), savePromptSample: vi.fn(), deletePromptSample: vi.fn(), deleteSection: vi.fn(), deleteQuestion: vi.fn(), reorderSections: vi.fn(), createSection: vi.fn(), createQuestion: vi.fn(),
   },
 }))
@@ -41,6 +41,7 @@ describe('AdminB1ExamContentBuilderPage', () => {
       }],
     } as never)
     vi.mocked(adminExamContentService.updateResourcePresentation).mockResolvedValue(undefined)
+    vi.mocked(adminExamContentService.updateResourcePresentationConfig).mockResolvedValue(undefined)
     vi.mocked(adminExamContentService.updateQuestion).mockResolvedValue(undefined)
     vi.mocked(adminExamContentService.updateResourceContent).mockResolvedValue(undefined)
     vi.mocked(adminExamContentService.updatePromptText).mockResolvedValue(undefined)
@@ -168,6 +169,28 @@ describe('AdminB1ExamContentBuilderPage', () => {
       resourceKind: 'activity', contentBlocks: expect.any(Array),
     }))
     expect(adminExamContentService.updateQuestion).toHaveBeenCalledWith('question-1', expect.objectContaining({ accepted_answers: expect.any(Array) }))
+  })
+
+  it('saves visual matching pairs as presentation configuration', async () => {
+    vi.mocked(adminExamContentService.getExamContent).mockResolvedValueOnce({
+      id: 'exam-1', title: 'Đề B1', source_key: 'b1-de-full-copy', is_published: false,
+      sections: [{ id: 'section-1', source_key: 'matching-1', skill: 'reading', title: 'Ghép từ', resource_type: 'activity', resource_id: 'activity-1', order_index: 0, is_required: true, suggested_time_minutes: null,
+        resource: { id: 'activity-1', source_key: 'matching-1', title: 'Ghép từ', skill: 'reading', kind: 'activity', presentation_type: 'matching', grading_mode: 'matching', is_published: false, presentation_config: { matching: { leftItems: [], rightItems: [], pairs: [] } }, questions: [] },
+      }],
+    } as never)
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Thêm cặp ghép' }))
+    await user.type(screen.getByLabelText('Mục bên trái 1'), 'Monday')
+    await user.type(screen.getByLabelText('Mục bên phải 1'), 'Thứ Hai')
+    await user.click(screen.getByRole('button', { name: 'Lưu cách trình bày' }))
+
+    await waitFor(() => expect(adminExamContentService.updateResourcePresentationConfig).toHaveBeenCalledWith(expect.objectContaining({
+      resourceKind: 'activity', resourceId: 'activity-1', presentationConfig: expect.objectContaining({
+        matching: expect.objectContaining({ leftItems: [expect.objectContaining({ text: 'Monday' })] }),
+      }),
+    })))
   })
 
   it('lets an admin save a Writing sample for learner comparison', async () => {
