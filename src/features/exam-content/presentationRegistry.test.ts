@@ -46,4 +46,21 @@ describe('presentationRegistry', () => {
     expect(isPresentationReadyForPublication('matching')).toBe(false)
     expect(isPresentationReadyForPublication('ordering')).toBe(false)
   })
+
+  it('validates explicit matching pairs and an ordered item list', () => {
+    const matching = validatePresentationContent('matching', {
+      leftItems: [{ id: 'left-1', text: 'English' }],
+      rightItems: [{ id: 'right-1', text: 'Tiếng Anh' }],
+      pairs: [{ leftId: 'left-1', rightId: 'right-1' }],
+    })
+    const ordering = validatePresentationContent('ordering', {
+      items: [
+        { id: 'step-1', text: 'First', correctPosition: 1 },
+        { id: 'step-2', text: 'Second', correctPosition: 2 },
+      ],
+    })
+
+    expect(matching.success).toBe(true)
+    expect(ordering.success).toBe(true)
+  })
 })

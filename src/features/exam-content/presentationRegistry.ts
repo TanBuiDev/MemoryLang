@@ -3,6 +3,8 @@ import {
   choiceListContentSchema,
   inlineGapContentSchema,
   longFormPromptContentSchema,
+  matchingContentSchema,
+  orderingContentSchema,
 } from './schemas/presentationSchemas'
 
 export interface PresentationDefinition {
@@ -93,6 +95,10 @@ export function validatePresentationContent(type: ExamPresentationType, value: u
     case 'long_form_prompt':
     case 'speaking_script_prompt':
       return longFormPromptContentSchema.safeParse(value)
+    case 'matching':
+      return matchingContentSchema.safeParse(value)
+    case 'ordering':
+      return orderingContentSchema.safeParse(value)
     default:
       return longFormPromptContentSchema.safeParse(value)
   }

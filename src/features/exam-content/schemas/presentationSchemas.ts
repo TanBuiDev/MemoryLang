@@ -66,3 +66,40 @@ export const longFormPromptContentSchema = z.object({
   })).min(1),
   prompt: z.string().min(1),
 })
+
+const contentItemSchema = z.object({
+  id: z.string().min(1),
+  text: z.string().min(1),
+})
+
+export const matchingContentSchema = z.object({
+  leftItems: z.array(contentItemSchema).min(1),
+  rightItems: z.array(contentItemSchema).min(1),
+  pairs: z.array(z.object({
+    leftId: z.string().min(1),
+    rightId: z.string().min(1),
+  })).min(1),
+}).superRefine((content, ctx) => {
+  const leftIds = new Set(content.leftItems.map((item) => item.id))
+  const rightIds = new Set(content.rightItems.map((item) => item.id))
+  const pairKeys = new Set<string>()
+  content.pairs.forEach((pair) => {
+    if (!leftIds.has(pair.leftId) || !rightIds.has(pair.rightId)) {
+      ctx.addIssue({ code: 'custom', message: 'Mỗi cặp phải tham chiếu tới hai mục tồn tại.' })
+    }
+    const key = `${pair.leftId}:${pair.rightId}`
+    if (pairKeys.has(key)) ctx.addIssue({ code: 'custom', message: 'Không được lặp lại cặp ghép.' })
+    pairKeys.add(key)
+  })
+})
+
+export const orderingContentSchema = z.object({
+  items: z.array(contentItemSchema.extend({
+    correctPosition: z.number().int().positive(),
+  })).min(2),
+}).superRefine((content, ctx) => {
+  const positions = content.items.map((item) => item.correctPosition).sort((a, b) => a - b)
+  if (positions.some((position, index) => position !== index + 1)) {
+    ctx.addIssue({ code: 'custom', message: 'Thứ tự đúng phải liên tiếp từ 1 đến số mục.' })
+  }
+})
