@@ -142,7 +142,7 @@ export default function AdminExamsPage() {
   })
 
   return (
-    <div className="flex flex-col gap-6 max-w-[1600px] mx-auto">
+    <div className="flex flex-col gap-6 w-full pb-16">
       {/* Header Banner */}
       <div className="neo-card p-6 bg-card border-3 border-border shadow-[4px_4px_0_var(--border)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">

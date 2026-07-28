@@ -305,7 +305,7 @@ export default function AdminSecretsPage() {
   const activeKeysCount = keyPools.filter((k) => k.status === 'active').length
 
   return (
-    <div className="w-full px-4 sm:px-6 md:px-8 py-6 space-y-6">
+    <div className="w-full space-y-6 pb-16">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b-3 border-slate-900">
         <div>

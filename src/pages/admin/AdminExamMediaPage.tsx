@@ -168,7 +168,7 @@ export default function AdminExamMediaPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-6 pb-16">
+    <div className="w-full space-y-6 pb-16">
       {/* Top Header Banner */}
       <header className="neo-card bg-card p-5 border-3 border-border shadow-[4px_4px_0_var(--border)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
