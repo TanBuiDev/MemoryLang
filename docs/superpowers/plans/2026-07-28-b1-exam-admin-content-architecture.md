@@ -538,7 +538,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 ### Task 3: Tách learner renderer theo presentation
 
-**Trạng thái audit:** Một phần. Đã có resolver metadata, `InlineChoicePassageAttempt` và regression cho inline text/Enter; chưa tách đủ choice/text-gap/transformation/long-form renderer ra khỏi `ExamAttemptPage.tsx`.
+**Trạng thái audit:** Một phần. Đã có resolver metadata, `InlineChoicePassageAttempt`, `ChoiceListAttempt`, `ShortAnswerListAttempt`, `SentenceTransformationAttempt` và regression Enter cho input theo danh sách/viết lại câu. Long-form Writing/Speaking vẫn còn gắn với orchestration của `ExamAttemptPage.tsx`; matching/ordering chưa có renderer đầy đủ.
 
 **Files:**
 
@@ -554,7 +554,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 ### Task 4: Tách result renderer theo presentation
 
-**Trạng thái audit:** Một phần. Đã có `InlineGapPassageResult`, review sai nền đỏ, option text và Writing comparison; snapshot title/skill đã được ưu tiên. Các result renderer khác và fallback typed đầy đủ vẫn chưa tách.
+**Trạng thái audit:** Một phần. Đã có `InlineGapPassageResult`, `ChoiceQuestionResult`, `SentenceTransformationResult`, review sai nền đỏ, option text và Writing comparison; snapshot title/skill đã được ưu tiên. Long-form/Speaking review, matching/ordering và fallback typed đầy đủ vẫn chưa tách.
 
 **Files:**
 
