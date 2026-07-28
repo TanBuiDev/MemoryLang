@@ -181,6 +181,44 @@ describe('ExamResultPage', () => {
     expect(screen.getByText('to')).toHaveClass('text-danger')
   })
 
+  it('renders a matching review from presentation metadata with answer text instead of internal IDs', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: {
+        id: 'attempt-1', status: 'submitted',
+        exam_snapshot: {
+          sections: [{
+            source_key: 'matching-1', title: 'Ghép ngày', skill: 'reading', resource_type: 'activity',
+            resource: {
+              presentation_type: 'matching',
+              presentation_config: {
+                matching: {
+                  leftItems: [{ id: 'left-1', text: 'Monday' }],
+                  rightItems: [{ id: 'right-1', text: 'Thứ Hai' }, { id: 'right-2', text: 'Thứ Ba' }],
+                },
+              },
+              questions: [],
+            },
+          }],
+        },
+      },
+      sections: [{
+        id: 'section-matching', exam_section_source_key: 'matching-1', score: 0, max_score: 1,
+        progress: { review: [{
+          section_source_key: 'matching-1', question_source_key: 'matching:left-1', question: 'Monday',
+          user_answer: 'right-2', correct_option_keys: [], accepted_answers: ['right-1'],
+          translation: null, explanation: null, is_correct: false,
+        }] },
+      }],
+    } as never)
+
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/app/exams/attempt/attempt-1/result']}><Routes><Route path="/app/exams/attempt/:attemptId/result" element={<ExamResultPage />} /></Routes></MemoryRouter></QueryClientProvider>)
+
+    expect(await screen.findByLabelText('Kết quả ghép cặp')).toBeInTheDocument()
+    expect(screen.getByText('Thứ Ba')).toHaveClass('bg-danger')
+    expect(screen.getByText('Thứ Hai')).toHaveClass('bg-yellow-300')
+    expect(screen.queryByText('right-1')).not.toBeInTheDocument()
+  })
+
   it('creates a new attempt with the same timer when the learner starts over', async () => {
     vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
       attempt: {

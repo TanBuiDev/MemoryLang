@@ -21,6 +21,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { InlineGapPassageResult, type QuestionOptionsMap } from '@/components/exam/presentations/InlineGapPassageResult'
 import { ChoiceQuestionResult } from '@/components/exam/presentations/ChoiceQuestionResult'
+import { MatchingResult } from '@/components/exam/presentations/MatchingResult'
+import type { MatchingAttemptItem } from '@/components/exam/presentations/MatchingAttempt'
 import { SentenceTransformationResult } from '@/components/exam/presentations/SentenceTransformationResult'
 import { isInlineGapPresentation, resolveAttemptPresentation } from '@/features/exam-content/attemptPresentation'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
@@ -133,6 +135,7 @@ interface SnapshotResource {
   activity_type?: string | null
   presentation_type?: string | null
   content_blocks?: unknown
+  presentation_config?: Record<string, unknown>
 }
 
 interface SnapshotSectionMetadata {
@@ -170,6 +173,24 @@ function getInlinePassageText(resource: SnapshotResource | undefined): string | 
   }
 
   return resource.passage ?? resource.content ?? null
+}
+
+function getMatchingItems(resource: SnapshotResource | undefined): { leftItems: MatchingAttemptItem[]; rightItems: MatchingAttemptItem[] } | null {
+  const matching = resource?.presentation_config?.matching
+  if (!matching || typeof matching !== 'object') return null
+  const record = matching as Record<string, unknown>
+  const toItems = (value: unknown): MatchingAttemptItem[] => Array.isArray(value)
+    ? value.flatMap((item) => {
+      if (!item || typeof item !== 'object') return []
+      const candidate = item as Record<string, unknown>
+      return typeof candidate.id === 'string' && typeof candidate.text === 'string'
+        ? [{ id: candidate.id, text: candidate.text }]
+        : []
+    })
+    : []
+  const leftItems = toItems(record.leftItems)
+  const rightItems = toItems(record.rightItems)
+  return leftItems.length > 0 && rightItems.length > 0 ? { leftItems, rightItems } : null
 }
 
 function getWritingPromptId(snapshot: Record<string, unknown> | undefined) {
@@ -797,8 +818,23 @@ export function ExamResultPage() {
                     </article>
                   )}
 
+                  {group.presentationType === 'matching' && (() => {
+                    const matchingItems = getMatchingItems(group.resource)
+                    return matchingItems ? (
+                      <MatchingResult
+                        leftItems={matchingItems.leftItems}
+                        rightItems={matchingItems.rightItems}
+                        reviews={group.reviews}
+                      />
+                    ) : (
+                      <div className="border-2 border-danger bg-danger/10 p-4 text-sm font-semibold text-danger">
+                        Không thể hiển thị kết quả ghép cặp vì cấu hình của phần này không đầy đủ.
+                      </div>
+                    )
+                  })()}
+
                   {/* Question Review List (Suppressed for inline gap activities where answers are filled directly inside text above) */}
-                  {!shouldRenderInlinePassage &&
+                  {!shouldRenderInlinePassage && group.presentationType !== 'matching' &&
                     group.reviews.map((review, index) => {
                     const parsedTransformation = parseTransformationPrompt(review.question)
                     const questionOptions = questionOptionsMap[review.question_source_key] ?? []
