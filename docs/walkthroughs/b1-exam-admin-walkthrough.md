@@ -192,6 +192,16 @@ Sau khi xuất bản, kiểm tra đề tại [Đề thi](/app/exams) bằng mộ
 6. Khi hết thời gian, xác nhận có cảnh báo nhưng vẫn được tiếp tục làm.
 7. Chọn **Nộp bài**. Attempt kết thúc và chuyển thẳng đến trang kết quả.
 
+### Kiểm tra hồi quy Writing và autosave
+
+Các bước này kiểm tra trực tiếp trên remote; không cần chạy database pgTAP local.
+
+1. Mở Writing Topic 7, nhập bốn từ dễ nhận biết, ví dụ `One two three four`.
+2. Chọn **Lưu thành phiên bản**. Nhãn phiên bản phải ghi đúng `4 từ`.
+3. Nhập thêm hoặc chỉnh sửa bài, rồi chọn **Nộp bài & xem đáp án** ngay, không chờ autosave.
+4. Không được xuất hiện thông báo **Không thể tự lưu tiến độ** sau khi trang kết quả đã mở. Nếu cần kiểm tra sâu hơn, F12 → Network không được có request `save_b1_section_attempt_progress` trả `403` sau lúc nộp.
+5. Ở kết quả, chọn section Writing/Speaking tại cột trái. Phải thấy **Bài tự luận đã nộp của bạn** và **So sánh với bài mẫu**. Lưu ý trang mặc định mở section có câu hỏi đầu tiên, nên cần chọn Writing/Speaking để xem review tự luận.
+
 ### Xem kết quả
 
 Kiểm tra tại đường dẫn dạng `/app/exams/attempt/:attemptId/result`:
@@ -218,6 +228,8 @@ Làm checklist này sau bất kỳ thay đổi nội dung lớn nào.
 - [ ] Xác nhận asset đang được sử dụng không có thao tác xóa khả dụng.
 - [ ] Publish đề, bắt đầu attempt mới và đi hết 13 section hiện xuất bản.
 - [ ] Nộp bài, kiểm tra điểm từng phần và Writing/Speaking review.
+- [ ] Lưu một phiên bản Writing có số từ đã biết; nhãn phiên bản hiển thị đúng số từ.
+- [ ] Nộp bài ngay sau khi chỉnh sửa Writing/Speaking; không có cảnh báo autosave hay `403` sau submit.
 - [ ] Sửa source sau khi đã có attempt rồi mở lại attempt cũ để xác nhận snapshot cũ không đổi.
 
 ## Xử lý sự cố thường gặp
