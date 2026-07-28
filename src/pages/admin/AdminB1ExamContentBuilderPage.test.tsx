@@ -172,6 +172,21 @@ describe('AdminB1ExamContentBuilderPage', () => {
     expect(adminExamContentService.updateQuestion).toHaveBeenCalledWith('question-1', expect.objectContaining({ accepted_answers: expect.any(Array) }))
   })
 
+  it('provides a visual passage editor and saves a rich passage block for passage questions', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: /Đọc đoạn văn và trả lời/i }))
+    expect(screen.getByLabelText('Nội dung bài đọc')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Lưu cách trình bày' }))
+
+    expect(adminExamContentService.updateResourceContent).toHaveBeenCalledWith(expect.objectContaining({
+      resourceKind: 'activity',
+      contentBlocks: [expect.objectContaining({ type: 'rich_text', value: expect.any(String) })],
+    }))
+  })
+
   it('shows an image upload and alt-text editor for an image-choice question', async () => {
     const user = userEvent.setup()
     renderPage()

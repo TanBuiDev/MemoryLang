@@ -27,4 +27,11 @@ describe('PresentationPreview', () => {
     expect(screen.getByRole('img')).toHaveClass('object-cover')
     expect(screen.getByRole('img')).toHaveStyle({ objectPosition: 'top' })
   })
+
+  it('shows rich passage content above passage questions in the learner preview', () => {
+    render(<PresentationPreview presentationType="passage_questions" passage="<p>Read this <strong>passage</strong>.</p>" questions={[]} />)
+
+    expect(screen.getByText((_, element) => element?.tagName === 'P' && element.textContent === 'Read this passage.')).toBeInTheDocument()
+    expect(screen.getByText('passage').tagName).toBe('STRONG')
+  })
 })

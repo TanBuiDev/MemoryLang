@@ -40,6 +40,7 @@ import {
 } from '@/features/exam-content/attemptPresentation'
 import { getPresentationConfigurationIssue } from '@/features/exam-content/presentationFallback'
 import { getImagePresentation } from '@/features/exam-content/imagePresentation'
+import { getRichPassageHtml, sanitizeRichPassageHtml } from '@/features/exam-content/richPassage'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
 import type { PracticeQuestionType } from '@/types/exam.types'
 
@@ -268,6 +269,9 @@ export function ExamAttemptPage() {
   const matchingItems = presentationType === 'matching' ? getMatchingItems(activeResource) : null
   const presentationConfigurationIssue = presentationType
     ? getPresentationConfigurationIssue(presentationType, activeResource ?? {})
+    : null
+  const richPassageHtml = presentationType === 'passage_questions'
+    ? getRichPassageHtml(activeResource?.content_blocks)
     : null
   const timer = attemptDetail
     ? getAttemptTimerState(
@@ -836,6 +840,12 @@ export function ExamAttemptPage() {
             )}
 
             {/* Reading Passage (Full-width inside main column at top of questions) */}
+            {richPassageHtml && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-black uppercase text-secondary"><BookOpen size={14} /><span>Bài đọc (Passage)</span></div>
+                <div className="border-2 border-border bg-muted/60 p-5 font-serif text-base leading-relaxed shadow-[2px_2px_0_var(--border)] [&_p]:my-2 [&_strong]:font-black" dangerouslySetInnerHTML={{ __html: sanitizeRichPassageHtml(richPassageHtml) }} />
+              </div>
+            )}
             {activeResource.passage && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-xs font-black uppercase text-secondary">

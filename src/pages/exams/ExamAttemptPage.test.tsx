@@ -223,6 +223,17 @@ describe('ExamAttemptPage', () => {
     expect(screen.getByText('Monday')).toBeInTheDocument()
   })
 
+  it('renders a rich passage above passage questions from the snapshot content blocks', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: { id: 'attempt-1', started_at: '2026-07-27T10:00:00.000Z', target_duration_seconds: 3600, exam_snapshot: { exam: { title: 'B1' }, sections: [{ source_key: 'reading-rich', skill: 'reading', title: 'Reading', resource_type: 'activity', resource: { id: 'activity-1', presentation_type: 'passage_questions', content_blocks: [{ type: 'rich_text', value: '<p>Read <strong>carefully</strong>.</p>' }], questions: [{ source_key: 'q1', prompt: 'Question?', options: [{ key: 'A', text: 'Answer' }] }] } }] } },
+      sections: [{ id: 'section-1', exam_section_source_key: 'reading-rich', progress: {}, status: 'not_started' }],
+    } as never)
+
+    renderPage()
+
+    expect((await screen.findByText('carefully')).tagName).toBe('STRONG')
+  })
+
   it('shows a clear fallback instead of an empty area for invalid matching configuration', async () => {
     vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
       attempt: { id: 'attempt-1', started_at: '2026-07-27T10:00:00.000Z', target_duration_seconds: 3600, exam_snapshot: { exam: { title: 'B1 DeFull' }, sections: [{

@@ -2,6 +2,7 @@ import { Eye, FileCheck2, NotebookPen } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { getImagePresentation } from '@/features/exam-content/imagePresentation'
+import { sanitizeRichPassageHtml } from '@/features/exam-content/richPassage'
 import type { ExamPresentationType } from '@/types/exam.types'
 
 export interface PreviewQuestion {
@@ -22,8 +23,9 @@ interface PresentationPreviewProps {
   questions: PreviewQuestion[]
 }
 
-function ChoicePreview({ questions, result }: { questions: PreviewQuestion[]; result: boolean }) {
+function ChoicePreview({ questions, result, passage }: { questions: PreviewQuestion[]; result: boolean; passage?: string | null }) {
   return <div className="space-y-4">
+    {passage && <div className="border-2 border-border bg-muted/30 p-4 font-serif text-base leading-relaxed [&_p]:my-2 [&_strong]:font-black" dangerouslySetInnerHTML={{ __html: sanitizeRichPassageHtml(passage) }} />}
     {questions.map((question, index) => {
       const incorrectOption = question.options?.find((option) => !option.is_correct)
       const imagePresentation = getImagePresentation(question.metadata)
@@ -73,7 +75,7 @@ export function PresentationPreview({ presentationType, title, instructions, pas
     {title && <h4 className="text-xl font-black">{title}</h4>}
     {instructions && <p className="whitespace-pre-wrap border-2 border-border bg-muted/30 p-3 text-sm font-semibold">{instructions}</p>}
     {isLongForm ? <div className="space-y-3 border-2 border-border bg-muted/20 p-4"><p className="whitespace-pre-wrap font-semibold">{prompt || 'Chưa có đề bài tự luận.'}</p>{isResult ? <div className="border-2 border-secondary bg-secondary/10 p-3 text-sm font-semibold">Bài nộp và bài mẫu sẽ xuất hiện ở đây để học viên so sánh.</div> : <div className="min-h-32 border-2 border-border bg-card p-3 text-sm text-muted-foreground"><NotebookPen className="mr-2 inline" size={16} />Vùng học viên soạn bài (tự động lưu).</div>}</div>
-      : isChoice ? <ChoicePreview questions={questions} result={isResult} />
+      : isChoice ? <ChoicePreview questions={questions} result={isResult} passage={presentationType === 'passage_questions' ? passage : null} />
         : <TextPreview questions={questions} passage={passage} result={isResult} />}
   </section>
 }

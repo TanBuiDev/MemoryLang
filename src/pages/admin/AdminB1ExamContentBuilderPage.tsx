@@ -3,6 +3,7 @@ import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, FileAudio, Layers, Plus, S
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ChoiceListEditor, type EditableChoiceQuestion } from '@/components/admin/exam-presentations/ChoiceListEditor'
+import { ReadingRichTextEditor } from '@/components/reading/ReadingRichTextEditor'
 import { InlineGapEditor } from '@/components/admin/exam-presentations/InlineGapEditor'
 import { LongFormPromptEditor, type LongFormPromptValue } from '@/components/admin/exam-presentations/LongFormPromptEditor'
 import { MatchingEditor, type MatchingEditorValue } from '@/components/admin/exam-presentations/MatchingEditor'
@@ -18,6 +19,7 @@ import { Select } from '@/components/ui/select'
 import { getPresentationDefinition, isPresentationReadyForPublication, PRESENTATION_REGISTRY } from '@/features/exam-content/presentationRegistry'
 import { getExamPublishReadiness } from '@/features/exam-content/publishReadiness'
 import { createInlineGapDraft, serializeInlineGapDraft, type InlineGapDraft, type InlineGapSegment } from '@/features/exam-content/inlineGapDraft'
+import { getRichPassageHtml } from '@/features/exam-content/richPassage'
 import { adminExamContentService, type AdminExamContentQuestion } from '@/services/supabase/adminExamContent.service'
 import { showToast } from '@/components/ui/toast'
 import type { ExamGradingMode, ExamPresentationType, ExamSkill } from '@/types/exam.types'
@@ -128,6 +130,7 @@ export function AdminB1ExamContentBuilderPage() {
   const [inlineGapDraft, setInlineGapDraft] = useState<InlineGapDraft | null>(null)
   const [transformationQuestions, setTransformationQuestions] = useState<EditableTransformationQuestion[]>([])
   const [longFormValue, setLongFormValue] = useState<LongFormPromptValue>({ prompt: '', instructions: '' })
+  const [passageHtml, setPassageHtml] = useState('')
   const [pendingDeleteSampleId, setPendingDeleteSampleId] = useState<string | null>(null)
   const [pendingDeleteSectionId, setPendingDeleteSectionId] = useState<string | null>(null)
   const [pendingDeleteQuestionId, setPendingDeleteQuestionId] = useState<string | null>(null)
@@ -195,6 +198,7 @@ export function AdminB1ExamContentBuilderPage() {
       explanation: question.explanation ?? null,
     })))
     setLongFormValue({ prompt: selectedResource.prompt ?? '', instructions: selectedResource.instructions ?? '' })
+    setPassageHtml(getRichPassageHtml(selectedResource.content_blocks) ?? selectedResource.passage ?? selectedResource.content ?? '')
     const matching = selectedResource.presentation_config?.matching
     if (matching && typeof matching === 'object' && Array.isArray((matching as MatchingEditorValue).leftItems) && Array.isArray((matching as MatchingEditorValue).rightItems) && Array.isArray((matching as MatchingEditorValue).pairs)) {
       setMatchingValue(matching as MatchingEditorValue)
@@ -254,6 +258,13 @@ export function AdminB1ExamContentBuilderPage() {
           resourceKind: selectedResource.kind,
           resourceId: selectedResource.id,
           contentBlocks: serializeInlineGapDraft(inlineGapDraft).blocks,
+        })
+      }
+      if (presentationType === 'passage_questions') {
+        await adminExamContentService.updateResourceContent({
+          resourceKind: selectedResource.kind,
+          resourceId: selectedResource.id,
+          contentBlocks: [{ type: 'rich_text', value: passageHtml }],
         })
       }
       if (presentationType === 'matching') {
@@ -524,8 +535,17 @@ export function AdminB1ExamContentBuilderPage() {
                   </Button>
                 ))}
               </div>
-              {['choice_list', 'boolean_list', 'image_choice_list', 'passage_questions', 'passage_choice_inline'].includes(presentationType) && (
+              {['choice_list', 'boolean_list', 'image_choice_list', 'passage_choice_inline'].includes(presentationType) && (
                 <ChoiceListEditor questions={editedQuestions} onChange={setEditedQuestions} onRequestDeleteQuestion={(question) => setPendingDeleteQuestionId(question.id)} imageChoice={presentationType === 'image_choice_list'} onUploadImage={(question, file) => void uploadQuestionImage(question, file)} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
+              )}
+              {presentationType === 'passage_questions' && (
+                <div className="space-y-6">
+                  <section className="space-y-3" aria-label="Trình soạn bài đọc">
+                    <div><h3 className="text-lg font-black">Đoạn văn bài đọc</h3><p className="mt-1 text-sm font-semibold text-muted-foreground">Soạn trực quan nội dung học viên sẽ đọc trước khi trả lời câu hỏi.</p></div>
+                    <ReadingRichTextEditor value={passageHtml} onChange={setPassageHtml} />
+                  </section>
+                  <ChoiceListEditor questions={editedQuestions} onChange={setEditedQuestions} onRequestDeleteQuestion={(question) => setPendingDeleteQuestionId(question.id)} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
+                </div>
               )}
               {(presentationType === 'passage_text_inline' || presentationType === 'passage_choice_inline') && inlineGapDraft && (
                 <InlineGapEditor draft={inlineGapDraft} onChange={setInlineGapDraft} onRequestDeleteGap={setPendingDeleteQuestionId} disabled={savePresentation.isPending || createQuestion.isPending || deleteQuestion.isPending} />
@@ -554,7 +574,7 @@ export function AdminB1ExamContentBuilderPage() {
                 presentationType={presentationType}
                 title={selectedSection.title}
                 instructions={longFormValue.instructions || selectedResource.instructions}
-                passage={selectedResource.passage ?? selectedResource.content}
+                passage={presentationType === 'passage_questions' ? passageHtml : selectedResource.passage ?? selectedResource.content}
                 prompt={longFormValue.prompt || selectedResource.prompt}
                 questions={previewQuestions}
               />

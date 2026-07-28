@@ -21,7 +21,7 @@ Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder 
 | Registry, schema frontend | Hoàn thành | `presentationRegistry.ts`, Zod schema, test registry | Giữ registry là nơi duy nhất thêm presentation mới. |
 | Migration/snapshot B1 | Hoàn thành và đã xác minh remote | `20260728002300_add_exam_presentation_registry.sql`, migration-contract test, verifier learner attempt; `migration list` khớp, dry-run rỗng, security advisors không có error | Browser E2E có đăng nhập. |
 | Publish gate | Hoàn thành | readiness client, guarded RPC `set_b1_exam_published_guarded`, test service | Audit remote cuối và thêm test lỗi policy/RLS nếu schema đổi. |
-| Admin builder | Hoàn thành phần lõi | picker, editor, preview, create/reorder/detach/add/delete question, tests | Clone/reuse section an toàn; editor media/image/passage phong phú hơn. |
+| Admin builder | Hoàn thành | picker, editor, preview, create/reorder/detach/add/delete question, choice/image/inline/transformation/long-form/passage editor, tests | Clone/reuse section an toàn là cải tiến workflow sau phase này. |
 | Attempt renderer | Hoàn thành compatibility | resolver metadata, renderer inline/choice/transformation/matching/ordering/short answer/long form, Enter regression, fallback cấu hình lỗi; snapshot legacy `content_blocks` | Chỉ còn refactor nội bộ để page nhỏ hơn, không còn blocker compatibility. |
 | Result renderer | Hoàn thành compatibility | inline, choice, transformation, matching, ordering, short answer, long form; sai nền đỏ; bài mẫu theo từng Writing/Speaking prompt; fallback cấu hình lỗi; title/icon metadata-first | Chỉ còn refactor nội bộ để page nhỏ hơn, không còn blocker compatibility. |
 | Media/TTS | Hoàn thành workflow B1 cơ bản + thay audio có xác nhận | `AdminExamMediaPage`, upload audio/sign, TTS, usage impact, alt text và preset crop Signs, warning/`ConfirmModal` khi thay audio đã publish, media service/test | Media asset library/version độc lập và xóa storage theo usage chưa hoàn chỉnh. |
@@ -603,16 +603,16 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 ### Task 6: Các editor có giá trị cao trước
 
-**Trạng thái audit:** Một phần. Choice/boolean, image choice (upload, alt text, crop), inline gap, transformation, long-form/speaking, sample, preview và review authoring đã có. `passage_questions` vẫn dùng editor choice chung; validation editor chưa đủ toàn bộ contract đã mô tả.
+**Trạng thái audit:** Hoàn thành cho các presentation được registry hỗ trợ. Choice/boolean, image choice (upload, alt text, crop), inline gap, transformation, long-form/speaking, sample, preview và review authoring đã có. `passage_questions` có WYSIWYG riêng, lưu `rich_text` content block, preview và learner attempt giữ định dạng sau khi sanitizer lọc markup không an toàn.
 
 **Files:**
 
 - Create: choice, passage, inline-gap, transformation, long-form editors
 - Test: each editor validation and preview
 
-- [ ] Implement theo thứ tự: `choice_list`/`boolean_list`, `passage_questions`, `passage_*_inline`, `sentence_transformation`, `long_form_prompt`/`speaking_script_prompt`.
-- [ ] Mỗi editor preview attempt + result, validation inline, review authoring và save draft.
-- [ ] Commit từng presentation hoặc nhóm nhỏ cùng behavior; không dồn thành một commit lớn.
+- [x] Implement `choice_list`/`boolean_list`, `image_choice_list`, `passage_questions`, `passage_*_inline`, `sentence_transformation`, `long_form_prompt`/`speaking_script_prompt`.
+- [x] Mỗi editor có preview attempt/result, validation publish hiện có, review authoring và save draft phù hợp presentation.
+- [x] Commit từng presentation hoặc nhóm nhỏ cùng behavior; không dồn thành một commit lớn.
 
 ## Chunk 4: Media, publish gate và B1 migration
 
