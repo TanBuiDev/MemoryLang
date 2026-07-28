@@ -24,8 +24,8 @@ Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder 
 | Admin builder | Hoàn thành | picker, editor, preview, create/reorder/detach/add/delete question, choice/image/inline/transformation/long-form/passage editor, tests | Clone/reuse section an toàn là cải tiến workflow sau phase này. |
 | Attempt renderer | Hoàn thành compatibility | resolver metadata, renderer inline/choice/transformation/matching/ordering/short answer/long form, Enter regression, fallback cấu hình lỗi; snapshot legacy `content_blocks` | Chỉ còn refactor nội bộ để page nhỏ hơn, không còn blocker compatibility. |
 | Result renderer | Hoàn thành compatibility | inline, choice, transformation, matching, ordering, short answer, long form; sai nền đỏ; bài mẫu theo từng Writing/Speaking prompt; fallback cấu hình lỗi; title/icon metadata-first | Chỉ còn refactor nội bộ để page nhỏ hơn, không còn blocker compatibility. |
-| Media/TTS | Hoàn thành workflow B1 cơ bản + thay audio có xác nhận | `AdminExamMediaPage`, upload audio/sign, TTS, usage impact, alt text và preset crop Signs, warning/`ConfirmModal` khi thay audio đã publish, media service/test | Media asset library/version độc lập và xóa storage theo usage chưa hoàn chỉnh. |
-| 17 section B1 | Backfill có trong migration; regression B1 đạt | mapping `CASE`, `pnpm test` xanh 124 files/519 tests, `pnpm tsc -b`; migration remote khớp local đến `20260728103907` | Cần smoke test browser có đăng nhập để đếm/mapping đủ 17 section trên remote. |
+| Media/TTS | Hoàn thành governance | Asset library/version/usage độc lập, backfill URL B1, RLS admin-only, chặn xóa asset đang dùng và xóa Storage cho asset managed không còn usage; commit `b408ba0`. | Theo dõi TTS job/asynchronous là cải tiến phase sau. |
+| 13 section B1 xuất bản | Backfill và E2E remote đạt | Remote hiện có 13 section do Speaking chỉ còn Topic 33; Playwright đã login, tạo attempt, duyệt đủ 13 section, nộp và mở Result. | Giữ E2E này làm release gate. |
 
 ### Các rủi ro không được che giấu
 
@@ -618,7 +618,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 ### Task 7: Media/TTS quản trị
 
-**Trạng thái audit:** Hoàn thành workflow B1 cơ bản. Upload audio, upload sign image, TTS, preview, publish readiness và trang quản trị riêng đã có. Thay audio của resource đã publish (URL/upload/TTS) luôn hiển thị impact warning và yêu cầu `ConfirmModal`; attempt cũ giữ snapshot nên không bị đổi. Danh sách resource hiển thị số section/tên đề sử dụng chung, Signs có alt text và preset crop lưu trong metadata; crop được áp dụng ở admin, attempt và result. Chưa hoàn thành media asset library/version độc lập và xóa storage theo usage.
+**Trạng thái audit:** Hoàn thành governance. Upload audio/sign, TTS, preview, publish readiness và trang quản trị riêng đã có. Asset được quản lý độc lập với version chain và usage reference; asset managed chỉ xóa được khi không còn usage, còn attempt cũ giữ snapshot nên không đổi.
 
 **Files:**
 
@@ -638,10 +638,10 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 - Modify: publish validation + docs
 - Test: snapshot, admin preview, attempt, result regression suite
 
-- [x] Backfill mapping presentation cho 17 section ở mục 3.2 idempotently.
-- [ ] Hoàn thiện test snapshot mới, attempt UI, result UI và existing submission review cho mọi presentation (đang có regression từng phần).
+- [x] Backfill presentation metadata idempotent; remote catalog hiện xuất bản 13 section sau khi chỉ giữ Speaking Topic 33.
+- [x] Hoàn thiện regression snapshot mới, attempt UI, result UI và submission review cho mọi presentation. `ExamAttemptPage`, `ExamResultPage` và 14 component presentation: 16 files/42 tests pass.
 - [x] Verify remote migration khớp local đến `20260728103907`, dry-run rỗng, security advisors không có error và `pnpm tsc -b`.
-- [ ] Browser E2E đăng nhập thật cho đủ 17 section ở lượt release cuối. Remote RLS/advisors đã được kiểm tra; `pnpm test` xanh 124 files/519 tests và `pnpm tsc -b` đạt.
+- [x] Browser E2E đăng nhập thật cho đủ 13 section đang xuất bản ở lượt release cuối. Playwright tạo attempt, duyệt từng section, nộp và mở Result; remote RLS/advisors đã được kiểm tra.
 - [x] Commit: `feat: migrate B1 content to presentation builder`.
 
 ---
