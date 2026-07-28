@@ -343,33 +343,37 @@ describe('QuizSessionPage', () => {
 
     // Press ArrowRight to go to next question (banana/orange/etc)
     fireEvent.keyDown(window, { key: 'ArrowRight' })
-    const q2Text = (await screen.findByRole('heading', { level: 2 })).textContent
-    expect(q2Text).not.toBe(q1Text)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2 }).textContent).not.toBe(q1Text))
+    const q2Text = screen.getByRole('heading', { level: 2 }).textContent
 
     // Press ArrowRight again to go to third
     fireEvent.keyDown(window, { key: 'ArrowRight' })
-    const q3Text = (await screen.findByRole('heading', { level: 2 })).textContent
-    expect(q3Text).not.toBe(q1Text)
-    expect(q3Text).not.toBe(q2Text)
+    await waitFor(() => {
+      const text = screen.getByRole('heading', { level: 2 }).textContent
+      expect(text).not.toBe(q1Text)
+      expect(text).not.toBe(q2Text)
+    })
+    const q3Text = screen.getByRole('heading', { level: 2 }).textContent
 
     // Press ArrowLeft to go back to second
     fireEvent.keyDown(window, { key: 'ArrowLeft' })
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q2Text)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q2Text))
 
     // Press ArrowLeft to go back to first
     fireEvent.keyDown(window, { key: 'ArrowLeft' })
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q1Text)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q1Text))
 
     // Wrap around: Press ArrowLeft from first to go to last (fourth)
     fireEvent.keyDown(window, { key: 'ArrowLeft' })
-    const q4Text = screen.getByRole('heading', { level: 2 }).textContent
-    expect(q4Text).not.toBe(q1Text)
-    expect(q4Text).not.toBe(q2Text)
-    expect(q4Text).not.toBe(q3Text)
-
+    await waitFor(() => {
+      const text = screen.getByRole('heading', { level: 2 }).textContent
+      expect(text).not.toBe(q1Text)
+      expect(text).not.toBe(q2Text)
+      expect(text).not.toBe(q3Text)
+    })
     // Wrap around: Press ArrowRight from last (fourth) to go to first
     fireEvent.keyDown(window, { key: 'ArrowRight' })
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q1Text)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(q1Text))
   })
 
   it('allows navigation using ArrowLeft and ArrowRight keys in Translation Input mode only when input is not focused', async () => {
