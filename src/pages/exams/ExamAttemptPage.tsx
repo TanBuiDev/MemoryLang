@@ -39,6 +39,7 @@ import {
   resolveAttemptPresentation,
 } from '@/features/exam-content/attemptPresentation'
 import { getPresentationConfigurationIssue } from '@/features/exam-content/presentationFallback'
+import { getImagePresentation } from '@/features/exam-content/imagePresentation'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
 import type { PracticeQuestionType } from '@/types/exam.types'
 
@@ -48,6 +49,7 @@ interface SnapshotQuestion {
   question_type?: PracticeQuestionType
   prompt: string
   image_url?: string | null
+  metadata?: Record<string, unknown>
   options?: Array<{ key: string; text: string }>
 }
 
@@ -1097,7 +1099,8 @@ export function ExamAttemptPage() {
                               <img
                                 src={question.image_url}
                                 alt={`Hình minh họa câu ${qNumber}`}
-                                className="my-3 max-h-64 max-w-full border-2 border-border object-contain"
+                                className={`my-3 max-h-64 max-w-full border-2 border-border ${getImagePresentation(question.metadata).fitClass}`}
+                                style={{ objectPosition: getImagePresentation(question.metadata).objectPosition }}
                               />
                             )}
 

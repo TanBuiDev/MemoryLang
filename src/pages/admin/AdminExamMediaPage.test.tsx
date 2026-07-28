@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import AdminExamMediaPage from './AdminExamMediaPage'
 import { adminExamMediaService } from '@/services/supabase/adminExamMedia.service'
@@ -8,7 +8,7 @@ vi.mock('@/services/supabase/adminExamMedia.service', () => ({
   adminExamMediaService: {
     listResources: vi.fn(), listSigns: vi.fn(), listQuestionReviews: vi.fn(),
     setAudioUrl: vi.fn(), setPublished: vi.fn(), setB1ExamPublished: vi.fn(),
-    uploadAudio: vi.fn(), uploadSignImage: vi.fn(), setSignImage: vi.fn(), updateSignImageAlt: vi.fn(), updateQuestionReview: vi.fn(),
+    uploadAudio: vi.fn(), uploadSignImage: vi.fn(), setSignImage: vi.fn(), updateSignImageAlt: vi.fn(), updateSignImageCrop: vi.fn(), updateQuestionReview: vi.fn(),
   },
 }))
 vi.mock('@/services/api/generateAudio.api', () => ({ generateAudio: vi.fn() }))
@@ -46,10 +46,10 @@ describe('AdminExamMediaPage', () => {
     expect(screen.getByText(/B1 DeFull.*B1 luyện tập/i)).toBeInTheDocument()
   })
 
-  it('lets an admin add accessible alt text for a sign image', async () => {
+  it('lets an admin set accessible alt text and a display crop for a sign image', async () => {
     vi.mocked(adminExamMediaService.listResources).mockResolvedValue([])
     vi.mocked(adminExamMediaService.listSigns).mockResolvedValue([{
-      id: 'sign-1', source_key: 'sign-1', source_number: '1', prompt: 'What does this sign mean?', image_url: 'https://cdn.example/sign.png', image_alt: '', metadata: {},
+      id: 'sign-1', source_key: 'sign-1', source_number: '1', prompt: 'What does this sign mean?', image_url: 'https://cdn.example/sign.png', image_alt: '', image_crop: 'contain', metadata: {},
     }])
     vi.mocked(adminExamMediaService.listQuestionReviews).mockResolvedValue([])
 
@@ -57,8 +57,11 @@ describe('AdminExamMediaPage', () => {
 
     const input = await screen.findByLabelText('Mô tả ảnh biển báo 1')
     expect(input).toBeInTheDocument()
+    const cropSelect = screen.getByLabelText('Hiển thị ảnh')
     fireEvent.change(input, { target: { value: 'Biển cấm đỗ xe' } })
     fireEvent.blur(input)
     expect(adminExamMediaService.updateSignImageAlt).toHaveBeenCalledWith(expect.objectContaining({ id: 'sign-1' }), 'Biển cấm đỗ xe')
+    fireEvent.change(cropSelect, { target: { value: 'top' } })
+    await waitFor(() => expect(adminExamMediaService.updateSignImageCrop).toHaveBeenCalledWith(expect.objectContaining({ id: 'sign-1' }), 'top'))
   })
 })

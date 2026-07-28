@@ -30,6 +30,7 @@ import { ShortAnswerListResult } from '@/components/exam/presentations/ShortAnsw
 import { LongFormPromptResult } from '@/components/exam/presentations/LongFormPromptResult'
 import { isInlineGapPresentation, resolveAttemptPresentation } from '@/features/exam-content/attemptPresentation'
 import { getPresentationConfigurationIssue } from '@/features/exam-content/presentationFallback'
+import { getImagePresentation } from '@/features/exam-content/imagePresentation'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
 import type { B1AttemptQuestionReview, PracticePromptSample } from '@/types/exam.types'
 
@@ -316,6 +317,7 @@ export function ExamResultPage() {
   // Build maps of question options, images, and section resources from exam_snapshot if available
   const questionOptionsMap: QuestionOptionsMap = {}
   const questionImageMap: Record<string, string | null> = {}
+  const questionImageMetadataMap: Record<string, Record<string, unknown>> = {}
   const sectionResourceMap: Record<string, SnapshotResource> = {}
   const sectionMetadataMap: Record<string, SnapshotSectionMetadata> = {}
   const snapshotSectionOrder: string[] = []
@@ -345,6 +347,9 @@ export function ExamResultPage() {
               }
               if (typeof q.image_url === 'string' && q.image_url.trim() !== '') {
                 questionImageMap[q.source_key] = q.image_url
+              }
+              if (q.metadata && typeof q.metadata === 'object' && !Array.isArray(q.metadata)) {
+                questionImageMetadataMap[q.source_key] = q.metadata as Record<string, unknown>
               }
             }
           })
@@ -804,6 +809,7 @@ export function ExamResultPage() {
                     const questionImageUrl =
                       questionImageMap[review.question_source_key] ??
                       (typeof reviewRecord.image_url === 'string' ? reviewRecord.image_url : null)
+                    const questionImagePresentation = getImagePresentation(questionImageMetadataMap[review.question_source_key])
 
                     return (
                       <article
@@ -861,7 +867,8 @@ export function ExamResultPage() {
                             <img
                               src={questionImageUrl}
                               alt={`Biển báo / Hình ảnh câu ${index + 1}`}
-                              className="max-h-64 w-full object-contain"
+                              className={`max-h-64 w-full ${questionImagePresentation.fitClass}`}
+                              style={{ objectPosition: questionImagePresentation.objectPosition }}
                             />
                           </div>
                         )}

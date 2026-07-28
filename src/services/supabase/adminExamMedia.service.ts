@@ -24,6 +24,7 @@ export interface B1SignQuestion {
   prompt: string
   image_url: string | null
   image_alt: string
+  image_crop: string
   metadata: Record<string, unknown>
 }
 
@@ -112,6 +113,7 @@ export const adminExamMediaService = {
       ...sign,
       metadata: sign.metadata && typeof sign.metadata === 'object' ? sign.metadata : {},
       image_alt: typeof sign.metadata?.image_alt === 'string' ? sign.metadata.image_alt : '',
+      image_crop: typeof sign.metadata?.image_crop === 'string' ? sign.metadata.image_crop : 'contain',
     })) as B1SignQuestion[]
   },
 
@@ -132,6 +134,14 @@ export const adminExamMediaService = {
     const { error } = await supabase
       .from('practice_questions')
       .update({ metadata: { ...sign.metadata, image_alt: imageAlt.trim() } })
+      .eq('id', sign.id)
+    if (error) throw error
+  },
+
+  async updateSignImageCrop(sign: B1SignQuestion, imageCrop: string): Promise<void> {
+    const { error } = await supabase
+      .from('practice_questions')
+      .update({ metadata: { ...sign.metadata, image_crop: imageCrop } })
       .eq('id', sign.id)
     if (error) throw error
   },
