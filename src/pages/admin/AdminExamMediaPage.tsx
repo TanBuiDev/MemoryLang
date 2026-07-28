@@ -2,16 +2,23 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FileAudio, ImagePlus, Loader2, Sparkles, Upload, Volume2 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label, Textarea } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { showToast } from '@/components/ui/toast'
 import { generateAudio } from '@/services/api/generateAudio.api'
 import { adminExamMediaService, type B1MediaResource, type B1QuestionReviewEditor } from '@/services/supabase/adminExamMedia.service'
+import { needsMediaReplacementConfirmation } from '@/features/exam-content/mediaReplacement'
 
 const languageOptions = [
   { value: 'de-DE', label: 'Tiếng Đức (de-DE)' },
   { value: 'en-US', label: 'Tiếng Anh (en-US)' },
 ]
+
+type PendingAudioAction =
+  | { resource: B1MediaResource; kind: 'url'; url: string | null }
+  | { resource: B1MediaResource; kind: 'upload'; file: File }
+  | { resource: B1MediaResource; kind: 'tts' }
 
 export default function AdminExamMediaPage() {
   const queryClient = useQueryClient()
@@ -22,6 +29,8 @@ export default function AdminExamMediaPage() {
   const [selectedQuestion, setSelectedQuestion] = useState<B1QuestionReviewEditor | null>(null)
   const [questionTranslation, setQuestionTranslation] = useState('')
   const [questionExplanation, setQuestionExplanation] = useState('')
+  const [pendingAudioAction, setPendingAudioAction] = useState<PendingAudioAction | null>(null)
+  const [isApplyingAudioAction, setIsApplyingAudioAction] = useState(false)
   const resourcesQuery = useQuery({ queryKey: ['admin-b1-media'], queryFn: adminExamMediaService.listResources })
   const signsQuery = useQuery({ queryKey: ['admin-b1-signs'], queryFn: adminExamMediaService.listSigns })
   const questionReviewsQuery = useQuery({ queryKey: ['admin-b1-question-reviews'], queryFn: adminExamMediaService.listQuestionReviews })
@@ -34,15 +43,6 @@ export default function AdminExamMediaPage() {
   const publish = useMutation({
     mutationFn: ({ resource, value }: { resource: B1MediaResource; value: boolean }) => adminExamMediaService.setPublished(resource, value),
     onSuccess: refresh,
-  })
-  const generate = useMutation({
-    mutationFn: async (resource: B1MediaResource) => {
-      const result = await generateAudio(resource.text, language)
-      if (!result.audioUrl) throw new Error('TTS chưa tạo được audio')
-      await adminExamMediaService.setAudioUrl(resource, result.audioUrl)
-    },
-    onSuccess: async () => { await refresh(); showToast({ type: 'success', title: 'Đã tạo và gắn audio TTS' }) },
-    onError: (error) => showToast({ type: 'error', title: 'Tạo TTS thất bại', message: error instanceof Error ? error.message : undefined }),
   })
   const publishExam = useMutation({
     mutationFn: (isPublished: boolean) => adminExamMediaService.setB1ExamPublished(isPublished),
@@ -62,13 +62,40 @@ export default function AdminExamMediaPage() {
   const chooseQuestion = (question: B1QuestionReviewEditor) => { setSelectedQuestion(question); setQuestionTranslation(question.translation ?? ''); setQuestionExplanation(question.explanation ?? '') }
   const selectedSupportsAudio = selected?.skill === 'listening' || selected?.skill === 'writing' || selected?.skill === 'speaking'
   const readyToPublish = (resourcesQuery.data ?? []).length > 0 && (resourcesQuery.data ?? []).every((resource) => resource.is_published)
-  const onUpload = async (file?: File) => {
-    if (!file || !selected) return
+  const applyAudioAction = async (action: PendingAudioAction) => {
+    setIsApplyingAudioAction(true)
     try {
-      const url = await adminExamMediaService.uploadAudio(file, selected.source_key)
-      setAudioUrl(url)
-      await updateAudio.mutateAsync({ resource: selected, url })
-    } catch { showToast({ type: 'error', title: 'Không thể tải file audio lên' }) }
+      if (action.kind === 'url') {
+        await updateAudio.mutateAsync({ resource: action.resource, url: action.url })
+      } else if (action.kind === 'upload') {
+        const url = await adminExamMediaService.uploadAudio(action.file, action.resource.source_key)
+        setAudioUrl(url)
+        await updateAudio.mutateAsync({ resource: action.resource, url })
+      } else {
+        const result = await generateAudio(action.resource.text, language)
+        if (!result.audioUrl) throw new Error('TTS chưa tạo được audio')
+        setAudioUrl(result.audioUrl)
+        await updateAudio.mutateAsync({ resource: action.resource, url: result.audioUrl })
+        showToast({ type: 'success', title: 'Đã tạo và gắn audio TTS' })
+      }
+    } catch (error) {
+      showToast({ type: 'error', title: action.kind === 'tts' ? 'Tạo TTS thất bại' : 'Không thể lưu audio', message: error instanceof Error ? error.message : undefined })
+    } finally {
+      setIsApplyingAudioAction(false)
+      setPendingAudioAction(null)
+    }
+  }
+  const requestAudioAction = (action: PendingAudioAction) => {
+    const nextUrl = action.kind === 'url' ? action.url : null
+    if (needsMediaReplacementConfirmation({ isPublished: action.resource.is_published, currentUrl: action.resource.audio_url, nextUrl })) {
+      setPendingAudioAction(action)
+      return
+    }
+    void applyAudioAction(action)
+  }
+  const onUpload = (file?: File) => {
+    if (!file || !selected) return
+    requestAudioAction({ resource: selected, kind: 'upload', file })
   }
   const onSignUpload = async (questionId: string, sourceKey: string, file?: File) => {
     if (!file) return
@@ -89,10 +116,11 @@ export default function AdminExamMediaPage() {
       </section>
       <aside className="neo-card h-fit p-5">
         <h2 className="text-xl font-black">{selected ? selected.title : 'Chọn một nội dung'}</h2>
-        {selected ? <div className="mt-5 space-y-4">{selectedSupportsAudio ? <><div><Label htmlFor="audio-url">Đường dẫn audio</Label><Input id="audio-url" className="mt-1" value={audioUrl} onChange={(event) => setAudioUrl(event.target.value)} placeholder="https://…/audio.mp3" /></div><Button className="w-full" onClick={() => updateAudio.mutate({ resource: selected, url: audioUrl.trim() || null })} disabled={updateAudio.isPending}>Lưu đường dẫn audio</Button><input ref={uploadInputRef} type="file" accept="audio/*" className="sr-only" onChange={(event) => void onUpload(event.target.files?.[0])} /><Button variant="ghost" className="w-full" onClick={() => uploadInputRef.current?.click()}><Upload size={16} />Tải file audio lên</Button><div className="border-t-2 border-border pt-4"><Label htmlFor="tts-source">Nội dung tạo TTS</Label><Textarea id="tts-source" className="mt-1 min-h-40" value={selected.text} readOnly /><p className="mt-1 text-xs font-semibold text-muted-foreground">TTS sẽ đọc chính xác nội dung này.</p><Label htmlFor="tts-language" className="mt-3 block">Tạo bằng TTS</Label><Select id="tts-language" value={language} onChange={setLanguage} options={languageOptions} className="mt-1" /><Button variant="secondary" className="mt-3 w-full" disabled={!selected.text.trim() || generate.isPending} onClick={() => generate.mutate(selected)}>{generate.isPending ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}Tạo audio TTS</Button></div>{audioUrl && <audio className="w-full" controls src={audioUrl} />}</> : <p className="border-2 border-border bg-muted p-3 text-sm font-semibold">Phần này không cần audio. Hãy bấm “Xuất bản” trong danh sách bên trái khi đã kiểm tra nội dung.</p>}</div> : <p className="mt-2 text-sm font-semibold text-muted-foreground">Chọn nội dung ở bên trái để gắn media.</p>}
+        {selected ? <div className="mt-5 space-y-4">{selectedSupportsAudio ? <><div><Label htmlFor="audio-url">Đường dẫn audio</Label><Input id="audio-url" className="mt-1" value={audioUrl} onChange={(event) => setAudioUrl(event.target.value)} placeholder="https://…/audio.mp3" /></div>{selected.is_published && selected.audio_url && <p className="border-2 border-danger bg-danger/10 p-3 text-xs font-bold text-danger">Nội dung này đã xuất bản. Thay audio chỉ áp dụng cho attempt mới; attempt đã mở vẫn dùng snapshot cũ.</p>}<Button className="w-full" onClick={() => requestAudioAction({ resource: selected, kind: 'url', url: audioUrl.trim() || null })} disabled={updateAudio.isPending || isApplyingAudioAction}>Lưu đường dẫn audio</Button><input ref={uploadInputRef} type="file" accept="audio/*" className="sr-only" onChange={(event) => onUpload(event.target.files?.[0])} /><Button variant="ghost" className="w-full" disabled={isApplyingAudioAction} onClick={() => uploadInputRef.current?.click()}><Upload size={16} />Tải file audio lên</Button><div className="border-t-2 border-border pt-4"><Label htmlFor="tts-source">Nội dung tạo TTS</Label><Textarea id="tts-source" className="mt-1 min-h-40" value={selected.text} readOnly /><p className="mt-1 text-xs font-semibold text-muted-foreground">TTS sẽ đọc chính xác nội dung này.</p><Label htmlFor="tts-language" className="mt-3 block">Tạo bằng TTS</Label><Select id="tts-language" value={language} onChange={setLanguage} options={languageOptions} className="mt-1" /><Button variant="secondary" className="mt-3 w-full" disabled={!selected.text.trim() || isApplyingAudioAction} onClick={() => requestAudioAction({ resource: selected, kind: 'tts' })}>{isApplyingAudioAction ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}Tạo audio TTS</Button></div>{audioUrl && <audio className="w-full" controls src={audioUrl} />}</> : <p className="border-2 border-border bg-muted p-3 text-sm font-semibold">Phần này không cần audio. Hãy bấm “Xuất bản” trong danh sách bên trái khi đã kiểm tra nội dung.</p>}</div> : <p className="mt-2 text-sm font-semibold text-muted-foreground">Chọn nội dung ở bên trái để gắn media.</p>}
       </aside>
     </div>
     <section className="neo-card p-5"><div className="flex items-center gap-2"><ImagePlus size={20} /><div><h2 className="text-xl font-black">Ảnh Signs 1–10</h2><p className="text-sm font-semibold text-muted-foreground">Thêm thủ công ảnh cho từng biển báo có đáp án.</p></div></div><div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">{(signsQuery.data ?? []).map((sign) => <article key={sign.id} className="border-2 border-border bg-card p-3"><p className="font-black">{sign.source_number ?? sign.source_key}</p>{sign.image_url ? <img className="mt-2 aspect-square w-full object-contain" src={sign.image_url} alt={`Biển báo ${sign.source_number ?? sign.source_key}`} /> : <div className="mt-2 flex aspect-square items-center justify-center bg-muted text-xs font-bold">Chưa có ảnh</div>}<label className="mt-3 block"><span className="sr-only">Tải ảnh {sign.source_key}</span><Input type="file" accept="image/*" className="text-xs" onChange={(event) => void onSignUpload(sign.id, sign.source_key, event.target.files?.[0])} /></label></article>)}</div></section>
     <section className="grid gap-6 lg:grid-cols-[1fr_420px]"><div className="neo-card p-5"><h2 className="text-xl font-black">Bản dịch và lời giải đáp án</h2><p className="mt-1 text-sm font-semibold text-muted-foreground">Chọn câu hỏi để người học nhìn thấy bản dịch và lời giải chi tiết sau khi nộp bài.</p><div className="mt-5 max-h-[34rem] space-y-2 overflow-y-auto">{(questionReviewsQuery.data ?? []).map((question) => <Button key={question.id} variant={selectedQuestion?.id === question.id ? 'secondary' : 'ghost'} className="h-auto w-full justify-start py-3 text-left" onClick={() => chooseQuestion(question)}><span><span className="block text-xs uppercase">{question.activity_title} · Câu {question.source_number ?? '—'}</span><span className="block whitespace-normal">{question.prompt}</span></span></Button>)}</div></div><aside className="neo-card h-fit p-5"><h2 className="text-xl font-black">{selectedQuestion ? `Câu ${selectedQuestion.source_number ?? '—'}` : 'Chọn một câu hỏi'}</h2>{selectedQuestion ? <div className="mt-4 space-y-4"><div><Label htmlFor="question-translation">Bản dịch tiếng Việt</Label><Textarea id="question-translation" value={questionTranslation} onChange={(event) => setQuestionTranslation(event.target.value)} className="mt-1 min-h-28" placeholder="Nhập bản dịch tự nhiên của câu hỏi và đáp án…" /></div><div><Label htmlFor="question-explanation">Lời giải chi tiết</Label><Textarea id="question-explanation" value={questionExplanation} onChange={(event) => setQuestionExplanation(event.target.value)} className="mt-1 min-h-40" placeholder="Giải thích vì sao đáp án đúng và kiến thức cần nhớ…" /></div><Button className="w-full" onClick={() => updateQuestionReview.mutate()} disabled={updateQuestionReview.isPending}>Lưu bản dịch và lời giải</Button></div> : <p className="mt-3 text-sm font-semibold text-muted-foreground">Chọn câu bên trái để biên soạn nội dung học tập.</p>}</aside></section>
+    <ConfirmModal open={Boolean(pendingAudioAction)} title="Thay audio đã xuất bản?" description="Nội dung mới sẽ được dùng cho attempt mở sau này. Attempt đã bắt đầu giữ nguyên snapshot và không bị thay đổi." confirmLabel="Thay audio" onConfirm={() => { if (pendingAudioAction) void applyAudioAction(pendingAudioAction) }} onCancel={() => setPendingAudioAction(null)} />
   </div>
 }
