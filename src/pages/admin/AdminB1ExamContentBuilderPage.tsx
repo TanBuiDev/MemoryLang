@@ -6,6 +6,7 @@ import { ChoiceListEditor, type EditableChoiceQuestion } from '@/components/admi
 import { InlineGapEditor } from '@/components/admin/exam-presentations/InlineGapEditor'
 import { LongFormPromptEditor, type LongFormPromptValue } from '@/components/admin/exam-presentations/LongFormPromptEditor'
 import { MatchingEditor, type MatchingEditorValue } from '@/components/admin/exam-presentations/MatchingEditor'
+import { OrderingEditor, type OrderingEditorValue } from '@/components/admin/exam-presentations/OrderingEditor'
 import { PresentationPicker } from '@/components/admin/exam-presentations/PresentationPicker'
 import { PresentationPreview } from '@/components/admin/exam-presentations/PresentationPreview'
 import { PromptSampleEditor, type PromptSampleDraft } from '@/components/admin/exam-presentations/PromptSampleEditor'
@@ -134,6 +135,7 @@ export function AdminB1ExamContentBuilderPage() {
   const [newSectionSkill, setNewSectionSkill] = useState<ExamSkill>('grammar')
   const [newSectionPresentationType, setNewSectionPresentationType] = useState<ExamPresentationType>('choice_list')
   const [matchingValue, setMatchingValue] = useState<MatchingEditorValue>({ leftItems: [], rightItems: [], pairs: [] })
+  const [orderingValue, setOrderingValue] = useState<OrderingEditorValue>({ items: [] })
   const closeCreateSectionModal = useCallback(() => setIsCreateSectionOpen(false), [])
 
   const examQuery = useQuery({
@@ -194,6 +196,10 @@ export function AdminB1ExamContentBuilderPage() {
     if (matching && typeof matching === 'object' && Array.isArray((matching as MatchingEditorValue).leftItems) && Array.isArray((matching as MatchingEditorValue).rightItems) && Array.isArray((matching as MatchingEditorValue).pairs)) {
       setMatchingValue(matching as MatchingEditorValue)
     } else setMatchingValue({ leftItems: [], rightItems: [], pairs: [] })
+    const ordering = selectedResource.presentation_config?.ordering
+    if (ordering && typeof ordering === 'object' && Array.isArray((ordering as OrderingEditorValue).items)) {
+      setOrderingValue(ordering as OrderingEditorValue)
+    } else setOrderingValue({ items: [] })
   }, [selectedResource?.id, selectedResource?.presentation_type, selectedResource?.grading_mode, selectedResource?.kind])
 
   const savePresentation = useMutation({
@@ -243,6 +249,9 @@ export function AdminB1ExamContentBuilderPage() {
       }
       if (presentationType === 'matching') {
         await adminExamContentService.updateResourcePresentationConfig({ resourceKind: selectedResource.kind, resourceId: selectedResource.id, presentationConfig: { matching: matchingValue } })
+      }
+      if (presentationType === 'ordering') {
+        await adminExamContentService.updateResourcePresentationConfig({ resourceKind: selectedResource.kind, resourceId: selectedResource.id, presentationConfig: { ordering: orderingValue } })
       }
     },
     onSuccess: async () => {
@@ -480,7 +489,7 @@ export function AdminB1ExamContentBuilderPage() {
                 <h2 className="text-lg font-black">Cách chấm và trình soạn nội dung</h2>
                 <p className="mt-1 text-sm font-semibold text-muted-foreground">{getEditorGuidance(presentationType)}</p>
               </div>
-              {selectedResource.kind === 'activity' && (
+              {selectedResource.kind === 'activity' && !['matching', 'ordering'].includes(presentationType) && (
                 <Button type="button" variant="secondary" disabled={createQuestion.isPending} onClick={() => createQuestion.mutate()}>
                   <Plus size={16} /> {createQuestion.isPending ? 'Đang thêm...' : 'Thêm câu hỏi'}
                 </Button>
@@ -509,6 +518,9 @@ export function AdminB1ExamContentBuilderPage() {
               )}
               {presentationType === 'matching' && (
                 <MatchingEditor value={matchingValue} onChange={setMatchingValue} disabled={savePresentation.isPending} />
+              )}
+              {presentationType === 'ordering' && (
+                <OrderingEditor value={orderingValue} onChange={setOrderingValue} disabled={savePresentation.isPending} />
               )}
               {(presentationType === 'long_form_prompt' || presentationType === 'speaking_script_prompt') && (
                 <>

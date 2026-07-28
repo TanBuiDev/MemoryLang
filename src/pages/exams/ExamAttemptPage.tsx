@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button'
 import { InlineChoicePassageAttempt } from '@/components/exam/presentations/InlineChoicePassageAttempt'
 import { ChoiceListAttempt } from '@/components/exam/presentations/ChoiceListAttempt'
 import { MatchingAttempt, type MatchingAttemptItem } from '@/components/exam/presentations/MatchingAttempt'
+import { OrderingAttempt, type OrderingAttemptItem } from '@/components/exam/presentations/OrderingAttempt'
 import { ShortAnswerListAttempt } from '@/components/exam/presentations/ShortAnswerListAttempt'
 import { SentenceTransformationAttempt } from '@/components/exam/presentations/SentenceTransformationAttempt'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -127,6 +128,30 @@ function getMatchingAnswerKey(sectionSourceKey: string, leftItemId: string) {
   return `${sectionSourceKey}:matching:${leftItemId}`
 }
 
+function getOrderingItems(resource: SnapshotResource | undefined): OrderingAttemptItem[] {
+  const ordering = resource?.presentation_config?.ordering
+  if (!ordering || typeof ordering !== 'object' || !Array.isArray((ordering as Record<string, unknown>).items)) return []
+  return ((ordering as Record<string, unknown>).items as unknown[]).flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const record = item as Record<string, unknown>
+    return typeof record.id === 'string' && typeof record.text === 'string' ? [{ id: record.id, text: record.text }] : []
+  })
+}
+
+function getOrderingAnswerKey(sectionSourceKey: string) {
+  return `${sectionSourceKey}:ordering`
+}
+
+function parseOrderingAnswer(value: string | undefined, items: OrderingAttemptItem[]) {
+  if (!value) return items.map((item) => item.id)
+  try {
+    const parsed: unknown = JSON.parse(value)
+    return Array.isArray(parsed) && parsed.every((id) => typeof id === 'string') ? parsed : items.map((item) => item.id)
+  } catch {
+    return items.map((item) => item.id)
+  }
+}
+
 function getSectionAnswerEntries(section: SnapshotSection, answers: Record<string, string>): Array<[string, string]> {
   const presentationType = resolveAttemptPresentation({
     resourceType: section.resource_type,
@@ -138,6 +163,10 @@ function getSectionAnswerEntries(section: SnapshotSection, answers: Record<strin
       const key = getMatchingAnswerKey(section.source_key, leftItem.id)
       return answers[key] ? [[key, answers[key]]] : []
     })
+  }
+  if (presentationType === 'ordering') {
+    const key = getOrderingAnswerKey(section.source_key)
+    return answers[key] ? [[key, answers[key]]] : []
   }
   return (section.resource.questions ?? []).flatMap((question) =>
     answers[question.source_key] ? [[question.source_key, answers[question.source_key]]] : [],
@@ -260,6 +289,12 @@ export function ExamAttemptPage() {
         const leftItems = getMatchingItems(section.resource)?.leftItems ?? []
         totalQuestions += leftItems.length
         answeredQuestions += getSectionAnswerEntries(section, selectedAnswers).length
+        return
+      }
+      if (presentation === 'ordering') {
+        const items = getOrderingItems(section.resource)
+        totalQuestions += items.length
+        answeredQuestions += getSectionAnswerEntries(section, selectedAnswers).length > 0 ? items.length : 0
         return
       }
       ;(section.resource.questions ?? []).forEach((question) => {
@@ -1084,6 +1119,16 @@ export function ExamAttemptPage() {
                 onAnswer={(leftItemId, rightItemId) => setSelectedAnswers((current) => ({
                   ...current,
                   [getMatchingAnswerKey(activeSection!.source_key, leftItemId)]: rightItemId,
+                }))}
+              />
+            ) : presentationType === 'ordering' && getOrderingItems(activeResource).length > 0 ? (
+              <OrderingAttempt
+                items={getOrderingItems(activeResource)}
+                order={parseOrderingAnswer(selectedAnswers[getOrderingAnswerKey(activeSection!.source_key)], getOrderingItems(activeResource))}
+                disabled={isSubmitted}
+                onChange={(order) => setSelectedAnswers((current) => ({
+                  ...current,
+                  [getOrderingAnswerKey(activeSection!.source_key)]: JSON.stringify(order),
                 }))}
               />
             ) : !isInlineGapActivity ? (

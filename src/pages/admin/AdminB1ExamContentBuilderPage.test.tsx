@@ -193,6 +193,25 @@ describe('AdminB1ExamContentBuilderPage', () => {
     })))
   })
 
+  it('saves a visual ordering list as presentation configuration', async () => {
+    vi.mocked(adminExamContentService.getExamContent).mockResolvedValueOnce({
+      id: 'exam-1', title: 'Đề B1', source_key: 'b1-de-full-copy', is_published: false,
+      sections: [{ id: 'section-1', source_key: 'ordering-1', skill: 'reading', title: 'Sắp xếp', resource_type: 'activity', resource_id: 'activity-1', order_index: 0, is_required: true, suggested_time_minutes: null,
+        resource: { id: 'activity-1', source_key: 'ordering-1', title: 'Sắp xếp', skill: 'reading', kind: 'activity', presentation_type: 'ordering', grading_mode: 'ordered_list', is_published: false, presentation_config: { ordering: { items: [] } }, questions: [] },
+      }],
+    } as never)
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Thêm mục' }))
+    await user.type(screen.getByLabelText('Nội dung ở vị trí 1'), 'First')
+    await user.click(screen.getByRole('button', { name: 'Lưu cách trình bày' }))
+
+    await waitFor(() => expect(adminExamContentService.updateResourcePresentationConfig).toHaveBeenCalledWith(expect.objectContaining({
+      resourceKind: 'activity', resourceId: 'activity-1', presentationConfig: { ordering: expect.objectContaining({ items: [expect.objectContaining({ text: 'First', correctPosition: 1 })] }) },
+    })))
+  })
+
   it('lets an admin save a Writing sample for learner comparison', async () => {
     vi.mocked(adminExamContentService.getExamContent).mockResolvedValueOnce({
       id: 'exam-1', title: 'Đề B1', source_key: 'b1-de-full-copy', is_published: false,

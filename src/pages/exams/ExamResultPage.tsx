@@ -23,6 +23,7 @@ import { InlineGapPassageResult, type QuestionOptionsMap } from '@/components/ex
 import { ChoiceQuestionResult } from '@/components/exam/presentations/ChoiceQuestionResult'
 import { MatchingResult } from '@/components/exam/presentations/MatchingResult'
 import type { MatchingAttemptItem } from '@/components/exam/presentations/MatchingAttempt'
+import { OrderingResult, type OrderingResultItem } from '@/components/exam/presentations/OrderingResult'
 import { SentenceTransformationResult } from '@/components/exam/presentations/SentenceTransformationResult'
 import { isInlineGapPresentation, resolveAttemptPresentation } from '@/features/exam-content/attemptPresentation'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
@@ -191,6 +192,27 @@ function getMatchingItems(resource: SnapshotResource | undefined): { leftItems: 
   const leftItems = toItems(record.leftItems)
   const rightItems = toItems(record.rightItems)
   return leftItems.length > 0 && rightItems.length > 0 ? { leftItems, rightItems } : null
+}
+
+function getOrderingItems(resource: SnapshotResource | undefined): OrderingResultItem[] {
+  const ordering = resource?.presentation_config?.ordering
+  if (!ordering || typeof ordering !== 'object' || !Array.isArray((ordering as Record<string, unknown>).items)) return []
+  return ((ordering as Record<string, unknown>).items as unknown[]).flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const record = item as Record<string, unknown>
+    return typeof record.id === 'string' && typeof record.text === 'string' && typeof record.correctPosition === 'number'
+      ? [{ id: record.id, text: record.text, correctPosition: record.correctPosition }]
+      : []
+  })
+}
+
+function parseOrderingAnswer(value: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(value)
+    return Array.isArray(parsed) && parsed.every((id) => typeof id === 'string') ? parsed : []
+  } catch {
+    return []
+  }
 }
 
 function getWritingPromptId(snapshot: Record<string, unknown> | undefined) {
@@ -833,8 +855,20 @@ export function ExamResultPage() {
                     )
                   })()}
 
+                  {group.presentationType === 'ordering' && (() => {
+                    const items = getOrderingItems(group.resource)
+                    const review = group.reviews.find((entry) => entry.question_source_key === 'ordering')
+                    return items.length > 0 && review ? (
+                      <OrderingResult items={items} learnerOrder={parseOrderingAnswer(review.user_answer)} />
+                    ) : (
+                      <div className="border-2 border-danger bg-danger/10 p-4 text-sm font-semibold text-danger">
+                        Không thể hiển thị kết quả sắp xếp vì cấu hình hoặc bài nộp không đầy đủ.
+                      </div>
+                    )
+                  })()}
+
                   {/* Question Review List (Suppressed for inline gap activities where answers are filled directly inside text above) */}
-                  {!shouldRenderInlinePassage && group.presentationType !== 'matching' &&
+                  {!shouldRenderInlinePassage && !['matching', 'ordering'].includes(group.presentationType) &&
                     group.reviews.map((review, index) => {
                     const parsedTransformation = parseTransformationPrompt(review.question)
                     const questionOptions = questionOptionsMap[review.question_source_key] ?? []

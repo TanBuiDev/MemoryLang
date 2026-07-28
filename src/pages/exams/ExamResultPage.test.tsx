@@ -219,6 +219,21 @@ describe('ExamResultPage', () => {
     expect(screen.queryByText('right-1')).not.toBeInTheDocument()
   })
 
+  it('renders an ordering review from presentation metadata', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: { id: 'attempt-1', status: 'submitted', exam_snapshot: { sections: [{
+        source_key: 'ordering-1', title: 'Sắp xếp', skill: 'reading', resource_type: 'activity',
+        resource: { presentation_type: 'ordering', presentation_config: { ordering: { items: [{ id: 'one', text: 'First', correctPosition: 1 }, { id: 'two', text: 'Second', correctPosition: 2 }] } }, questions: [] },
+      }] } },
+      sections: [{ id: 'section-ordering', exam_section_source_key: 'ordering-1', score: 0, max_score: 2, progress: { review: [{ section_source_key: 'ordering-1', question_source_key: 'ordering', question: 'Sắp xếp', user_answer: '["two","one"]', correct_option_keys: [], accepted_answers: [], translation: null, explanation: null, is_correct: false }] } }],
+    } as never)
+
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/app/exams/attempt/attempt-1/result']}><Routes><Route path="/app/exams/attempt/:attemptId/result" element={<ExamResultPage />} /></Routes></MemoryRouter></QueryClientProvider>)
+
+    expect(await screen.findByLabelText('Kết quả sắp xếp')).toBeInTheDocument()
+    expect(screen.getByText('Thứ tự đúng')).toBeInTheDocument()
+  })
+
   it('creates a new attempt with the same timer when the learner starts over', async () => {
     vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
       attempt: {

@@ -257,4 +257,19 @@ describe('ExamAttemptPage', () => {
       progress: { answers: { 'matching-1:matching:left-1': 'right-1' } },
     })), { timeout: 1500 })
   })
+
+  it('renders an ordering section from presentation metadata', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: { id: 'attempt-1', status: 'in_progress', started_at: '2026-07-28T00:00:00.000Z', target_duration_seconds: 7200, exam_snapshot: { exam: { title: 'B1' }, sections: [{
+        source_key: 'ordering-1', skill: 'reading', title: 'Sắp xếp', resource_type: 'activity',
+        resource: { id: 'activity-1', presentation_type: 'ordering', activity_type: 'multiple_choice', presentation_config: { ordering: { items: [{ id: 'one', text: 'First', correctPosition: 1 }, { id: 'two', text: 'Second', correctPosition: 2 }] } }, questions: [] },
+      }] } },
+      sections: [{ id: 'section-1', exam_section_source_key: 'ordering-1', progress: {}, status: 'not_started' }],
+    } as never)
+
+    renderPage()
+
+    expect(await screen.findByLabelText('Sắp xếp thứ tự')).toBeInTheDocument()
+    expect(screen.getByText('First')).toBeInTheDocument()
+  })
 })
