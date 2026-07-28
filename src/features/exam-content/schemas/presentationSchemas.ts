@@ -83,14 +83,30 @@ export const matchingContentSchema = z.object({
   const leftIds = new Set(content.leftItems.map((item) => item.id))
   const rightIds = new Set(content.rightItems.map((item) => item.id))
   const pairKeys = new Set<string>()
+  const pairedLeftIds = new Set<string>()
+  const pairedRightIds = new Set<string>()
+  if (leftIds.size !== content.leftItems.length || rightIds.size !== content.rightItems.length) {
+    ctx.addIssue({ code: 'custom', message: 'Mỗi mục ghép cặp phải có mã riêng.' })
+  }
+  if (content.leftItems.length !== content.rightItems.length) {
+    ctx.addIssue({ code: 'custom', message: 'Hai cột ghép cặp phải có cùng số mục.' })
+  }
   content.pairs.forEach((pair) => {
     if (!leftIds.has(pair.leftId) || !rightIds.has(pair.rightId)) {
       ctx.addIssue({ code: 'custom', message: 'Mỗi cặp phải tham chiếu tới hai mục tồn tại.' })
     }
     const key = `${pair.leftId}:${pair.rightId}`
     if (pairKeys.has(key)) ctx.addIssue({ code: 'custom', message: 'Không được lặp lại cặp ghép.' })
+    if (pairedLeftIds.has(pair.leftId) || pairedRightIds.has(pair.rightId)) {
+      ctx.addIssue({ code: 'custom', message: 'Mỗi mục chỉ được dùng trong một cặp ghép.' })
+    }
     pairKeys.add(key)
+    pairedLeftIds.add(pair.leftId)
+    pairedRightIds.add(pair.rightId)
   })
+  if (pairedLeftIds.size !== leftIds.size || pairedRightIds.size !== rightIds.size) {
+    ctx.addIssue({ code: 'custom', message: 'Mỗi mục ở hai cột phải có đúng một cặp ghép.' })
+  }
 })
 
 export const orderingContentSchema = z.object({

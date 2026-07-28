@@ -63,4 +63,14 @@ describe('presentationRegistry', () => {
     expect(matching.success).toBe(true)
     expect(ordering.success).toBe(true)
   })
+
+  it('rejects a matching configuration that reuses one answer for multiple prompts', () => {
+    const matching = validatePresentationContent('matching', {
+      leftItems: [{ id: 'left-1', text: 'Monday' }, { id: 'left-2', text: 'Tuesday' }],
+      rightItems: [{ id: 'right-1', text: 'Thứ Hai' }, { id: 'right-2', text: 'Thứ Ba' }],
+      pairs: [{ leftId: 'left-1', rightId: 'right-1' }, { leftId: 'left-2', rightId: 'right-1' }],
+    })
+
+    expect(matching.success).toBe(false)
+  })
 })
