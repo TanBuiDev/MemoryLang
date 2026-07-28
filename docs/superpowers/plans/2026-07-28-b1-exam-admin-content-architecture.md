@@ -23,9 +23,9 @@ Nền tảng dữ liệu, registry, snapshot an toàn, publish gate và builder 
 | Publish gate | Hoàn thành | readiness client, guarded RPC `set_b1_exam_published_guarded`, test service | Audit remote cuối và thêm test lỗi policy/RLS nếu schema đổi. |
 | Admin builder | Hoàn thành phần lõi | picker, editor, preview, create/reorder/detach/add/delete question, tests | Clone/reuse section an toàn; editor media/image/passage phong phú hơn. |
 | Attempt renderer | Một phần | resolver metadata, renderer inline/choice/transformation/matching/ordering/short answer/long form, Enter regression, fallback cấu hình lỗi | Tiếp tục giảm các nhánh legacy. |
-| Result renderer | Một phần | inline, choice, transformation, matching, ordering, short answer, long form; sai nền đỏ; bài mẫu theo từng Writing/Speaking prompt; fallback cấu hình lỗi | Loại bỏ hết source-key inference ngoài fallback legacy. |
+| Result renderer | Một phần | inline, choice, transformation, matching, ordering, short answer, long form; sai nền đỏ; bài mẫu theo từng Writing/Speaking prompt; fallback cấu hình lỗi; title/icon metadata-first | Tách nốt fallback typed cho snapshot legacy. |
 | Media/TTS | Hoàn thành workflow B1 cơ bản + thay audio có xác nhận | `AdminExamMediaPage`, upload audio/sign, TTS, usage impact, alt text và preset crop Signs, warning/`ConfirmModal` khi thay audio đã publish, media service/test | Media asset library/version độc lập và xóa storage theo usage chưa hoàn chỉnh. |
-| 17 section B1 | Backfill có trong migration; regression B1 đạt | mapping `CASE`, `pnpm test` xanh 124 files/516 tests, `pnpm tsc -b`; migration remote khớp local đến `20260728103907` | Cần smoke test browser có đăng nhập để đếm/mapping đủ 17 section trên remote. |
+| 17 section B1 | Backfill có trong migration; regression B1 đạt | mapping `CASE`, `pnpm test` xanh 124 files/519 tests, `pnpm tsc -b`; migration remote khớp local đến `20260728103907` | Cần smoke test browser có đăng nhập để đếm/mapping đủ 17 section trên remote. |
 
 ### Các rủi ro không được che giấu
 
@@ -561,7 +561,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 ### Task 4: Tách result renderer theo presentation
 
-**Trạng thái audit:** Một phần. Đã có `InlineGapPassageResult`, `ChoiceQuestionResult`, `SentenceTransformationResult`, `MatchingResult`, `OrderingResult`, `ShortAnswerListResult`, `LongFormPromptResult`, review sai nền đỏ, option text và so sánh bài mẫu theo từng Writing/Speaking prompt; snapshot title/skill đã được ưu tiên. Fallback typed đầy đủ vẫn chưa tách.
+**Trạng thái audit:** Một phần. Đã có `InlineGapPassageResult`, `ChoiceQuestionResult`, `SentenceTransformationResult`, `MatchingResult`, `OrderingResult`, `ShortAnswerListResult`, `LongFormPromptResult`, review sai nền đỏ, option text và so sánh bài mẫu theo từng Writing/Speaking prompt; title/icon hiện chỉ đọc từ metadata snapshot, fallback trung tính cho attempt cũ. Fallback typed đầy đủ vẫn chưa tách.
 
 **Bằng chứng đã hoàn thành:**
 
@@ -569,7 +569,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 - [x] `InlineGapPassageResult` map option key sang nội dung đáp án trong đoạn văn.
 - [x] `SentenceTransformationResult` giữ so sánh ở mức token nhưng không tách rời bố cục câu viết lại.
 - [x] `LongFormPromptResult` tách review Writing/Speaking; sample được tải độc lập theo từng prompt, bao gồm Speaking.
-- [ ] Tạo fallback metadata-first cho mọi attempt legacy, rồi mới loại bỏ source-key inference còn lại.
+- [x] Title/icon dùng metadata snapshot; attempt legacy thiếu metadata hiển thị fallback trung tính, không suy luận từ `source_key`.
 
 **Files:**
 
@@ -578,8 +578,8 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 - Test: `src/pages/exams/ExamResultPage.test.tsx`
 
 - [x] Có regression cho wrong-selected red state, inline option text, punctuation-tolerant Writing/Speaking sample comparison.
-- [ ] Chuyển logic source-key inference sang presentation metadata.
-- [ ] Kiểm tra review của attempt legacy vẫn hiển thị được qua fallback mapping.
+- [x] Chuyển title/icon source-key inference sang presentation metadata.
+- [x] Attempt legacy vẫn hiển thị review qua fallback trung tính.
 - [x] Chạy test component liên quan và `pnpm tsc -b`.
 - [x] Commit theo presentation nhỏ: `ab01f0f refactor: extract long form result renderer`.
 
@@ -603,7 +603,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 
 ### Task 6: Các editor có giá trị cao trước
 
-**Trạng thái audit:** Một phần. Choice/boolean, inline gap, transformation, long-form/speaking, sample, preview và review authoring đã có. `passage_questions` vẫn dùng editor choice chung; image choice chưa có picker/alt/crop trong builder; validation editor chưa đủ toàn bộ contract đã mô tả.
+**Trạng thái audit:** Một phần. Choice/boolean, image choice (upload, alt text, crop), inline gap, transformation, long-form/speaking, sample, preview và review authoring đã có. `passage_questions` vẫn dùng editor choice chung; validation editor chưa đủ toàn bộ contract đã mô tả.
 
 **Files:**
 
@@ -641,7 +641,7 @@ Không mở rộng `AdminExamBuilderPage.tsx` legacy (passage sets TOEIC/IELTS) 
 - [x] Backfill mapping presentation cho 17 section ở mục 3.2 idempotently.
 - [ ] Hoàn thiện test snapshot mới, attempt UI, result UI và existing submission review cho mọi presentation (đang có regression từng phần).
 - [x] Verify remote migration khớp local đến `20260728103907`, dry-run rỗng, security advisors không có error và `pnpm tsc -b`.
-- [ ] Browser E2E đăng nhập thật cho đủ 17 section ở lượt release cuối. Remote RLS/advisors đã được kiểm tra; `pnpm test` xanh 124 files/516 tests và `pnpm tsc -b` đạt.
+- [ ] Browser E2E đăng nhập thật cho đủ 17 section ở lượt release cuối. Remote RLS/advisors đã được kiểm tra; `pnpm test` xanh 124 files/519 tests và `pnpm tsc -b` đạt.
 - [x] Commit: `feat: migrate B1 content to presentation builder`.
 
 ---

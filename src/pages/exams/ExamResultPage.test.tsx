@@ -31,8 +31,8 @@ describe('ExamResultPage', () => {
     expect(await screen.findByRole('heading', { name: 'Kết quả bài thi thử' })).toBeInTheDocument()
     expect(screen.getByText('Andrew đã xoay xở để được thăng chức.')).toBeInTheDocument()
     expect(screen.getByText(/manage \+ to-infinitive/)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Grammar' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Listening Text 1/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Phần thi' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /Phần thi/ })).toHaveLength(2)
     expect(screen.getByRole('link', { name: 'Quay lại danh sách đề' })).toHaveAttribute('href', '/app/exams')
   })
 
@@ -182,6 +182,18 @@ describe('ExamResultPage', () => {
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/app/exams/attempt/attempt-1/result']}><Routes><Route path="/app/exams/attempt/:attemptId/result" element={<ExamResultPage />} /></Routes></MemoryRouter></QueryClientProvider>)
 
     expect(await screen.findByRole('heading', { name: 'Bài đọc về môi trường' })).toBeInTheDocument()
+  })
+
+  it('does not derive a learner-facing title from a legacy source key without snapshot metadata', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: { id: 'attempt-1', status: 'submitted' },
+      sections: [{ id: 'section-1', exam_section_source_key: 'listening-text-99-internal', score: 1, max_score: 1, progress: { review: [{ section_source_key: 'listening-text-99-internal', question_source_key: 'opaque-q1', question: 'Question', user_answer: 'A', correct_option_keys: ['A'], accepted_answers: [], translation: null, explanation: null, is_correct: true }] } }],
+    } as never)
+
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/app/exams/attempt/attempt-1/result']}><Routes><Route path="/app/exams/attempt/:attemptId/result" element={<ExamResultPage />} /></Routes></MemoryRouter></QueryClientProvider>)
+
+    expect(await screen.findByRole('heading', { name: 'Phần thi' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Listening Text 99 Internal' })).not.toBeInTheDocument()
   })
 
   it('renders a structured inline-passage snapshot using its presentation type', async () => {

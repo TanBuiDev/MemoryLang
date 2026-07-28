@@ -45,40 +45,16 @@ function getReviews(sections: Array<{ progress: Record<string, unknown> }>): B1A
     )
 }
 
-function getSectionTitle(sourceKey: string, snapshotTitle?: string | null) {
+function getSectionTitle(snapshotTitle?: string | null) {
   if (snapshotTitle?.trim()) return snapshotTitle.trim()
-  const cleanKey = sourceKey.replace(/^section-\d+-/i, '')
-
-  if (cleanKey === 'grammar-use-of-english' || cleanKey === 'grammar') return 'Grammar'
-  if (cleanKey === 'signs') return 'Signs'
-  if (cleanKey === 'sentence-transformation') return 'Sentence Transformation'
-  if (cleanKey.startsWith('listening-text-')) {
-    const textNum = cleanKey.replace('listening-text-', '').replace(/-/g, ' ')
-    return `Listening Text ${textNum}`
-  }
-  if (cleanKey.startsWith('reading-text-')) {
-    const textNum = cleanKey.replace('reading-text-', '').replace(/-/g, ' ')
-    return `Reading Text ${textNum}`
-  }
-  if (cleanKey.startsWith('cloze-text-')) {
-    const textNum = cleanKey.replace('cloze-text-', '').replace(/-/g, ' ')
-    return `Cloze Text ${textNum}`
-  }
-  return cleanKey
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+  return 'Phần thi'
 }
 
-function getSkillIcon(skill: string, sourceKey: string) {
+function getSkillIcon(skill: string) {
   if (skill === 'listening') return Headphones
   if (skill === 'reading' || skill === 'cloze' || skill === 'signs') return BookOpen
   if (skill === 'transformation' || skill === 'grammar') return Sparkles
   if (skill === 'writing' || skill === 'speaking') return PenTool
-  const cleanKey = sourceKey.replace(/^section-\d+-/i, '')
-  if (cleanKey.startsWith('listening')) return Headphones
-  if (cleanKey.startsWith('reading') || cleanKey.startsWith('cloze')) return BookOpen
-  if (cleanKey === 'sentence-transformation') return Sparkles
-  if (cleanKey.startsWith('writing')) return PenTool
   return BookOpen
 }
 
@@ -595,7 +571,7 @@ export function ExamResultPage() {
 
             <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
               {reviewGroups.map((group) => {
-                const Icon = getSkillIcon(group.skill, group.sourceKey)
+                const Icon = getSkillIcon(group.skill)
                 const isSelected = effectiveSectionKey === group.sourceKey
                 return (
                   <button
@@ -610,7 +586,7 @@ export function ExamResultPage() {
                   >
                     <span className="flex items-center gap-1.5 truncate">
                       <Icon size={13} className="shrink-0" />
-                      <span className="truncate">{getSectionTitle(group.sourceKey, group.title)}</span>
+                      <span className="truncate">{getSectionTitle(group.title)}</span>
                     </span>
                     <span className="shrink-0 font-black text-[11px]">
                       {group.score}/{group.maxScore}
@@ -668,7 +644,7 @@ export function ExamResultPage() {
             </div>
           ) : (
             filteredGroups.map((group) => {
-              const Icon = getSkillIcon(group.skill, group.sourceKey)
+              const Icon = getSkillIcon(group.skill)
               const inlinePassageText = isInlineGapPresentation(group.presentationType)
                 ? getInlinePassageText(group.resource)
                 : null
@@ -686,7 +662,7 @@ export function ExamResultPage() {
                   <header className="neo-card flex flex-wrap items-center justify-between gap-3 bg-muted p-4 border-2 border-border shadow-[3px_3px_0_var(--border)]">
                     <div className="flex items-center gap-2">
                       <Icon size={20} className="text-secondary" />
-                      <h2 className="text-xl font-black text-foreground">{getSectionTitle(group.sourceKey, group.title)}</h2>
+                      <h2 className="text-xl font-black text-foreground">{getSectionTitle(group.title)}</h2>
                     </div>
                     <span className="text-sm font-black bg-background text-secondary px-3 py-1 border-2 border-border shadow-[2px_2px_0_var(--border)]">
                       Điểm phần này: {group.score}/{group.maxScore}
