@@ -123,6 +123,27 @@ function getMatchingItems(resource: SnapshotResource | undefined): { leftItems: 
   return leftItems.length > 0 && rightItems.length > 0 ? { leftItems, rightItems } : null
 }
 
+function getMatchingAnswerKey(sectionSourceKey: string, leftItemId: string) {
+  return `${sectionSourceKey}:matching:${leftItemId}`
+}
+
+function getSectionAnswerEntries(section: SnapshotSection, answers: Record<string, string>): Array<[string, string]> {
+  const presentationType = resolveAttemptPresentation({
+    resourceType: section.resource_type,
+    sectionSkill: section.skill,
+    resource: section.resource,
+  })
+  if (presentationType === 'matching') {
+    return (getMatchingItems(section.resource)?.leftItems ?? []).flatMap((leftItem) => {
+      const key = getMatchingAnswerKey(section.source_key, leftItem.id)
+      return answers[key] ? [[key, answers[key]]] : []
+    })
+  }
+  return (section.resource.questions ?? []).flatMap((question) =>
+    answers[question.source_key] ? [[question.source_key, answers[question.source_key]]] : [],
+  )
+}
+
 function getSections(snapshot: Record<string, unknown>): SnapshotSection[] {
   const sections = snapshot.sections
   return Array.isArray(sections)
@@ -228,15 +249,25 @@ export function ExamAttemptPage() {
     let totalQuestions = 0
     let answeredQuestions = 0
 
-    sections.forEach((sec) => {
-      if (sec.resource_type === 'activity' && sec.resource.questions) {
-        sec.resource.questions.forEach((q) => {
-          totalQuestions++
-          if (selectedAnswers[q.source_key] && selectedAnswers[q.source_key].trim() !== '') {
-            answeredQuestions++
-          }
-        })
+    sections.forEach((section) => {
+      if (section.resource_type !== 'activity') return
+      const presentation = resolveAttemptPresentation({
+        resourceType: section.resource_type,
+        sectionSkill: section.skill,
+        resource: section.resource,
+      })
+      if (presentation === 'matching') {
+        const leftItems = getMatchingItems(section.resource)?.leftItems ?? []
+        totalQuestions += leftItems.length
+        answeredQuestions += getSectionAnswerEntries(section, selectedAnswers).length
+        return
       }
+      ;(section.resource.questions ?? []).forEach((question) => {
+        totalQuestions++
+        if (selectedAnswers[question.source_key] && selectedAnswers[question.source_key].trim() !== '') {
+          answeredQuestions++
+        }
+      })
     })
 
     return { totalQuestions, answeredQuestions }
@@ -312,17 +343,10 @@ export function ExamAttemptPage() {
       attemptDetail?.attempt.status !== 'in_progress'
     )
       return
-    const questions = activeResource.questions ?? []
     const progress = isPrompt
       ? { content: draftContent }
       : {
-          answers: Object.fromEntries(
-            questions.flatMap((question) =>
-              selectedAnswers[question.source_key]
-                ? [[question.source_key, selectedAnswers[question.source_key]]]
-                : [],
-            ),
-          ),
+          answers: Object.fromEntries(getSectionAnswerEntries(activeSection, selectedAnswers)),
         }
     const timeoutId = window.setTimeout(
       () => autosaveProgress.mutate({ sectionSourceKey: activeSection.source_key, progress }),
@@ -373,13 +397,7 @@ export function ExamAttemptPage() {
               attemptId,
               sectionSourceKey: section.source_key,
               progress: {
-                answers: Object.fromEntries(
-                  (section.resource.questions ?? []).flatMap((question) =>
-                    selectedAnswers[question.source_key]
-                      ? [[question.source_key, selectedAnswers[question.source_key]]]
-                      : [],
-                  ),
-                ),
+                answers: Object.fromEntries(getSectionAnswerEntries(section, selectedAnswers)),
               },
               status: 'in_progress',
             }),
@@ -1058,9 +1076,15 @@ export function ExamAttemptPage() {
               <MatchingAttempt
                 leftItems={matchingItems.leftItems}
                 rightItems={matchingItems.rightItems}
-                answers={selectedAnswers}
+                answers={Object.fromEntries(matchingItems.leftItems.flatMap((leftItem) => {
+                  const key = getMatchingAnswerKey(activeSection!.source_key, leftItem.id)
+                  return selectedAnswers[key] ? [[leftItem.id, selectedAnswers[key]]] : []
+                }))}
                 disabled={isSubmitted}
-                onAnswer={(leftItemId, rightItemId) => setSelectedAnswers((current) => ({ ...current, [leftItemId]: rightItemId }))}
+                onAnswer={(leftItemId, rightItemId) => setSelectedAnswers((current) => ({
+                  ...current,
+                  [getMatchingAnswerKey(activeSection!.source_key, leftItemId)]: rightItemId,
+                }))}
               />
             ) : !isInlineGapActivity ? (
                 /* Activity Mode: Questions List with Neobrutalist Option Cards */

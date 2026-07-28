@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
 import { ExamAttemptPage } from './ExamAttemptPage'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
 
@@ -220,5 +221,40 @@ describe('ExamAttemptPage', () => {
 
     expect(await screen.findByLabelText('Ghép cặp')).toBeInTheDocument()
     expect(screen.getByText('Monday')).toBeInTheDocument()
+  })
+
+  it('autosaves matching selections with a section-scoped answer key', async () => {
+    const user = userEvent.setup()
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: {
+        id: 'attempt-1', status: 'in_progress', started_at: '2026-07-27T10:00:00.000Z', target_duration_seconds: 3600,
+        exam_snapshot: {
+          exam: { title: 'B1 DeFull' },
+          sections: [{
+            source_key: 'matching-1', skill: 'reading', title: 'Ghép từ', resource_type: 'activity',
+            resource: {
+              id: 'activity-1', activity_type: 'multiple_choice', presentation_type: 'matching',
+              presentation_config: {
+                matching: {
+                  leftItems: [{ id: 'left-1', text: 'Monday' }],
+                  rightItems: [{ id: 'right-1', text: 'Thứ Hai' }],
+                },
+              },
+              questions: [],
+            },
+          }],
+        },
+      },
+      sections: [{ id: 'section-1', exam_section_source_key: 'matching-1', progress: {}, status: 'not_started' }],
+    } as never)
+
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Chọn mục tương ứng' }))
+    await user.click(screen.getAllByText('Thứ Hai').at(-1)!)
+
+    await waitFor(() => expect(examPracticeService.saveSectionProgress).toHaveBeenCalledWith(expect.objectContaining({
+      sectionSourceKey: 'matching-1',
+      progress: { answers: { 'matching-1:matching:left-1': 'right-1' } },
+    })), { timeout: 1500 })
   })
 })
