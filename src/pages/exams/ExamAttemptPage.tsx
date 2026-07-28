@@ -1036,6 +1036,10 @@ export function ExamAttemptPage() {
                   [getMatchingAnswerKey(activeSection!.source_key, leftItemId)]: rightItemId,
                 }))}
               />
+            ) : presentationType === 'matching' ? (
+              <div role="alert" className="neo-card border-danger bg-danger/10 p-5 text-sm font-semibold text-danger shadow-[3px_3px_0_var(--border)]">
+                Phần ghép cặp này chưa có cấu hình hợp lệ.
+              </div>
             ) : presentationType === 'ordering' && getOrderingItems(activeResource).length > 0 ? (
               <OrderingAttempt
                 items={getOrderingItems(activeResource)}
@@ -1046,6 +1050,10 @@ export function ExamAttemptPage() {
                   [getOrderingAnswerKey(activeSection!.source_key)]: JSON.stringify(order),
                 }))}
               />
+            ) : presentationType === 'ordering' ? (
+              <div role="alert" className="neo-card border-danger bg-danger/10 p-5 text-sm font-semibold text-danger shadow-[3px_3px_0_var(--border)]">
+                Phần sắp xếp này chưa có cấu hình hợp lệ.
+              </div>
             ) : !isInlineGapActivity ? (
                 /* Activity Mode: Questions List with Neobrutalist Option Cards */
                 <div className="space-y-6">

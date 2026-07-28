@@ -223,6 +223,20 @@ describe('ExamAttemptPage', () => {
     expect(screen.getByText('Monday')).toBeInTheDocument()
   })
 
+  it('shows a clear fallback instead of an empty area for invalid matching configuration', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: { id: 'attempt-1', started_at: '2026-07-27T10:00:00.000Z', target_duration_seconds: 3600, exam_snapshot: { exam: { title: 'B1 DeFull' }, sections: [{
+        source_key: 'matching-invalid', skill: 'reading', title: 'Ghép từ', resource_type: 'activity',
+        resource: { id: 'activity-1', presentation_type: 'matching', questions: [] },
+      }] } },
+      sections: [{ id: 'section-1', exam_section_source_key: 'matching-invalid', progress: {}, status: 'not_started' }],
+    } as never)
+
+    renderPage()
+
+    expect(await screen.findByText('Phần ghép cặp này chưa có cấu hình hợp lệ.')).toBeInTheDocument()
+  })
+
   it('autosaves matching selections with a section-scoped answer key', async () => {
     const user = userEvent.setup()
     vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
