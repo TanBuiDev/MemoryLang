@@ -56,4 +56,46 @@ describe('adminExamMediaService', () => {
     expect(supabase.rpc).toHaveBeenCalledWith('set_b1_exam_published_guarded', { p_is_published: true })
     expect(from).not.toHaveBeenCalledWith('exams')
   })
+
+  it('lists every governed asset with its current usage references', async () => {
+    const assets = { select: vi.fn().mockReturnThis(), order: vi.fn().mockResolvedValue({ data: [
+      { id: 'asset-1', media_kind: 'audio', bucket_id: 'audio_assets', storage_path: 'b1/a.mp3', public_url: 'https://cdn.example/a.mp3', display_name: 'Listening 1', version_number: 2, replaces_asset_id: 'asset-0', created_at: '2026-07-28T00:00:00Z' },
+    ], error: null }) }
+    const usages = { select: vi.fn().mockReturnThis(), in: vi.fn().mockResolvedValue({ data: [
+      { asset_id: 'asset-1', resource_type: 'activity', resource_id: 'activity-1', usage_role: 'audio' },
+    ], error: null }) }
+    from.mockReturnValueOnce(assets as never)
+    from.mockReturnValueOnce(usages as never)
+
+    await expect(adminExamMediaService.listAssets()).resolves.toMatchObject([{
+      id: 'asset-1', media_kind: 'audio', usage_count: 1,
+      usages: [{ resource_type: 'activity', resource_id: 'activity-1', usage_role: 'audio' }],
+    }])
+  })
+
+  it('attaches an asset by replacing the resource usage and keeping the learner-facing URL in sync', async () => {
+    const update = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
+    const removeUsage = { delete: vi.fn(), eq: vi.fn() }
+    const insertUsage = { insert: vi.fn().mockResolvedValue({ error: null }) }
+    removeUsage.delete.mockReturnValue(removeUsage)
+    removeUsage.eq.mockReturnValueOnce(removeUsage).mockReturnValueOnce(removeUsage).mockResolvedValueOnce({ error: null })
+    from.mockReturnValueOnce(update as never)
+    from.mockReturnValueOnce(removeUsage as never)
+    from.mockReturnValueOnce(insertUsage as never)
+
+    await expect(adminExamMediaService.attachAudioAsset(
+      { id: 'activity-1', kind: 'activity', source_key: 'listen', title: 'Listening', skill: 'listening', text: '', audio_url: null, is_published: false },
+      { id: 'asset-1', media_kind: 'audio', bucket_id: 'audio_assets', storage_path: 'b1/a.mp3', public_url: 'https://cdn.example/a.mp3', display_name: 'Listening', version_number: 1, replaces_asset_id: null, created_at: '2026-07-28T00:00:00Z', usages: [], usage_count: 0 },
+    )).resolves.toBeUndefined()
+
+    expect(update.update).toHaveBeenCalledWith({ audio_url: 'https://cdn.example/a.mp3' })
+    expect(removeUsage.delete).toHaveBeenCalled()
+    expect(insertUsage.insert).toHaveBeenCalledWith({ asset_id: 'asset-1', resource_type: 'activity', resource_id: 'activity-1', usage_role: 'audio' })
+  })
+
+  it('refuses to delete an asset that is still attached to content', async () => {
+    await expect(adminExamMediaService.deleteAsset({
+      id: 'asset-1', media_kind: 'audio', bucket_id: 'audio_assets', storage_path: 'b1/a.mp3', public_url: 'https://cdn.example/a.mp3', display_name: 'Listening', version_number: 1, replaces_asset_id: null, created_at: '2026-07-28T00:00:00Z', usage_count: 1, usages: [{ resource_type: 'activity', resource_id: 'activity-1', usage_role: 'audio' }],
+    })).rejects.toThrow('đang được sử dụng')
+  })
 })

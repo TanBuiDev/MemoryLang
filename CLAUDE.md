@@ -93,6 +93,8 @@ src/
 | `practice_activities` | Reusable objective B1 activities with publication, access-tier, and optional audio state |
 | `practice_questions` | Objective questions attached to practice activities, including nullable image support |
 | `practice_prompts` | Reusable Writing/Speaking prompts with optional image and audio media |
+| `exam_media_assets` | Versioned admin-managed audio/image metadata, including its storage location and public URL |
+| `exam_media_asset_usages` | Explicit media references from activities, prompts, and questions; prevents deletion while used |
 | `exam_attempts` | Learner-owned timed mock-exam snapshots and elapsed/overtime state |
 | `exam_section_attempts` | Per-section learner progress, completion state, and optional draft reference |
 | `practice_draft_versions` | Immutable learner Writing/Speaking versions, capped at five per prompt |
@@ -106,6 +108,8 @@ The B1 DeFull dataset is intentionally draft-only until an admin completes its m
 Learner mock exams use guarded RPCs rather than direct client writes: `start_b1_exam_attempt` creates a learner-visible content snapshot without answer keys plus a separate RLS-hidden grading snapshot, and records the learner-selected shared timer duration. `save_b1_section_attempt_progress` persists per-section work and server-derived elapsed/overtime time; going overtime remains allowed. `abandon_b1_exam_attempt` lets only the attempt owner close an in-progress exam so it no longer appears in the learner’s resume list. `create_practice_draft_version` creates immutable Writing/Speaking drafts with a five-version limit. A B1 exam cannot start if any required section is unpublished or inaccessible, and a saved draft can be attached only to its matching prompt section.
 
 The exam-content architecture adds a versioned presentation registry that separates skill, grading mode, and learner/result UI. Current B1 resources are backfilled with `presentation_type` and `grading_mode`, while `start_b1_exam_attempt` snapshots this metadata, content blocks, presentation configuration, and review configuration without exposing option correctness. The admin content builder validates required content, audio, review details, and Writing/Speaking samples before release; it can create draft sections from a title, skill and presentation choice, creates a compatible starter resource/question (except configuration-only `matching`/`ordering` sections), add or remove compatible objective questions through the visual builder (including persisted inline gaps), reorder sections, and safely detach a section without deleting its reusable resource or learner attempt snapshots. `matching` and `ordering` have visual editor/attempt/result renderers, private grading snapshots, and guarded publish validation. Result comparison loads sample content per Writing or Speaking prompt, so each submitted script can be compared independently. The order is persisted through `exam_sections.order_index`. `set_b1_exam_published_guarded` is the remote admin-only RPC that mirrors the publish gate server-side. Legacy renderers remain the compatibility path until they are migrated to presentation-specific components.
+
+Exam media is governed through `exam_media_assets` and `exam_media_asset_usages`. Assets record their storage location, public URL, metadata and version chain; usages make activity/prompt audio and Signs images explicit. Existing B1 URLs are backfilled during the media-governance migration, managed Supabase Storage URLs are distinguishable from external/TTS URLs, and the admin media page only permits deletion when usage count is zero. Replacing source media creates a new asset while learner attempts continue to use their immutable URL snapshots.
 
 `short_answer_list` has a dedicated Result renderer that displays the learner response, accepted answer, translation, and explanation without falling back to the generic objective-card path.
 
@@ -283,7 +287,7 @@ See `AGENTS.md` for commit workflow. Conventional commits: `feat:`, `fix:`, `doc
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **MemoryLang** (6044 symbols, 10614 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **MemoryLang** (7880 symbols, 13428 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

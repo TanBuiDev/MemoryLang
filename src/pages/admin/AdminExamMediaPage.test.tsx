@@ -9,6 +9,7 @@ vi.mock('@/services/supabase/adminExamMedia.service', () => ({
     listResources: vi.fn(), listSigns: vi.fn(), listQuestionReviews: vi.fn(),
     setAudioUrl: vi.fn(), setPublished: vi.fn(), setB1ExamPublished: vi.fn(),
     uploadAudio: vi.fn(), uploadSignImage: vi.fn(), setSignImage: vi.fn(), updateSignImageAlt: vi.fn(), updateSignImageCrop: vi.fn(), updateQuestionReview: vi.fn(),
+    listAssets: vi.fn(), createExternalAudioAsset: vi.fn(), attachAudioAsset: vi.fn(), attachSignImage: vi.fn(), deleteAsset: vi.fn(),
   },
 }))
 vi.mock('@/services/api/generateAudio.api', () => ({ generateAudio: vi.fn() }))
@@ -20,6 +21,7 @@ describe('AdminExamMediaPage', () => {
     }])
     vi.mocked(adminExamMediaService.listSigns).mockResolvedValue([])
     vi.mocked(adminExamMediaService.listQuestionReviews).mockResolvedValue([])
+    vi.mocked(adminExamMediaService.listAssets).mockResolvedValue([])
 
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AdminExamMediaPage /></QueryClientProvider>)
 
@@ -39,6 +41,7 @@ describe('AdminExamMediaPage', () => {
     }])
     vi.mocked(adminExamMediaService.listSigns).mockResolvedValue([])
     vi.mocked(adminExamMediaService.listQuestionReviews).mockResolvedValue([])
+    vi.mocked(adminExamMediaService.listAssets).mockResolvedValue([])
 
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AdminExamMediaPage /></QueryClientProvider>)
 
@@ -52,6 +55,7 @@ describe('AdminExamMediaPage', () => {
       id: 'sign-1', source_key: 'sign-1', source_number: '1', prompt: 'What does this sign mean?', image_url: 'https://cdn.example/sign.png', image_alt: '', image_crop: 'contain', metadata: {},
     }])
     vi.mocked(adminExamMediaService.listQuestionReviews).mockResolvedValue([])
+    vi.mocked(adminExamMediaService.listAssets).mockResolvedValue([])
 
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AdminExamMediaPage /></QueryClientProvider>)
 
@@ -63,5 +67,21 @@ describe('AdminExamMediaPage', () => {
     expect(adminExamMediaService.updateSignImageAlt).toHaveBeenCalledWith(expect.objectContaining({ id: 'sign-1' }), 'Biển cấm đỗ xe')
     fireEvent.change(cropSelect, { target: { value: 'top' } })
     await waitFor(() => expect(adminExamMediaService.updateSignImageCrop).toHaveBeenCalledWith(expect.objectContaining({ id: 'sign-1' }), 'top'))
+  })
+
+  it('shows governed asset usage and disables deletion while content still uses it', async () => {
+    vi.mocked(adminExamMediaService.listResources).mockResolvedValue([])
+    vi.mocked(adminExamMediaService.listSigns).mockResolvedValue([])
+    vi.mocked(adminExamMediaService.listQuestionReviews).mockResolvedValue([])
+    vi.mocked(adminExamMediaService.listAssets).mockResolvedValue([{
+      id: 'asset-1', media_kind: 'audio', bucket_id: 'audio_assets', storage_path: 'b1/listen.mp3', public_url: 'https://cdn.example/listen.mp3', display_name: 'Listening 1', version_number: 2, replaces_asset_id: 'asset-0', created_at: '2026-07-28T00:00:00Z', usage_count: 1,
+      usages: [{ resource_type: 'activity', resource_id: 'listen-1', usage_role: 'audio' }],
+    }])
+
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AdminExamMediaPage /></QueryClientProvider>)
+
+    expect(await screen.findByText('Thư viện media')).toBeInTheDocument()
+    expect(await screen.findByText(/đang được dùng ở 1 nơi/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Đang được sử dụng' })).toBeDisabled()
   })
 })
