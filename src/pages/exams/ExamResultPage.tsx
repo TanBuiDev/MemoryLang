@@ -21,10 +21,11 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { InlineGapPassageResult, type QuestionOptionsMap } from '@/components/exam/presentations/InlineGapPassageResult'
 import { ChoiceQuestionResult } from '@/components/exam/presentations/ChoiceQuestionResult'
+import { SentenceTransformationResult } from '@/components/exam/presentations/SentenceTransformationResult'
 import { isInlineGapPresentation, resolveAttemptPresentation } from '@/features/exam-content/attemptPresentation'
 import { examPracticeService } from '@/services/supabase/examPractice.service'
 import type { B1AttemptQuestionReview, PracticePromptSample } from '@/types/exam.types'
-import { compareExactText, compareWritingContent, groupWritingComparisonTokens, type WritingComparisonToken } from '@/utils/writingComparison'
+import { compareWritingContent, type WritingComparisonToken } from '@/utils/writingComparison'
 
 function getReviews(sections: Array<{ progress: Record<string, unknown> }>): B1AttemptQuestionReview[] {
   return sections
@@ -202,27 +203,6 @@ function WritingTokens({ tokens, missing }: { tokens: WritingComparisonToken[]; 
         </span>
       ))}
     </p>
-  )
-}
-
-function ExactTextTokens({ tokens, missing }: { tokens: WritingComparisonToken[]; missing: boolean }) {
-  const groupedTokens = groupWritingComparisonTokens(tokens)
-
-  return (
-    <span className="font-black whitespace-pre-wrap">
-      {groupedTokens.map((token, index) => (
-        <span
-          key={`${token.value}-${index}`}
-          className={token.status === 'same'
-            ? ''
-            : missing
-              ? 'bg-yellow-300 px-0.5 text-black underline decoration-black decoration-2 underline-offset-4'
-              : 'bg-danger px-0.5 text-white line-through'}
-        >
-          {token.value}
-        </span>
-      ))}
-    </span>
   )
 }
 
@@ -863,46 +843,13 @@ export function ExamResultPage() {
 
                         {/* Question Content */}
                         {parsedTransformation ? (
-                          /* Sentence Transformation 2-Line Format */
-                          {...(() => {
-                            const correctAnswerText = [...review.accepted_answers, ...review.correct_option_keys].join(', ')
-                            const userTyped = (review.user_answer ?? '').trim()
-                            const exactComparison = compareExactText(userTyped, correctAnswerText)
-
-                            return (
-                              <div className="space-y-3">
-                                {/* Line 1: Original Sentence + (Keyword) Badge */}
-                                <div className="flex flex-wrap items-center gap-2 text-base font-bold text-foreground">
-                                  <span>{parsedTransformation.originalSentence}</span>
-                                  {parsedTransformation.keyword && (
-                                    <span className="inline-flex items-center font-black text-xs text-secondary bg-secondary/15 px-2 py-0.5 border border-border">
-                                      ({parsedTransformation.keyword})
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Line 2: Single Continuous Rewritten Sentence with Filled Content in Red (if incorrect) or Green */}
-                                <div className="flex flex-wrap items-baseline gap-1.5 pt-1 text-base font-bold text-foreground">
-                                  <span className="font-mono font-black text-secondary text-xl not-italic select-none mr-1">↳</span>
-                                  {parsedTransformation.prefixText && <span>{parsedTransformation.prefixText}</span>}
-
-                                  {review.is_correct ? (
-                                    <span className="font-black text-secondary underline decoration-secondary decoration-2 underline-offset-4 px-1">
-                                      {userTyped || correctAnswerText}
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex flex-wrap items-baseline gap-1.5">
-                                      <ExactTextTokens tokens={exactComparison.learner} missing={false} />
-                                      <span className="font-black text-muted-foreground">→</span>
-                                      <ExactTextTokens tokens={exactComparison.expected} missing />
-                                    </span>
-                                  )}
-
-                                  {parsedTransformation.suffixText && <span>{parsedTransformation.suffixText}</span>}
-                                </div>
-                              </div>
-                            )
-                          })()}
+                          <SentenceTransformationResult
+                            question={review.question}
+                            userAnswer={review.user_answer}
+                            acceptedAnswers={review.accepted_answers}
+                            correctOptionKeys={review.correct_option_keys}
+                            isCorrect={review.is_correct}
+                          />
                         ) : (
                           /* Standard Question Prompt */
                           <h3 className="text-base font-black leading-snug text-foreground whitespace-pre-wrap">
