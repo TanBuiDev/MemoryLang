@@ -11,6 +11,10 @@ export interface B1MediaResource {
   text: string
   audio_url: string | null
   is_published: boolean
+  usage?: {
+    sectionCount: number
+    exams: string[]
+  }
 }
 
 export interface B1SignQuestion {
@@ -39,7 +43,7 @@ export const adminExamMediaService = {
       .eq('exam.source_key', 'b1-de-full-copy')
       .order('order_index')
     if (error) throw error
-    return (data ?? []).flatMap((section: any) => {
+    const resources = (data ?? []).flatMap((section: any) => {
       const item = section.resource_type === 'activity' ? section.activity : section.prompt
       if (!item) return []
       return [{
@@ -48,6 +52,31 @@ export const adminExamMediaService = {
         text: item.passage || item.prompt || item.content || '',
       }]
     }) as B1MediaResource[]
+    const resourceIds = [...new Set(resources.map((resource) => resource.id))]
+    if (resourceIds.length === 0) return resources
+
+    const { data: usageRows, error: usageError } = await supabase
+      .from('exam_sections')
+      .select('resource_id,resource_type,exam:exams(title)')
+      .in('resource_id', resourceIds)
+    if (usageError) throw usageError
+
+    const usageByResource = new Map<string, { sectionCount: number; exams: Set<string> }>()
+    for (const row of usageRows ?? []) {
+      const key = `${row.resource_type}:${row.resource_id}`
+      const entry = usageByResource.get(key) ?? { sectionCount: 0, exams: new Set<string>() }
+      entry.sectionCount += 1
+      const exams = Array.isArray(row.exam) ? row.exam : row.exam ? [row.exam] : []
+      for (const exam of exams) {
+        if (typeof exam.title === 'string' && exam.title.trim()) entry.exams.add(exam.title)
+      }
+      usageByResource.set(key, entry)
+    }
+
+    return resources.map((resource) => {
+      const usage = usageByResource.get(`${resource.kind}:${resource.id}`)
+      return usage ? { ...resource, usage: { sectionCount: usage.sectionCount, exams: [...usage.exams] } } : resource
+    })
   },
 
   async setAudioUrl(resource: B1MediaResource, audioUrl: string | null): Promise<void> {

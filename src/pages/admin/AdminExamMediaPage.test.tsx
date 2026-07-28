@@ -31,4 +31,18 @@ describe('AdminExamMediaPage', () => {
     expect(screen.getByText(/attempt đã bắt đầu giữ nguyên snapshot/i)).toBeInTheDocument()
     expect(adminExamMediaService.setAudioUrl).not.toHaveBeenCalled()
   })
+
+  it('shows usage impact before an admin manages shared media', async () => {
+    vi.mocked(adminExamMediaService.listResources).mockResolvedValue([{
+      id: 'listen-1', source_key: 'listening-1', title: 'Listening 1', skill: 'listening', kind: 'activity', text: 'Listen.', audio_url: null, is_published: false,
+      usage: { sectionCount: 2, exams: ['B1 DeFull', 'B1 luyện tập'] },
+    }])
+    vi.mocked(adminExamMediaService.listSigns).mockResolvedValue([])
+    vi.mocked(adminExamMediaService.listQuestionReviews).mockResolvedValue([])
+
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AdminExamMediaPage /></QueryClientProvider>)
+
+    expect(await screen.findByText(/Đang được dùng trong 2 section/i)).toBeInTheDocument()
+    expect(screen.getByText(/B1 DeFull.*B1 luyện tập/i)).toBeInTheDocument()
+  })
 })
