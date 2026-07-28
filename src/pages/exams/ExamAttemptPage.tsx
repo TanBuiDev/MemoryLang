@@ -26,6 +26,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { InlineChoicePassageAttempt } from '@/components/exam/presentations/InlineChoicePassageAttempt'
 import { ChoiceListAttempt } from '@/components/exam/presentations/ChoiceListAttempt'
+import { MatchingAttempt, type MatchingAttemptItem } from '@/components/exam/presentations/MatchingAttempt'
 import { ShortAnswerListAttempt } from '@/components/exam/presentations/ShortAnswerListAttempt'
 import { SentenceTransformationAttempt } from '@/components/exam/presentations/SentenceTransformationAttempt'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -61,6 +62,7 @@ interface SnapshotResource {
   passage?: string | null
   audio_url?: string | null
   content_blocks?: unknown
+  presentation_config?: Record<string, unknown>
   questions?: SnapshotQuestion[]
 }
 
@@ -101,6 +103,24 @@ function getInlinePassageText(resource: SnapshotResource | undefined): string | 
   }
 
   return resource.passage ?? resource.content ?? null
+}
+
+function getMatchingItems(resource: SnapshotResource | undefined): { leftItems: MatchingAttemptItem[]; rightItems: MatchingAttemptItem[] } | null {
+  const matching = resource?.presentation_config?.matching
+  if (!matching || typeof matching !== 'object') return null
+  const record = matching as Record<string, unknown>
+  const toItems = (value: unknown): MatchingAttemptItem[] => Array.isArray(value)
+    ? value.flatMap((item) => {
+      if (!item || typeof item !== 'object') return []
+      const candidate = item as Record<string, unknown>
+      return typeof candidate.id === 'string' && typeof candidate.text === 'string'
+        ? [{ id: candidate.id, text: candidate.text }]
+        : []
+    })
+    : []
+  const leftItems = toItems(record.leftItems)
+  const rightItems = toItems(record.rightItems)
+  return leftItems.length > 0 && rightItems.length > 0 ? { leftItems, rightItems } : null
 }
 
 function getSections(snapshot: Record<string, unknown>): SnapshotSection[] {
@@ -194,6 +214,7 @@ export function ExamAttemptPage() {
   const isInlineGapActivity =
     Boolean(presentationType && isInlineGapPresentation(presentationType)) &&
     Boolean(inlinePassageText && /(\(\d+\)\s*_{2,})/.test(inlinePassageText))
+  const matchingItems = presentationType === 'matching' ? getMatchingItems(activeResource) : null
   const timer = attemptDetail
     ? getAttemptTimerState(
         attemptDetail.attempt.started_at,
@@ -1032,6 +1053,14 @@ export function ExamAttemptPage() {
                 answers={selectedAnswers}
                 disabled={isSubmitted}
                 onAnswer={(questionKey, answer) => setSelectedAnswers((current) => ({ ...current, [questionKey]: answer }))}
+              />
+            ) : presentationType === 'matching' && matchingItems ? (
+              <MatchingAttempt
+                leftItems={matchingItems.leftItems}
+                rightItems={matchingItems.rightItems}
+                answers={selectedAnswers}
+                disabled={isSubmitted}
+                onAnswer={(leftItemId, rightItemId) => setSelectedAnswers((current) => ({ ...current, [leftItemId]: rightItemId }))}
               />
             ) : !isInlineGapActivity ? (
                 /* Activity Mode: Questions List with Neobrutalist Option Cards */

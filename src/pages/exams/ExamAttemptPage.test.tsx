@@ -191,4 +191,34 @@ describe('ExamAttemptPage', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(answers[1]))
   })
+
+  it('renders a matching section from presentation metadata instead of the legacy question list', async () => {
+    vi.mocked(examPracticeService.getAttempt).mockResolvedValue({
+      attempt: {
+        id: 'attempt-1', started_at: '2026-07-27T10:00:00.000Z', target_duration_seconds: 3600,
+        exam_snapshot: {
+          exam: { title: 'B1 DeFull' },
+          sections: [{
+            source_key: 'matching-1', skill: 'reading', title: 'Ghép từ', resource_type: 'activity',
+            resource: {
+              id: 'activity-1', activity_type: 'multiple_choice', presentation_type: 'matching',
+              presentation_config: {
+                matching: {
+                  leftItems: [{ id: 'left-1', text: 'Monday' }],
+                  rightItems: [{ id: 'right-1', text: 'Thứ Hai' }],
+                },
+              },
+              questions: [],
+            },
+          }],
+        },
+      },
+      sections: [{ id: 'section-1', exam_section_source_key: 'matching-1', progress: {}, status: 'not_started' }],
+    } as never)
+
+    renderPage()
+
+    expect(await screen.findByLabelText('Ghép cặp')).toBeInTheDocument()
+    expect(screen.getByText('Monday')).toBeInTheDocument()
+  })
 })
