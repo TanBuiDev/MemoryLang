@@ -87,14 +87,36 @@ async function replaceAssetUsage(input: { assetId: string; resourceType: B1Media
 
 export const adminExamMediaService = {
   async listResources(): Promise<B1MediaResource[]> {
-    const { data, error } = await supabase
+    const { data: exam, error: examError } = await supabase
+      .from('exams')
+      .select('id')
+      .eq('source_key', 'b1-de-full-copy')
+      .single()
+    if (examError) throw examError
+
+    const { data: sections, error } = await supabase
       .from('exam_sections')
-      .select('resource_type,activity:practice_activities(id,source_key,title,skill,content,passage,audio_url,is_published),prompt:practice_prompts(id,source_key,title,skill,prompt,content,audio_url,is_published),exam:exams!inner(source_key)')
-      .eq('exam.source_key', 'b1-de-full-copy')
+      .select('resource_type,resource_id')
+      .eq('exam_id', exam.id)
       .order('order_index')
     if (error) throw error
-    const resources = (data ?? []).flatMap((section: any) => {
-      const item = section.resource_type === 'activity' ? section.activity : section.prompt
+    const activityIds = [...new Set((sections ?? []).filter((section) => section.resource_type === 'activity').map((section) => section.resource_id))]
+    const promptIds = [...new Set((sections ?? []).filter((section) => section.resource_type === 'prompt').map((section) => section.resource_id))]
+    const [activityResult, promptResult] = await Promise.all([
+      activityIds.length > 0
+        ? supabase.from('practice_activities').select('id,source_key,title,skill,content,passage,audio_url,is_published').in('id', activityIds)
+        : Promise.resolve({ data: [], error: null }),
+      promptIds.length > 0
+        ? supabase.from('practice_prompts').select('id,source_key,title,skill,prompt,content,audio_url,is_published').in('id', promptIds)
+        : Promise.resolve({ data: [], error: null }),
+    ])
+    if (activityResult.error) throw activityResult.error
+    if (promptResult.error) throw promptResult.error
+
+    const activitiesById = new Map((activityResult.data ?? []).map((activity: any) => [activity.id, activity]))
+    const promptsById = new Map((promptResult.data ?? []).map((prompt: any) => [prompt.id, prompt]))
+    const resources = (sections ?? []).flatMap((section) => {
+      const item = section.resource_type === 'activity' ? activitiesById.get(section.resource_id) : promptsById.get(section.resource_id)
       if (!item) return []
       return [{ ...item, kind: section.resource_type as B1MediaResourceKind, text: item.passage || item.prompt || item.content || '' }]
     }) as B1MediaResource[]
@@ -254,10 +276,27 @@ export const adminExamMediaService = {
   },
 
   async listQuestionReviews(): Promise<B1QuestionReviewEditor[]> {
+    const { data: exam, error: examError } = await supabase
+      .from('exams')
+      .select('id')
+      .eq('source_key', 'b1-de-full-copy')
+      .single()
+    if (examError) throw examError
+
+    const { data: sections, error: sectionsError } = await supabase
+      .from('exam_sections')
+      .select('resource_id')
+      .eq('exam_id', exam.id)
+      .eq('resource_type', 'activity')
+      .order('order_index')
+    if (sectionsError) throw sectionsError
+    const activityIds = [...new Set((sections ?? []).map((section) => section.resource_id))]
+    if (activityIds.length === 0) return []
+
     const { data, error } = await supabase
       .from('practice_questions')
-      .select('id,source_key,source_number,prompt,translation,explanation,activity:practice_activities!inner(title,exam_sections!inner(exam:exams!inner(source_key)))')
-      .eq('activity.exam_sections.exam.source_key', 'b1-de-full-copy')
+      .select('id,source_key,source_number,prompt,translation,explanation,activity:practice_activities(title)')
+      .in('activity_id', activityIds)
       .order('order_index')
     if (error) throw error
     return (data ?? []).map((question: any) => ({ ...question, activity_title: question.activity?.title ?? 'B1' })) as B1QuestionReviewEditor[]

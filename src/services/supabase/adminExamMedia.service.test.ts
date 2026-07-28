@@ -12,16 +12,27 @@ describe('adminExamMediaService', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('lists only B1 resources that can carry listening or TTS media', async () => {
+    const exam = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { id: 'b1-exam' }, error: null }) }
     const sections = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockResolvedValue({ data: [
-      { resource_type: 'activity', activity: { id: 'a-1', source_key: 'listen', title: 'Nghe', skill: 'listening', content: 'Hallo', audio_url: null, is_published: false }, prompt: null },
-      { resource_type: 'activity', activity: { id: 'a-2', source_key: 'grammar', title: 'Ngữ pháp', skill: 'grammar', content: 'x', audio_url: null, is_published: false }, prompt: null },
-      { resource_type: 'prompt', activity: null, prompt: { id: 'p-1', source_key: 'speak', title: 'Nói', skill: 'speaking', prompt: 'Nói về bạn', audio_url: null, is_published: false } },
+      { resource_type: 'activity', resource_id: 'a-1' },
+      { resource_type: 'activity', resource_id: 'a-2' },
+      { resource_type: 'prompt', resource_id: 'p-1' },
+    ], error: null }) }
+    const activities = { select: vi.fn().mockReturnThis(), in: vi.fn().mockResolvedValue({ data: [
+      { id: 'a-1', source_key: 'listen', title: 'Nghe', skill: 'listening', content: 'Hallo', passage: null, audio_url: null, is_published: false },
+      { id: 'a-2', source_key: 'grammar', title: 'Ngữ pháp', skill: 'grammar', content: 'x', passage: null, audio_url: null, is_published: false },
+    ], error: null }) }
+    const prompts = { select: vi.fn().mockReturnThis(), in: vi.fn().mockResolvedValue({ data: [
+      { id: 'p-1', source_key: 'speak', title: 'Nói', skill: 'speaking', prompt: 'Nói về bạn', content: null, audio_url: null, is_published: false },
     ], error: null }) }
     const usage = { select: vi.fn().mockReturnThis(), in: vi.fn().mockResolvedValue({ data: [
       { resource_id: 'a-1', resource_type: 'activity', exam: [{ title: 'Đề B1 chính' }] },
       { resource_id: 'a-1', resource_type: 'activity', exam: [{ title: 'Đề B1 phụ' }] },
     ], error: null }) }
+    from.mockReturnValueOnce(exam as never)
     from.mockReturnValueOnce(sections as never)
+    from.mockReturnValueOnce(activities as never)
+    from.mockReturnValueOnce(prompts as never)
     from.mockReturnValueOnce(usage as never)
 
     await expect(adminExamMediaService.listResources()).resolves.toMatchObject([
@@ -29,9 +40,27 @@ describe('adminExamMediaService', () => {
       { id: 'a-2', kind: 'activity', text: 'x' },
       { id: 'p-1', kind: 'prompt', text: 'Nói về bạn' },
     ])
-    expect(from).toHaveBeenCalledWith('exam_sections')
-    expect(sections.eq).toHaveBeenCalledWith('exam.source_key', 'b1-de-full-copy')
+    expect(from).toHaveBeenCalledWith('exams')
+    expect(exam.eq).toHaveBeenCalledWith('source_key', 'b1-de-full-copy')
+    expect(sections.eq).toHaveBeenCalledWith('exam_id', 'b1-exam')
+    expect(activities.in).toHaveBeenCalledWith('id', ['a-1', 'a-2'])
+    expect(prompts.in).toHaveBeenCalledWith('id', ['p-1'])
     expect(usage.in).toHaveBeenCalledWith('resource_id', ['a-1', 'a-2', 'p-1'])
+  })
+
+  it('lists B1 question reviews through section resource IDs instead of a polymorphic embedded relation', async () => {
+    const exam = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { id: 'b1-exam' }, error: null }) }
+    const sections = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockResolvedValue({ data: [{ resource_id: 'activity-1' }], error: null }) }
+    const questions = { select: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), order: vi.fn().mockResolvedValue({ data: [{ id: 'question-1', source_key: 'q-1', source_number: '1', prompt: 'Question', translation: null, explanation: null, activity: { title: 'Grammar' } }], error: null }) }
+    from.mockReturnValueOnce(exam as never)
+    from.mockReturnValueOnce(sections as never)
+    from.mockReturnValueOnce(questions as never)
+
+    await expect(adminExamMediaService.listQuestionReviews()).resolves.toEqual([expect.objectContaining({ id: 'question-1', activity_title: 'Grammar' })])
+
+    expect(sections.eq).toHaveBeenNthCalledWith(1, 'exam_id', 'b1-exam')
+    expect(sections.eq).toHaveBeenNthCalledWith(2, 'resource_type', 'activity')
+    expect(questions.in).toHaveBeenCalledWith('activity_id', ['activity-1'])
   })
 
   it('updates Vietnamese translations and explanations for a B1 question', async () => {
