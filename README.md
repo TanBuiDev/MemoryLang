@@ -54,14 +54,14 @@ UNSPLASH_ACCESS_KEY=your_unsplash_access_key
 PEXELS_API_KEY=your_pexels_api_key
 PIXABAY_API_KEY=your_pixabay_api_key
 
-# Google Gemini API Key (used by Edge Function parse-exam-vision & AI Vision modal)
-# Note: Admins can also configure/test Gemini API Key directly in the UI at /app/admin/secrets!
-VITE_GEMINI_API_KEY=your_gemini_api_key
+# Do not add provider/API secrets to VITE_* variables. They are bundled into
+# the browser. Configure Gemini only as an Edge Function secret or through
+# the write-only admin vault UI after signing in.
 ```
 
 Without `VITE_SUPABASE_*` variables, the app runs in **demo mode** with hardcoded data.
 
-After setting or changing API keys in `.env`, sync them to Supabase Edge Function secrets:
+After setting or changing server-side API keys in `.env`, sync them to Supabase Edge Function secrets:
 
 ```bash
 pnpm sync:secrets
@@ -116,7 +116,7 @@ supabase/
 ## Deployment
 
 ```bash
-# Sync API keys from .env to Supabase
+# Sync server-side API keys from .env to Supabase
 pnpm sync:secrets
 npx supabase secrets set GEMINI_API_KEY=your_gemini_api_key
 
