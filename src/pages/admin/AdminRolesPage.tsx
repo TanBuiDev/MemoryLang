@@ -86,12 +86,16 @@ export default function AdminRolesPage() {
   }
 
   const queuePermissionChange = (permission: RbacPermission, roleCode: string, checked: boolean) => {
+    if (!reason.trim()) {
+      setError('Vui lòng nhập lý do trước khi thay đổi ma trận quyền.')
+      return
+    }
     setPendingMutations([{
       kind: 'permission',
       action: checked ? 'grant' : 'revoke',
       roleCode,
       permissionCode: permission.code,
-      reason: reason.trim() || 'Cập nhật ma trận quyền từ giao diện quản trị.',
+      reason: reason.trim(),
     }])
   }
 

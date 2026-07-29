@@ -44,6 +44,7 @@ describe('AdminRolesPage', () => {
     await screen.findByText('Exam administrator')
 
     await user.click(screen.getByRole('button', { name: /ma trận quyền/i }))
+    await user.type(screen.getByLabelText(/lý do thay đổi ma trận/i), 'Rà soát quyền đọc đề thi')
     await user.click(screen.getByRole('checkbox', { name: /exam.read.*security administrator/i }))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(invoke).not.toHaveBeenCalled()
