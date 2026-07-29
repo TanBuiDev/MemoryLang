@@ -328,9 +328,9 @@ export default function AdminRolesPage() {
 
       {/* TAB 1: PHÂN QUYỀN NGƯỜI DÙNG */}
       {activeTab === 'users' ? (
-        <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] space-y-6">
-          {/* Header & Filter bar */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b-2 border-border pb-4">
+        <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] space-y-5">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-border pb-3">
             <div>
               <h2 className="text-lg font-black text-foreground uppercase tracking-wide flex items-center gap-2">
                 <UsersRound size={20} className="text-primary" />
@@ -340,45 +340,65 @@ export default function AdminRolesPage() {
                 Mỗi thao tác gán hoặc gỡ vai trò đều được ghi lại trong audit log hệ thống.
               </p>
             </div>
+            <div className="text-xs font-black text-muted-foreground">
+              Hiển thị <span className="text-foreground font-black">{filteredUsers.length}</span> / {overview.users.length} tài khoản
+            </div>
+          </div>
 
-            {/* Filter controls */}
-            <div className="flex flex-wrap items-center gap-2">
+          {/* Dedicated Full-Width Filter & Search Toolbar Bar */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-muted/40 p-3.5 rounded-xl border-2 border-border">
+            {/* Search Input on Left - Spacious Width */}
+            <div className="w-full lg:w-96 shrink-0">
               <SearchInput
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') void loadOverview(query)
                 }}
-                placeholder="Tìm theo tên hoặc email..."
+                placeholder="Tìm người dùng theo tên hoặc email..."
                 aria-label="Tìm người dùng"
-                className="md:w-72"
+                className="w-full bg-white"
               />
+            </div>
 
-              {/* Role filter buttons */}
-              <div className="flex items-center gap-1 bg-muted p-1 rounded-lg border-2 border-border">
-                <Filter size={14} className="text-muted-foreground ml-1 mr-0.5" />
-                <button
-                  type="button"
-                  onClick={() => setSelectedRoleFilter('all')}
-                  className={`px-2 py-1 text-xs font-black rounded ${
-                    selectedRoleFilter === 'all' ? 'bg-primary text-primary-foreground border border-border shadow-[1px_1px_0_var(--border)]' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Tất cả
-                </button>
-                {roles.map((role) => (
+            {/* Role Filter Chips on Right */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex items-center gap-1 text-xs font-black text-muted-foreground mr-1">
+                <Filter size={14} className="text-primary" />
+                <span>Vai trò:</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedRoleFilter('all')}
+                className={`px-3 py-1.5 text-xs font-black rounded-lg border-2 transition-all ${
+                  selectedRoleFilter === 'all'
+                    ? 'bg-primary text-primary-foreground border-border shadow-[2px_2px_0_var(--border)]'
+                    : 'bg-white text-muted-foreground border-border hover:bg-slate-50'
+                }`}
+              >
+                Tất cả ({overview.users.length})
+              </button>
+              {roles.map((role) => {
+                const count = overview.users.filter((u) =>
+                  role.code === 'user' ? u.roleCodes.length === 0 : u.roleCodes.includes(role.code),
+                ).length
+                const isActive = selectedRoleFilter === role.code
+
+                return (
                   <button
                     key={role.code}
                     type="button"
                     onClick={() => setSelectedRoleFilter(role.code)}
-                    className={`px-2 py-1 text-xs font-black rounded ${
-                      selectedRoleFilter === role.code ? 'bg-primary text-primary-foreground border border-border shadow-[1px_1px_0_var(--border)]' : 'text-muted-foreground hover:text-foreground'
+                    className={`px-3 py-1.5 text-xs font-black rounded-lg border-2 transition-all ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground border-border shadow-[2px_2px_0_var(--border)]'
+                        : 'bg-white text-muted-foreground border-border hover:bg-slate-50'
                     }`}
                   >
-                    {role.code}
+                    {role.code} ({count})
                   </button>
-                ))}
-              </div>
+                )
+              })}
             </div>
           </div>
 
@@ -457,9 +477,9 @@ export default function AdminRolesPage() {
         </section>
       ) : (
         /* TAB 2: MA TRẬN QUYỀN */
-        <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] space-y-6">
-          {/* Header & Actions */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b-2 border-border pb-4">
+        <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] space-y-5">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-border pb-3">
             <div>
               <h2 className="text-lg font-black text-foreground uppercase tracking-wide flex items-center gap-2">
                 <SlidersHorizontal size={20} className="text-primary" />
@@ -469,21 +489,34 @@ export default function AdminRolesPage() {
                 Đánh dấu checkbox để sửa nháp. Nhấn "Lưu thay đổi" để xác nhận lưu vào hệ thống.
               </p>
             </div>
+          </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+          {/* Dedicated Full-Width Filter & Actions Toolbar Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/40 p-3.5 rounded-xl border-2 border-border">
+            {/* Search Input on Left - Wide & Unclipped */}
+            <div className="w-full sm:w-96 shrink-0">
               <SearchInput
                 value={matrixQuery}
                 onChange={(e) => setMatrixQuery(e.target.value)}
-                placeholder="Tìm quyền hạn (ví dụ: exam, role)..."
+                placeholder="Tìm kiếm quyền hạn (ví dụ: exam, role)..."
                 aria-label="Tìm quyền hạn"
-                className="w-full sm:w-64"
+                className="w-full bg-white"
               />
+            </div>
+
+            {/* Actions on Right - Single Row */}
+            <div className="flex items-center gap-3 shrink-0">
+              {matrixChanges.length > 0 && (
+                <span className="text-xs font-black text-amber-950 bg-amber-200 px-2.5 py-1 rounded-lg border border-amber-400">
+                  {matrixChanges.length} bản nháp chưa lưu
+                </span>
+              )}
 
               <Button
                 disabled={!canEditMatrix || matrixChanges.length === 0}
                 onClick={queueMatrixChanges}
                 variant="primary"
-                className="font-black"
+                className="font-black shrink-0"
               >
                 Lưu thay đổi ({matrixChanges.length})
               </Button>
@@ -499,7 +532,7 @@ export default function AdminRolesPage() {
                     Quyền hạn (Permission)
                   </th>
                   {roles.map((role) => (
-                    <th key={role.code} className="border-r-2 border-border p-3.5 text-center font-black text-amber-950">
+                    <th key={role.code} className="border-r-2 border-border p-3.5 text-center font-black text-amber-950 min-w-[130px]">
                       <div className="flex flex-col items-center gap-1">
                         <span className={`px-2 py-0.5 rounded text-[11px] uppercase ${getRoleBadgeStyle(role.code)}`}>
                           {roleLabel(role)}
