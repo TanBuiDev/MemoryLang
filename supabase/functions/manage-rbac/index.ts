@@ -12,7 +12,7 @@ const roleRequestSchema = z.object({
 const permissionRequestSchema = z.object({
   kind: z.literal('permission'),
   action: z.enum(['grant', 'revoke']),
-  roleCode: z.enum(['support_admin', 'exam_admin', 'security_admin']),
+  roleCode: z.enum(['user', 'support_admin', 'exam_admin', 'security_admin', 'super_admin']),
   permissionCode: z.string().regex(/^[a-z_]+\.[a-z_]+(?:\.[a-z_]+)?$/),
   reason: z.string().trim().max(500).optional(),
 })
@@ -54,7 +54,9 @@ Deno.serve(async (req) => {
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
   const sessionId = getSessionId(authHeader)
   if (authError || !user || !sessionId) return json({ error: 'Unauthorized.' }, 401)
-  if (parsed.data.kind === 'role' && parsed.data.targetUserId === user.id) return json({ error: 'Invalid request.' }, 400)
+  if (parsed.data.kind === 'role' && parsed.data.targetUserId === user.id && parsed.data.roleCode === 'super_admin' && parsed.data.action === 'revoke') {
+    return json({ error: 'A super administrator cannot remove their own recovery role.' }, 400)
+  }
 
   const [{ data: mfaVerified, error: mfaError }, { data: activeSession, error: sessionError }] = await Promise.all([
     supabaseUser.rpc('is_mfa_verified'),
