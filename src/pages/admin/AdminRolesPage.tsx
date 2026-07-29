@@ -277,8 +277,21 @@ export default function AdminRolesPage() {
     const totalPermissions = overview.permissions.length
     const superAdminsCount = overview.users.filter((u) => u.roleCodes.includes('super_admin')).length
     const proCount = accountUsers.filter((u) => u.subscriptions?.plan_type === 'pro').length
-    return { totalUsers, totalRoles, totalPermissions, superAdminsCount, proCount }
+    const adminAccountsCount = accountUsers.filter((u) => u.is_admin).length
+    return { totalUsers, totalRoles, totalPermissions, superAdminsCount, proCount, adminAccountsCount }
   }, [overview, roles, accountUsers])
+
+  // Partition account users into Admin/Staff section (at top) and Learner section (below)
+  const { adminAccountUsers, learnerAccountUsers } = useMemo(() => {
+    const admins = accountUsers.filter((u) => u.is_admin)
+    const learners = accountUsers.filter((u) => !u.is_admin)
+    const filteredLearners = learners.filter((user) => {
+      if (learnerFilter === 'pro') return user.subscriptions?.plan_type === 'pro'
+      if (learnerFilter === 'free') return !user.subscriptions || user.subscriptions.plan_type === 'free'
+      return true
+    })
+    return { adminAccountUsers: admins, learnerAccountUsers: filteredLearners }
+  }, [accountUsers, learnerFilter])
 
   // Filtered users for Tab 2
   const filteredUsers = useMemo(() => {
@@ -294,15 +307,6 @@ export default function AdminRolesPage() {
       return matchQuery && matchRole
     })
   }, [overview.users, query, selectedRoleFilter])
-
-  // Filtered Account Users for Tab 1
-  const filteredAccountUsers = useMemo(() => {
-    return accountUsers.filter((user) => {
-      if (learnerFilter === 'pro') return user.subscriptions?.plan_type === 'pro'
-      if (learnerFilter === 'free') return !user.subscriptions || user.subscriptions.plan_type === 'free'
-      return true
-    })
-  }, [accountUsers, learnerFilter])
 
   // Matrix search and grouping by prefix
   const filteredPermissions = useMemo(() => {
@@ -636,13 +640,13 @@ export default function AdminRolesPage() {
             <Users size={15} className="text-primary" />
             <span>{metrics.totalUsers} Người dùng</span>
           </div>
+          <div className="flex items-center gap-2 border-2 border-border bg-rose-100 text-rose-950 px-3 py-1.5 text-xs font-black shadow-[2px_2px_0_var(--border)]">
+            <ShieldAlert size={15} className="text-rose-600" />
+            <span>{metrics.adminAccountsCount} Quản trị viên</span>
+          </div>
           <div className="flex items-center gap-2 border-2 border-border bg-amber-100 text-amber-950 px-3 py-1.5 text-xs font-black shadow-[2px_2px_0_var(--border)]">
             <Crown size={15} className="text-amber-600" />
             <span>{metrics.proCount} Gói Pro</span>
-          </div>
-          <div className="flex items-center gap-2 border-2 border-border bg-purple-100 text-purple-950 px-3 py-1.5 text-xs font-black shadow-[2px_2px_0_var(--border)]">
-            <Shield size={15} className="text-purple-700" />
-            <span>{metrics.totalRoles} Vai trò</span>
           </div>
         </div>
       </header>
@@ -701,57 +705,102 @@ export default function AdminRolesPage() {
         </div>
       </div>
 
-      {/* TAB 1: DANH SÁCH TÀI KHOẢN & GÓI CƯỚC */}
+      {/* TAB 1: DANH SÁCH TÀI KHOẢN & GÓI CƯỚC (GỘM ADMIN TÊN CÙNG + ĐƯỜNG PHÂN CÁCH RÕ RÀNG) */}
       {activeTab === 'accounts' && (
-        <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-border pb-3">
-            <div>
-              <h2 className="text-lg font-black text-foreground uppercase tracking-wide flex items-center gap-2">
-                <Users size={20} className="text-primary" />
-                Danh sách Tài khoản & Gói cước
-              </h2>
-              <p className="text-xs font-semibold text-muted-foreground mt-0.5">
-                Quản lý toàn bộ học viên, cấp/gỡ quyền Admin, đổi gói cước Pro/Free và cấu hình mật khẩu.
-              </p>
+        <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] space-y-6">
+          {/* Main Tab 1 Title */}
+          <div>
+            <h2 className="text-lg font-black text-foreground uppercase tracking-wide flex items-center gap-2">
+              <Users size={20} className="text-primary" />
+              Quản lý Tài khoản & Phân cấp Ban Quản trị
+            </h2>
+            <p className="text-xs font-semibold text-muted-foreground mt-0.5">
+              Phân tách rõ ràng giữa Ban Quản trị và Học viên, hỗ trợ đổi gói cước Pro/Free và cấu hình quyền đăng nhập mật khẩu.
+            </p>
+          </div>
+
+          {/* SECTION 1: QUẢN TRỊ VIÊN & STAFF (GỘM TRÊN CÙNG) */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b-2 border-border pb-2">
+              <div className="flex items-center gap-2">
+                <ShieldAlert size={18} className="text-rose-600" />
+                <h3 className="text-sm font-black text-foreground uppercase tracking-wide">
+                  Tài khoản Quản trị & Staff ({adminAccountUsers.length})
+                </h3>
+              </div>
+              <span className="text-xs font-bold text-muted-foreground">Tài khoản có quyền điều hành và quản trị hệ thống</span>
             </div>
 
-            {/* Learner Filter Tabs */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant={learnerFilter === 'all' ? 'primary' : 'ghost'}
-                onClick={() => setLearnerFilter('all')}
-                className="min-h-8 px-3 text-xs font-black"
-              >
-                Tất cả ({accountUsers.length})
-              </Button>
-              <Button
-                type="button"
-                variant={learnerFilter === 'pro' ? 'primary' : 'ghost'}
-                onClick={() => setLearnerFilter('pro')}
-                className="min-h-8 px-3 text-xs font-black"
-              >
-                <Crown size={13} /> Gói Pro ({metrics.proCount})
-              </Button>
-              <Button
-                type="button"
-                variant={learnerFilter === 'free' ? 'primary' : 'ghost'}
-                onClick={() => setLearnerFilter('free')}
-                className="min-h-8 px-3 text-xs font-black"
-              >
-                Gói Free ({accountUsers.length - metrics.proCount})
-              </Button>
+            <div className="neo-card bg-card p-4 shadow-[4px_4px_0_var(--border)] border-3 border-border">
+              <DataTable
+                columns={accountColumns}
+                data={adminAccountUsers}
+                searchPlaceholder="Tìm kiếm quản trị viên theo tên hoặc email..."
+                searchFilter={accountSearchFilter}
+                isLoading={accountsLoading}
+              />
             </div>
           </div>
 
-          <div className="neo-card bg-card p-4 shadow-[4px_4px_0_var(--border)] border-3 border-border">
-            <DataTable
-              columns={accountColumns}
-              data={filteredAccountUsers}
-              searchPlaceholder="Tìm kiếm tài khoản theo tên hoặc email..."
-              searchFilter={accountSearchFilter}
-              isLoading={accountsLoading}
-            />
+          {/* CLEAR HORIZONTAL DIVIDER SEPARATOR */}
+          <div className="relative my-8 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t-3 border-dashed border-slate-900" />
+            </div>
+            <div className="relative bg-card px-4 text-xs font-black text-foreground uppercase tracking-wider border-2 border-border rounded-full py-1.5 shadow-[3px_3px_0_var(--border)] flex items-center gap-2">
+              <Users size={15} className="text-primary" />
+              Tài khoản Học viên ({learnerAccountUsers.length})
+            </div>
+          </div>
+
+          {/* SECTION 2: HỌC VIÊN & NGƯỜI HỌC (NẰM BÊN DƯỚI ĐƯỜNG KẺ) */}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-border pb-2">
+              <div className="flex items-center gap-2">
+                <Users size={18} className="text-primary" />
+                <h3 className="text-sm font-black text-foreground uppercase tracking-wide">
+                  Danh sách Học viên ({learnerAccountUsers.length})
+                </h3>
+              </div>
+
+              {/* Learner Filter Tabs */}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant={learnerFilter === 'all' ? 'primary' : 'ghost'}
+                  onClick={() => setLearnerFilter('all')}
+                  className="min-h-7 px-2.5 text-xs font-black"
+                >
+                  Tất cả người học ({accountUsers.filter((u) => !u.is_admin).length})
+                </Button>
+                <Button
+                  type="button"
+                  variant={learnerFilter === 'pro' ? 'primary' : 'ghost'}
+                  onClick={() => setLearnerFilter('pro')}
+                  className="min-h-7 px-2.5 text-xs font-black"
+                >
+                  <Crown size={13} /> Gói Pro ({metrics.proCount})
+                </Button>
+                <Button
+                  type="button"
+                  variant={learnerFilter === 'free' ? 'primary' : 'ghost'}
+                  onClick={() => setLearnerFilter('free')}
+                  className="min-h-7 px-2.5 text-xs font-black"
+                >
+                  Gói Free ({accountUsers.filter((u) => !u.is_admin).length - metrics.proCount})
+                </Button>
+              </div>
+            </div>
+
+            <div className="neo-card bg-card p-4 shadow-[4px_4px_0_var(--border)] border-3 border-border">
+              <DataTable
+                columns={accountColumns}
+                data={learnerAccountUsers}
+                searchPlaceholder="Tìm kiếm học viên theo tên hoặc email..."
+                searchFilter={accountSearchFilter}
+                isLoading={accountsLoading}
+              />
+            </div>
           </div>
         </section>
       )}
