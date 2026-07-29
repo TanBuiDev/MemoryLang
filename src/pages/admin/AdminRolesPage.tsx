@@ -237,6 +237,10 @@ export default function AdminRolesPage() {
     if (!pendingMutations.length) return
     try {
       setSubmitting(true)
+      const { error: sessionError } = await supabase.functions.invoke('start-admin-session')
+      if (sessionError) {
+        throw new Error('Phiên quản trị chưa sẵn sàng. Hãy xác thực hai lớp lại rồi thử lại.')
+      }
       for (const mutation of pendingMutations) {
         const { error: invokeError } = await supabase.functions.invoke('manage-rbac', { body: mutation })
         if (invokeError) throw invokeError

@@ -13,6 +13,7 @@ import AdminRolesPage from './AdminRolesPage'
 
 describe('AdminRolesPage', () => {
   beforeEach(() => {
+    invoke.mockResolvedValue({ data: { data: {} }, error: null })
     getOverview.mockResolvedValue({
       total: 1,
       roles: [
@@ -53,5 +54,22 @@ describe('AdminRolesPage', () => {
     await user.click(screen.getByRole('button', { name: /lưu thay đổi \(1\)/i }))
     expect(screen.getByRole('dialog')).toHaveTextContent('exam.read')
     expect(invoke).not.toHaveBeenCalled()
+  })
+
+  it('starts a fresh admin session before confirming a role change', async () => {
+    const user = userEvent.setup()
+    render(<AdminRolesPage />)
+    await screen.findByText('Exam administrator')
+
+    await user.click(screen.getByRole('button', { name: /quản lý vai trò target user/i }))
+    await user.click(screen.getByRole('checkbox', { name: /security administrator/i }))
+    await user.click(screen.getByRole('button', { name: /tiếp tục xác nhận/i }))
+    await user.click(screen.getByRole('button', { name: /xác nhận thay đổi/i }))
+
+    await screen.findByText('Exam administrator')
+    expect(invoke).toHaveBeenNthCalledWith(1, 'start-admin-session')
+    expect(invoke).toHaveBeenNthCalledWith(2, 'manage-rbac', expect.objectContaining({
+      body: expect.objectContaining({ kind: 'role', roleCode: 'security_admin', action: 'grant' }),
+    }))
   })
 })

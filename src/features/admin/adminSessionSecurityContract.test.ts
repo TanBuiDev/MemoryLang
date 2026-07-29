@@ -11,6 +11,7 @@ describe('admin session Edge Function security contract', () => {
     expect(source).toContain('supabaseUser.auth.getUser()')
     expect(source).toContain("supabaseUser.rpc('start_admin_session'")
     expect(source).toContain("payload.session_id")
+    expect(source).toContain("'Access-Control-Allow-Origin': '*'")
   })
 
   it('only revokes the currently verified auth session', () => {
