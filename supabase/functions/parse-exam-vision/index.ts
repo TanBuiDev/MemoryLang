@@ -50,6 +50,13 @@ function getSupabaseUser(authHeader: string) {
   )
 }
 
+function getSessionId(authHeader: string) {
+  try {
+    const payload = JSON.parse(atob(authHeader.replace(/^Bearer\s+/i, '').split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return typeof payload.session_id === 'string' ? payload.session_id : null
+  } catch { return null }
+}
+
 const prompt = `You are an expert TOEIC / English exam parsing assistant.
 Analyze this exam image. Extract ALL questions and choices (A, B, C, D) visible in the image, even if arranged in 2 columns.
 Also determine the CORRECT answer choice (A, B, C, or D) for each question based on English grammar and context.
@@ -80,13 +87,12 @@ Deno.serve(async (req) => {
   const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
   if (authError || !user) return response(req, { ok: false, error: 'Unauthorized.' }, 401)
 
-  // RBAC migration will replace this compatibility gate with security.has_permission('exam_import.run').
-  const { data: profile, error: profileError } = await supabaseUser
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
-  if (profileError || !profile?.is_admin) return response(req, { ok: false, error: 'Forbidden.' }, 403)
+  const sessionId = getSessionId(authHeader)
+  const [{ data: permitted, error: permissionError }, { data: activeSession, error: sessionError }] = await Promise.all([
+    supabaseUser.rpc('has_permission', { p_permission_code: 'exam_import.run' }),
+    sessionId ? supabaseUser.rpc('is_admin_session_active', { p_auth_session_id: sessionId }) : Promise.resolve({ data: false, error: null }),
+  ])
+  if (permissionError || sessionError || !permitted || !activeSession) return response(req, { ok: false, error: 'Forbidden.' }, 403)
 
   let rawBody: unknown
   try {
