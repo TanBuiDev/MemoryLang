@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ShieldCheck } from 'lucide-react'
 import { BrandLogo } from '@/components/common/BrandLogo'
@@ -47,16 +47,21 @@ export function MfaChallengePage() {
     }
   }
 
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault()
+    void verify()
+  }
+
   return <main className="brand-grid-bg grid min-h-screen place-items-center bg-background px-4 py-8">
     <Card className="w-full max-w-md p-6">
       <BrandLogo variant="compact" size="lg" className="mb-6 h-12" />
       <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />Xác thực hai lớp</CardTitle>
       <CardDescription className="mt-2">Nhập mã 6 chữ số từ Google Authenticator để tiếp tục đăng nhập an toàn.</CardDescription>
-      <div className="mt-6 grid gap-3">
+      <form className="mt-6 grid gap-3" onSubmit={handleSubmit}>
         <div><Label htmlFor="mfa-login-code">Mã xác thực</Label><Input id="mfa-login-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))} /></div>
         {error ? <p role="alert" className="text-sm font-black text-destructive">{error}</p> : null}
-        <Button disabled={busy || !factorId} onClick={() => void verify()}>{busy ? 'Đang xác minh...' : 'Xác minh và tiếp tục'}</Button>
-      </div>
+        <Button type="submit" disabled={busy || !factorId}>{busy ? 'Đang xác minh...' : 'Xác minh và tiếp tục'}</Button>
+      </form>
     </Card>
   </main>
 }
