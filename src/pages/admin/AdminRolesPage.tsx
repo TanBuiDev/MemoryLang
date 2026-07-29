@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ShieldCheck, UsersRound } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -26,6 +26,7 @@ export default function AdminRolesPage() {
   const [activeTab, setActiveTab] = useState<'users' | 'matrix'>('users')
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedUser, setSelectedUser] = useState<RbacUser | null>(null)
   const [draftRoles, setDraftRoles] = useState<Set<string>>(new Set())
@@ -34,10 +35,9 @@ export default function AdminRolesPage() {
   const [submitting, setSubmitting] = useState(false)
 
   const canAssignRoles = hasPermission('role.assign') || hasPermission('role.revoke')
-  const isSuperAdmin = overview.users.some((entry) => entry.id === userId && entry.roleCodes.includes('super_admin'))
   const canEditMatrix = isSuperAdmin
 
-  const loadOverview = async (search = query) => {
+  const loadOverview = useCallback(async (search: string) => {
     try {
       setLoading(true)
       setError(null)
@@ -47,9 +47,17 @@ export default function AdminRolesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { void loadOverview('') }, [])
+  useEffect(() => { void loadOverview('') }, [loadOverview])
+  useEffect(() => {
+    if (!userId) {
+      setIsSuperAdmin(false)
+      return
+    }
+    void supabase.rpc('has_role', { p_role_code: 'super_admin' })
+      .then(({ data, error }) => { if (!error) setIsSuperAdmin(Boolean(data)) })
+  }, [userId])
 
   const roleByCode = useMemo(() => new Map(overview.roles.map((role) => [role.code, role])), [overview.roles])
 
@@ -98,7 +106,7 @@ export default function AdminRolesPage() {
       setPendingMutations([])
       setSelectedUser(null)
       setReason('')
-      await loadOverview()
+      await loadOverview(query)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể cập nhật quyền.')
     } finally {
@@ -124,7 +132,7 @@ export default function AdminRolesPage() {
 
       {activeTab === 'users' ? (
         <section className="neo-card border-3 border-border bg-card p-5 shadow-[4px_4px_0_var(--border)]">
-          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><h2 className="text-lg font-black">PHÂN QUYỀN NGƯỜI DÙNG</h2><p className="text-xs font-semibold text-muted-foreground">Mỗi thay đổi đều cần lý do, MFA và phiên quản trị đang hoạt động.</p></div><SearchInput value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void loadOverview() }} placeholder="Tìm theo tên hoặc email" aria-label="Tìm người dùng" className="md:w-80" /></div>
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><h2 className="text-lg font-black">PHÂN QUYỀN NGƯỜI DÙNG</h2><p className="text-xs font-semibold text-muted-foreground">Mỗi thay đổi đều cần lý do, MFA và phiên quản trị đang hoạt động.</p></div><SearchInput value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void loadOverview(query) }} placeholder="Tìm theo tên hoặc email" aria-label="Tìm người dùng" className="md:w-80" /></div>
           {loading || permissionLoading ? <p className="font-bold">Đang tải phân quyền…</p> : <div className="space-y-3">{overview.users.map((target) => <div key={target.id} className="flex flex-col gap-3 border-2 border-border bg-white p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-black">{target.displayName || target.email || 'Chưa đặt tên'}</p><p className="text-xs font-semibold text-muted-foreground">{target.email}</p><div className="mt-2 flex flex-wrap gap-2">{target.roleCodes.length ? target.roleCodes.map((code) => <Badge key={code} className="bg-purple-100 text-purple-950">{roleByCode.get(code)?.name || code}</Badge>) : <span className="text-xs font-bold text-muted-foreground">Chưa có vai trò quản trị</span>}</div></div><Button variant="secondary" disabled={!canAssignRoles || target.id === userId} aria-label={`Quản lý vai trò ${target.displayName || target.email}`} onClick={() => openUserDialog(target)}><UsersRound size={16} /> Quản lý vai trò</Button></div>)}</div>}
         </section>
       ) : (

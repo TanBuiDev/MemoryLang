@@ -6,4 +6,10 @@ export const permissionsService = {
     if (error) throw error
     return new Set((data ?? []).map((row: { code: string }) => row.code))
   },
+
+  async getMyAuthorizationVersion(): Promise<number> {
+    const { data, error } = await supabase.rpc('get_my_authorization_version')
+    if (error) throw error
+    return Number(data ?? 0)
+  },
 }

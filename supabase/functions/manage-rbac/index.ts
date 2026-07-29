@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
-import { z } from 'zod'
+import { createClient } from 'npm:@supabase/supabase-js'
+import { z } from 'npm:zod'
 
 const adminRole = z.enum(['support_admin', 'exam_admin', 'security_admin', 'super_admin'])
 const roleRequestSchema = z.object({

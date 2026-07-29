@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const { getOverview, invoke } = vi.hoisted(() => ({ getOverview: vi.fn(), invoke: vi.fn() }))
 
 vi.mock('@/services/supabase/rbac.service', () => ({ rbacService: { getOverview } }))
-vi.mock('@/services/supabase/client', () => ({ supabase: { functions: { invoke } } }))
+vi.mock('@/services/supabase/client', () => ({ supabase: { rpc: vi.fn().mockResolvedValue({ data: true, error: null }), functions: { invoke } } }))
 vi.mock('@/stores/useAuthStore', () => ({ useAuthStore: (selector: (state: { user: { id: string } | null }) => unknown) => selector({ user: { id: 'actor' } }) }))
 vi.mock('@/hooks/usePermissions', () => ({ usePermissions: () => ({ loading: false, hasPermission: (permission: string) => permission === 'role.assign' || permission === 'role.revoke' }) }))
 
