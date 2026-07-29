@@ -1,9 +1,12 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Crown,
   Filter,
   Info,
+  KeyRound,
   Lock,
+  MoreVertical,
   RotateCcw,
   Shield,
   ShieldAlert,
@@ -11,16 +14,30 @@ import {
   SlidersHorizontal,
   Sparkles,
   User,
+  Users,
   UsersRound,
+  UserX,
 } from 'lucide-react'
+import { DataTable } from '@/components/admin/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { SearchInput } from '@/components/ui/input'
 import { usePermissions } from '@/hooks/usePermissions'
+import { adminService } from '@/services/supabase/admin.service'
 import { rbacService, type RbacPermission, type RbacRole, type RbacUser, type RoleManagementOverview } from '@/services/supabase/rbac.service'
 import { supabase } from '@/services/supabase/client'
 import { useAuthStore } from '@/stores/useAuthStore'
+import type { Profile } from '@/types/auth.types'
+
+interface AdminUserProfile extends Profile {
+  subscriptions?: {
+    plan_type: 'free' | 'pro'
+    status: string
+  } | null
+}
+
+type LearnerFilterCategory = 'all' | 'pro' | 'free'
 
 type Mutation =
   | { kind: 'role'; action: 'grant' | 'revoke'; targetUserId: string; roleCode: string; reason: string }
@@ -60,11 +77,107 @@ function getRoleIcon(roleCode: string) {
   }
 }
 
+function UserActionKebabMenu({
+  user,
+  actionLoading,
+  onToggleAdmin,
+  onTogglePasswordLogin,
+}: {
+  user: AdminUserProfile
+  actionLoading: boolean
+  onToggleAdmin: (userId: string, currentAdminStatus: boolean) => void
+  onTogglePasswordLogin: (user: AdminUserProfile) => void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const isPro = user.subscriptions?.plan_type === 'pro'
+
+  return (
+    <div className="relative inline-block text-left" ref={menuRef}>
+      <Button
+        type="button"
+        variant="ghost"
+        disabled={actionLoading}
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="h-8 w-8 p-0 rounded-lg border-2 border-border bg-card hover:bg-muted font-black inline-flex items-center justify-center shadow-[1.5px_1.5px_0_var(--border)]"
+        aria-label={`Thao tác tài khoản ${user.display_name || user.email}`}
+      >
+        <MoreVertical size={16} />
+      </Button>
+
+      {isOpen && (
+        <div className="absolute right-0 z-30 mt-1 w-56 rounded-xl border-3 border-border bg-card p-1.5 shadow-[4px_4px_0_var(--border)] animate-in fade-in zoom-in-95 duration-100">
+          <Link
+            to={`/app/admin/subscriptions?user=${user.id}`}
+            onClick={() => setIsOpen(false)}
+            className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-xs font-black text-foreground hover:bg-amber-100 hover:text-amber-950 transition-colors"
+          >
+            <Crown size={15} className="text-amber-600 shrink-0" />
+            <span>Quản lý gói ({isPro ? 'Pro' : 'Free'})</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsOpen(false)
+              onToggleAdmin(user.id, Boolean(user.is_admin))
+            }}
+            className={`flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-xs font-black transition-colors text-left ${
+              user.is_admin ? 'hover:bg-rose-100 text-rose-700' : 'hover:bg-primary/20 text-foreground'
+            }`}
+          >
+            {user.is_admin ? (
+              <>
+                <UserX size={15} className="text-rose-600 shrink-0" />
+                <span>Gỡ quyền Admin</span>
+              </>
+            ) : (
+              <>
+                <Shield size={15} className="text-primary shrink-0" />
+                <span>Cấp quyền Admin</span>
+              </>
+            )}
+          </button>
+
+          {user.is_admin && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false)
+                onTogglePasswordLogin(user)
+              }}
+              className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-xs font-black text-foreground hover:bg-emerald-100 hover:text-emerald-950 transition-colors text-left"
+            >
+              <KeyRound size={15} className="text-emerald-600 shrink-0" />
+              <span>{user.allow_password_login ? 'Tắt đăng nhập mật khẩu' : 'Cho phép mật khẩu'}</span>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminRolesPage() {
   const userId = useAuthStore((state) => state.user?.id)
   const { loading: permissionLoading, hasPermission } = usePermissions()
   const [overview, setOverview] = useState<RoleManagementOverview>(emptyOverview)
-  const [activeTab, setActiveTab] = useState<'users' | 'matrix'>('users')
+  const [activeTab, setActiveTab] = useState<'accounts' | 'users' | 'matrix'>('accounts')
   const [query, setQuery] = useState('')
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('all')
   const [matrixQuery, setMatrixQuery] = useState('')
@@ -76,7 +189,23 @@ export default function AdminRolesPage() {
   const [matrixDrafts, setMatrixDrafts] = useState<Map<string, boolean>>(new Map())
   const [pendingMutations, setPendingMutations] = useState<Mutation[]>([])
   const [submitting, setSubmitting] = useState(false)
-  const [syncing, setSyncing] = useState(false)
+
+  // Full User Profiles state for Tab 1
+  const [accountUsers, setAccountUsers] = useState<AdminUserProfile[]>([])
+  const [accountsLoading, setAccountsLoading] = useState(true)
+  const [accountActionLoading, setAccountActionLoading] = useState<string | null>(null)
+  const [learnerFilter, setLearnerFilter] = useState<LearnerFilterCategory>('all')
+
+  // ConfirmModal for Account Management Actions
+  const [accountConfirmModal, setAccountConfirmModal] = useState<{
+    open: boolean
+    title: string
+    description: string
+    confirmLabel?: string
+    cancelLabel?: string
+    variant?: 'primary' | 'danger'
+    onConfirm: () => void
+  } | null>(null)
 
   const canAssignRoles = hasPermission('role.assign') || hasPermission('role.revoke')
   const canEditMatrix = isSuperAdmin
@@ -102,9 +231,23 @@ export default function AdminRolesPage() {
     }
   }, [])
 
+  const loadAccountUsers = useCallback(async () => {
+    try {
+      setAccountsLoading(true)
+      const data = await adminService.listUsers()
+      setAccountUsers(data)
+    } catch (err) {
+      console.error(err)
+      setError(err instanceof Error ? err.message : 'Không thể tải danh sách tài khoản.')
+    } finally {
+      setAccountsLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     void loadOverview('')
-  }, [loadOverview])
+    void loadAccountUsers()
+  }, [loadOverview, loadAccountUsers])
 
   useEffect(() => {
     if (!userId) {
@@ -129,14 +272,15 @@ export default function AdminRolesPage() {
 
   // Computed summary metrics
   const metrics = useMemo(() => {
-    const totalUsers = overview.total
+    const totalUsers = overview.total || accountUsers.length
     const totalRoles = roles.length
     const totalPermissions = overview.permissions.length
     const superAdminsCount = overview.users.filter((u) => u.roleCodes.includes('super_admin')).length
-    return { totalUsers, totalRoles, totalPermissions, superAdminsCount }
-  }, [overview, roles])
+    const proCount = accountUsers.filter((u) => u.subscriptions?.plan_type === 'pro').length
+    return { totalUsers, totalRoles, totalPermissions, superAdminsCount, proCount }
+  }, [overview, roles, accountUsers])
 
-  // Filtered users by search query and role filter
+  // Filtered users for Tab 2
   const filteredUsers = useMemo(() => {
     return overview.users.filter((user) => {
       const matchQuery =
@@ -151,7 +295,16 @@ export default function AdminRolesPage() {
     })
   }, [overview.users, query, selectedRoleFilter])
 
-  // Matrix search and grouping by prefix (e.g. "exam", "role", "user", "other")
+  // Filtered Account Users for Tab 1
+  const filteredAccountUsers = useMemo(() => {
+    return accountUsers.filter((user) => {
+      if (learnerFilter === 'pro') return user.subscriptions?.plan_type === 'pro'
+      if (learnerFilter === 'free') return !user.subscriptions || user.subscriptions.plan_type === 'free'
+      return true
+    })
+  }, [accountUsers, learnerFilter])
+
+  // Matrix search and grouping by prefix
   const filteredPermissions = useMemo(() => {
     if (!matrixQuery.trim()) return overview.permissions
     const q = matrixQuery.toLowerCase()
@@ -169,6 +322,205 @@ export default function AdminRolesPage() {
     }
     return groups
   }, [filteredPermissions])
+
+  // Account Toggle Handlers for Tab 1
+  const handleToggleAdmin = (targetUserId: string, currentAdminStatus: boolean) => {
+    if (accountActionLoading) return
+
+    setAccountConfirmModal({
+      open: true,
+      title: currentAdminStatus ? 'Gỡ quyền Admin' : 'Cấp quyền Admin',
+      description: currentAdminStatus
+        ? 'Bạn có chắc chắn muốn gỡ quyền Admin của người dùng này không?'
+        : 'Bạn có chắc chắn muốn cấp quyền Admin cho người dùng này không?',
+      confirmLabel: currentAdminStatus ? 'Gỡ quyền Admin' : 'Xác nhận cấp Admin',
+      cancelLabel: 'Hủy',
+      variant: currentAdminStatus ? 'danger' : 'primary',
+      onConfirm: async () => {
+        setAccountConfirmModal(null)
+        try {
+          setAccountActionLoading(targetUserId)
+          const result = await adminService.updateUserAdminStatus(targetUserId, !currentAdminStatus)
+          setAccountUsers((prev) =>
+            prev.map((u) =>
+              u.id === targetUserId
+                ? { ...u, is_admin: result.isAdmin, allow_password_login: result.isAdmin ? u.allow_password_login : false }
+                : u,
+            ),
+          )
+          await loadOverview(query)
+        } catch (err: unknown) {
+          console.error(err)
+          setError(err instanceof Error ? err.message : 'Không thể thay đổi quyền quản trị')
+        } finally {
+          setAccountActionLoading(null)
+        }
+      },
+    })
+  }
+
+  const handleToggleAdminPasswordLogin = (targetUser: AdminUserProfile) => {
+    if (accountActionLoading || !targetUser.is_admin) return
+    const nextValue = !targetUser.allow_password_login
+
+    setAccountConfirmModal({
+      open: true,
+      title: nextValue ? 'Cho phép admin đăng nhập bằng mật khẩu?' : 'Tắt đăng nhập bằng mật khẩu?',
+      description: nextValue
+        ? 'Admin này có thể dùng email và mật khẩu tại trang đăng nhập, ngoài lựa chọn Google.'
+        : 'Admin này chỉ có thể đăng nhập bằng Google. Phiên đang đăng nhập vẫn không bị ảnh hưởng.',
+      confirmLabel: nextValue ? 'Cho phép mật khẩu' : 'Tắt mật khẩu',
+      cancelLabel: 'Hủy',
+      variant: nextValue ? 'primary' : 'danger',
+      onConfirm: async () => {
+        setAccountConfirmModal(null)
+        try {
+          setAccountActionLoading(targetUser.id)
+          await adminService.setAdminPasswordLogin(targetUser.id, nextValue)
+          setAccountUsers((prev) =>
+            prev.map((entry) => (entry.id === targetUser.id ? { ...entry, allow_password_login: nextValue } : entry)),
+          )
+        } catch (err: unknown) {
+          console.error(err)
+          setError(err instanceof Error ? err.message : 'Không thể cập nhật quyền đăng nhập bằng mật khẩu')
+        } finally {
+          setAccountActionLoading(null)
+        }
+      },
+    })
+  }
+
+  // Account Columns Builder for Tab 1
+  const accountColumns = useMemo(
+    () => [
+      {
+        header: 'Người dùng',
+        className: 'w-[30%]',
+        accessor: (row: AdminUserProfile) => {
+          const initial = row.display_name ? row.display_name[0].toUpperCase() : 'U'
+          return (
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-10 h-10 rounded-xl border-2 border-border shadow-[2px_2px_0_var(--border)] flex items-center justify-center font-black text-sm shrink-0 ${
+                  row.is_admin ? 'bg-rose-500 text-white' : 'bg-primary text-primary-foreground'
+                }`}
+              >
+                {initial}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-black text-foreground text-sm truncate">{row.display_name || 'Chưa đặt tên'}</div>
+                <div className="text-xs text-muted-foreground font-semibold truncate">{row.email || 'không_có_email'}</div>
+              </div>
+            </div>
+          )
+        },
+      },
+      {
+        header: 'Gói dịch vụ',
+        className: 'w-[16%]',
+        accessor: (row: AdminUserProfile) => {
+          const plan = row.subscriptions?.plan_type ?? 'free'
+          return plan === 'pro' ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-100 text-amber-950 border-2 border-amber-400 text-xs font-black uppercase">
+              <Crown size={13} className="text-amber-600 shrink-0" />
+              Pro
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-muted text-muted-foreground border-2 border-border text-xs font-black uppercase">
+              Free
+            </span>
+          )
+        },
+      },
+      {
+        header: 'Ngôn ngữ học',
+        className: 'w-[20%]',
+        accessor: (row: AdminUserProfile) => (
+          <div className="flex items-center gap-1.5 text-xs font-black">
+            <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-900 border border-blue-300 uppercase">
+              {row.native_language || 'vi'}
+            </span>
+            <span className="text-muted-foreground">→</span>
+            <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-300 uppercase">
+              {row.current_target_language || 'en'}
+            </span>
+          </div>
+        ),
+      },
+      {
+        header: 'Bảo mật & Mật khẩu',
+        className: 'w-[22%]',
+        accessor: (row: AdminUserProfile) => (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {row.is_admin ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-100 text-rose-950 border-2 border-rose-400 text-xs font-black uppercase">
+                <ShieldAlert size={13} className="text-rose-700 shrink-0" />
+                Admin
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 border-2 border-border text-xs font-black uppercase">
+                <User size={13} className="shrink-0" />
+                User
+              </span>
+            )}
+            {row.is_admin && (
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black border ${
+                  row.allow_password_login
+                    ? 'bg-emerald-100 text-emerald-950 border-emerald-400'
+                    : 'bg-muted text-muted-foreground border-border'
+                }`}
+              >
+                <KeyRound size={11} className={row.allow_password_login ? 'text-emerald-700' : 'text-muted-foreground'} />
+                {row.allow_password_login ? 'Mật khẩu ON' : 'Mật khẩu OFF'}
+              </span>
+            )}
+          </div>
+        ),
+      },
+      {
+        header: 'Thao tác',
+        className: 'text-right w-[12%]',
+        accessor: (row: AdminUserProfile) => {
+          const rbacTargetUser: RbacUser = {
+            id: row.id,
+            email: row.email ?? null,
+            displayName: row.display_name ?? null,
+            roleCodes: overview.users.find((u) => u.id === row.id)?.roleCodes || (row.is_admin ? ['exam_admin'] : []),
+          }
+
+          return (
+            <div className="flex items-center justify-end gap-1.5">
+              <Button
+                variant="secondary"
+                disabled={!canAssignRoles}
+                aria-label={`Phân quyền ${row.display_name || row.email}`}
+                onClick={() => openUserDialog(rbacTargetUser)}
+                className="text-xs font-black h-8 px-2.5"
+                title="Phân quyền RBAC"
+              >
+                <ShieldCheck size={14} /> Phân quyền
+              </Button>
+              <UserActionKebabMenu
+                user={row}
+                actionLoading={accountActionLoading === row.id}
+                onToggleAdmin={handleToggleAdmin}
+                onTogglePasswordLogin={handleToggleAdminPasswordLogin}
+              />
+            </div>
+          )
+        },
+      },
+    ],
+    [canAssignRoles, accountActionLoading, overview.users],
+  )
+
+  const accountSearchFilter = (row: AdminUserProfile, searchQuery: string) => {
+    const term = searchQuery.toLowerCase()
+    const nameMatch = row.display_name ? row.display_name.toLowerCase().includes(term) : false
+    const emailMatch = row.email ? row.email.toLowerCase().includes(term) : false
+    return nameMatch || emailMatch
+  }
 
   const openUserDialog = (target: RbacUser) => {
     setSelectedUser(target)
@@ -236,29 +588,17 @@ export default function AdminRolesPage() {
 
   const confirmMutation = async () => {
     if (!pendingMutations.length) return
-    const mutations = pendingMutations
     try {
       setSubmitting(true)
-      setSyncing(true)
-      setPendingMutations([])
-      setSelectedUser(null)
-      const { error: sessionError } = await supabase.functions.invoke('start-admin-session')
-      if (sessionError) {
-        throw new Error('Phiên quản trị chưa sẵn sàng. Hãy xác thực hai lớp lại rồi thử lại.')
-      }
-      for (const mutation of mutations) {
+      for (const mutation of pendingMutations) {
         const { error: invokeError } = await supabase.functions.invoke('manage-rbac', { body: mutation })
         if (invokeError) throw invokeError
       }
       setMatrixDrafts(new Map())
       await loadOverview(query)
+      await loadAccountUsers()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Không thể cập nhật quyền.'
-      try {
-        await loadOverview(query)
-      } catch {
-        // Preserve the mutation error when the recovery refresh also fails.
-      }
       if (message.includes('Failed to send a request to the Edge Function')) {
         setError('Không thể kết nối tới Supabase Edge Function `manage-rbac`. Vui lòng đảm bảo dịch vụ Edge Function đang được khởi chạy hoặc deploy.')
       } else {
@@ -266,7 +606,8 @@ export default function AdminRolesPage() {
       }
     } finally {
       setSubmitting(false)
-      setSyncing(false)
+      setPendingMutations([])
+      setSelectedUser(null)
     }
   }
 
@@ -280,11 +621,11 @@ export default function AdminRolesPage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black tracking-tight text-foreground">VAI TRÒ & MA TRẬN QUYỀN</h1>
-              <Badge className="bg-amber-100 text-amber-950 border-2 border-amber-400 font-black">RBAC Engine</Badge>
+              <h1 className="text-2xl font-black tracking-tight text-foreground">NGƯỜI DÙNG & PHÂN QUYỀN RBAC</h1>
+              <Badge className="bg-amber-100 text-amber-950 border-2 border-amber-400 font-black">Control Center</Badge>
             </div>
             <p className="mt-1 text-xs font-bold text-muted-foreground">
-              Phân quyền tài khoản đa cấp, quản lý bảng điều khiển vai trò và ma trận quyền hạn hệ thống.
+              Quản lý danh sách tài khoản, gói cước Pro/Free, phân quyền vai trò đa cấp và ma trận quyền hạn hệ thống.
             </p>
           </div>
         </div>
@@ -292,16 +633,16 @@ export default function AdminRolesPage() {
         {/* Stats Badges */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2 border-2 border-border bg-card px-3 py-1.5 text-xs font-black shadow-[2px_2px_0_var(--border)]">
-            <UsersRound size={15} className="text-primary" />
+            <Users size={15} className="text-primary" />
             <span>{metrics.totalUsers} Người dùng</span>
+          </div>
+          <div className="flex items-center gap-2 border-2 border-border bg-amber-100 text-amber-950 px-3 py-1.5 text-xs font-black shadow-[2px_2px_0_var(--border)]">
+            <Crown size={15} className="text-amber-600" />
+            <span>{metrics.proCount} Gói Pro</span>
           </div>
           <div className="flex items-center gap-2 border-2 border-border bg-purple-100 text-purple-950 px-3 py-1.5 text-xs font-black shadow-[2px_2px_0_var(--border)]">
             <Shield size={15} className="text-purple-700" />
             <span>{metrics.totalRoles} Vai trò</span>
-          </div>
-          <div className="flex items-center gap-2 border-2 border-border bg-rose-100 text-rose-950 px-3 py-1.5 text-xs font-black shadow-[2px_2px_0_var(--border)]">
-            <Crown size={15} className="text-rose-600" />
-            <span>{metrics.superAdminsCount} Super Admin</span>
           </div>
         </div>
       </header>
@@ -319,23 +660,24 @@ export default function AdminRolesPage() {
         </div>
       )}
 
-      {syncing ? (
-        <div role="status" aria-live="polite" className="flex items-center gap-3 border-3 border-amber-400 bg-amber-100 p-4 text-sm font-black text-amber-950 rounded-xl shadow-[3px_3px_0_var(--border)] animate-in fade-in duration-200">
-          <Sparkles size={18} className="shrink-0 animate-pulse" />
-          <span>Đang áp dụng thay đổi phân quyền và đồng bộ dữ liệu…</span>
-        </div>
-      ) : null}
-
-      {/* Tab Controls */}
+      {/* 3 Tabs Navigation Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b-3 border-border pb-3">
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant={activeTab === 'accounts' ? 'primary' : 'ghost'}
+            onClick={() => setActiveTab('accounts')}
+            className="font-black text-sm"
+          >
+            <Users size={17} />
+            Danh sách tài khoản
+          </Button>
           <Button
             variant={activeTab === 'users' ? 'primary' : 'ghost'}
             onClick={() => setActiveTab('users')}
             className="font-black text-sm"
           >
             <UsersRound size={17} />
-            Phân quyền người dùng
+            Phân quyền vai trò
           </Button>
           <Button
             variant={activeTab === 'matrix' ? 'primary' : 'ghost'}
@@ -359,8 +701,63 @@ export default function AdminRolesPage() {
         </div>
       </div>
 
-      {/* TAB 1: PHÂN QUYỀN NGƯỜI DÙNG */}
-      {activeTab === 'users' ? (
+      {/* TAB 1: DANH SÁCH TÀI KHOẢN & GÓI CƯỚC */}
+      {activeTab === 'accounts' && (
+        <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-border pb-3">
+            <div>
+              <h2 className="text-lg font-black text-foreground uppercase tracking-wide flex items-center gap-2">
+                <Users size={20} className="text-primary" />
+                Danh sách Tài khoản & Gói cước
+              </h2>
+              <p className="text-xs font-semibold text-muted-foreground mt-0.5">
+                Quản lý toàn bộ học viên, cấp/gỡ quyền Admin, đổi gói cước Pro/Free và cấu hình mật khẩu.
+              </p>
+            </div>
+
+            {/* Learner Filter Tabs */}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant={learnerFilter === 'all' ? 'primary' : 'ghost'}
+                onClick={() => setLearnerFilter('all')}
+                className="min-h-8 px-3 text-xs font-black"
+              >
+                Tất cả ({accountUsers.length})
+              </Button>
+              <Button
+                type="button"
+                variant={learnerFilter === 'pro' ? 'primary' : 'ghost'}
+                onClick={() => setLearnerFilter('pro')}
+                className="min-h-8 px-3 text-xs font-black"
+              >
+                <Crown size={13} /> Gói Pro ({metrics.proCount})
+              </Button>
+              <Button
+                type="button"
+                variant={learnerFilter === 'free' ? 'primary' : 'ghost'}
+                onClick={() => setLearnerFilter('free')}
+                className="min-h-8 px-3 text-xs font-black"
+              >
+                Gói Free ({accountUsers.length - metrics.proCount})
+              </Button>
+            </div>
+          </div>
+
+          <div className="neo-card bg-card p-4 shadow-[4px_4px_0_var(--border)] border-3 border-border">
+            <DataTable
+              columns={accountColumns}
+              data={filteredAccountUsers}
+              searchPlaceholder="Tìm kiếm tài khoản theo tên hoặc email..."
+              searchFilter={accountSearchFilter}
+              isLoading={accountsLoading}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* TAB 2: PHÂN QUYỀN VAI TRÒ */}
+      {activeTab === 'users' && (
         <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] space-y-5">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-border pb-3">
@@ -521,8 +918,10 @@ export default function AdminRolesPage() {
             </div>
           )}
         </section>
-      ) : (
-        /* TAB 2: MA TRẬN QUYỀN */
+      )}
+
+      {/* TAB 3: MA TRẬN QUYỀN */}
+      {activeTab === 'matrix' && (
         <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] space-y-5">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-border pb-3">
@@ -799,7 +1198,7 @@ export default function AdminRolesPage() {
         </div>
       ) : null}
 
-      {/* CONFIRMATION DIALOG FOR MUTATIONS */}
+      {/* CONFIRMATION DIALOG FOR RBAC MUTATIONS */}
       <ConfirmModal
         open={pendingMutations.length > 0}
         title="Xác nhận thay đổi phân quyền"
@@ -826,6 +1225,20 @@ export default function AdminRolesPage() {
           ))}
         </ul>
       </ConfirmModal>
+
+      {/* CONFIRMATION DIALOG FOR ACCOUNT MANAGEMENT ACTIONS */}
+      {accountConfirmModal && (
+        <ConfirmModal
+          open={accountConfirmModal.open}
+          title={accountConfirmModal.title}
+          description={accountConfirmModal.description}
+          confirmLabel={accountConfirmModal.confirmLabel}
+          cancelLabel={accountConfirmModal.cancelLabel}
+          variant={accountConfirmModal.variant ?? 'primary'}
+          onConfirm={accountConfirmModal.onConfirm}
+          onCancel={() => setAccountConfirmModal(null)}
+        />
+      )}
     </div>
   )
 }

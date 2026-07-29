@@ -48,8 +48,7 @@ const sidebarCategories: SidebarCategory[] = [
     badgeColor: 'bg-amber-100 text-amber-900 border-amber-300',
     items: [
       { name: 'Dashboard', to: '/app/admin', icon: LayoutDashboard, phase: 1, isReady: true },
-      { name: 'Người dùng', to: '/app/admin/users', icon: Users, phase: 1, isReady: true },
-      { name: 'Vai trò & quyền', to: '/app/admin/roles', icon: Shield, phase: 1, isReady: true },
+      { name: 'Người dùng & Phân quyền', to: '/app/admin/roles', icon: Users, phase: 1, isReady: true },
       { name: 'Gói đăng ký', to: '/app/admin/subscriptions', icon: CreditCard, phase: 5, isReady: true },
       { name: 'Phân tích học tập', to: '/app/admin/analytics', icon: BarChart3, phase: 4, isReady: true },
     ],
