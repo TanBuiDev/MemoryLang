@@ -418,3 +418,15 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/manage-user-role/deno.json"
 entrypoint = "./functions/manage-user-role/index.ts"
+
+[functions.start-admin-session]
+enabled = true
+verify_jwt = true
+import_map = "./functions/start-admin-session/deno.json"
+entrypoint = "./functions/start-admin-session/index.ts"
+
+[functions.revoke-admin-session]
+enabled = true
+verify_jwt = true
+import_map = "./functions/revoke-admin-session/deno.json"
+entrypoint = "./functions/revoke-admin-session/index.ts"

@@ -15,6 +15,7 @@ import { useStudyStore } from '@/stores/useStudyStore'
 import type { UiLanguageCode } from '@/types/auth.types'
 import type { LanguageCode } from '@/types/language.types'
 import { languageOptions } from '@/utils/languageCodes'
+import { MfaSetupSection } from '@/pages/settings/MfaSetupSection'
 
 export function SettingsPage() {
   const user = useAuthStore((state) => state.user)
@@ -263,6 +264,7 @@ export function SettingsPage() {
             <div><Label>{t('settings.speechPitch')}</Label><Input defaultValue="1" type="number" step="0.1" /></div>
           </div>
         </Card>
+        {isSupabaseConfigured && user ? <MfaSetupSection /> : null}
         <Card className="lg:col-span-2">
           <CardTitle>Cấu hình Email Thông báo</CardTitle>
           <CardDescription className="mt-2">Quản lý các email thông báo và nhắc nhở học tập gửi đến email của bạn</CardDescription>
