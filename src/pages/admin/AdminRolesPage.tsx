@@ -3,7 +3,7 @@ import { ShieldCheck, UsersRound } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { Input, SearchInput } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/input'
 import { usePermissions } from '@/hooks/usePermissions'
 import { rbacService, type RbacPermission, type RbacRole, type RbacUser, type RoleManagementOverview } from '@/services/supabase/rbac.service'
 import { supabase } from '@/services/supabase/client'
@@ -30,7 +30,7 @@ export default function AdminRolesPage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedUser, setSelectedUser] = useState<RbacUser | null>(null)
   const [draftRoles, setDraftRoles] = useState<Set<string>>(new Set())
-  const [reason, setReason] = useState('')
+  const [matrixDrafts, setMatrixDrafts] = useState<Map<string, boolean>>(new Map())
   const [pendingMutations, setPendingMutations] = useState<Mutation[]>([])
   const [submitting, setSubmitting] = useState(false)
 
@@ -59,24 +59,26 @@ export default function AdminRolesPage() {
       .then(({ data, error }) => { if (!error) setIsSuperAdmin(Boolean(data)) })
   }, [userId])
 
-  const roleByCode = useMemo(() => new Map(overview.roles.map((role) => [role.code, role])), [overview.roles])
+  const roles = useMemo(() => overview.roles.some((role) => role.code === 'user')
+    ? overview.roles
+    : [{ code: 'user', name: 'User', description: 'Learner account' }, ...overview.roles], [overview.roles])
+  const roleByCode = useMemo(() => new Map(roles.map((role) => [role.code, role])), [roles])
 
   const openUserDialog = (target: RbacUser) => {
     setSelectedUser(target)
     setDraftRoles(new Set(target.roleCodes))
-    setReason('')
   }
 
   const queueRoleChanges = () => {
-    if (!selectedUser || !reason.trim()) return
-    const changes = overview.roles
+    if (!selectedUser) return
+    const changes = roles.filter((role) => role.code !== 'user')
       .filter((role) => draftRoles.has(role.code) !== selectedUser.roleCodes.includes(role.code))
       .map((role): Mutation => ({
         kind: 'role',
         action: draftRoles.has(role.code) ? 'grant' : 'revoke',
         targetUserId: selectedUser.id,
         roleCode: role.code,
-        reason: reason.trim(),
+        reason: 'RBAC change confirmed from the administrator console.',
       }))
     if (!changes.length) {
       setSelectedUser(null)
@@ -85,19 +87,19 @@ export default function AdminRolesPage() {
     setPendingMutations(changes)
   }
 
-  const queuePermissionChange = (permission: RbacPermission, roleCode: string, checked: boolean) => {
-    if (!reason.trim()) {
-      setError('Vui lòng nhập lý do trước khi thay đổi ma trận quyền.')
-      return
-    }
-    setPendingMutations([{
-      kind: 'permission',
-      action: checked ? 'grant' : 'revoke',
-      roleCode,
-      permissionCode: permission.code,
-      reason: reason.trim(),
-    }])
+  const setPermissionDraft = (permission: RbacPermission, roleCode: string, checked: boolean) => {
+    setMatrixDrafts((current) => new Map(current).set(`${permission.code}:${roleCode}`, checked))
   }
+
+  const matrixChanges = useMemo(() => overview.permissions.flatMap((permission) => roles
+    .filter((role) => role.code !== 'user' && role.code !== 'super_admin')
+    .flatMap((role): Mutation[] => {
+      const original = permission.roleCodes.includes(role.code)
+      const next = matrixDrafts.get(`${permission.code}:${role.code}`) ?? original
+      return next === original ? [] : [{ kind: 'permission', action: next ? 'grant' : 'revoke', roleCode: role.code, permissionCode: permission.code, reason: 'RBAC change confirmed from the administrator console.' }]
+    })), [matrixDrafts, overview.permissions, roles])
+
+  const queueMatrixChanges = () => setPendingMutations(matrixChanges)
 
   const confirmMutation = async () => {
     if (!pendingMutations.length) return
@@ -109,7 +111,7 @@ export default function AdminRolesPage() {
       }
       setPendingMutations([])
       setSelectedUser(null)
-      setReason('')
+      setMatrixDrafts(new Map())
       await loadOverview(query)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể cập nhật quyền.')
@@ -141,14 +143,14 @@ export default function AdminRolesPage() {
         </section>
       ) : (
         <section className="neo-card overflow-x-auto border-3 border-border bg-card p-5 shadow-[4px_4px_0_var(--border)]">
-          <div className="mb-4"><h2 className="text-lg font-black">MA TRẬN QUYỀN</h2><p className="text-xs font-semibold text-muted-foreground">Chỉ super administrator có thể thay đổi. Các ô super administrator được khóa để bảo toàn đường khôi phục.</p><div className="mt-3 max-w-xl"><Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Lý do cho thay đổi ma trận" aria-label="Lý do thay đổi ma trận" /></div></div>
-          <table className="min-w-full border-collapse text-left text-xs"><thead><tr><th className="border-2 border-border bg-amber-100 p-3 font-black">Quyền</th>{overview.roles.map((role) => <th key={role.code} className="border-2 border-border bg-amber-100 p-3 font-black">{roleLabel(role)}</th>)}</tr></thead><tbody>{overview.permissions.map((permission) => <tr key={permission.code}><td className="border-2 border-border p-3"><p className="font-black">{permission.code}</p><p className="text-muted-foreground">{permission.description}</p></td>{overview.roles.map((role) => { const checked = permission.roleCodes.includes(role.code); const disabled = role.code === 'super_admin' || !canEditMatrix; return <td key={role.code} className="border-2 border-border p-3 text-center"><input type="checkbox" className="h-5 w-5 accent-[#fdc800]" aria-label={`${permission.code} ${role.name}`} checked={checked} disabled={disabled} onChange={(event) => queuePermissionChange(permission, role.code, event.target.checked)} /></td> })}</tr>)}</tbody></table>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-lg font-black">MA TRẬN QUYỀN</h2><p className="text-xs font-semibold text-muted-foreground">Tick chỉ tạo bản nháp. Quyền chỉ có hiệu lực sau khi lưu và xác nhận. `User` và `Super administrator` là các cột chỉ đọc.</p></div><Button disabled={!canEditMatrix || matrixChanges.length === 0} onClick={queueMatrixChanges}>Lưu thay đổi ({matrixChanges.length})</Button></div>
+          <table className="min-w-full border-collapse text-left text-xs"><thead><tr><th className="border-2 border-border bg-amber-100 p-3 font-black">Quyền</th>{roles.map((role) => <th key={role.code} className="border-2 border-border bg-amber-100 p-3 font-black">{roleLabel(role)}</th>)}</tr></thead><tbody>{overview.permissions.map((permission) => <tr key={permission.code}><td className="border-2 border-border p-3"><p className="font-black">{permission.code}</p><p className="text-muted-foreground">{permission.description}</p></td>{roles.map((role) => { const checked = matrixDrafts.get(`${permission.code}:${role.code}`) ?? permission.roleCodes.includes(role.code); const disabled = role.code === 'user' || role.code === 'super_admin' || !canEditMatrix; return <td key={role.code} className="border-2 border-border p-3 text-center"><input type="checkbox" className="h-5 w-5 accent-[#fdc800]" aria-label={`${permission.code} ${role.name}`} checked={checked} disabled={disabled} onChange={(event) => setPermissionDraft(permission, role.code, event.target.checked)} /></td> })}</tr>)}</tbody></table>
         </section>
       )}
 
-      {selectedUser ? <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4"><div role="dialog" aria-modal="true" className="neo-card w-full max-w-xl border-3 border-border bg-card p-6 shadow-[5px_5px_0_var(--border)]"><h2 className="text-xl font-black">Phân quyền cho {selectedUser.displayName || selectedUser.email}</h2><div className="mt-4 space-y-3">{overview.roles.map((role) => <label key={role.code} className="flex items-center gap-3 border-2 border-border p-3 font-bold"><input type="checkbox" aria-label={role.name} checked={draftRoles.has(role.code)} disabled={role.code === 'super_admin' && !isSuperAdmin} onChange={(event) => setDraftRoles((current) => { const next = new Set(current); if (event.target.checked) next.add(role.code); else next.delete(role.code); return next })} />{role.name}<span className="ml-auto text-xs text-muted-foreground">{role.description}</span></label>)}</div><div className="mt-4"><Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Ví dụ: Bổ sung người trực hỗ trợ ca tối" aria-label="Lý do thay đổi" /></div><div className="mt-6 flex justify-end gap-2"><Button variant="ghost" onClick={() => setSelectedUser(null)}>Hủy</Button><Button disabled={!reason.trim()} onClick={queueRoleChanges}>Tiếp tục xác nhận</Button></div></div></div> : null}
+      {selectedUser ? <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4"><div role="dialog" aria-modal="true" className="neo-card w-full max-w-xl border-3 border-border bg-card p-6 shadow-[5px_5px_0_var(--border)]"><h2 className="text-xl font-black">Phân quyền cho {selectedUser.displayName || selectedUser.email}</h2><div className="mt-4 space-y-3">{roles.filter((role) => role.code !== 'user').map((role) => <label key={role.code} className="flex items-center gap-3 border-2 border-border p-3 font-bold"><input type="checkbox" aria-label={role.name} checked={draftRoles.has(role.code)} disabled={role.code === 'super_admin' && !isSuperAdmin} onChange={(event) => setDraftRoles((current) => { const next = new Set(current); if (event.target.checked) next.add(role.code); else next.delete(role.code); return next })} />{role.name}<span className="ml-auto text-xs text-muted-foreground">{role.description}</span></label>)}</div><div className="mt-6 flex justify-end gap-2"><Button variant="ghost" onClick={() => setSelectedUser(null)}>Hủy</Button><Button onClick={queueRoleChanges}>Tiếp tục xác nhận</Button></div></div></div> : null}
 
-      <ConfirmModal open={pendingMutations.length > 0} title="Xác nhận thay đổi phân quyền" description={`Áp dụng ${pendingMutations.length} thay đổi ngay trên các yêu cầu được bảo vệ và ghi vào audit log.`} confirmLabel="Xác nhận thay đổi" cancelLabel="Hủy" variant="primary" confirmDisabled={submitting} onConfirm={() => void confirmMutation()} onCancel={() => setPendingMutations([])} />
+      <ConfirmModal open={pendingMutations.length > 0} title="Xác nhận thay đổi phân quyền" description={`Áp dụng ${pendingMutations.length} thay đổi ngay trên các yêu cầu được bảo vệ và ghi vào audit log.`} confirmLabel="Xác nhận thay đổi" cancelLabel="Hủy" variant="primary" confirmDisabled={submitting} onConfirm={() => void confirmMutation()} onCancel={() => setPendingMutations([])}><ul className="list-disc space-y-1 pl-5 text-sm font-semibold">{pendingMutations.map((mutation, index) => <li key={`${mutation.kind}-${index}`}>{mutation.action === 'grant' ? 'Cấp' : 'Gỡ'} {mutation.kind === 'permission' ? `${mutation.permissionCode} cho ${roleByCode.get(mutation.roleCode)?.name || mutation.roleCode}` : `${roleByCode.get(mutation.roleCode)?.name || mutation.roleCode}`}</li>)}</ul></ConfirmModal>
     </div>
   )
 }

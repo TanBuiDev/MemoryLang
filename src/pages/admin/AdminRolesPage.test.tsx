@@ -16,6 +16,7 @@ describe('AdminRolesPage', () => {
     getOverview.mockResolvedValue({
       total: 1,
       roles: [
+        { code: 'user', name: 'User', description: 'Learner account' },
         { code: 'super_admin', name: 'Super administrator', description: 'Recovery' },
         { code: 'security_admin', name: 'Security administrator', description: 'Security' },
         { code: 'exam_admin', name: 'Exam administrator', description: 'Exam content' },
@@ -35,18 +36,22 @@ describe('AdminRolesPage', () => {
     expect(await screen.findByText('Exam administrator')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /quản lý vai trò target user/i }))
     expect(screen.getByRole('checkbox', { name: /security administrator/i })).toBeInTheDocument()
-    expect(screen.getByLabelText(/lý do thay đổi/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/lý do thay đổi/i)).not.toBeInTheDocument()
   })
 
-  it('opens a confirmation before submitting a matrix toggle', async () => {
+  it('keeps matrix edits as drafts until an administrator saves and confirms them', async () => {
     const user = userEvent.setup()
     render(<AdminRolesPage />)
     await screen.findByText('Exam administrator')
 
     await user.click(screen.getByRole('button', { name: /ma trận quyền/i }))
-    await user.type(screen.getByLabelText(/lý do thay đổi ma trận/i), 'Rà soát quyền đọc đề thi')
+    expect(screen.getByRole('checkbox', { name: /exam.read.*user/i })).toBeDisabled()
     await user.click(screen.getByRole('checkbox', { name: /exam.read.*security administrator/i }))
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(invoke).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: /lưu thay đổi \(1\)/i }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('exam.read')
     expect(invoke).not.toHaveBeenCalled()
   })
 })
