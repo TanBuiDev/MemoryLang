@@ -16,6 +16,7 @@ describe('admin secret testing security contract', () => {
 
   it('tests a stored key through the authenticated server-side function', () => {
     const serviceSource = readFileSync(servicePath, 'utf8')
+    expect(serviceSource).toContain("supabase.functions.invoke('start-admin-session')")
     expect(serviceSource).toMatch(/supabase\.functions\.invoke(?:<[^>]+>)?\('test-ai-provider'/)
   })
 })

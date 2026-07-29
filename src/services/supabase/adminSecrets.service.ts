@@ -71,6 +71,9 @@ export const adminSecretsService = {
   },
 
   async testKeyPoolItem(id: string): Promise<{ ok: boolean; message: string }> {
+    const { error: sessionError } = await supabase.functions.invoke('start-admin-session')
+    if (sessionError) throw new Error(sessionError.message || 'Cần xác thực hai lớp để kiểm tra key.')
+
     const { data, error } = await supabase.functions.invoke<{ ok: boolean; message: string }>('test-ai-provider', {
       body: { keyId: id },
     })
