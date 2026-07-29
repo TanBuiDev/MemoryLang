@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   CheckCircle2,
   Copy,
+  Download,
   KeyRound,
   QrCode,
   ShieldAlert,
@@ -83,6 +84,16 @@ export function MfaSetupSection() {
     setTimeout(() => setCopiedSecret(false), 2000)
   }
 
+  const downloadQrCode = () => {
+    if (!enrollment?.totp?.qr_code) return
+    const link = document.createElement('a')
+    link.href = enrollment.totp.qr_code
+    link.download = `MemoryLang-2FA-QR-${Date.now()}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   const isEnabled = factors.length > 0
 
   return (
@@ -158,8 +169,8 @@ export function MfaSetupSection() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-[180px_1fr] items-start">
-            {/* QR Code Column */}
-            <div className="flex flex-col items-center gap-2">
+            {/* QR Code Column with Download Button */}
+            <div className="flex flex-col items-center gap-2.5">
               <div className="p-2.5 bg-white border-3 border-border rounded-2xl shadow-[3px_3px_0_var(--border)]">
                 <img
                   className="h-36 w-36 object-contain"
@@ -167,9 +178,16 @@ export function MfaSetupSection() {
                   src={enrollment.totp.qr_code}
                 />
               </div>
-              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider text-center">
-                Mã QR Google Authenticator
-              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={downloadQrCode}
+                className="h-8 px-3 border-2 border-border text-xs font-black flex items-center gap-1.5 bg-white hover:bg-slate-100 shadow-[1.5px_1.5px_0_var(--border)]"
+                title="Tải ảnh mã QR về máy"
+              >
+                <Download size={14} className="text-primary shrink-0" />
+                <span>Tải ảnh mã QR</span>
+              </Button>
             </div>
 
             {/* Verification Form Column */}
