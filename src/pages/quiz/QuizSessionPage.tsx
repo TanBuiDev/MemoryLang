@@ -75,6 +75,8 @@ export function QuizSessionPage() {
     remote: shouldUseRemoteData,
   }) ?? fallbackSessionKey
   const [session, setSession] = useState<StoredQuizSession | null>(() => readStoredQuizSession(sessionKey))
+  const sessionRef = useRef<StoredQuizSession | null>(session)
+  sessionRef.current = session
   const [answerText, setAnswerText] = useState('')
   const [answerFeedback, setAnswerFeedback] = useState<AnswerFeedback>({ type: 'none' })
   const [answerShakeIteration, setAnswerShakeIteration] = useState(0)
@@ -240,17 +242,18 @@ export function QuizSessionPage() {
         speakQuestion(question.sourceText, question.audioUrl)
       }
 
-      if (!isCompleted && session && session.questions.length > 0) {
+      const currentSession = sessionRef.current
+      if (!isCompleted && currentSession && currentSession.questions.length > 0) {
         if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
           const isInputFocused = document.activeElement === answerInputRef.current
           if (isMcQuestion || !isInputFocused) {
             event.preventDefault()
-            const totalQs = session.questions.length
+            const totalQs = currentSession.questions.length
             if (event.key === 'ArrowLeft') {
-              const prevIndex = (session.index - 1 + totalQs) % totalQs
+              const prevIndex = (currentSession.index - 1 + totalQs) % totalQs
               goToQuestion(prevIndex)
             } else {
-              const nextIndex = (session.index + 1) % totalQs
+              const nextIndex = (currentSession.index + 1) % totalQs
               goToQuestion(nextIndex)
             }
           }
@@ -763,13 +766,14 @@ export function QuizSessionPage() {
   }
 
   function goToQuestion(index: number) {
-    if (!session || index === session.index) return
+    const currentSession = sessionRef.current
+    if (!currentSession || index === currentSession.index) return
     clearAutoAdvance()
     setAnswerText('')
     setAnswerFeedback({ type: 'none' })
     setAnswerShakeIteration(0)
     setIsTempRevealed(false)
-    setSession({ ...session, index })
+    setSession({ ...currentSession, index })
   }
 
   function clearAnswer() {
