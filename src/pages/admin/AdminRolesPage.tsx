@@ -419,17 +419,14 @@ export default function AdminRolesPage() {
               <table className="min-w-full border-collapse text-left text-xs">
                 <thead>
                   <tr className="bg-amber-100 border-b-3 border-border text-amber-950 font-black uppercase tracking-wide">
-                    <th className="p-3.5 border-r-2 border-border w-[30%]">Người dùng</th>
-                    <th className="p-3.5 border-r-2 border-border w-[35%]">Vai trò quản trị</th>
-                    <th className="p-3.5 border-r-2 border-border w-[15%]">Cấp độ bảo mật</th>
+                    <th className="p-3.5 border-r-2 border-border w-[40%]">Người dùng</th>
+                    <th className="p-3.5 border-r-2 border-border w-[40%]">Vai trò quản trị</th>
                     <th className="p-3.5 text-right w-[20%]">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredUsers.map((target) => {
                     const initial = (target.displayName || target.email || 'U')[0].toUpperCase()
-                    const isSuper = target.roleCodes.includes('super_admin')
-                    const isStaff = target.roleCodes.some((c) => c !== 'user' && c !== 'super_admin')
 
                     return (
                       <tr key={target.id} className="border-b-2 border-border hover:bg-amber-50/40 transition-colors">
@@ -469,23 +466,6 @@ export default function AdminRolesPage() {
                               </span>
                             )}
                           </div>
-                        </td>
-
-                        {/* Security Level */}
-                        <td className="p-3.5 border-r-2 border-border">
-                          {isSuper ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-100 text-rose-950 border-2 border-rose-400 text-xs font-black uppercase">
-                              <Crown size={12} className="text-rose-600 shrink-0" /> Level 3 (Super)
-                            </span>
-                          ) : isStaff ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-100 text-amber-950 border-2 border-amber-400 text-xs font-black uppercase">
-                              <ShieldAlert size={12} className="text-amber-600 shrink-0" /> Level 2 (Staff)
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 border-2 border-slate-300 text-xs font-bold uppercase">
-                              <User size={12} className="text-slate-500 shrink-0" /> Level 1 (User)
-                            </span>
-                          )}
                         </td>
 
                         {/* Actions */}
