@@ -24,6 +24,7 @@ Tài liệu này hướng dẫn đưa lớp bảo vệ xác thực và phân quy
    20260729102800_expose_admin_session_check.sql
    20260729102953_add_permission_summary_rpc.sql
    20260729112838_enforce_exam_permissions_through_rbac.sql
+   20260729145652_assign-approved-production-rbac-roles.sql
    ```
 
 3. Gán vai trò đã được phê duyệt bằng `manage-user-role`; không gán từ email hay JWT metadata. Cần giữ ít nhất hai `super_admin` độc lập để có đường khôi phục khẩn cấp.
