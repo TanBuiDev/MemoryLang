@@ -5,6 +5,7 @@ import {
   Info,
   Lock,
   RotateCcw,
+  Search,
   Shield,
   ShieldAlert,
   ShieldCheck,
@@ -402,7 +403,7 @@ export default function AdminRolesPage() {
             </div>
           </div>
 
-          {/* User Cards List */}
+          {/* User & Role Data Table */}
           {loading || permissionLoading ? (
             <div className="py-12 text-center">
               <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
@@ -415,63 +416,96 @@ export default function AdminRolesPage() {
               <p className="text-xs text-muted-foreground">Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc vai trò.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredUsers.map((target) => {
-                const initial = (target.displayName || target.email || 'U')[0].toUpperCase()
-                return (
-                  <div
-                    key={target.id}
-                    className="flex flex-col justify-between gap-4 border-3 border-border bg-white p-5 shadow-[3px_3px_0_var(--border)] hover:shadow-[5px_5px_0_var(--border)] transition-all rounded-xl"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-primary text-primary-foreground font-black text-base shadow-[2px_2px_0_var(--border)]">
-                          {initial}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-black text-sm text-foreground truncate">
-                            {target.displayName || 'Chưa đặt tên'}
-                          </p>
-                          <p className="text-xs font-semibold text-muted-foreground truncate">{target.email}</p>
-                        </div>
-                      </div>
+            <div className="overflow-x-auto border-3 border-border rounded-xl shadow-[4px_4px_0_var(--border)] bg-white">
+              <table className="min-w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="bg-amber-100 border-b-3 border-border text-amber-950 font-black uppercase tracking-wide">
+                    <th className="p-3.5 border-r-2 border-border w-[30%]">Người dùng</th>
+                    <th className="p-3.5 border-r-2 border-border w-[35%]">Vai trò quản trị</th>
+                    <th className="p-3.5 border-r-2 border-border w-[15%]">Cấp độ bảo mật</th>
+                    <th className="p-3.5 text-right w-[20%]">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((target) => {
+                    const initial = (target.displayName || target.email || 'U')[0].toUpperCase()
+                    const isSuper = target.roleCodes.includes('super_admin')
+                    const isStaff = target.roleCodes.some((c) => c !== 'user' && c !== 'super_admin')
 
-                      {/* Manage button */}
-                      <Button
-                        variant="secondary"
-                        disabled={!canAssignRoles}
-                        aria-label={`Quản lý vai trò ${target.displayName || target.email}`}
-                        onClick={() => openUserDialog(target)}
-                        className="shrink-0 text-xs font-black"
-                      >
-                        <UsersRound size={15} /> Quản lý vai trò
-                      </Button>
-                    </div>
+                    return (
+                      <tr key={target.id} className="border-b-2 border-border hover:bg-amber-50/40 transition-colors">
+                        {/* User Profile */}
+                        <td className="p-3.5 border-r-2 border-border">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-primary text-primary-foreground font-black text-sm shadow-[2px_2px_0_var(--border)]">
+                              {initial}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-black text-sm text-foreground truncate">
+                                {target.displayName || 'Chưa đặt tên'}
+                              </p>
+                              <p className="text-xs font-semibold text-muted-foreground truncate">{target.email}</p>
+                            </div>
+                          </div>
+                        </td>
 
-                    {/* Role Badges List */}
-                    <div className="border-t-2 border-border pt-3 mt-1 flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-bold text-muted-foreground mr-1">Vai trò hiện tại:</span>
-                      {target.roleCodes.length ? (
-                        target.roleCodes.map((code) => (
-                          <span
-                            key={code}
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs rounded-md ${getRoleBadgeStyle(
-                              code,
-                            )}`}
+                        {/* Roles Badges */}
+                        <td className="p-3.5 border-r-2 border-border">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {target.roleCodes.length ? (
+                              target.roleCodes.map((code) => (
+                                <span
+                                  key={code}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs rounded-md ${getRoleBadgeStyle(
+                                    code,
+                                  )}`}
+                                >
+                                  {getRoleIcon(code)}
+                                  {roleByCode.get(code)?.name || code}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-xs font-bold text-muted-foreground bg-muted px-2.5 py-0.5 rounded border border-border">
+                                Học viên (Default User)
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Security Level */}
+                        <td className="p-3.5 border-r-2 border-border">
+                          {isSuper ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-100 text-rose-950 border-2 border-rose-400 text-xs font-black uppercase">
+                              <Crown size={12} className="text-rose-600 shrink-0" /> Level 3 (Super)
+                            </span>
+                          ) : isStaff ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-100 text-amber-950 border-2 border-amber-400 text-xs font-black uppercase">
+                              <ShieldAlert size={12} className="text-amber-600 shrink-0" /> Level 2 (Staff)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 border-2 border-slate-300 text-xs font-bold uppercase">
+                              <User size={12} className="text-slate-500 shrink-0" /> Level 1 (User)
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="p-3.5 text-right">
+                          <Button
+                            variant="secondary"
+                            disabled={!canAssignRoles}
+                            aria-label={`Quản lý vai trò ${target.displayName || target.email}`}
+                            onClick={() => openUserDialog(target)}
+                            className="text-xs font-black h-8 px-3"
                           >
-                            {getRoleIcon(code)}
-                            {roleByCode.get(code)?.name || code}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-xs font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border">
-                          Học viên (Default User)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
+                            <UsersRound size={15} /> Quản lý vai trò
+                          </Button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </section>
