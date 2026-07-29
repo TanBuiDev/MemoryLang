@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.105.4'
-import { getAiProvider } from './ai-providers.ts'
+import { getAiProvider, type AiProvider } from './ai-providers.ts'
 import { generateGroundedReply } from './grounding.ts'
 import { executeLearningTool } from './learning-tools.ts'
 import { buildTutorPrompt } from './prompt.ts'
@@ -59,7 +59,7 @@ serve(async (req) => {
     if (userMessageError) throw userMessageError
 
     const history = await loadHistory(supabaseAdmin, session.id)
-    const provider = getAiProvider()
+    const provider = await getConfiguredAiProvider(supabaseAdmin)
     const responseLanguage = detectResponseLanguage(parsed.value.message, parsed.value.nativeLanguage)
     let generated
     try {
@@ -157,6 +157,30 @@ function validateRequest(body: ChatRequest): { ok: true; value: Required<Pick<Ch
 
 function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
+async function getConfiguredAiProvider(supabaseAdmin: ReturnType<typeof createClient>): Promise<AiProvider> {
+  if ((Deno.env.get('AI_PROVIDER') ?? 'gemini').toLowerCase() === 'openai') {
+    return getAiProvider()
+  }
+
+  const { data, error } = await supabaseAdmin.rpc('get_active_keys_for_service', {
+    p_purpose_tag: 'ai_chat',
+  })
+  if (error) {
+    console.error('ai-chat key pool unavailable; using legacy secret', { message: error.message })
+    return getAiProvider()
+  }
+
+  const activeKey = Array.isArray(data) ? data[0] : null
+  if (!activeKey || typeof activeKey.encrypted_value !== 'string' || typeof activeKey.model_name !== 'string') {
+    return getAiProvider()
+  }
+
+  return getAiProvider({
+    apiKey: activeKey.encrypted_value,
+    model: activeKey.model_name.trim().replace(/^models\//i, ''),
+  })
 }
 
 async function getOrCreateSession(supabase: ReturnType<typeof createClient>, userId: string, input: { sessionId: string | null; sourceLanguage: string; nativeLanguage: string }) {

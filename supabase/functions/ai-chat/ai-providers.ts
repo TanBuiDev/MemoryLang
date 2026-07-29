@@ -39,6 +39,11 @@ export interface AiProvider {
   completeWithToolResults?: (input: AiChatInput, toolCalls: AiToolCall[], toolResults: AiToolResult[]) => Promise<AiChatOutput>
 }
 
+export type GeminiProviderConfig = {
+  apiKey: string
+  model: string
+}
+
 const PROVIDER_TIMEOUT_MS = 20_000
 
 async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
@@ -116,9 +121,9 @@ function geminiOutput(payload: GeminiPayload, model: string): AiChatOutput {
   }
 }
 
-export function createGeminiProvider(): AiProvider {
-  const apiKey = Deno.env.get('GEMINI_API_KEY')
-  const model = Deno.env.get('GEMINI_CHAT_MODEL')
+export function createGeminiProvider(config?: GeminiProviderConfig): AiProvider {
+  const apiKey = config?.apiKey ?? Deno.env.get('GEMINI_API_KEY')
+  const model = config?.model ?? Deno.env.get('GEMINI_CHAT_MODEL')
   if (!apiKey || !model) throw new Error('Gemini AI provider is not configured')
 
   return {
@@ -214,8 +219,8 @@ export function createOpenAiProvider(): AiProvider {
   }
 }
 
-export function getAiProvider(): AiProvider {
+export function getAiProvider(geminiConfig?: GeminiProviderConfig): AiProvider {
   return (Deno.env.get('AI_PROVIDER') ?? 'gemini').toLowerCase() === 'openai'
     ? createOpenAiProvider()
-    : createGeminiProvider()
+    : createGeminiProvider(geminiConfig)
 }
