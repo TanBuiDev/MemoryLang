@@ -82,11 +82,7 @@ export function fileToBase64(file: File | Blob): Promise<string> {
 /**
  * Parses questions using Supabase Edge Function Proxy (100% Enterprise Security)
  */
-export async function parseQuestionsWithGeminiVision(
-  imageBase64: string,
-  customApiKey?: string,
-  customModel?: string
-): Promise<ParsedExamQuestion[]> {
+export async function parseQuestionsWithGeminiVision(imageBase64: string): Promise<ParsedExamQuestion[]> {
   const { data, error } = await supabase.functions.invoke<{
     ok: boolean
     questions: any[]
@@ -94,8 +90,6 @@ export async function parseQuestionsWithGeminiVision(
   }>('parse-exam-vision', {
     body: {
       imageBase64,
-      customApiKey: customApiKey || undefined,
-      customModel: customModel || undefined,
     },
   })
 
