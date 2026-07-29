@@ -1,14 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { defaultStudyHotkeys } from '@/features/study/studyHotkeys'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { useStudyStore } from '@/stores/useStudyStore'
 
 vi.mock('@/services/supabase/client', () => ({
-  isSupabaseConfigured: false,
+  isSupabaseConfigured: true,
 }))
 
 vi.mock('@/services/supabase/auth.service', () => ({
@@ -16,6 +14,7 @@ vi.mock('@/services/supabase/auth.service', () => ({
     updateProfile: vi.fn(),
     setPassword: vi.fn(),
     signOutAllDevices: vi.fn(),
+    deleteAccount: vi.fn(),
   },
 }))
 
@@ -27,60 +26,46 @@ function renderPage() {
   )
 }
 
-describe('SettingsPage study hotkeys', () => {
+describe('SettingsPage Neobrutalist UI', () => {
   beforeEach(() => {
     window.localStorage.clear()
-    useAuthStore.setState({ user: null, profile: null })
-    useStudyStore.setState({ hotkeys: defaultStudyHotkeys })
+    useAuthStore.setState({
+      user: { id: 'user-1', email: 'user@example.com' } as never,
+      profile: { display_name: 'Test User' } as never,
+    })
   })
 
-  it('auto-saves captured shortcuts immediately to store and localStorage', async () => {
+  it('renders Profile, Languages, Email preferences and Danger zone sections', () => {
+    renderPage()
+
+    expect(screen.getByText('Hồ sơ')).toBeInTheDocument()
+    expect(screen.getByText('Ngôn ngữ')).toBeInTheDocument()
+    expect(screen.getByText('Cấu hình Email Thông báo')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Dữ liệu/i })).toBeInTheDocument()
+  })
+
+  it('renders email notification checkboxes and allows toggling', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    expect(screen.getByText('Phím tắt khi học')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Mở rộng phím tắt' }))
-    const confirmCapture = screen.getByRole('button', { name: /Gán phím.*Đã nhớ/ })
+    const reminderCheckbox = screen.getByRole('checkbox', { name: 'Email nhắc nhở ôn tập hàng ngày' })
+    const digestCheckbox = screen.getByRole('checkbox', { name: 'Báo cáo tiến độ học tập hàng tuần' })
 
-    await user.click(confirmCapture)
-    fireEvent.keyDown(confirmCapture, { key: 'r', ctrlKey: true })
+    expect(reminderCheckbox).toBeChecked()
+    expect(digestCheckbox).toBeChecked()
 
-    expect(confirmCapture).toHaveTextContent('Ctrl + R')
-    expect(useStudyStore.getState().hotkeys.confirmRemember).toBe('Ctrl+R')
-
-    const stored = JSON.parse(window.localStorage.getItem('memorylang.study.preferences') ?? '{}')
-    expect(stored.hotkeys?.confirmRemember).toBe('Ctrl+R')
+    await user.click(reminderCheckbox)
+    expect(reminderCheckbox).not.toBeChecked()
   })
 
-  it('shows duplicate warning when two actions share the same shortcut', async () => {
+  it('opens delete account modal when clicking delete button', async () => {
     const user = userEvent.setup()
     renderPage()
-    await user.click(screen.getByRole('button', { name: 'Mở rộng phím tắt' }))
 
-    const confirmCapture = screen.getByRole('button', { name: /Gán phím.*Đã nhớ/ })
-    const rememberCapture = screen.getByRole('button', { name: /Gán phím.*Nhớ$/ })
+    const deleteBtn = screen.getByRole('button', { name: /Xóa tài khoản/i })
+    await user.click(deleteBtn)
 
-    await user.click(confirmCapture)
-    fireEvent.keyDown(confirmCapture, { key: 'r' })
-
-    await user.click(rememberCapture)
-    fireEvent.keyDown(rememberCapture, { key: 'r' })
-
-    expect(screen.getByText('Phím tắt đang bị trùng. Hãy chọn phím khác trước khi lưu.')).toBeInTheDocument()
-  })
-
-  it('resets configured shortcuts to their defaults immediately', async () => {
-    const user = userEvent.setup()
-    renderPage()
-    await user.click(screen.getByRole('button', { name: 'Mở rộng phím tắt' }))
-    const confirmCapture = screen.getByRole('button', { name: /Gán phím.*Đã nhớ/ })
-
-    await user.click(confirmCapture)
-    fireEvent.keyDown(confirmCapture, { key: 'r', ctrlKey: true })
-    expect(confirmCapture).toHaveTextContent('Ctrl + R')
-
-    await user.click(screen.getByRole('button', { name: 'Khôi phục mặc định' }))
-    expect(confirmCapture).toHaveTextContent('Space')
-    expect(useStudyStore.getState().hotkeys.confirmRemember).toBe('Space')
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('DELETE')).toBeInTheDocument()
   })
 })

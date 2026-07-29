@@ -908,6 +908,43 @@ function slugifyPosLabel(label: string): string {
                     </Button>
                   </div>
                 </div>
+
+                {/* 4. Visual Builder: System Study Hotkeys */}
+                <div className="neo-card p-4 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] flex flex-col gap-4">
+                  <div className="pb-1 border-b-2 border-border flex items-center justify-between">
+                    <h3 className="font-black text-sm text-foreground flex items-center gap-2">
+                      <SlidersHorizontal size={16} className="text-amber-500" />
+                      Phím tắt Học tập Mặc định Hệ thống (System Study Hotkeys)
+                    </h3>
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-950 border border-amber-400">
+                      Chuẩn hóa toàn ứng dụng
+                    </span>
+                  </div>
+
+                  <p className="text-xs font-bold text-muted-foreground">
+                    Danh sách các phím tắt học tập mặc định được hệ thống quy định chung cho tất cả các phiên học Flashcard & Quiz.
+                  </p>
+
+                  <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-4 pt-1">
+                    {[
+                      { action: 'Lật thẻ Flashcard', key: 'Space' },
+                      { action: 'Đánh giá: Chưa nhớ', key: '1' },
+                      { action: 'Đánh giá: Đã nhớ', key: '2' },
+                      { action: 'Từ tiếp theo', key: '→ (ArrowRight)' },
+                      { action: 'Từ trước đó', key: '← (ArrowLeft)' },
+                      { action: 'Phát âm thanh', key: 'R' },
+                      { action: 'Tự động chạy', key: 'A' },
+                      { action: 'Kết thúc phiên', key: 'Esc' },
+                    ].map((item) => (
+                      <div key={item.action} className="p-2.5 rounded-lg border-2 border-border bg-background flex flex-col gap-1">
+                        <span className="text-[11px] font-black text-muted-foreground uppercase">{item.action}</span>
+                        <span className="font-mono font-black text-xs text-foreground bg-muted px-2 py-1 rounded border border-border inline-block text-center">
+                          {item.key}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

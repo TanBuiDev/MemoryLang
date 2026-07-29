@@ -1,21 +1,34 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, ChevronDown, ChevronUp } from 'lucide-react'
+import {
+  Bell,
+  Check,
+  Crown,
+  Database,
+  Download,
+  Globe,
+  KeyRound,
+  Lock,
+  Mail,
+  Trash2,
+  Upload,
+  User,
+  UserCheck,
+} from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { Input, Label, PasswordInput, Select } from '@/components/ui/input'
-import { defaultStudyHotkeys, duplicateStudyHotkeys, formatStudyHotkey, hotkeyFromKeyboardEvent, type StudyHotkeyAction } from '@/features/study/studyHotkeys'
+import { Input, Label, PasswordInput } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { uiLanguageOptions, useI18n } from '@/i18n'
+import { MfaSetupSection } from '@/pages/settings/MfaSetupSection'
 import { authService } from '@/services/supabase/auth.service'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { useStudyStore } from '@/stores/useStudyStore'
 import type { UiLanguageCode } from '@/types/auth.types'
 import type { LanguageCode } from '@/types/language.types'
 import { languageOptions } from '@/utils/languageCodes'
-import { MfaSetupSection } from '@/pages/settings/MfaSetupSection'
 
 export function SettingsPage() {
   const user = useAuthStore((state) => state.user)
@@ -23,8 +36,6 @@ export function SettingsPage() {
   const setProfile = useAuthStore((state) => state.setProfile)
   const { t } = useI18n()
   const navigate = useNavigate()
-  const hotkeys = useStudyStore((state) => state.hotkeys)
-  const setHotkeys = useStudyStore((state) => state.setHotkeys)
 
   const [displayName, setDisplayName] = useState(profile?.display_name ?? '')
   const [nativeLanguage, setNativeLanguage] = useState<LanguageCode>(profile?.native_language ?? 'vi')
@@ -35,8 +46,6 @@ export function SettingsPage() {
   const [savingEmailPreferences, setSavingEmailPreferences] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
   const [savingUiLanguage, setSavingUiLanguage] = useState(false)
-  const [capturingHotkey, setCapturingHotkey] = useState<StudyHotkeyAction | null>(null)
-  const [hotkeysOpen, setHotkeysOpen] = useState(false)
 
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [newPassword, setNewPassword] = useState('')
@@ -44,7 +53,6 @@ export function SettingsPage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [passwordMessage, setPasswordMessage] = useState('')
   const [passwordError, setPasswordError] = useState('')
-  const duplicateHotkeySet = duplicateStudyHotkeys(hotkeys)
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
@@ -60,9 +68,10 @@ export function SettingsPage() {
 
   saveProfileRef.current = useCallback(async () => {
     if (!isSupabaseConfigured || !user || !profile) return
-    const changed = displayName !== (profile.display_name ?? '')
-      || nativeLanguage !== profile.native_language
-      || targetLanguage !== profile.current_target_language
+    const changed =
+      displayName !== (profile.display_name ?? '') ||
+      nativeLanguage !== profile.native_language ||
+      targetLanguage !== profile.current_target_language
     const uiChanged = uiLanguage !== profile.ui_language
 
     if (!changed && !uiChanged) return
@@ -80,7 +89,9 @@ export function SettingsPage() {
       const updated = await authService.updateProfile(user.id, update as Parameters<typeof authService.updateProfile>[1])
       setProfile(updated)
       setProfileSaved(true)
-    } catch { /* silently ignore */ }
+    } catch {
+      /* silently ignore */
+    }
   }, [displayName, nativeLanguage, targetLanguage, uiLanguage, profile, user, setProfile])
 
   useEffect(() => {
@@ -128,8 +139,11 @@ export function SettingsPage() {
     try {
       const updated = await authService.updateProfile(user.id, { ui_language: uiLanguage })
       setProfile(updated)
-    } catch { /* silently ignore */ }
-    finally { setSavingUiLanguage(false) }
+    } catch {
+      /* silently ignore */
+    } finally {
+      setSavingUiLanguage(false)
+    }
   }
 
   async function saveEmailPreferences(reminders: boolean, digest: boolean) {
@@ -143,8 +157,11 @@ export function SettingsPage() {
       setProfile(updated)
       setEmailRemindersEnabled(updated.email_reminders_enabled ?? true)
       setWeeklyDigestEnabled(updated.weekly_digest_enabled ?? true)
-    } catch { /* silently ignore */ }
-    finally { setSavingEmailPreferences(false) }
+    } catch {
+      /* silently ignore */
+    } finally {
+      setSavingEmailPreferences(false)
+    }
   }
 
   async function deleteAccount() {
@@ -153,7 +170,7 @@ export function SettingsPage() {
     try {
       await authService.deleteAccount()
       navigate('/')
-    } catch (error) {
+    } catch {
       setIsDeleting(false)
     }
   }
@@ -186,97 +203,187 @@ export function SettingsPage() {
       resetPasswordForm()
     } catch (error) {
       const msg = error instanceof Error ? error.message : ''
-      setPasswordError(/same|different|old|giống|khác|cũ/i.test(msg) ? t('auth.passwordSameAsOld') : t('settings.passwordChangeError'))
+      setPasswordError(
+        /same|different|old|giống|khác|cũ/i.test(msg) ? t('auth.passwordSameAsOld') : t('settings.passwordChangeError'),
+      )
     } finally {
       setIsChangingPassword(false)
     }
   }
 
   const showPasswordSection = isSupabaseConfigured && user && profile?.password_set
-  const hotkeyLabelKeys: Record<StudyHotkeyAction, string> = {
-    confirmRemember: 'settings.hotkeyConfirmRemember',
-    know: 'settings.hotkeyKnow',
-    dontKnow: 'settings.hotkeyDontKnow',
-    flip: 'settings.hotkeyFlip',
-    previous: 'settings.hotkeyPrevious',
-    next: 'settings.hotkeyNext',
-    playAudio: 'settings.hotkeyPlayAudio',
-    toggleAuto: 'settings.hotkeyToggleAuto',
-    endSession: 'settings.hotkeyEndSession',
-  }
 
-  const hotkeyGroups: Array<{ key: string; actions: StudyHotkeyAction[] }> = [
-    { key: 'settings.hotkeyGroupRating', actions: ['confirmRemember', 'know', 'dontKnow'] },
-    { key: 'settings.hotkeyGroupNavigation', actions: ['flip', 'previous', 'next'] },
-    { key: 'settings.hotkeyGroupAudio', actions: ['playAudio'] },
-    { key: 'settings.hotkeyGroupSession', actions: ['toggleAuto', 'endSession'] },
-  ]
+  // Formatting options for Neobrutalist Select
+  const formattedUiOptions = uiLanguageOptions.map((opt) => ({
+    value: opt.code,
+    label: t(`language.${opt.code}`),
+  }))
 
-  function captureHotkey(action: StudyHotkeyAction, event: KeyboardEvent<HTMLButtonElement>) {
-    if (capturingHotkey !== action) return
-    event.preventDefault()
-    const key = hotkeyFromKeyboardEvent(event)
-    if (!key) return
-    setHotkeys({ ...hotkeys, [action]: key })
-    setCapturingHotkey(null)
-  }
+  const formattedLangOptions = languageOptions.map((opt) => ({
+    value: opt.code,
+    label: t(`language.${opt.code}`),
+  }))
 
   return (
-    <>
+    <div className="w-full space-y-6 pb-24">
+      {/* Header */}
       <PageHeader
         title={t('settings.title')}
         description={t('settings.description')}
-        actions={profileSaved ? <span className="flex items-center gap-1 text-sm font-bold text-secondary"><Check className="h-4 w-4" /> {t('settings.saved')}</span> : null}
+        actions={
+          profileSaved ? (
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-100 text-emerald-950 border-2 border-emerald-400 text-xs font-black animate-in fade-in duration-200">
+              <Check className="h-4 w-4 text-emerald-700" /> {t('settings.saved')}
+            </span>
+          ) : null
+        }
       />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardTitle>{t('settings.profile')}</CardTitle>
-          <CardDescription className="mt-2">{t('settings.profileDescription')}</CardDescription>
-          <div className="mt-4 grid gap-4">
-            <div><Label>{t('settings.displayName')}</Label><Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} /></div>
-            <div><Label>{t('settings.email')}</Label><Input defaultValue={user?.email ?? 'learner@example.com'} type="email" disabled /></div>
-          </div>
-          {showPasswordSection ? (
-            <div className="mt-6 border-t-2 border-border pt-4">
-              <Button variant="ghost" onClick={() => setShowPasswordModal(true)}>{t('settings.changePassword')}</Button>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* CARD 1: THÔNG TIN CÁ NHÂN (PROFILE) */}
+        <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] rounded-2xl flex flex-col justify-between space-y-5">
+          <div>
+            <div className="flex items-center justify-between border-b-2 border-border pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-border bg-primary text-primary-foreground font-black shadow-[2px_2px_0_var(--border)]">
+                  <User size={20} />
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-foreground uppercase tracking-wide">{t('settings.profile')}</h2>
+                  <p className="text-xs font-semibold text-muted-foreground">{t('settings.profileDescription')}</p>
+                </div>
+              </div>
+              {profile?.is_admin && (
+                <Badge className="bg-rose-100 text-rose-950 border-2 border-rose-400 font-black text-xs">Admin Account</Badge>
+              )}
             </div>
-          ) : null}
-        </Card>
-        <Card>
-          <CardTitle>{t('settings.languages')}</CardTitle>
-          <div className="mt-4 grid gap-4">
-            <div><Label>{t('settings.interfaceLanguage')}</Label><div className="flex gap-2"><Select className="flex-1" value={uiLanguage} onChange={(event) => setUiLanguage(event.target.value as UiLanguageCode)}>{uiLanguageOptions.map((item) => <option key={item.code} value={item.code}>{t(`language.${item.code}`)}</option>)}</Select><Button variant="primary" className="min-h-10 shrink-0" onClick={() => void saveUiLanguage()} disabled={uiLanguage === (profile?.ui_language ?? 'vi') || savingUiLanguage}>{savingUiLanguage ? '...' : t('actions.saveChanges')}</Button></div></div>
-            <div><Label>{t('settings.nativeLanguage')}</Label><Select value={nativeLanguage} onChange={(event) => setNativeLanguage(event.target.value as LanguageCode)}>{languageOptions.map((item) => <option key={item.code} value={item.code}>{t(`language.${item.code}`)}</option>)}</Select></div>
-            <div><Label>{t('settings.targetLanguage')}</Label><Select value={targetLanguage} onChange={(event) => setTargetLanguage(event.target.value as LanguageCode)}>{languageOptions.map((item) => <option key={item.code} value={item.code}>{t(`language.${item.code}`)}</option>)}</Select></div>
-          </div>
-        </Card>
-        <Card>
-          <CardTitle>{t('settings.studyPreferences')}</CardTitle>
-          <div className="mt-4 grid gap-4">
-            <div><Label>{t('settings.dailyGoal')}</Label><Select defaultValue="10"><option value="5">{t('settings.wordsPerDay', { count: 5 })}</option><option value="10">{t('settings.wordsPerDay', { count: 10 })}</option><option value="20">{t('settings.wordsPerDay', { count: 20 })}</option></Select></div>
-            <div><Label>{t('settings.defaultStudyMode')}</Label><Select defaultValue="two_side"><option value="two_side">{t('study.twoSide')}</option><option value="one_side">{t('study.oneSide')}</option></Select></div>
-          </div>
-        </Card>
-        <Card>
-          <CardTitle>{t('settings.audioPreferences')}</CardTitle>
-          <div className="mt-4 grid gap-4">
-            <div><Label>{t('settings.speechRate')}</Label><Input defaultValue="1" type="number" step="0.1" /></div>
-            <div><Label>{t('settings.speechPitch')}</Label><Input defaultValue="1" type="number" step="0.1" /></div>
-          </div>
-        </Card>
-        {isSupabaseConfigured && user ? <MfaSetupSection /> : null}
-        <Card className="lg:col-span-2">
-          <CardTitle>Cấu hình Email Thông báo</CardTitle>
-          <CardDescription className="mt-2">Quản lý các email thông báo và nhắc nhở học tập gửi đến email của bạn</CardDescription>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <div className="flex items-center justify-between rounded-lg border-2 border-border p-4 bg-background">
+
+            <div className="mt-5 space-y-4">
               <div>
-                <p className="font-black text-sm">Email nhắc nhở ôn tập hàng ngày</p>
-                <p className="text-xs text-muted-foreground mt-1">Nhận 1 email tổng hợp vào 8:00 AM khi có từ vựng đến hạn ôn tập SM-2</p>
+                <Label>{t('settings.displayName')}</Label>
+                <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
+              </div>
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label>{t('settings.email')}</Label>
+                  <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 flex items-center gap-1">
+                    <UserCheck size={11} /> Đã xác thực
+                  </span>
+                </div>
+                <div className="relative mt-1">
+                  <Input defaultValue={user?.email ?? 'learner@example.com'} type="email" disabled className="bg-muted pr-10" />
+                  <Lock size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {showPasswordSection && (
+            <div className="border-t-2 border-border pt-4 mt-4">
+              <Button
+                variant="secondary"
+                onClick={() => setShowPasswordModal(true)}
+                className="w-full font-black text-xs h-10 flex items-center justify-center gap-2"
+              >
+                <KeyRound size={16} />
+                {t('settings.changePassword')}
+              </Button>
+            </div>
+          )}
+        </section>
+
+        {/* CARD 2: CẤU HÌNH NGÔN NGỮ (LANGUAGES) */}
+        <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] rounded-2xl space-y-5">
+          <div className="flex items-center gap-2.5 border-b-2 border-border pb-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-border bg-blue-400 text-blue-950 font-black shadow-[2px_2px_0_var(--border)]">
+              <Globe size={20} />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-foreground uppercase tracking-wide">{t('settings.languages')}</h2>
+              <p className="text-xs font-semibold text-muted-foreground">Tùy chỉnh ngôn ngữ hiển thị và ngôn ngữ mục tiêu</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <Label>{t('settings.interfaceLanguage')}</Label>
+              <div className="flex gap-2 mt-1">
+                <Select
+                  className="flex-1"
+                  value={uiLanguage}
+                  onChange={(val) => setUiLanguage(val as UiLanguageCode)}
+                  options={formattedUiOptions}
+                />
+                <Button
+                  variant="primary"
+                  className="min-h-10 shrink-0 font-black text-xs px-4"
+                  onClick={() => void saveUiLanguage()}
+                  disabled={uiLanguage === (profile?.ui_language ?? 'vi') || savingUiLanguage}
+                >
+                  {savingUiLanguage ? '...' : t('actions.saveChanges')}
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Label>{t('settings.nativeLanguage')}</Label>
+              <div className="mt-1">
+                <Select
+                  value={nativeLanguage}
+                  onChange={(val) => setNativeLanguage(val as LanguageCode)}
+                  options={formattedLangOptions}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>{t('settings.targetLanguage')}</Label>
+              <div className="mt-1">
+                <Select
+                  value={targetLanguage}
+                  onChange={(val) => setTargetLanguage(val as LanguageCode)}
+                  options={formattedLangOptions}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CARD 3: BẢO MẬT 2 LỚP (MFA SETUP) */}
+        {isSupabaseConfigured && user ? (
+          <div className="lg:col-span-2">
+            <MfaSetupSection />
+          </div>
+        ) : null}
+
+        {/* CARD 4: CẤU HÌNH EMAIL THÔNG BÁO */}
+        <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] rounded-2xl lg:col-span-2 space-y-5">
+          <div className="flex items-center gap-2.5 border-b-2 border-border pb-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-border bg-amber-400 text-amber-950 font-black shadow-[2px_2px_0_var(--border)]">
+              <Mail size={20} />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-foreground uppercase tracking-wide">Cấu hình Email Thông báo</h2>
+              <p className="text-xs font-semibold text-muted-foreground">
+                Quản lý các email thông báo và nhắc nhở học tập gửi đến hòm thư của bạn
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex items-center justify-between rounded-xl border-2 border-border p-4 bg-background shadow-[2px_2px_0_var(--border)]">
+              <div className="pr-4">
+                <p className="font-black text-sm text-foreground flex items-center gap-2">
+                  <Bell size={16} className="text-amber-500" /> Email nhắc nhở ôn tập hàng ngày
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium">
+                  Nhận 1 email tổng hợp vào 8:00 AM khi có từ vựng đến hạn ôn tập SM-2
+                </p>
               </div>
               <input
                 type="checkbox"
-                className="h-5 w-5 rounded border-2 border-border accent-primary cursor-pointer shrink-0"
+                aria-label="Email nhắc nhở ôn tập hàng ngày"
+                className="h-6 w-6 rounded-md border-2 border-border accent-primary cursor-pointer shrink-0"
                 checked={emailRemindersEnabled}
                 onChange={(e) => {
                   const val = e.target.checked
@@ -286,14 +393,20 @@ export function SettingsPage() {
                 disabled={savingEmailPreferences}
               />
             </div>
-            <div className="flex items-center justify-between rounded-lg border-2 border-border p-4 bg-background">
-              <div>
-                <p className="font-black text-sm">Báo cáo tiến độ học tập hàng tuần</p>
-                <p className="text-xs text-muted-foreground mt-1">Nhận báo cáo tổng kết số từ vựng đã ghi nhớ vào cuối tuần</p>
+
+            <div className="flex items-center justify-between rounded-xl border-2 border-border p-4 bg-background shadow-[2px_2px_0_var(--border)]">
+              <div className="pr-4">
+                <p className="font-black text-sm text-foreground flex items-center gap-2">
+                  <Crown size={16} className="text-purple-500" /> Báo cáo tiến độ học tập hàng tuần
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium">
+                  Nhận báo cáo tổng kết số từ vựng đã ghi nhớ vào cuối tuần
+                </p>
               </div>
               <input
                 type="checkbox"
-                className="h-5 w-5 rounded border-2 border-border accent-primary cursor-pointer shrink-0"
+                aria-label="Báo cáo tiến độ học tập hàng tuần"
+                className="h-6 w-6 rounded-md border-2 border-border accent-primary cursor-pointer shrink-0"
                 checked={weeklyDigestEnabled}
                 onChange={(e) => {
                   const val = e.target.checked
@@ -304,90 +417,47 @@ export function SettingsPage() {
               />
             </div>
           </div>
-        </Card>
-        <Card className="lg:col-span-2">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+        </section>
+
+        {/* CARD 5: DỮ LIỆU & TÀI KHOẢN (DATA & DANGER ZONE) */}
+        <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] rounded-2xl lg:col-span-2 space-y-5">
+          <div className="flex items-center gap-2.5 border-b-2 border-border pb-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-border bg-slate-900 text-white font-black shadow-[2px_2px_0_var(--border)]">
+              <Database size={20} />
+            </div>
             <div>
-              <CardTitle>{t('settings.studyHotkeys')}</CardTitle>
-              <CardDescription className="mt-2">{t('settings.studyHotkeysDescription')}</CardDescription>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" onClick={() => { setHotkeys({ ...defaultStudyHotkeys }); setCapturingHotkey(null) }}>
-                {t('settings.hotkeyReset')}
-              </Button>
-              <Button variant="ghost" className="h-10 min-h-0 w-10 p-0" aria-label={hotkeysOpen ? t('settings.hotkeyCollapse') : t('settings.hotkeyExpand')} onClick={() => setHotkeysOpen((open) => !open)}>
-                {hotkeysOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-              </Button>
+              <h2 className="text-base font-black text-foreground uppercase tracking-wide">{t('settings.dataAccount')}</h2>
+              <p className="text-xs font-semibold text-muted-foreground">{t('settings.dataAccountDescription')}</p>
             </div>
           </div>
-          {hotkeysOpen ? (
-            <>
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {hotkeyGroups.map((group) => (
-              <div key={group.key} className="md:col-span-4">
-                <p className="text-sm font-black uppercase text-muted-foreground">{t(group.key)}</p>
-                <div className="mt-2 rounded-md border-2 border-border bg-muted/50 p-3">
-                  <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-                    {group.actions.map((action) => {
-                    const label = t(hotkeyLabelKeys[action])
-                    const isDuplicate = Boolean(hotkeys[action] && duplicateHotkeySet.has(hotkeys[action]!))
-                    return (
-                      <div key={action} className={`rounded-md border-2 p-3 ${isDuplicate ? 'border-destructive bg-destructive/10' : 'border-border bg-background'}`}>
-                        <p className="text-sm font-black">{label}</p>
-                        <div className="mt-2 flex items-center gap-2">
-                          <button
-                            type="button"
-                            aria-label={t('settings.hotkeyAssign', { action: label })}
-                            aria-pressed={capturingHotkey === action}
-                            onClick={() => setCapturingHotkey(action)}
-                            onKeyDown={(event) => captureHotkey(action, event)}
-                            className="neo-button min-h-10 flex-1 rounded-md border-2 border-border bg-card px-3 py-2 text-left font-mono text-sm font-black"
-                          >
-                            {capturingHotkey === action
-                              ? t('settings.hotkeyPressKeys')
-                              : hotkeys[action]
-                                ? formatStudyHotkey(hotkeys[action])
-                                : t('settings.hotkeyUnassigned')}
-                          </button>
-                          <Button
-                            variant="ghost"
-                            className="min-h-10 px-3"
-                            aria-label={t('settings.hotkeyClearAction', { action: label })}
-                            onClick={() => setHotkeys({ ...hotkeys, [action]: null })}
-                          >
-                            {t('settings.hotkeyClear')}
-                          </Button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-                </div>
-              </div>
-            ))}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="ghost" className="font-black text-xs h-9 flex items-center gap-2 border-2 border-border">
+              <Download size={15} /> {t('actions.exportCsv')}
+            </Button>
+            <Button variant="ghost" className="font-black text-xs h-9 flex items-center gap-2 border-2 border-border">
+              <Upload size={15} /> {t('actions.importCsv')}
+            </Button>
+            <Button variant="danger" className="font-black text-xs h-9 flex items-center gap-2">
+              <Trash2 size={15} /> {t('actions.deleteAllVocabulary')}
+            </Button>
           </div>
-          {duplicateHotkeySet.size > 0 ? (
-            <p role="alert" className="mt-4 text-sm font-black text-destructive">{t('settings.hotkeyDuplicateError')}</p>
-          ) : null}
-            </>
-          ) : null}
-        </Card>
-        <Card className="lg:col-span-2">
-          <CardTitle>{t('settings.dataAccount')}</CardTitle>
-          <CardDescription className="mt-2">{t('settings.dataAccountDescription')}</CardDescription>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="ghost">{t('actions.exportCsv')}</Button>
-            <Button variant="ghost">{t('actions.importCsv')}</Button>
-            <Button variant="danger">{t('actions.deleteAllVocabulary')}</Button>
-          </div>
+
           {isSupabaseConfigured && user ? (
-            <div className="mt-6 border-t-2 border-border pt-4">
-              <Button variant="danger" onClick={() => setShowDeleteModal(true)}>{t('actions.deleteAccount')}</Button>
+            <div className="border-t-2 border-border pt-4">
+              <Button
+                variant="danger"
+                onClick={() => setShowDeleteModal(true)}
+                className="font-black text-xs h-10 w-full sm:w-auto flex items-center justify-center gap-2"
+              >
+                <Trash2 size={16} /> {t('actions.deleteAccount')}
+              </Button>
             </div>
           ) : null}
-        </Card>
+        </section>
       </div>
 
+      {/* MODAL ĐỔI MẬT KHẨU */}
       <ConfirmModal
         open={showPasswordModal}
         title={t('settings.changePassword')}
@@ -397,24 +467,36 @@ export function SettingsPage() {
         variant="primary"
         confirmDisabled={isChangingPassword}
         onConfirm={() => void changePassword()}
-        onCancel={() => { setShowPasswordModal(false); resetPasswordForm() }}
+        onCancel={() => {
+          setShowPasswordModal(false)
+          resetPasswordForm()
+        }}
       >
         <input type="text" autoComplete="username" className="hidden" aria-hidden="true" tabIndex={-1} />
         <input type="password" className="hidden" aria-hidden="true" tabIndex={-1} />
-        <div className="grid gap-3">
+        <div className="grid gap-4 mt-2">
           <div>
             <Label>{t('settings.newPassword')}</Label>
-            <PasswordInput value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" />
+            <PasswordInput
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              autoComplete="new-password"
+            />
           </div>
           <div>
             <Label>{t('settings.confirmNewPassword')}</Label>
-            <PasswordInput value={confirmNewPassword} onChange={(event) => setConfirmNewPassword(event.target.value)} autoComplete="new-password" />
+            <PasswordInput
+              value={confirmNewPassword}
+              onChange={(event) => setConfirmNewPassword(event.target.value)}
+              autoComplete="new-password"
+            />
           </div>
-          {passwordError ? <p className="text-sm font-black text-destructive">{passwordError}</p> : null}
-          {passwordMessage ? <p className="text-sm font-black text-secondary">{passwordMessage}</p> : null}
+          {passwordError ? <p className="text-xs font-black text-rose-700 bg-rose-100 p-2.5 rounded border border-rose-300">{passwordError}</p> : null}
+          {passwordMessage ? <p className="text-xs font-black text-emerald-700 bg-emerald-100 p-2.5 rounded border border-emerald-300">{passwordMessage}</p> : null}
         </div>
       </ConfirmModal>
 
+      {/* MODAL XÓA TÀI KHOẢN */}
       <ConfirmModal
         open={showDeleteModal}
         title={t('actions.deleteAccount')}
@@ -424,15 +506,23 @@ export function SettingsPage() {
         variant="danger"
         confirmDisabled={deleteConfirmText !== 'DELETE' || isDeleting}
         onConfirm={() => void deleteAccount()}
-        onCancel={() => { setShowDeleteModal(false); setDeleteConfirmText('') }}
+        onCancel={() => {
+          setShowDeleteModal(false)
+          setDeleteConfirmText('')
+        }}
       >
-        <div className="grid gap-3">
+        <div className="grid gap-3 mt-2">
           <div>
             <Label>{t('settings.typeDeleteToConfirm')}</Label>
-            <Input value={deleteConfirmText} onChange={(event) => setDeleteConfirmText(event.target.value)} placeholder="DELETE" />
+            <Input
+              value={deleteConfirmText}
+              onChange={(event) => setDeleteConfirmText(event.target.value)}
+              placeholder="DELETE"
+              className="mt-1"
+            />
           </div>
         </div>
       </ConfirmModal>
-    </>
+    </div>
   )
 }
