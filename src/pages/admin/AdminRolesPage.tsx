@@ -76,6 +76,7 @@ export default function AdminRolesPage() {
   const [matrixDrafts, setMatrixDrafts] = useState<Map<string, boolean>>(new Map())
   const [pendingMutations, setPendingMutations] = useState<Mutation[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   const canAssignRoles = hasPermission('role.assign') || hasPermission('role.revoke')
   const canEditMatrix = isSuperAdmin
@@ -235,13 +236,17 @@ export default function AdminRolesPage() {
 
   const confirmMutation = async () => {
     if (!pendingMutations.length) return
+    const mutations = pendingMutations
     try {
       setSubmitting(true)
+      setSyncing(true)
+      setPendingMutations([])
+      setSelectedUser(null)
       const { error: sessionError } = await supabase.functions.invoke('start-admin-session')
       if (sessionError) {
         throw new Error('Phiên quản trị chưa sẵn sàng. Hãy xác thực hai lớp lại rồi thử lại.')
       }
-      for (const mutation of pendingMutations) {
+      for (const mutation of mutations) {
         const { error: invokeError } = await supabase.functions.invoke('manage-rbac', { body: mutation })
         if (invokeError) throw invokeError
       }
@@ -249,6 +254,11 @@ export default function AdminRolesPage() {
       await loadOverview(query)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Không thể cập nhật quyền.'
+      try {
+        await loadOverview(query)
+      } catch {
+        // Preserve the mutation error when the recovery refresh also fails.
+      }
       if (message.includes('Failed to send a request to the Edge Function')) {
         setError('Không thể kết nối tới Supabase Edge Function `manage-rbac`. Vui lòng đảm bảo dịch vụ Edge Function đang được khởi chạy hoặc deploy.')
       } else {
@@ -256,8 +266,7 @@ export default function AdminRolesPage() {
       }
     } finally {
       setSubmitting(false)
-      setPendingMutations([])
-      setSelectedUser(null)
+      setSyncing(false)
     }
   }
 
@@ -309,6 +318,13 @@ export default function AdminRolesPage() {
           </Button>
         </div>
       )}
+
+      {syncing ? (
+        <div role="status" aria-live="polite" className="flex items-center gap-3 border-3 border-amber-400 bg-amber-100 p-4 text-sm font-black text-amber-950 rounded-xl shadow-[3px_3px_0_var(--border)] animate-in fade-in duration-200">
+          <Sparkles size={18} className="shrink-0 animate-pulse" />
+          <span>Đang áp dụng thay đổi phân quyền và đồng bộ dữ liệu…</span>
+        </div>
+      ) : null}
 
       {/* Tab Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b-3 border-border pb-3">

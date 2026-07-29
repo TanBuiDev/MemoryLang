@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -71,5 +71,29 @@ describe('AdminRolesPage', () => {
     expect(invoke).toHaveBeenNthCalledWith(2, 'manage-rbac', expect.objectContaining({
       body: expect.objectContaining({ kind: 'role', roleCode: 'security_admin', action: 'grant' }),
     }))
+  })
+
+  it('closes confirmation immediately while synchronizing the approved role change', async () => {
+    const user = userEvent.setup()
+    let resolveMutation: (() => void) | undefined
+    const mutationPending = new Promise<void>((resolve) => { resolveMutation = resolve })
+    invoke.mockImplementation((functionName: string) =>
+      functionName === 'start-admin-session'
+        ? Promise.resolve({ data: { data: {} }, error: null })
+        : mutationPending.then(() => ({ data: { data: {} }, error: null })),
+    )
+    render(<AdminRolesPage />)
+    await screen.findByText('Exam administrator')
+
+    await user.click(screen.getByRole('button', { name: /quản lý vai trò target user/i }))
+    await user.click(screen.getByRole('checkbox', { name: /security administrator/i }))
+    await user.click(screen.getByRole('button', { name: /tiếp tục xác nhận/i }))
+    await user.click(screen.getByRole('button', { name: /xác nhận thay đổi/i }))
+
+    expect(screen.queryByRole('dialog', { name: /xác nhận thay đổi phân quyền/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Đang áp dụng thay đổi phân quyền')
+
+    resolveMutation?.()
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
   })
 })
