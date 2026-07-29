@@ -5,7 +5,6 @@ import {
   Info,
   Lock,
   RotateCcw,
-  Search,
   Shield,
   ShieldAlert,
   ShieldCheck,
