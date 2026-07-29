@@ -23,6 +23,7 @@ export function AdminLayout() {
     const path = location.pathname
     if (path === '/app/admin') return 'Dashboard'
     if (path.includes('/users')) return 'Người dùng'
+    if (path.includes('/roles')) return 'Vai trò & quyền'
     if (path.includes('/subscriptions')) return 'Gói đăng ký'
     if (path.includes('/notifications')) return 'Thông báo'
     if (path.includes('/tts')) return 'Cấu hình TTS'

@@ -44,6 +44,7 @@ import { lazyWithChunkRecovery } from '@/utils/chunkLoadRecovery'
 const LazyAdminLayout = lazyWithChunkRecovery(() => import('@/components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })))
 const AdminDashboardPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminDashboardPage'))
 const AdminUsersPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminUsersPage'))
+const AdminRolesPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminRolesPage'))
 const AdminSubscriptionsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminSubscriptionsPage'))
 const AdminTtsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminTtsPage'))
 const AdminSecretsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminSecretsPage'))
@@ -260,6 +261,7 @@ export const router = createBrowserRouter([
                 children: [
                   { index: true, element: <AdminDashboardPage /> },
                   { path: 'users', element: <AdminUsersPage /> },
+                  { path: 'roles', element: <AdminRolesPage /> },
                   { path: 'subscriptions', element: <AdminSubscriptionsPage /> },
                   { path: 'tts', element: <AdminTtsPage /> },
                   {
