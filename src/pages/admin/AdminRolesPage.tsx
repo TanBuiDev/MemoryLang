@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import {
   Crown,
@@ -89,87 +90,135 @@ function UserActionKebabMenu({
   onTogglePasswordLogin: (user: AdminUserProfile) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null)
+  const buttonRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const updatePosition = useCallback(() => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      const menuWidth = 224 // w-56 = 224px
+      const top = rect.bottom + window.scrollY + 4
+      const left = Math.max(10, rect.right + window.scrollX - menuWidth)
+      setMenuPosition({ top, left })
+    }
+  }, [])
+
+  const toggleMenu = () => {
+    if (!isOpen) {
+      updatePosition()
+    }
+    setIsOpen((prev) => !prev)
+  }
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false)
       }
     }
+
+    function handleScrollOrResize() {
+      if (isOpen) {
+        setIsOpen(false)
+      }
+    }
+
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside)
+      window.addEventListener('scroll', handleScrollOrResize, true)
+      window.addEventListener('resize', handleScrollOrResize)
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('scroll', handleScrollOrResize, true)
+      window.removeEventListener('resize', handleScrollOrResize)
     }
   }, [isOpen])
 
   const isPro = user.subscriptions?.plan_type === 'pro'
 
   return (
-    <div className="relative inline-block text-left" ref={menuRef}>
-      <Button
-        type="button"
-        variant="ghost"
-        disabled={actionLoading}
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="h-8 w-8 p-0 rounded-lg border-2 border-border bg-card hover:bg-muted font-black inline-flex items-center justify-center shadow-[1.5px_1.5px_0_var(--border)]"
-        aria-label={`Thao tác tài khoản ${user.display_name || user.email}`}
-      >
-        <MoreVertical size={16} />
-      </Button>
+    <>
+      <div ref={buttonRef} className="inline-block">
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={actionLoading}
+          onClick={toggleMenu}
+          className="h-8 w-8 p-0 rounded-lg border-2 border-border bg-card hover:bg-muted font-black inline-flex items-center justify-center shadow-[1.5px_1.5px_0_var(--border)]"
+          aria-label={`Thao tác tài khoản ${user.display_name || user.email}`}
+        >
+          <MoreVertical size={16} />
+        </Button>
+      </div>
 
-      {isOpen && (
-        <div className="absolute right-0 z-30 mt-1 w-56 rounded-xl border-3 border-border bg-card p-1.5 shadow-[4px_4px_0_var(--border)] animate-in fade-in zoom-in-95 duration-100">
-          <Link
-            to={`/app/admin/subscriptions?user=${user.id}`}
-            onClick={() => setIsOpen(false)}
-            className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-xs font-black text-foreground hover:bg-amber-100 hover:text-amber-950 transition-colors"
-          >
-            <Crown size={15} className="text-amber-600 shrink-0" />
-            <span>Quản lý gói ({isPro ? 'Pro' : 'Free'})</span>
-          </Link>
-
-          <button
-            type="button"
-            onClick={() => {
-              setIsOpen(false)
-              onToggleAdmin(user.id, Boolean(user.is_admin))
+      {isOpen &&
+        menuPosition &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={{
+              position: 'absolute',
+              top: `${menuPosition.top}px`,
+              left: `${menuPosition.left}px`,
             }}
-            className={`flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-xs font-black transition-colors text-left ${
-              user.is_admin ? 'hover:bg-rose-100 text-rose-700' : 'hover:bg-primary/20 text-foreground'
-            }`}
+            className="z-50 w-56 rounded-xl border-3 border-border bg-card p-1.5 shadow-[4px_4px_0_var(--border)] animate-in fade-in zoom-in-95 duration-100"
           >
-            {user.is_admin ? (
-              <>
-                <UserX size={15} className="text-rose-600 shrink-0" />
-                <span>Gỡ quyền Admin</span>
-              </>
-            ) : (
-              <>
-                <Shield size={15} className="text-primary shrink-0" />
-                <span>Cấp quyền Admin</span>
-              </>
-            )}
-          </button>
+            <Link
+              to={`/app/admin/subscriptions?user=${user.id}`}
+              onClick={() => setIsOpen(false)}
+              className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-xs font-black text-foreground hover:bg-amber-100 hover:text-amber-950 transition-colors"
+            >
+              <Crown size={15} className="text-amber-600 shrink-0" />
+              <span>Quản lý gói ({isPro ? 'Pro' : 'Free'})</span>
+            </Link>
 
-          {user.is_admin && (
             <button
               type="button"
               onClick={() => {
                 setIsOpen(false)
-                onTogglePasswordLogin(user)
+                onToggleAdmin(user.id, Boolean(user.is_admin))
               }}
-              className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-xs font-black text-foreground hover:bg-emerald-100 hover:text-emerald-950 transition-colors text-left"
+              className={`flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-xs font-black transition-colors text-left ${
+                user.is_admin ? 'hover:bg-rose-100 text-rose-700' : 'hover:bg-primary/20 text-foreground'
+              }`}
             >
-              <KeyRound size={15} className="text-emerald-600 shrink-0" />
-              <span>{user.allow_password_login ? 'Tắt đăng nhập mật khẩu' : 'Cho phép mật khẩu'}</span>
+              {user.is_admin ? (
+                <>
+                  <UserX size={15} className="text-rose-600 shrink-0" />
+                  <span>Gỡ quyền Admin</span>
+                </>
+              ) : (
+                <>
+                  <Shield size={15} className="text-primary shrink-0" />
+                  <span>Cấp quyền Admin</span>
+                </>
+              )}
             </button>
-          )}
-        </div>
-      )}
-    </div>
+
+            {user.is_admin && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false)
+                  onTogglePasswordLogin(user)
+                }}
+                className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-xs font-black text-foreground hover:bg-emerald-100 hover:text-emerald-950 transition-colors text-left"
+              >
+                <KeyRound size={15} className="text-emerald-600 shrink-0" />
+                <span>{user.allow_password_login ? 'Tắt đăng nhập mật khẩu' : 'Cho phép mật khẩu'}</span>
+              </button>
+            )}
+          </div>,
+          document.body,
+        )}
+    </>
   )
 }
 
@@ -795,7 +844,7 @@ export default function AdminRolesPage() {
         </div>
       </div>
 
-      {/* TAB 1: DANH SÁCH TÀI KHOẢN & GÓI CƯỚC (GỘM ADMIN TÊN CÙNG + FIT CONTENT VỪA ĐỦ SỐ LƯỢNG) */}
+      {/* TAB 1: DANH SÁCH TÀI KHOẢN & GÓI CƯỚC */}
       {activeTab === 'accounts' && (
         <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] space-y-6">
           {/* Main Tab 1 Title */}
@@ -896,7 +945,7 @@ export default function AdminRolesPage() {
         </section>
       )}
 
-      {/* TAB 2: PHÂN QUYỀN VAI TRÒ (CŨNG ÁP DỤNG GỘM ADMIN TRÊN CÙNG + ĐƯỜNG KẺ PHÂN CÁCH) */}
+      {/* TAB 2: PHÂN QUYỀN VAI TRÒ */}
       {activeTab === 'users' && (
         <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] space-y-6">
           {/* Header */}
