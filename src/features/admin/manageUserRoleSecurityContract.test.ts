@@ -10,6 +10,8 @@ describe('manage-user-role security contract', () => {
     const source = readFileSync(functionPath, 'utf8')
     expect(source).toContain("supabaseUser.auth.getUser()")
     expect(source).toContain("supabaseUser.rpc('has_permission'")
+    expect(source).toContain("supabaseUser.rpc('is_mfa_verified')")
+    expect(source).toContain("supabaseUser.rpc('is_admin_session_active'")
     expect(source).toContain("SUPABASE_SERVICE_ROLE_KEY")
     expect(source).toContain("supabaseAdmin.rpc('manage_user_role'")
   })
