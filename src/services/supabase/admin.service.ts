@@ -308,6 +308,9 @@ export const adminService = {
   },
 
   async updateUserAdminStatus(userId: string, isAdmin: boolean): Promise<{ isAdmin: boolean }> {
+    const { error: sessionError } = await supabase.functions.invoke('start-admin-session')
+    if (sessionError) throw sessionError
+
     const { data, error } = await supabase.functions.invoke<{ data: { isAdmin: boolean } }>('manage-user-role', {
       body: {
         action: isAdmin ? 'grant' : 'revoke',
