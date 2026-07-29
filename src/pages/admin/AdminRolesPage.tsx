@@ -80,6 +80,15 @@ export default function AdminRolesPage() {
   const canAssignRoles = hasPermission('role.assign') || hasPermission('role.revoke')
   const canEditMatrix = isSuperAdmin
 
+  // Auto dismiss error banner after 3 seconds
+  useEffect(() => {
+    if (!error) return
+    const timer = setTimeout(() => {
+      setError(null)
+    }, 3000)
+    return () => clearTimeout(timer)
+  }, [error])
+
   const loadOverview = useCallback(async (search: string) => {
     try {
       setLoading(true)
@@ -284,14 +293,14 @@ export default function AdminRolesPage() {
         </div>
       </header>
 
-      {/* Error Alert */}
+      {/* Auto-Dismissing Error Alert */}
       {error && (
         <div
           role="alert"
-          className="flex items-center justify-between border-3 border-rose-400 bg-rose-100 p-4 text-sm font-bold text-rose-950 rounded-xl shadow-[3px_3px_0_var(--border)]"
+          className="flex items-center justify-between border-3 border-rose-400 bg-rose-100 p-4 text-sm font-bold text-rose-950 rounded-xl shadow-[3px_3px_0_var(--border)] animate-in fade-in duration-200"
         >
           <span>{error}</span>
-          <Button variant="ghost" onClick={() => setError(null)} className="h-8 px-2 text-xs font-black">
+          <Button variant="ghost" onClick={() => setError(null)} className="h-8 px-2 text-xs font-black shrink-0">
             Đóng
           </Button>
         </div>
