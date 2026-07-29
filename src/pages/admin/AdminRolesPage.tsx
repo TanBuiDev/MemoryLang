@@ -281,7 +281,7 @@ export default function AdminRolesPage() {
     return { totalUsers, totalRoles, totalPermissions, superAdminsCount, proCount, adminAccountsCount }
   }, [overview, roles, accountUsers])
 
-  // Partition account users into Admin/Staff section (at top) and Learner section (below)
+  // Partition Tab 1 account users into Admin/Staff section (at top) and Learner section (below)
   const { adminAccountUsers, learnerAccountUsers } = useMemo(() => {
     const admins = accountUsers.filter((u) => u.is_admin)
     const learners = accountUsers.filter((u) => !u.is_admin)
@@ -307,6 +307,13 @@ export default function AdminRolesPage() {
       return matchQuery && matchRole
     })
   }, [overview.users, query, selectedRoleFilter])
+
+  // Partition Tab 2 users into Admin/Staff Users (at top) and Learner Users (below)
+  const { adminStaffRoleUsers, learnerRoleUsers } = useMemo(() => {
+    const admins = filteredUsers.filter((u) => u.roleCodes.some((code) => code !== 'user'))
+    const learners = filteredUsers.filter((u) => u.roleCodes.length === 0 || u.roleCodes.every((code) => code === 'user'))
+    return { adminStaffRoleUsers: admins, learnerRoleUsers: learners }
+  }, [filteredUsers])
 
   // Matrix search and grouping by prefix
   const filteredPermissions = useMemo(() => {
@@ -615,6 +622,89 @@ export default function AdminRolesPage() {
     }
   }
 
+  // Render Table for Tab 2
+  const renderUserRoleTable = (usersList: RbacUser[]) => (
+    <div className="overflow-x-auto border-3 border-border rounded-xl shadow-[4px_4px_0_var(--border)] bg-white">
+      <table className="min-w-full border-collapse text-left text-xs">
+        <thead>
+          <tr className="bg-amber-100 border-b-3 border-border text-amber-950 font-black uppercase tracking-wide">
+            <th className="p-3.5 border-r-2 border-border w-[40%]">Người dùng</th>
+            <th className="p-3.5 border-r-2 border-border w-[40%]">Vai trò quản trị</th>
+            <th className="p-3.5 text-right w-[20%]">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          {usersList.length === 0 ? (
+            <tr>
+              <td colSpan={3} className="p-6 text-center text-muted-foreground font-black">
+                Không có người dùng nào trong danh mục này.
+              </td>
+            </tr>
+          ) : (
+            usersList.map((target) => {
+              const initial = (target.displayName || target.email || 'U')[0].toUpperCase()
+
+              return (
+                <tr key={target.id} className="border-b-2 border-border hover:bg-amber-50/40 transition-colors">
+                  {/* User Profile */}
+                  <td className="p-3.5 border-r-2 border-border">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-primary text-primary-foreground font-black text-sm shadow-[2px_2px_0_var(--border)]">
+                        {initial}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-black text-sm text-foreground truncate">
+                          {target.displayName || 'Chưa đặt tên'}
+                        </p>
+                        <p className="text-xs font-semibold text-muted-foreground truncate">{target.email}</p>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Roles Badges */}
+                  <td className="p-3.5 border-r-2 border-border">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {target.roleCodes.length ? (
+                        target.roleCodes.map((code) => (
+                          <span
+                            key={code}
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs rounded-md ${getRoleBadgeStyle(
+                              code,
+                            )}`}
+                          >
+                            {getRoleIcon(code)}
+                            {roleByCode.get(code)?.name || code}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs font-bold text-muted-foreground bg-muted px-2.5 py-0.5 rounded border border-border">
+                          Học viên (Default User)
+                        </span>
+                      )}
+                    </div>
+                  </td>
+
+                  {/* Actions */}
+                  <td className="p-3.5 text-right">
+                    <Button
+                      variant="secondary"
+                      disabled={!canAssignRoles}
+                      aria-label={`Quản lý vai trò ${target.displayName || target.email}`}
+                      onClick={() => openUserDialog(target)}
+                      className="text-xs font-black h-8 px-3"
+                    >
+                      <UsersRound size={15} /> Quản lý vai trò
+                    </Button>
+                  </td>
+                </tr>
+              )
+            })
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+
   return (
     <div className="w-full space-y-6 pb-24">
       {/* Page Header */}
@@ -705,7 +795,7 @@ export default function AdminRolesPage() {
         </div>
       </div>
 
-      {/* TAB 1: DANH SÁCH TÀI KHOẢN & GÓI CƯỚC (GỘM ADMIN TÊN CÙNG + ĐƯỜNG PHÂN CÁCH RÕ RÀNG) */}
+      {/* TAB 1: DANH SÁCH TÀI KHOẢN & GÓI CƯỚC (GỘM ADMIN TÊN CÙNG + FIT CONTENT VỪA ĐỦ SỐ LƯỢNG) */}
       {activeTab === 'accounts' && (
         <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] space-y-6">
           {/* Main Tab 1 Title */}
@@ -719,7 +809,7 @@ export default function AdminRolesPage() {
             </p>
           </div>
 
-          {/* SECTION 1: QUẢN TRỊ VIÊN & STAFF (GỘM TRÊN CÙNG) */}
+          {/* SECTION 1: QUẢN TRỊ VIÊN & STAFF (GỘM TRÊN CÙNG - FIT CONTENT VỪA ĐỦ SỐ LƯỢNG) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b-2 border-border pb-2">
               <div className="flex items-center gap-2">
@@ -738,6 +828,7 @@ export default function AdminRolesPage() {
                 searchPlaceholder="Tìm kiếm quản trị viên theo tên hoặc email..."
                 searchFilter={accountSearchFilter}
                 isLoading={accountsLoading}
+                fitContent={true}
               />
             </div>
           </div>
@@ -805,15 +896,15 @@ export default function AdminRolesPage() {
         </section>
       )}
 
-      {/* TAB 2: PHÂN QUYỀN VAI TRÒ */}
+      {/* TAB 2: PHÂN QUYỀN VAI TRÒ (CŨNG ÁP DỤNG GỘM ADMIN TRÊN CÙNG + ĐƯỜNG KẺ PHÂN CÁCH) */}
       {activeTab === 'users' && (
-        <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] space-y-5">
+        <section className="neo-card border-3 border-border bg-card p-6 shadow-[4px_4px_0_var(--border)] space-y-6">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-border pb-3">
             <div>
               <h2 className="text-lg font-black text-foreground uppercase tracking-wide flex items-center gap-2">
                 <UsersRound size={20} className="text-primary" />
-                Danh sách người dùng & Vai trò
+                Phân Quyền Vai Trò RBAC
               </h2>
               <p className="text-xs font-semibold text-muted-foreground mt-0.5">
                 Mỗi thao tác gán hoặc gỡ vai trò đều được ghi lại trong audit log hệ thống.
@@ -826,7 +917,7 @@ export default function AdminRolesPage() {
 
           {/* Dedicated Full-Width Filter & Search Toolbar Bar */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-muted/40 p-3.5 rounded-xl border-2 border-border">
-            {/* Search Input on Left - Spacious Width */}
+            {/* Search Input on Left */}
             <div className="w-full lg:w-96 shrink-0">
               <SearchInput
                 value={query}
@@ -881,90 +972,54 @@ export default function AdminRolesPage() {
             </div>
           </div>
 
-          {/* User & Role Data Table */}
           {loading || permissionLoading ? (
             <div className="py-12 text-center">
               <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
               <p className="mt-3 font-black text-sm text-muted-foreground">Đang tải cấu hình phân quyền…</p>
             </div>
-          ) : filteredUsers.length === 0 ? (
-            <div className="py-12 text-center border-2 border-dashed border-border rounded-xl bg-muted/30">
-              <User size={36} className="mx-auto text-muted-foreground" />
-              <p className="mt-2 font-black text-base text-foreground">Không tìm thấy người dùng phù hợp</p>
-              <p className="text-xs text-muted-foreground">Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc vai trò.</p>
-            </div>
           ) : (
-            <div className="overflow-x-auto border-3 border-border rounded-xl shadow-[4px_4px_0_var(--border)] bg-white">
-              <table className="min-w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr className="bg-amber-100 border-b-3 border-border text-amber-950 font-black uppercase tracking-wide">
-                    <th className="p-3.5 border-r-2 border-border w-[40%]">Người dùng</th>
-                    <th className="p-3.5 border-r-2 border-border w-[40%]">Vai trò quản trị</th>
-                    <th className="p-3.5 text-right w-[20%]">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((target) => {
-                    const initial = (target.displayName || target.email || 'U')[0].toUpperCase()
+            <>
+              {/* SECTION 1: QUẢN TRỊ VIÊN & STAFF (GỘM TRÊN CÙNG - MỞ RỘNG VỪA ĐỦ SỐ LƯỢNG) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b-2 border-border pb-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert size={18} className="text-rose-600" />
+                    <h3 className="text-sm font-black text-foreground uppercase tracking-wide">
+                      Tài khoản Quản trị & Staff ({adminStaffRoleUsers.length})
+                    </h3>
+                  </div>
+                  <span className="text-xs font-bold text-muted-foreground">Các tài khoản có vai trò quản trị hệ thống</span>
+                </div>
 
-                    return (
-                      <tr key={target.id} className="border-b-2 border-border hover:bg-amber-50/40 transition-colors">
-                        {/* User Profile */}
-                        <td className="p-3.5 border-r-2 border-border">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-primary text-primary-foreground font-black text-sm shadow-[2px_2px_0_var(--border)]">
-                              {initial}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="font-black text-sm text-foreground truncate">
-                                {target.displayName || 'Chưa đặt tên'}
-                              </p>
-                              <p className="text-xs font-semibold text-muted-foreground truncate">{target.email}</p>
-                            </div>
-                          </div>
-                        </td>
+                {renderUserRoleTable(adminStaffRoleUsers)}
+              </div>
 
-                        {/* Roles Badges */}
-                        <td className="p-3.5 border-r-2 border-border">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            {target.roleCodes.length ? (
-                              target.roleCodes.map((code) => (
-                                <span
-                                  key={code}
-                                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs rounded-md ${getRoleBadgeStyle(
-                                    code,
-                                  )}`}
-                                >
-                                  {getRoleIcon(code)}
-                                  {roleByCode.get(code)?.name || code}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="text-xs font-bold text-muted-foreground bg-muted px-2.5 py-0.5 rounded border border-border">
-                                Học viên (Default User)
-                              </span>
-                            )}
-                          </div>
-                        </td>
+              {/* CLEAR HORIZONTAL DIVIDER SEPARATOR */}
+              <div className="relative my-8 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t-3 border-dashed border-slate-900" />
+                </div>
+                <div className="relative bg-card px-4 text-xs font-black text-foreground uppercase tracking-wider border-2 border-border rounded-full py-1.5 shadow-[3px_3px_0_var(--border)] flex items-center gap-2">
+                  <Users size={15} className="text-primary" />
+                  Tài khoản Học viên ({learnerRoleUsers.length})
+                </div>
+              </div>
 
-                        {/* Actions */}
-                        <td className="p-3.5 text-right">
-                          <Button
-                            variant="secondary"
-                            disabled={!canAssignRoles}
-                            aria-label={`Quản lý vai trò ${target.displayName || target.email}`}
-                            onClick={() => openUserDialog(target)}
-                            className="text-xs font-black h-8 px-3"
-                          >
-                            <UsersRound size={15} /> Quản lý vai trò
-                          </Button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+              {/* SECTION 2: HỌC VIÊN & NGƯỜI HỌC (NẰM BÊN DƯỚI ĐƯỜNG KẺ) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b-2 border-border pb-2">
+                  <div className="flex items-center gap-2">
+                    <Users size={18} className="text-primary" />
+                    <h3 className="text-sm font-black text-foreground uppercase tracking-wide">
+                      Danh sách Học viên ({learnerRoleUsers.length})
+                    </h3>
+                  </div>
+                  <span className="text-xs font-bold text-muted-foreground">Tài khoản mặc định (Default Users)</span>
+                </div>
+
+                {renderUserRoleTable(learnerRoleUsers)}
+              </div>
+            </>
           )}
         </section>
       )}
