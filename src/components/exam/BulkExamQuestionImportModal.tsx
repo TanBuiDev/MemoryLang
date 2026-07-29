@@ -17,7 +17,6 @@ import { processImageToText } from '@/utils/imageOcrQuestionParser'
 import {
   fileToBase64,
   parseQuestionsWithGeminiVision,
-  testGeminiApiKeyAndModel,
 } from '@/utils/geminiVisionParser'
 import { adminSecretsService } from '@/services/supabase/adminSecrets.service'
 
@@ -189,19 +188,17 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
 
     try {
       if (apiKeyInput.trim()) {
-        const testRes = await testGeminiApiKeyAndModel(apiKeyInput.trim(), modelToTest)
-        if (!testRes.ok) {
-          setKeyErrorMsg(testRes.message)
-          setTestingKey(false)
-          return
-        }
-
-        await adminSecretsService.upsertKeyPoolItem({
+        const savedKey = await adminSecretsService.upsertKeyPoolItem({
           key_name: 'Google Gemini API Key',
           purpose_tag: 'ai_vision',
           secret_val: apiKeyInput.trim(),
           model_name: modelToTest,
         })
+        const testRes = await adminSecretsService.testKeyPoolItem(savedKey.id)
+        if (!testRes.ok) {
+          setKeyErrorMsg(testRes.message)
+          return
+        }
       }
 
       setIsVaultConfigured(true)

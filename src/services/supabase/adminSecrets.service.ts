@@ -70,15 +70,12 @@ export const adminSecretsService = {
     return data as { configured: boolean; model_name: string }
   },
 
-  /**
-   * Fetches secret value for admin testing only
-   */
-  async getKeyPoolSecretForTest(id: string) {
-    const { data, error } = await supabase.rpc('get_key_pool_secret_for_test', { p_id: id })
-    if (error || !data || data.length === 0) {
-      throw new Error(error?.message || 'Không thể lấy thông tin Key để kiểm tra.')
-    }
-    return data[0] as { id: string; key_name: string; encrypted_value: string; model_name: string; purpose_tag: string }
+  async testKeyPoolItem(id: string): Promise<{ ok: boolean; message: string }> {
+    const { data, error } = await supabase.functions.invoke<{ ok: boolean; message: string }>('test-ai-provider', {
+      body: { keyId: id },
+    })
+    if (error || !data) throw new Error(error?.message || 'Không thể kiểm tra key trên máy chủ.')
+    return data
   },
 
   /**

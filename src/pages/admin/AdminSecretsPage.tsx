@@ -26,7 +26,6 @@ import {
   type AiModelConfigItem,
   type KeyUsageLogItem,
 } from '@/services/supabase/adminSecrets.service'
-import { testGeminiApiKeyAndModel } from '@/utils/geminiVisionParser'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 
 const PURPOSE_OPTIONS = [
@@ -72,8 +71,7 @@ export default function AdminSecretsPage() {
     setTestingKeyId(item.id)
     setFeedbackMsg(null)
     try {
-      const keyData = await adminSecretsService.getKeyPoolSecretForTest(item.id)
-      const testRes = await testGeminiApiKeyAndModel(keyData.encrypted_value, item.model_name)
+      const testRes = await adminSecretsService.testKeyPoolItem(item.id)
 
       if (testRes.ok) {
         await adminSecretsService.toggleKeyPoolStatus(item.id, 'active')
@@ -171,22 +169,12 @@ export default function AdminSecretsPage() {
     setSavingStatus(true)
 
     try {
-      // If adding or providing new key string, test connection with Google first
-      if (formSecretVal.trim() && (formPurposeTag === 'ai_vision' || formPurposeTag === 'ai_chat')) {
-        const testRes = await testGeminiApiKeyAndModel(formSecretVal.trim(), targetModel)
-        if (!testRes.ok) {
-          setModalErrorMsg(testRes.message)
-          setSavingStatus(false)
-          return
-        }
-      }
-
       // Upsert model to verified catalog so it shows in catalog
       if (targetModel) {
         await adminSecretsService.saveVerifiedAiModel(targetModel, 'gemini')
       }
 
-      await adminSecretsService.upsertKeyPoolItem({
+      const savedKey = await adminSecretsService.upsertKeyPoolItem({
         id: editingKeyId || undefined,
         key_name: formKeyName.trim(),
         purpose_tag: formPurposeTag,
@@ -194,6 +182,11 @@ export default function AdminSecretsPage() {
         model_name: targetModel,
         is_active: formIsActive,
       })
+
+      if (formSecretVal.trim() && (formPurposeTag === 'ai_vision' || formPurposeTag === 'ai_chat')) {
+        const testRes = await adminSecretsService.testKeyPoolItem(savedKey.id)
+        if (!testRes.ok) throw new Error(testRes.message)
+      }
 
       // Immediately purge cleartext secret from state memory
       setFormSecretVal('')
