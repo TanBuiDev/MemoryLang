@@ -16,11 +16,6 @@ export function OnboardingPage() {
   const { user, profile, loading } = useAuthStore()
   const setProfile = useAuthStore((state) => state.setProfile)
 
-  if (!isSupabaseConfigured && !user) return <Navigate to="/login" replace />
-  if (isSupabaseConfigured && !user) return <Navigate to="/login" replace />
-  if (loading || (isSupabaseConfigured && user && !profile)) return null
-  if (profile && !profile.password_set)
-    return <Navigate to="/create-password" replace />
   const [nativeLanguage, setNativeLanguage] = useState<LanguageCode>('vi')
   const [targetLanguage, setTargetLanguage] = useState<LanguageCode>('en')
   const [level, setLevel] = useState(levels[0])
@@ -29,6 +24,10 @@ export function OnboardingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const t = createTranslator(getDefaultUiLanguage(nativeLanguage))
+
+  if (!user) return <Navigate to="/login" replace />
+  if (loading || (isSupabaseConfigured && !profile)) return null
+  if (profile && !profile.password_set) return <Navigate to="/create-password" replace />
 
   async function submit(event: FormEvent) {
     event.preventDefault()
