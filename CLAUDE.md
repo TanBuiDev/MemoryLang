@@ -268,6 +268,7 @@ The authenticated `nav.study` sidebar link resumes an active stored flashcard se
   - `search-images` — proxies Unsplash (primary), Pexels, and Pixabay APIs for vocabulary illustrations. All images are downloaded and re-uploaded to `vocabulary-images` bucket. API keys stored in `.env` and synced to Edge Function secrets via `pnpm sync:secrets`.
   - `generate-audio` — Google Cloud Text-to-Speech (WaveNet voices) with audio caching in Cloudflare R2. Accepts `text`, `language` (BCP-47), and optional `voice` name. Returns `audioUrl` + `cached` flag.
   - `process-payment` — PayOS checkout, payment status/cancel actions, subscription cancellation, and unauthenticated PayOS webhook processing. Deployed with `--no-verify-jwt` so PayOS webhooks can reach the function; app actions still validate the Supabase auth header inside the function.
+  - `manage-rbac` — MFA- and active-admin-session-gated role/permission mutations. It authorizes through guarded RPCs, writes audit data through service-role-only RPCs, and returns CORS headers for the app origin.
   - `ai-chat` — authenticated AI Tutor chat with Gemini/OpenAI provider selection, daily tier quota, and persisted session history. Gemini uses native function calling for read-only, JWT-scoped learner data tools; assistant messages retain the verified evidence labels in `chat_messages.metadata`. Direct learning-data and grammar-catalog replies are formatted deterministically from the RPC payload rather than letting the model paraphrase counts. Replies mirror the latest learner-message language unless target-language practice is explicitly requested; the chat page inserts an optimistic user message and a thinking state before the provider responds. Requires the AI chat migrations plus `AI_PROVIDER`, provider API key, and model secrets before deployment.
   - `send-email` — handles transactional emails and daily/weekly notifications via Resend API (`RESEND_API_KEY`). Includes HTML templates, List-Unsubscribe headers, and mock mode fallback.
   - `daily-study-reminder` — queries active profiles with pending SM-2 review terms and triggers daily study reminder emails.
@@ -287,7 +288,7 @@ See `AGENTS.md` for commit workflow. Conventional commits: `feat:`, `fix:`, `doc
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **MemoryLang** (8078 symbols, 13666 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **MemoryLang** (8242 symbols, 13948 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

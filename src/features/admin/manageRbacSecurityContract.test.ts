@@ -10,5 +10,6 @@ describe('manage-rbac security contract', () => {
     expect(source).toContain("rpc('is_admin_session_active'")
     expect(source).toContain("rpc('manage_user_role'")
     expect(source).toContain("rpc('manage_role_permission'")
+    expect(source).toContain("'Access-Control-Allow-Origin': '*'")
   })
 })
