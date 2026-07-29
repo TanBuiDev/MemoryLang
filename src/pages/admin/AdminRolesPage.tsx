@@ -235,7 +235,12 @@ export default function AdminRolesPage() {
       setMatrixDrafts(new Map())
       await loadOverview(query)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể cập nhật quyền.')
+      const message = err instanceof Error ? err.message : 'Không thể cập nhật quyền.'
+      if (message.includes('Failed to send a request to the Edge Function')) {
+        setError('Không thể kết nối tới Supabase Edge Function `manage-rbac`. Vui lòng đảm bảo dịch vụ Edge Function đang được khởi chạy hoặc deploy.')
+      } else {
+        setError(message)
+      }
     } finally {
       setSubmitting(false)
       setPendingMutations([])
