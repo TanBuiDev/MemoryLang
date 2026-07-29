@@ -63,7 +63,18 @@ Deno.serve(async (req) => {
     supabaseUser.rpc('is_mfa_verified'),
     supabaseUser.rpc('is_admin_session_active', { p_auth_session_id: sessionId }),
   ])
-  if (mfaError || sessionError || !mfaVerified || !activeSession) return json({ error: 'Forbidden.' }, 403)
+  if (mfaError || sessionError || !mfaVerified) return json({ error: 'Forbidden.' }, 403)
+  if (!activeSession) {
+    const { error: startSessionError } = await supabaseUser.rpc('start_admin_session', {
+      p_auth_session_id: sessionId,
+      p_ip_address: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+      p_user_agent: req.headers.get('user-agent'),
+    })
+    if (startSessionError) return json({ error: 'Forbidden.' }, 403)
+
+    const { data: refreshedSession, error: refreshedSessionError } = await supabaseUser.rpc('is_admin_session_active', { p_auth_session_id: sessionId })
+    if (refreshedSessionError || !refreshedSession) return json({ error: 'Forbidden.' }, 403)
+  }
 
   if (parsed.data.kind === 'role') {
     const requiredPermission = parsed.data.action === 'grant' ? 'role.assign' : 'role.revoke'

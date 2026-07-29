@@ -7,6 +7,7 @@ describe('manage-rbac security contract', () => {
     const source = await readFile(resolve(process.cwd(), 'supabase/functions/manage-rbac/index.ts'), 'utf8')
 
     expect(source).toContain("rpc('is_mfa_verified')")
+    expect(source).toContain("rpc('start_admin_session'")
     expect(source).toContain("rpc('is_admin_session_active'")
     expect(source).toContain("rpc('manage_user_role'")
     expect(source).toContain("rpc('manage_role_permission'")
