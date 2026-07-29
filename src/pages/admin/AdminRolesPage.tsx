@@ -179,11 +179,10 @@ export default function AdminRolesPage() {
           reason: 'RBAC change confirmed from the administrator console.',
         }),
       )
-    if (!changes.length) {
-      setSelectedUser(null)
-      return
+    setSelectedUser(null)
+    if (changes.length) {
+      setPendingMutations(changes)
     }
-    setPendingMutations(changes)
   }
 
   const setPermissionDraft = (permission: RbacPermission, roleCode: string, checked: boolean) => {
@@ -233,14 +232,14 @@ export default function AdminRolesPage() {
         const { error: invokeError } = await supabase.functions.invoke('manage-rbac', { body: mutation })
         if (invokeError) throw invokeError
       }
-      setPendingMutations([])
-      setSelectedUser(null)
       setMatrixDrafts(new Map())
       await loadOverview(query)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể cập nhật quyền.')
     } finally {
       setSubmitting(false)
+      setPendingMutations([])
+      setSelectedUser(null)
     }
   }
 
