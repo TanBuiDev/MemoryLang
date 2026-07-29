@@ -13,4 +13,12 @@ describe('manage-rbac security contract', () => {
     expect(source).toContain("rpc('manage_role_permission'")
     expect(source).toContain("'Access-Control-Allow-Origin': '*'")
   })
+
+  it('exposes the MFA assurance check only to authenticated callers', async () => {
+    const migration = await readFile(resolve(process.cwd(), 'supabase/migrations/20260729185102_expose_mfa_verification_check.sql'), 'utf8')
+
+    expect(migration).toContain('create or replace function public.is_mfa_verified()')
+    expect(migration).toContain('select security.is_mfa_verified()')
+    expect(migration).toContain('grant execute on function public.is_mfa_verified() to authenticated')
+  })
 })
