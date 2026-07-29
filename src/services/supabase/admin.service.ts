@@ -307,22 +307,18 @@ export const adminService = {
     return data as Subscription
   },
 
-  async updateUserAdminStatus(userId: string, isAdmin: boolean): Promise<Profile> {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({ is_admin: isAdmin, ...(isAdmin ? {} : { allow_password_login: false }) })
-      .eq('id', userId)
-      .select('*')
-      .single()
+  async updateUserAdminStatus(userId: string, isAdmin: boolean): Promise<{ isAdmin: boolean }> {
+    const { data, error } = await supabase.functions.invoke<{ data: { isAdmin: boolean } }>('manage-user-role', {
+      body: {
+        action: isAdmin ? 'grant' : 'revoke',
+        targetUserId: userId,
+        roleCode: 'exam_admin',
+        reason: isAdmin ? 'Granted exam administration access from the admin user console.' : 'Revoked exam administration access from the admin user console.',
+      },
+    })
     if (error) throw error
-
-    await this.logAction(
-      isAdmin ? 'grant_admin' : 'revoke_admin',
-      'profile',
-      userId,
-      { display_name: data.display_name, email: data.email }
-    )
-    return data as Profile
+    if (!data?.data) throw new Error('Máy chủ không trả về trạng thái quyền quản trị.')
+    return { isAdmin: data.data.isAdmin }
   },
 
   async setAdminPasswordLogin(userId: string, allowPasswordLogin: boolean): Promise<Profile> {

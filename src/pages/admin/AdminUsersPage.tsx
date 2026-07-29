@@ -195,11 +195,11 @@ export default function AdminUsersPage() {
         setConfirmModal(null)
         try {
           setActionLoading(userId)
-          await adminService.updateUserAdminStatus(userId, !currentAdminStatus)
+          const result = await adminService.updateUserAdminStatus(userId, !currentAdminStatus)
           setUsers((prev) =>
             prev.map((u) =>
               u.id === userId
-                ? { ...u, is_admin: !currentAdminStatus, allow_password_login: !currentAdminStatus ? false : u.allow_password_login }
+                ? { ...u, is_admin: result.isAdmin, allow_password_login: result.isAdmin ? u.allow_password_login : false }
                 : u,
             ),
           )
