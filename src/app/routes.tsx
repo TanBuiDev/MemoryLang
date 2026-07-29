@@ -13,6 +13,7 @@ import { OnboardingPage } from '@/pages/onboarding/OnboardingPage'
 import { ForgotPasswordPage } from '@/pages/public/ForgotPasswordPage'
 import { LandingPage } from '@/pages/public/LandingPage'
 import { LoginPage } from '@/pages/public/LoginPage'
+import { MfaChallengePage } from '@/pages/public/MfaChallengePage'
 import { CreatePasswordPage } from '@/pages/public/CreatePasswordPage'
 import { QuizResultPage } from '@/pages/quiz/QuizResultPage'
 import { QuizSessionPage } from '@/pages/quiz/QuizSessionPage'
@@ -92,6 +93,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <LandingPage /> },
       { path: '/login', element: <LoginPage /> },
+      { path: '/mfa-challenge', element: <MfaChallengePage /> },
       { path: '/register', element: <Navigate to="/login" replace /> },
       { path: '/forgot-password', element: <ForgotPasswordPage /> },
       { path: '/create-password', element: <CreatePasswordPage /> },

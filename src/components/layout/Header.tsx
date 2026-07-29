@@ -42,6 +42,7 @@ import { useThemeStore } from '@/stores/useThemeStore'
 import { useUiLanguageStore } from '@/stores/useUiLanguageStore'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import { useFeatureFlagsStore } from '@/stores/useFeatureFlagsStore'
+import { usePermissions } from '@/hooks/usePermissions'
 import { cn } from '@/utils/cn'
 
 /**
@@ -101,6 +102,8 @@ export function Header() {
   const { theme, toggleTheme } = useThemeStore()
   const { uiLanguage, setUiLanguage } = useUiLanguageStore()
   const effectiveUiLanguage = uiLanguage ?? profile?.ui_language ?? 'vi'
+  const { hasPermission } = usePermissions()
+  const canAccessAdmin = hasPermission('exam.read') || hasPermission('user.read.basic') || hasPermission('role.read')
 
   // Notification store
   const notifications = useNotificationStore((s) => s.notifications)
@@ -397,7 +400,7 @@ export function Header() {
                     <User size={14} />
                     {t('nav.home')}
                   </NavLink>
-                  {profile?.is_admin && (
+                  {canAccessAdmin && (
                     <NavLink
                       to="/app/admin"
                       onClick={() => setProfileOpen(false)}
@@ -522,7 +525,7 @@ export function Header() {
               </>
             )}
 
-            {profile?.is_admin && (
+            {canAccessAdmin && (
               <>
                 <hr className="border-border border-dashed" />
                 <div className="flex flex-col gap-1">
