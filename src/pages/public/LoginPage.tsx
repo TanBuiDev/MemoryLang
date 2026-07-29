@@ -21,13 +21,8 @@ export function LoginPage() {
       navigate('/app/dashboard')
       return
     }
-    const canUsePasswordLogin = await authService.canUsePasswordLogin(email)
-    if (!canUsePasswordLogin) {
-      setMessage(t('auth.adminGoogleOnly'))
-      return
-    }
     const { error } = await authService.signInWithPassword(email, password)
-    setMessage(error?.message ?? t('auth.loggedIn'))
+    setMessage(error ? 'Không thể đăng nhập bằng thông tin đã cung cấp.' : t('auth.loggedIn'))
     if (!error) navigate('/app/dashboard')
   }
 
