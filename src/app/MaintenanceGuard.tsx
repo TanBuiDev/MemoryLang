@@ -4,6 +4,7 @@ import { maintenanceService } from '@/services/supabase/maintenance.service'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { MaintenancePage } from '@/pages/public/MaintenancePage'
+import { usePermissions } from '@/hooks/usePermissions'
 
 interface MaintenanceGuardProps {
   children: ReactNode
@@ -17,6 +18,7 @@ interface MaintenanceGuardProps {
  */
 export function MaintenanceGuard({ children }: MaintenanceGuardProps) {
   const profile = useAuthStore((state) => state.profile)
+  const { loading: permissionsLoading, hasPermission } = usePermissions()
 
   const { data: status } = useQuery({
     queryKey: ['maintenance-status'],
@@ -34,8 +36,14 @@ export function MaintenanceGuard({ children }: MaintenanceGuardProps) {
   const bypassPaths = ['/login', '/forgot-password', '/create-password']
   const isBypassPath = bypassPaths.includes(window.location.pathname)
 
-  // Maintenance mode đang bật VÀ user hiện tại KHÔNG phải admin VÀ không phải là trang auth bypass → chặn
-  if (status?.enabled && !profile?.is_admin && !isBypassPath) {
+  const hasAdminPermission = hasPermission('exam.read')
+    || hasPermission('user.read.basic')
+    || hasPermission('role.read')
+  const canBypassMaintenance = Boolean(profile?.is_admin) || hasAdminPermission
+
+  // Chờ permission summary trước khi chặn để admin RBAC không bị mắc kẹt
+  // ở màn hình bảo trì sau khi đăng nhập.
+  if (status?.enabled && !permissionsLoading && !canBypassMaintenance && !isBypassPath) {
     return (
       <MaintenancePage
         message={status.message}
