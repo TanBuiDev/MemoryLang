@@ -82,12 +82,10 @@ function UserActionKebabMenu({
   user,
   actionLoading,
   onToggleAdmin,
-  onTogglePasswordLogin,
 }: {
   user: AdminUserProfile
   actionLoading: boolean
   onToggleAdmin: (userId: string, currentAdminStatus: boolean) => void
-  onTogglePasswordLogin: (user: AdminUserProfile) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null)
@@ -201,20 +199,6 @@ function UserActionKebabMenu({
                 </>
               )}
             </button>
-
-            {user.is_admin && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false)
-                  onTogglePasswordLogin(user)
-                }}
-                className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-xs font-black text-foreground hover:bg-emerald-100 hover:text-emerald-950 transition-colors text-left"
-              >
-                <KeyRound size={15} className="text-emerald-600 shrink-0" />
-                <span>{user.allow_password_login ? 'Tắt đăng nhập mật khẩu' : 'Cho phép mật khẩu'}</span>
-              </button>
-            )}
           </div>,
           document.body,
         )}
@@ -422,37 +406,6 @@ export default function AdminRolesPage() {
     })
   }
 
-  const handleToggleAdminPasswordLogin = (targetUser: AdminUserProfile) => {
-    if (accountActionLoading || !targetUser.is_admin) return
-    const nextValue = !targetUser.allow_password_login
-
-    setAccountConfirmModal({
-      open: true,
-      title: nextValue ? 'Cho phép admin đăng nhập bằng mật khẩu?' : 'Tắt đăng nhập bằng mật khẩu?',
-      description: nextValue
-        ? 'Admin này có thể dùng email và mật khẩu tại trang đăng nhập, ngoài lựa chọn Google.'
-        : 'Admin này chỉ có thể đăng nhập bằng Google. Phiên đang đăng nhập vẫn không bị ảnh hưởng.',
-      confirmLabel: nextValue ? 'Cho phép mật khẩu' : 'Tắt mật khẩu',
-      cancelLabel: 'Hủy',
-      variant: nextValue ? 'primary' : 'danger',
-      onConfirm: async () => {
-        setAccountConfirmModal(null)
-        try {
-          setAccountActionLoading(targetUser.id)
-          await adminService.setAdminPasswordLogin(targetUser.id, nextValue)
-          setAccountUsers((prev) =>
-            prev.map((entry) => (entry.id === targetUser.id ? { ...entry, allow_password_login: nextValue } : entry)),
-          )
-        } catch (err: unknown) {
-          console.error(err)
-          setError(err instanceof Error ? err.message : 'Không thể cập nhật quyền đăng nhập bằng mật khẩu')
-        } finally {
-          setAccountActionLoading(null)
-        }
-      },
-    })
-  }
-
   // Account Columns Builder for Tab 1
   const accountColumns = useMemo(
     () => [
@@ -568,7 +521,6 @@ export default function AdminRolesPage() {
                 user={row}
                 actionLoading={accountActionLoading === row.id}
                 onToggleAdmin={handleToggleAdmin}
-                onTogglePasswordLogin={handleToggleAdminPasswordLogin}
               />
             </div>
           )
