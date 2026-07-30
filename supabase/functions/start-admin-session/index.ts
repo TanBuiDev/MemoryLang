@@ -27,5 +27,14 @@ Deno.serve(async (req) => {
     p_user_agent: req.headers.get('user-agent'),
   })
   if (error) return json({ error: error.code === '42501' ? 'MFA verification is required.' : 'Unable to start an admin session.' }, error.code === '42501' ? 403 : 400)
+  const admin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
+  const { data: eventId } = await admin.rpc('record_admin_session_alert', { p_user_id: user.id, p_auth_session_id: sessionId, p_user_agent: req.headers.get('user-agent') })
+  if (eventId) {
+    const { data: outbox } = await admin.rpc('claim_security_email_outbox', { p_event_id: eventId })
+    for (const email of outbox ?? []) {
+      const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`, { method: 'POST', headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ to: email.recipient_email, subject: 'Cảnh báo bảo mật MemoryLang', template: 'security_alert', data: email.payload }) })
+      await admin.rpc('mark_security_email_sent', { p_outbox_id: email.id, p_error: response.ok ? null : 'Email dispatch failed.' })
+    }
+  }
   return json({ data: { expiresAt: data.expires_at } })
 })
