@@ -278,6 +278,8 @@ The authenticated `nav.study` sidebar link resumes an active stored flashcard se
 
 `MfaSetupSection` lists the active TOTP factors for the current user. It permits enrollment only while no TOTP factor is active; Supabase returns the QR code and secret only during that initial enrollment, so an active factor must be transferred through the authenticator app or safely replaced rather than attempting to regenerate its original secret.
 
+**Current authentication limitation:** `profiles.allow_password_login` defaults to `false` for admins, but the public `LoginPage` currently calls `signInWithPassword` directly and does not enforce that profile setting. MFA redirection is factor-driven in the client: an enrolled user at AAL1 is sent to `/mfa-challenge`, but a user without a factor is not required to enroll, and an assurance-level lookup error currently fails open. `manage-rbac` separately requires AAL2 and an active admin session; other administrative routes and database policies do not yet enforce AAL2 uniformly.
+
 ## Frontend Deployment & Chunk Cache
 - Vite emits hashed lazy chunks under `/assets`. Cloudflare Pages only serves the current deployment on the custom domain, so users with an older in-memory SPA can request stale chunks after a new deploy.
 - Dynamic import failures such as `Failed to fetch dynamically imported module: .../assets/*.js` usually mean stale deployment/chunk cache, not a broken page component.
