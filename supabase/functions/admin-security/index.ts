@@ -31,7 +31,12 @@ Deno.serve(async (req) => {
     const { error } = await admin.auth.admin.mfa.deleteFactor({ id: factor.id, userId: body.targetUserId })
     if (error) return json({ error: 'Unable to reset MFA.' }, 400)
   }
-  const { error: eventError } = await admin.rpc('record_admin_mfa_reset', { p_actor_user_id: user.id, p_target_user_id: body.targetUserId, p_user_agent: req.headers.get('user-agent') })
+  const { data: eventId, error: eventError } = await admin.rpc('record_admin_mfa_reset', { p_actor_user_id: user.id, p_target_user_id: body.targetUserId, p_user_agent: req.headers.get('user-agent') })
   if (eventError) return json({ error: 'Unable to record the security event.' }, 500)
+  const { data: outbox } = await admin.rpc('claim_security_email_outbox', { p_event_id: eventId })
+  for (const email of outbox ?? []) {
+    const response = await fetch(`${url}/functions/v1/send-email`, { method: 'POST', headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ to: email.recipient_email, subject: 'Cảnh báo bảo mật MemoryLang', template: 'security_alert', data: email.payload }) })
+    await admin.rpc('mark_security_email_sent', { p_outbox_id: email.id, p_error: response.ok ? null : 'Email dispatch failed.' })
+  }
   return json({ success: true })
 })
