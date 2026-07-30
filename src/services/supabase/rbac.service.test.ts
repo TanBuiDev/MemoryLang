@@ -12,6 +12,7 @@ describe('rbacService', () => {
       data: { roles: [], permissions: [], users: [], total: 0 },
       error: null,
     })
+    rpc.mockResolvedValueOnce({ data: [], error: null })
 
     await rbacService.getOverview('tony')
 
@@ -20,5 +21,6 @@ describe('rbacService', () => {
       p_limit: 100,
       p_offset: 0,
     })
+    expect(rpc).toHaveBeenCalledWith('get_pending_admin_role_grants')
   })
 })
