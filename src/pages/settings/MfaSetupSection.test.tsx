@@ -10,4 +10,9 @@ describe('MfaSetupSection', () => {
     expect(source).toContain('src={enrollment.totp.qr_code}')
     expect(source).not.toContain('btoa(enrollment.totp.qr_code)')
   })
+
+  it('does not offer a second enrollment after a TOTP factor is active', () => {
+    const source = readFileSync(componentPath, 'utf8')
+    expect(source).not.toContain("isEnabled ? 'Thêm ứng dụng xác thực' : 'Thiết lập 2FA ngay'")
+  })
 })

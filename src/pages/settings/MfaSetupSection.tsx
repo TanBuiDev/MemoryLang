@@ -125,7 +125,7 @@ export function MfaSetupSection() {
           </div>
         </div>
 
-        {!enrollment && (
+        {!enrollment && !isEnabled && (
           <Button
             variant="primary"
             onClick={() => void startEnrollment()}
@@ -133,7 +133,7 @@ export function MfaSetupSection() {
             className="font-black text-xs shrink-0 h-10 px-4 flex items-center gap-2"
           >
             <Smartphone size={16} />
-            {busy ? 'Đang chuẩn bị...' : isEnabled ? 'Thêm ứng dụng xác thực' : 'Thiết lập 2FA ngay'}
+            {busy ? 'Đang chuẩn bị...' : 'Thiết lập 2FA ngay'}
           </Button>
         )}
       </div>
@@ -148,13 +148,14 @@ export function MfaSetupSection() {
             <ShieldAlert size={16} className="text-rose-600 shrink-0" />
             <span>{error}</span>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setError(null)}
-            className="font-black hover:underline text-rose-900 text-[11px]"
+            className="h-auto min-h-0 p-0 text-[11px] font-black text-rose-900 hover:underline"
           >
             Đóng
-          </button>
+          </Button>
         </div>
       )}
 
@@ -265,6 +266,9 @@ export function MfaSetupSection() {
         <div className="space-y-3">
           <p className="text-xs font-black text-muted-foreground uppercase tracking-wider">
             Các ứng dụng xác thực 2FA đã liên kết:
+          </p>
+          <p className="rounded-lg border-2 border-amber-400 bg-amber-50 p-3 text-xs font-bold text-amber-950">
+            Mã QR và khóa bí mật chỉ hiển thị một lần khi thiết lập. Để đổi sang ứng dụng mới, hãy gỡ ứng dụng cũ sau khi đã bảo đảm bạn có thể tạo mã xác thực trên thiết bị mới.
           </p>
           <div className="grid gap-3">
             {factors.map((factor) => (
