@@ -238,6 +238,7 @@ export default function AdminRolesPage() {
   const [matrixDrafts, setMatrixDrafts] = useState<Map<string, boolean>>(new Map())
   const [pendingMutations, setPendingMutations] = useState<Mutation[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   // Full User Profiles state for Tab 1
   const [accountUsers, setAccountUsers] = useState<AdminUserProfile[]>([])
@@ -648,9 +649,13 @@ export default function AdminRolesPage() {
 
   const confirmMutation = async () => {
     if (!pendingMutations.length) return
+    const mutations = pendingMutations
     try {
       setSubmitting(true)
-      for (const mutation of pendingMutations) {
+      setSyncing(true)
+      setPendingMutations([])
+      setSelectedUser(null)
+      for (const mutation of mutations) {
         const { error: invokeError } = await supabase.functions.invoke('manage-rbac', { body: mutation })
         if (invokeError) throw invokeError
       }
@@ -659,6 +664,7 @@ export default function AdminRolesPage() {
       await loadAccountUsers()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Không thể cập nhật quyền.'
+      await Promise.all([loadOverview(query), loadAccountUsers()])
       if (message.includes('Failed to send a request to the Edge Function')) {
         setError('Không thể kết nối tới Supabase Edge Function `manage-rbac`. Vui lòng đảm bảo dịch vụ Edge Function đang được khởi chạy hoặc deploy.')
       } else {
@@ -666,8 +672,7 @@ export default function AdminRolesPage() {
       }
     } finally {
       setSubmitting(false)
-      setPendingMutations([])
-      setSelectedUser(null)
+      setSyncing(false)
     }
   }
 
@@ -802,6 +807,17 @@ export default function AdminRolesPage() {
           </Button>
         </div>
       )}
+
+      {syncing ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center gap-3 rounded-xl border-3 border-amber-400 bg-amber-100 p-4 text-sm font-black text-amber-950 shadow-[3px_3px_0_var(--border)] animate-in fade-in duration-200"
+        >
+          <Sparkles size={18} className="shrink-0 animate-pulse" />
+          <span>Đang áp dụng thay đổi phân quyền và đồng bộ dữ liệu…</span>
+        </div>
+      ) : null}
 
       {/* 3 Tabs Navigation Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b-3 border-border pb-3">

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -119,5 +119,35 @@ describe('AdminRolesPage', () => {
     await user.click(screen.getByRole('button', { name: /lưu thay đổi \(1\)/i }))
     expect(screen.getByRole('dialog')).toHaveTextContent('exam.read')
     expect(invoke).not.toHaveBeenCalled()
+  })
+
+  it('closes the RBAC confirmation while a role revocation is synchronizing', async () => {
+    const user = userEvent.setup()
+    let resolveMutation: (() => void) | undefined
+    const mutationPending = new Promise<void>((resolve) => {
+      resolveMutation = resolve
+    })
+    invoke.mockImplementation((functionName: string) =>
+      functionName === 'start-admin-session'
+        ? Promise.resolve({ data: { data: {} }, error: null })
+        : mutationPending.then(() => ({ data: { data: {} }, error: null })),
+    )
+    render(
+      <MemoryRouter>
+        <AdminRolesPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: /phân quyền vai trò/i }))
+    await user.click(screen.getByRole('button', { name: /quản lý vai trò target user/i }))
+    await user.click(screen.getByRole('checkbox', { name: /exam administrator/i }))
+    await user.click(screen.getByRole('button', { name: /tiếp tục xác nhận/i }))
+    await user.click(screen.getByRole('button', { name: /xác nhận thay đổi/i }))
+
+    expect(screen.queryByRole('dialog', { name: /xác nhận thay đổi phân quyền/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Đang áp dụng thay đổi phân quyền')
+
+    resolveMutation?.()
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
   })
 })
