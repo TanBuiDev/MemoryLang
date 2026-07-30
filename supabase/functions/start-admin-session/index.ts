@@ -32,11 +32,6 @@ async function hashNetworkSignal(ipAddress: string) {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-function createDisabledPassword() {
-  const bytes = crypto.getRandomValues(new Uint8Array(32))
-  return `${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}Aa1!`
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers })
   if (req.method !== 'POST') return json({ error: 'Only POST is supported.' }, 405)
@@ -63,10 +58,6 @@ Deno.serve(async (req) => {
     return json({ error: 'Unable to start an administrative session.' }, 400)
   }
   const admin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
-  const { error: passwordError } = await admin.auth.admin.updateUserById(user.id, {
-    password: createDisabledPassword(),
-  })
-  if (passwordError) return json({ error: 'Unable to secure the administrative sign-in method.' }, 500)
   const { data: eventId } = await admin.rpc('record_admin_session_alert', {
     p_user_id: user.id,
     p_auth_session_id: sessionId,

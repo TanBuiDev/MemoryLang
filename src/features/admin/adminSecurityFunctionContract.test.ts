@@ -40,10 +40,10 @@ describe('admin security Edge Function contracts', () => {
     expect(emailSource).toContain('networkLabel')
   })
 
-  it('rotates an activated administrator password only from the server', async () => {
+  it('does not mutate Auth credentials while establishing an admin session', async () => {
     const source = await readFile(resolve(process.cwd(), 'supabase/functions/start-admin-session/index.ts'), 'utf8')
 
-    expect(source).toContain('auth.admin.updateUserById')
-    expect(source).toContain('crypto.getRandomValues')
+    expect(source).not.toContain('auth.admin.updateUserById')
+    expect(source).not.toContain('createDisabledPassword')
   })
 })
