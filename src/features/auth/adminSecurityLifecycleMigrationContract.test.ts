@@ -35,4 +35,11 @@ describe('admin security lifecycle migration', () => {
     expect(sql).toContain('grant execute on function security.enqueue_security_email')
     expect(sql).toContain('to service_role')
   })
+
+  it('exposes pending grants only to role readers', () => {
+    const migration = readFileSync(resolve(process.cwd(), 'supabase/migrations/20260730132345_expose_pending_admin_role_grants.sql'), 'utf8')
+    expect(migration).toContain('public.get_pending_admin_role_grants')
+    expect(migration).toContain("security.has_permission('role.read')")
+    expect(migration).toContain('grant execute on function public.get_pending_admin_role_grants() to authenticated')
+  })
 })

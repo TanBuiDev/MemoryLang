@@ -585,14 +585,17 @@ export default function AdminRolesPage() {
 
   const openUserDialog = (target: RbacUser) => {
     setSelectedUser(target)
-    setDraftRoles(new Set(target.roleCodes))
+    setDraftRoles(new Set([...target.roleCodes, ...(target.pendingRoleCodes ?? [])]))
   }
 
   const queueRoleChanges = () => {
     if (!selectedUser) return
     const changes = roles
       .filter((role) => role.code !== 'user')
-      .filter((role) => draftRoles.has(role.code) !== selectedUser.roleCodes.includes(role.code))
+      .filter((role) => {
+        const currentlyAssigned = selectedUser.roleCodes.includes(role.code) || (selectedUser.pendingRoleCodes ?? []).includes(role.code)
+        return draftRoles.has(role.code) !== currentlyAssigned
+      })
       .map(
         (role): Mutation => ({
           kind: 'role',
@@ -735,6 +738,15 @@ export default function AdminRolesPage() {
                           Học viên (Default User)
                         </span>
                       )}
+                      {(target.pendingRoleCodes ?? []).map((code) => (
+                        <span
+                          key={`pending-${code}`}
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs rounded-md opacity-70 ${getRoleBadgeStyle(code)}`}
+                          title="Chờ người dùng đăng nhập Google và xác thực MFA để kích hoạt"
+                        >
+                          <Lock size={12} /> {roleByCode.get(code)?.name || code} · Chờ kích hoạt
+                        </span>
+                      ))}
                     </div>
                   </td>
 

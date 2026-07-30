@@ -17,6 +17,7 @@ export interface RbacUser {
   email: string | null
   displayName: string | null
   roleCodes: string[]
+  pendingRoleCodes?: string[]
 }
 
 export interface RoleManagementOverview {
@@ -35,7 +36,16 @@ export const rbacService = {
     })
     if (error) throw error
 
-    const overview = data as RoleManagementOverview | null
-    return overview ?? { roles: [], permissions: [], users: [], total: 0 }
+    const overview = (data as RoleManagementOverview | null) ?? { roles: [], permissions: [], users: [], total: 0 }
+    const { data: pending, error: pendingError } = await supabase.rpc('get_pending_admin_role_grants')
+    if (pendingError) throw pendingError
+    const pendingByUser = new Map<string, string[]>()
+    for (const grant of (pending ?? []) as Array<{ user_id: string; role_code: string }>) {
+      pendingByUser.set(grant.user_id, [...(pendingByUser.get(grant.user_id) ?? []), grant.role_code])
+    }
+    return {
+      ...overview,
+      users: overview.users.map((user) => ({ ...user, pendingRoleCodes: pendingByUser.get(user.id) ?? [] })),
+    }
   },
 }
