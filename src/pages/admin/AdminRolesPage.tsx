@@ -23,6 +23,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { SearchInput } from '@/components/ui/input'
+import {
+  getRbacMutationErrorMessage,
+  validateRbacMutationResult,
+  type RbacMutation,
+  type RbacMutationResult,
+} from '@/features/admin/rbacMutationFeedback'
 import { usePermissions } from '@/hooks/usePermissions'
 import { adminService } from '@/services/supabase/admin.service'
 import { rbacService, type RbacPermission, type RbacRole, type RbacUser, type RoleManagementOverview } from '@/services/supabase/rbac.service'
@@ -38,10 +44,6 @@ interface AdminUserProfile extends Profile {
 }
 
 type LearnerFilterCategory = 'all' | 'pro' | 'free'
-
-type Mutation =
-  | { kind: 'role'; action: 'grant' | 'revoke'; targetUserId: string; roleCode: string; reason: string }
-  | { kind: 'permission'; action: 'grant' | 'revoke'; roleCode: string; permissionCode: string; reason: string }
 
 const emptyOverview: RoleManagementOverview = { roles: [], permissions: [], users: [], total: 0 }
 
@@ -184,10 +186,11 @@ export default function AdminRolesPage() {
   const [loading, setLoading] = useState(true)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [selectedUser, setSelectedUser] = useState<RbacUser | null>(null)
   const [draftRoles, setDraftRoles] = useState<Set<string>>(new Set())
   const [matrixDrafts, setMatrixDrafts] = useState<Map<string, boolean>>(new Map())
-  const [pendingMutations, setPendingMutations] = useState<Mutation[]>([])
+  const [pendingMutations, setPendingMutations] = useState<RbacMutation[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [mfaResetTarget, setMfaResetTarget] = useState<RbacUser | null>(null)
@@ -200,15 +203,6 @@ export default function AdminRolesPage() {
 
   const canAssignRoles = hasPermission('role.assign') || hasPermission('role.revoke')
   const canEditMatrix = isSuperAdmin
-
-  // Auto dismiss error banner after 3 seconds
-  useEffect(() => {
-    if (!error) return
-    const timer = setTimeout(() => {
-      setError(null)
-    }, 3000)
-    return () => clearTimeout(timer)
-  }, [error])
 
   const loadOverview = useCallback(async (search: string) => {
     try {
@@ -260,6 +254,22 @@ export default function AdminRolesPage() {
     [overview.roles],
   )
   const roleByCode = useMemo(() => new Map(roles.map((role) => [role.code, role])), [roles])
+  const rbacUserById = useMemo(
+    () => new Map(overview.users.map((user) => [user.id, user])),
+    [overview.users],
+  )
+
+  const hasAdministrativeRole = useCallback(
+    (account: AdminUserProfile) => {
+      const rbacUser = rbacUserById.get(account.id)
+      return (
+        account.is_admin ||
+        Boolean(rbacUser?.roleCodes.some((code) => code !== 'user')) ||
+        Boolean(rbacUser?.pendingRoleCodes?.some((code) => code !== 'user'))
+      )
+    },
+    [rbacUserById],
+  )
 
   // Computed summary metrics
   const metrics = useMemo(() => {
@@ -268,21 +278,21 @@ export default function AdminRolesPage() {
     const totalPermissions = overview.permissions.length
     const superAdminsCount = overview.users.filter((u) => u.roleCodes.includes('super_admin')).length
     const proCount = accountUsers.filter((u) => u.subscriptions?.plan_type === 'pro').length
-    const adminAccountsCount = accountUsers.filter((u) => u.is_admin).length
+    const adminAccountsCount = accountUsers.filter(hasAdministrativeRole).length
     return { totalUsers, totalRoles, totalPermissions, superAdminsCount, proCount, adminAccountsCount }
-  }, [overview, roles, accountUsers])
+  }, [overview, roles, accountUsers, hasAdministrativeRole])
 
   // Partition Tab 1 account users into Admin/Staff section (at top) and Learner section (below)
   const { adminAccountUsers, learnerAccountUsers } = useMemo(() => {
-    const admins = accountUsers.filter((u) => u.is_admin)
-    const learners = accountUsers.filter((u) => !u.is_admin)
+    const admins = accountUsers.filter(hasAdministrativeRole)
+    const learners = accountUsers.filter((u) => !hasAdministrativeRole(u))
     const filteredLearners = learners.filter((user) => {
       if (learnerFilter === 'pro') return user.subscriptions?.plan_type === 'pro'
       if (learnerFilter === 'free') return !user.subscriptions || user.subscriptions.plan_type === 'free'
       return true
     })
     return { adminAccountUsers: admins, learnerAccountUsers: filteredLearners }
-  }, [accountUsers, learnerFilter])
+  }, [accountUsers, learnerFilter, hasAdministrativeRole])
 
   // Filtered users for Tab 2
   const filteredUsers = useMemo(() => {
@@ -333,11 +343,16 @@ export default function AdminRolesPage() {
         className: 'w-[30%]',
         accessor: (row: AdminUserProfile) => {
           const initial = row.display_name ? row.display_name[0].toUpperCase() : 'U'
+          const rbacUser = rbacUserById.get(row.id)
+          const isAdministrativeAccount =
+            row.is_admin ||
+            Boolean(rbacUser?.roleCodes.some((code) => code !== 'user')) ||
+            Boolean(rbacUser?.pendingRoleCodes?.some((code) => code !== 'user'))
           return (
             <div className="flex items-center gap-3">
               <div
                 className={`w-10 h-10 rounded-xl border-2 border-border shadow-[2px_2px_0_var(--border)] flex items-center justify-center font-black text-sm shrink-0 ${
-                  row.is_admin ? 'bg-rose-500 text-white' : 'bg-primary text-primary-foreground'
+                  isAdministrativeAccount ? 'bg-rose-500 text-white' : 'bg-primary text-primary-foreground'
                 }`}
               >
                 {initial}
@@ -385,43 +400,63 @@ export default function AdminRolesPage() {
       {
         header: 'Bảo mật & Mật khẩu',
         className: 'w-[22%]',
-        accessor: (row: AdminUserProfile) => (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {row.is_admin ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-100 text-rose-950 border-2 border-rose-400 text-xs font-black uppercase">
-                <ShieldAlert size={13} className="text-rose-700 shrink-0" />
-                Admin
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 border-2 border-border text-xs font-black uppercase">
-                <User size={13} className="shrink-0" />
-                User
-              </span>
-            )}
-            {row.is_admin && (
-              <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black border ${
-                  row.allow_password_login
-                    ? 'bg-emerald-100 text-emerald-950 border-emerald-400'
-                    : 'bg-muted text-muted-foreground border-border'
-                }`}
-              >
-                <KeyRound size={11} className={row.allow_password_login ? 'text-emerald-700' : 'text-muted-foreground'} />
-                {row.allow_password_login ? 'Mật khẩu ON' : 'Mật khẩu OFF'}
-              </span>
-            )}
-          </div>
-        ),
+        accessor: (row: AdminUserProfile) => {
+          const rbacUser = rbacUserById.get(row.id)
+          const activeRoleCodes = (rbacUser?.roleCodes ?? []).filter((code) => code !== 'user')
+          const pendingRoleCodes = (rbacUser?.pendingRoleCodes ?? []).filter((code) => code !== 'user')
+          const isActiveAdmin = row.is_admin || activeRoleCodes.length > 0
+
+          return (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {activeRoleCodes.map((code) => (
+                <span key={code} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs ${getRoleBadgeStyle(code)}`}>
+                  {getRoleIcon(code)}
+                  {roleLabel(roleByCode.get(code) ?? { code, name: code, description: null })}
+                </span>
+              ))}
+              {pendingRoleCodes.map((code) => (
+                <span
+                  key={`pending-${code}`}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md border-2 border-amber-400 bg-amber-100 text-xs font-black text-amber-950"
+                >
+                  <ShieldAlert size={13} className="shrink-0" />
+                  {roleLabel(roleByCode.get(code) ?? { code, name: code, description: null })}
+                  <span className="rounded bg-white/70 px-1 py-0.5 text-[10px] uppercase">Chờ kích hoạt</span>
+                </span>
+              ))}
+              {!isActiveAdmin && pendingRoleCodes.length === 0 ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 border-2 border-border text-xs font-black uppercase">
+                  <User size={13} className="shrink-0" />
+                  User
+                </span>
+              ) : null}
+              {isActiveAdmin ? (
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black border ${
+                    row.allow_password_login
+                      ? 'bg-emerald-100 text-emerald-950 border-emerald-400'
+                      : 'bg-muted text-muted-foreground border-border'
+                  }`}
+                >
+                  <KeyRound size={11} className={row.allow_password_login ? 'text-emerald-700' : 'text-muted-foreground'} />
+                  {row.allow_password_login ? 'Mật khẩu ON' : 'Mật khẩu OFF'}
+                </span>
+              ) : null}
+            </div>
+          )
+        },
       },
       {
         header: 'Thao tác',
         className: 'text-right w-[12%]',
         accessor: (row: AdminUserProfile) => {
+          const rbacUser = rbacUserById.get(row.id)
           const rbacTargetUser: RbacUser = {
             id: row.id,
             email: row.email ?? null,
             displayName: row.display_name ?? null,
-            roleCodes: overview.users.find((u) => u.id === row.id)?.roleCodes || (row.is_admin ? ['exam_admin'] : []),
+            roleCodes: rbacUser?.roleCodes ?? [],
+            pendingRoleCodes: rbacUser?.pendingRoleCodes ?? [],
           }
 
           return (
@@ -442,7 +477,7 @@ export default function AdminRolesPage() {
         },
       },
     ],
-    [canAssignRoles, overview.users],
+    [canAssignRoles, rbacUserById, roleByCode],
   )
 
   const accountSearchFilter = (row: AdminUserProfile, searchQuery: string) => {
@@ -466,7 +501,7 @@ export default function AdminRolesPage() {
         return draftRoles.has(role.code) !== currentlyAssigned
       })
       .map(
-        (role): Mutation => ({
+        (role): RbacMutation => ({
           kind: 'role',
           action: draftRoles.has(role.code) ? 'grant' : 'revoke',
           targetUserId: selectedUser.id,
@@ -498,7 +533,7 @@ export default function AdminRolesPage() {
   const matrixChanges = useMemo(
     () =>
       overview.permissions.flatMap((permission) =>
-        roles.flatMap((role): Mutation[] => {
+        roles.flatMap((role): RbacMutation[] => {
           const original = permission.roleCodes.includes(role.code)
           const next = matrixDrafts.get(`${permission.code}:${role.code}`) ?? original
           return next === original
@@ -536,26 +571,38 @@ export default function AdminRolesPage() {
   const confirmMutation = async () => {
     if (!pendingMutations.length) return
     const mutations = pendingMutations
+    const results: RbacMutationResult[] = []
     try {
       setSubmitting(true)
       setSyncing(true)
+      setError(null)
+      setSuccessMessage(null)
       setPendingMutations([])
       setSelectedUser(null)
       for (const mutation of mutations) {
-        const { error: invokeError } = await supabase.functions.invoke('manage-rbac', { body: mutation })
+        const { data, error: invokeError } = await supabase.functions.invoke('manage-rbac', { body: mutation })
         if (invokeError) throw invokeError
+        results.push(validateRbacMutationResult(data, mutation))
       }
       setMatrixDrafts(new Map())
       await loadOverview(query)
       await loadAccountUsers()
+      const hasPendingRole = results.some(
+        (result) => result.action === 'grant' && result.activationState === 'pending',
+      )
+      setSuccessMessage(
+        hasPendingRole
+          ? 'Đã lưu thay đổi. Vai trò quản trị đang chờ kích hoạt; người dùng phải đăng nhập bằng Google và hoàn tất MFA.'
+          : 'Đã áp dụng và đồng bộ thay đổi phân quyền.',
+      )
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Không thể cập nhật quyền.'
       await Promise.all([loadOverview(query), loadAccountUsers()])
-      if (message.includes('Failed to send a request to the Edge Function')) {
-        setError('Không thể kết nối tới Supabase Edge Function `manage-rbac`. Vui lòng đảm bảo dịch vụ Edge Function đang được khởi chạy hoặc deploy.')
-      } else {
-        setError(message)
-      }
+      const message = await getRbacMutationErrorMessage(err)
+      const partialMessage =
+        results.length > 0
+          ? ` Đã áp dụng ${results.length}/${mutations.length} thay đổi trước khi xảy ra lỗi.`
+          : ''
+      setError(`${message}${partialMessage}`)
     } finally {
       setSubmitting(false)
       setSyncing(false)
@@ -695,7 +742,7 @@ export default function AdminRolesPage() {
         </div>
       </header>
 
-      {/* Auto-Dismissing Error Alert */}
+      {/* Persistent mutation feedback */}
       {error && (
         <div
           role="alert"
@@ -707,6 +754,23 @@ export default function AdminRolesPage() {
           </Button>
         </div>
       )}
+
+      {successMessage && !syncing ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center justify-between gap-3 rounded-xl border-3 border-emerald-500 bg-emerald-100 p-4 text-sm font-bold text-emerald-950 shadow-[3px_3px_0_var(--border)] animate-in fade-in duration-200"
+        >
+          <span>{successMessage}</span>
+          <Button
+            variant="ghost"
+            onClick={() => setSuccessMessage(null)}
+            className="h-8 shrink-0 px-2 text-xs font-black"
+          >
+            Đóng
+          </Button>
+        </div>
+      ) : null}
 
       {syncing ? (
         <div
@@ -827,7 +891,7 @@ export default function AdminRolesPage() {
                   onClick={() => setLearnerFilter('all')}
                   className="min-h-7 px-2.5 text-xs font-black"
                 >
-                  Tất cả người học ({accountUsers.filter((u) => !u.is_admin).length})
+                  Tất cả người học ({accountUsers.filter((u) => !hasAdministrativeRole(u)).length})
                 </Button>
                 <Button
                   type="button"
@@ -843,7 +907,7 @@ export default function AdminRolesPage() {
                   onClick={() => setLearnerFilter('free')}
                   className="min-h-7 px-2.5 text-xs font-black"
                 >
-                  Gói Free ({accountUsers.filter((u) => !u.is_admin).length - metrics.proCount})
+                  Gói Free ({accountUsers.filter((u) => !hasAdministrativeRole(u)).length - metrics.proCount})
                 </Button>
               </div>
             </div>

@@ -31,7 +31,17 @@ import AdminRolesPage from './AdminRolesPage'
 
 describe('AdminRolesPage', () => {
   beforeEach(() => {
-    invoke.mockResolvedValue({ data: { data: {} }, error: null })
+    invoke.mockResolvedValue({
+      data: {
+        data: {
+          changed: true,
+          action: 'grant',
+          roleCode: 'security_admin',
+          activationState: 'pending',
+        },
+      },
+      error: null,
+    })
     listUsers.mockResolvedValue([
       {
         id: 'actor',
@@ -86,6 +96,41 @@ describe('AdminRolesPage', () => {
     const assignButtons = screen.getAllByRole('button', { name: /phân quyền target user/i })
     await user.click(assignButtons[0])
     expect(screen.getByRole('checkbox', { name: /security administrator/i })).toBeInTheDocument()
+  })
+
+  it('shows pending administrator roles in the account list instead of a User-only state', async () => {
+    getOverview.mockResolvedValueOnce({
+      total: 2,
+      roles: [
+        { code: 'user', name: 'User', description: 'Learner account' },
+        { code: 'exam_admin', name: 'Exam administrator', description: 'Exam content' },
+      ],
+      permissions: [],
+      users: [
+        { id: 'actor', email: 'actor@example.com', displayName: 'Current Admin', roleCodes: ['super_admin'] },
+        {
+          id: 'target',
+          email: 'target@example.com',
+          displayName: 'Target User',
+          roleCodes: [],
+          pendingRoleCodes: ['exam_admin'],
+        },
+      ],
+    })
+
+    render(
+      <MemoryRouter>
+        <AdminRolesPage />
+      </MemoryRouter>,
+    )
+
+    const targetName = await screen.findByText('Target User')
+    const targetRow = targetName.closest('tr')
+
+    expect(targetRow).not.toBeNull()
+    expect(targetRow).toHaveTextContent('Exam administrator')
+    expect(targetRow).toHaveTextContent('Chờ kích hoạt')
+    expect(targetRow).not.toHaveTextContent(/^User$/)
   })
 
   it('uses the RBAC dialog as the only administrator role action in the account list', async () => {
@@ -145,7 +190,17 @@ describe('AdminRolesPage', () => {
     invoke.mockImplementation((functionName: string) =>
       functionName === 'start-admin-session'
         ? Promise.resolve({ data: { data: {} }, error: null })
-        : mutationPending.then(() => ({ data: { data: {} }, error: null })),
+        : mutationPending.then(() => ({
+            data: {
+              data: {
+                changed: true,
+                action: 'revoke',
+                roleCode: 'exam_admin',
+                activationState: 'revoked',
+              },
+            },
+            error: null,
+          })),
     )
     render(
       <MemoryRouter>
@@ -163,6 +218,45 @@ describe('AdminRolesPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Đang áp dụng thay đổi phân quyền')
 
     resolveMutation?.()
-    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByText('Đang áp dụng thay đổi phân quyền và đồng bộ dữ liệu…')).not.toBeInTheDocument(),
+    )
+    expect(screen.getByRole('status')).toHaveTextContent('Đã áp dụng và đồng bộ thay đổi phân quyền')
+  })
+
+  it('keeps a pending-role success message visible after the authoritative refresh', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <AdminRolesPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: /phân quyền target user/i }))
+    await user.click(screen.getByRole('checkbox', { name: /security administrator/i }))
+    await user.click(screen.getByRole('button', { name: /tiếp tục xác nhận/i }))
+    await user.click(screen.getByRole('button', { name: /xác nhận thay đổi/i }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/đã lưu.*chờ kích hoạt/i)
+  })
+
+  it('shows a durable error when the server does not confirm the requested role grant', async () => {
+    const user = userEvent.setup()
+    invoke.mockResolvedValue({ data: { data: {} }, error: null })
+    render(
+      <MemoryRouter>
+        <AdminRolesPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: /phân quyền target user/i }))
+    await user.click(screen.getByRole('checkbox', { name: /security administrator/i }))
+    await user.click(screen.getByRole('button', { name: /tiếp tục xác nhận/i }))
+    await user.click(screen.getByRole('button', { name: /xác nhận thay đổi/i }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(/máy chủ không xác nhận thay đổi phân quyền/i)
+    await new Promise((resolve) => setTimeout(resolve, 3100))
+    expect(screen.getByRole('alert')).toHaveTextContent(/máy chủ không xác nhận thay đổi phân quyền/i)
   })
 })
