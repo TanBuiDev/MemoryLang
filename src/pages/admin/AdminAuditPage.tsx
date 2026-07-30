@@ -2,18 +2,21 @@ import { useEffect, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
 import { DataTable } from '@/components/admin/DataTable'
+import { Card } from '@/components/ui/card'
 import type { AdminAuditLog } from '@/types/admin.types'
 
 export default function AdminAuditPage() {
   const [logs, setLogs] = useState<AdminAuditLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [securityEvents, setSecurityEvents] = useState<Array<{ id: string; occurred_at: string; subject_email: string; actor_email: string | null; event_type: string; device_label: string | null }>>([])
 
   const loadLogs = async () => {
     try {
       setLoading(true)
-      const data = await adminService.listAuditLogs()
+      const [data, events] = await Promise.all([adminService.listAuditLogs(), adminService.listSecurityEvents()])
       setLogs(data)
+      setSecurityEvents(events)
     } catch (err: any) {
       console.error(err)
       setError(err.message || 'Không thể tải lịch sử thao tác admin')
@@ -121,6 +124,17 @@ export default function AdminAuditPage() {
         isLoading={loading}
         actions={toolbarActions}
       />
+      <Card className="p-5">
+        <h2 className="text-lg font-black">SỰ KIỆN BẢO MẬT QUẢN TRỊ</h2>
+        <div className="mt-4 space-y-2">
+          {securityEvents.length ? securityEvents.map((event) => (
+            <div key={event.id} className="border-2 border-border bg-muted/30 p-3 text-xs font-semibold">
+              <span className="font-black">{event.event_type}</span> · {event.subject_email} · {new Date(event.occurred_at).toLocaleString('vi-VN')}
+              {event.device_label ? <p className="mt-1 text-muted-foreground">Thiết bị: {event.device_label}</p> : null}
+            </div>
+          )) : <p className="text-sm font-semibold text-muted-foreground">Chưa có sự kiện bảo mật quản trị.</p>}
+        </div>
+      </Card>
     </div>
   )
 }

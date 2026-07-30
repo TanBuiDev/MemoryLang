@@ -489,6 +489,19 @@ export const adminService = {
     }) as AdminAuditLog[]
   },
 
+  async listSecurityEvents() {
+    const { data, error } = await supabase.rpc('get_admin_security_events', { p_limit: 100 })
+    if (error) throw error
+    return (data ?? []) as Array<{
+      id: string
+      occurred_at: string
+      subject_email: string
+      actor_email: string | null
+      event_type: string
+      device_label: string | null
+    }>
+  },
+
   // 7. Vocabulary Management (global_terms)
   async listGlobalTerms(): Promise<any[]> {
     const { data, error } = await supabase
