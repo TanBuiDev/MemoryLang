@@ -24,9 +24,25 @@ export function LoginPage() {
       navigate('/app/dashboard')
       return
     }
-    const { error } = await authService.signInWithPassword(email, password)
-    setMessage(error ? 'Không thể đăng nhập bằng thông tin đã cung cấp.' : t('auth.loggedIn'))
-    if (!error) navigate('/app/dashboard')
+    const { data, error } = await authService.signInWithPassword(email, password)
+    if (error || !data.user) {
+      setMessage('Không thể đăng nhập bằng thông tin đã cung cấp.')
+      return
+    }
+
+    try {
+      const profile = await authService.getProfile(data.user.id)
+      if (profile?.is_admin && !profile.allow_password_login) {
+        await authService.signOut()
+        setMessage('Không thể đăng nhập bằng thông tin đã cung cấp.')
+        return
+      }
+    } catch {
+      // A failed profile lookup never turns into a role-specific public message.
+    }
+
+    setMessage(t('auth.loggedIn'))
+    navigate('/app/dashboard')
   }
 
   return (

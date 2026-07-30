@@ -39,4 +39,11 @@ describe('admin security Edge Function contracts', () => {
     expect(source).toContain('p_network_label')
     expect(emailSource).toContain('networkLabel')
   })
+
+  it('rotates an activated administrator password only from the server', async () => {
+    const source = await readFile(resolve(process.cwd(), 'supabase/functions/start-admin-session/index.ts'), 'utf8')
+
+    expect(source).toContain('auth.admin.updateUserById')
+    expect(source).toContain('crypto.getRandomValues')
+  })
 })
