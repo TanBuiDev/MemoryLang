@@ -42,4 +42,17 @@ describe('admin security lifecycle migration', () => {
     expect(migration).toContain("security.has_permission('role.read')")
     expect(migration).toContain('grant execute on function public.get_pending_admin_role_grants() to authenticated')
   })
+
+  it('requires an OAuth, AAL2, active administrative session for RLS admin access', () => {
+    const migration = readFileSync(
+      resolve(process.cwd(), 'supabase/migrations/20260730143720_enforce_admin_session_rls.sql'),
+      'utf8',
+    )
+
+    expect(migration).toContain('create or replace function public.is_admin()')
+    expect(migration).toContain('security.is_google_oauth_session()')
+    expect(migration).toContain('security.is_mfa_verified()')
+    expect(migration).toContain('security.is_admin_session_active')
+    expect(migration).toContain('public.refresh_admin_role_grant_activation')
+  })
 })
