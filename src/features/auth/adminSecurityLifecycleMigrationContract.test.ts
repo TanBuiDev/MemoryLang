@@ -55,4 +55,14 @@ describe('admin security lifecycle migration', () => {
     expect(migration).toContain('security.is_admin_session_active')
     expect(migration).toContain('public.refresh_admin_role_grant_activation')
   })
+
+  it('does not expose the administrative RLS helper as a public RPC', () => {
+    const migration = readFileSync(
+      resolve(process.cwd(), 'supabase/migrations/20260730144120_restrict_admin_helper_execution.sql'),
+      'utf8',
+    )
+
+    expect(migration).toContain('revoke all on function public.is_admin() from public, anon, service_role')
+    expect(migration).toContain('grant execute on function public.is_admin() to authenticated')
+  })
 })
