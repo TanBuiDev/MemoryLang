@@ -239,6 +239,8 @@ export default function AdminRolesPage() {
   const [pendingMutations, setPendingMutations] = useState<Mutation[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [mfaResetTarget, setMfaResetTarget] = useState<RbacUser | null>(null)
+  const [resettingMfa, setResettingMfa] = useState(false)
 
   // Full User Profiles state for Tab 1
   const [accountUsers, setAccountUsers] = useState<AdminUserProfile[]>([])
@@ -650,6 +652,20 @@ export default function AdminRolesPage() {
 
   const queueMatrixChanges = () => setPendingMutations(matrixChanges)
 
+  const confirmMfaReset = async () => {
+    if (!mfaResetTarget) return
+    setResettingMfa(true)
+    try {
+      const { error: invokeError } = await supabase.functions.invoke('admin-security', { body: { action: 'reset_mfa', targetUserId: mfaResetTarget.id } })
+      if (invokeError) throw invokeError
+      setMfaResetTarget(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể đặt lại MFA.')
+    } finally {
+      setResettingMfa(false)
+    }
+  }
+
   const confirmMutation = async () => {
     if (!pendingMutations.length) return
     const mutations = pendingMutations
@@ -761,6 +777,11 @@ export default function AdminRolesPage() {
                     >
                       <UsersRound size={15} /> Quản lý vai trò
                     </Button>
+                    {isSuperAdmin && target.id !== userId ? (
+                      <Button variant="danger" onClick={() => setMfaResetTarget(target)} className="text-xs font-black h-8 px-3">
+                        <RotateCcw size={14} /> Reset MFA
+                      </Button>
+                    ) : null}
                   </td>
                 </tr>
               )
@@ -1420,6 +1441,17 @@ export default function AdminRolesPage() {
           onCancel={() => setAccountConfirmModal(null)}
         />
       )}
+      <ConfirmModal
+        open={Boolean(mfaResetTarget)}
+        title="Đặt lại MFA quản trị"
+        description={`Thao tác sẽ thu hồi toàn bộ phiên quản trị của ${mfaResetTarget?.displayName || mfaResetTarget?.email || 'người dùng này'} và buộc họ thiết lập TOTP mới.`}
+        confirmLabel={resettingMfa ? 'Đang đặt lại…' : 'Xác nhận đặt lại MFA'}
+        cancelLabel="Hủy"
+        variant="danger"
+        confirmDisabled={resettingMfa}
+        onConfirm={() => void confirmMfaReset()}
+        onCancel={() => !resettingMfa && setMfaResetTarget(null)}
+      />
     </div>
   )
 }
