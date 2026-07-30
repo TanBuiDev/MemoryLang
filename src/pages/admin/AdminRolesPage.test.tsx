@@ -88,6 +88,21 @@ describe('AdminRolesPage', () => {
     expect(screen.getByRole('checkbox', { name: /security administrator/i })).toBeInTheDocument()
   })
 
+  it('uses the RBAC dialog as the only administrator role action in the account list', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <AdminRolesPage />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('button', { name: /phân quyền target user/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /thao tác tài khoản target user/i }))
+    expect(screen.queryByRole('button', { name: /cấp quyền admin/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /gỡ quyền admin/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /quản lý gói/i })).toBeInTheDocument()
+  })
+
   it('shows role badges in Tab 2 and opens visual assignment dialog', async () => {
     const user = userEvent.setup()
     render(

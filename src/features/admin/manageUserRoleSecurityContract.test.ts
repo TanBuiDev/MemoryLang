@@ -23,10 +23,8 @@ describe('manage-user-role security contract', () => {
     expect(source).toContain('parsed.data.targetUserId === user.id')
   })
 
-  it('routes the legacy admin toggle through the role-management function instead of directly updating profiles', () => {
+  it('does not expose a legacy generic administrator toggle', () => {
     const source = readFileSync(adminServicePath, 'utf8')
-    const method = source.slice(source.indexOf('async updateUserAdminStatus'), source.indexOf('async setAdminPasswordLogin'))
-    expect(method).toMatch(/supabase\.functions\.invoke(?:<[^>]+>)?\('manage-user-role'/)
-    expect(method).not.toContain("supabase.from('profiles')")
+    expect(source).not.toContain('updateUserAdminStatus')
   })
 })

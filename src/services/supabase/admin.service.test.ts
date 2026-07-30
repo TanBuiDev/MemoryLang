@@ -6,13 +6,11 @@ vi.mock('@/services/supabase/client', () => ({
   supabase: {
     auth: { getSession: vi.fn() },
     from: vi.fn(),
-    functions: { invoke: vi.fn() },
   },
 }))
 
 const from = vi.mocked(supabase.from)
 const getSession = vi.mocked(supabase.auth.getSession)
-const invoke = vi.mocked(supabase.functions.invoke)
 
 describe('adminService subscription plan pricing', () => {
   beforeEach(() => {
@@ -314,24 +312,5 @@ describe('adminService user subscriptions', () => {
       cancel_at_period_end: true,
       canceled_at: expect.any(String),
     }), { onConflict: 'user_id' })
-  })
-})
-
-describe('adminService role management', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('starts an MFA-backed admin session before changing a user role', async () => {
-    invoke
-      .mockResolvedValueOnce({ data: { data: { expiresAt: '2026-07-29T12:00:00.000Z' } }, error: null } as never)
-      .mockResolvedValueOnce({ data: { data: { isAdmin: true } }, error: null } as never)
-
-    await expect(adminService.updateUserAdminStatus('user-1', true)).resolves.toEqual({ isAdmin: true })
-
-    expect(invoke).toHaveBeenNthCalledWith(1, 'start-admin-session')
-    expect(invoke).toHaveBeenNthCalledWith(2, 'manage-user-role', expect.objectContaining({
-      body: expect.objectContaining({ targetUserId: 'user-1', action: 'grant' }),
-    }))
   })
 })

@@ -17,7 +17,6 @@ import {
   User,
   Users,
   UsersRound,
-  UserX,
 } from 'lucide-react'
 import { DataTable } from '@/components/admin/DataTable'
 import { Badge } from '@/components/ui/badge'
@@ -78,15 +77,7 @@ function getRoleIcon(roleCode: string) {
   }
 }
 
-function UserActionKebabMenu({
-  user,
-  actionLoading,
-  onToggleAdmin,
-}: {
-  user: AdminUserProfile
-  actionLoading: boolean
-  onToggleAdmin: (userId: string, currentAdminStatus: boolean) => void
-}) {
+function UserActionKebabMenu({ user }: { user: AdminUserProfile }) {
   const [isOpen, setIsOpen] = useState(false)
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null)
   const buttonRef = useRef<HTMLDivElement>(null)
@@ -147,7 +138,6 @@ function UserActionKebabMenu({
         <Button
           type="button"
           variant="ghost"
-          disabled={actionLoading}
           onClick={toggleMenu}
           className="h-8 w-8 p-0 rounded-lg border-2 border-border bg-card hover:bg-muted font-black inline-flex items-center justify-center shadow-[1.5px_1.5px_0_var(--border)]"
           aria-label={`Thao tác tài khoản ${user.display_name || user.email}`}
@@ -176,29 +166,6 @@ function UserActionKebabMenu({
               <Crown size={15} className="text-amber-600 shrink-0" />
               <span>Quản lý gói ({isPro ? 'Pro' : 'Free'})</span>
             </Link>
-
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false)
-                onToggleAdmin(user.id, Boolean(user.is_admin))
-              }}
-              className={`flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-xs font-black transition-colors text-left ${
-                user.is_admin ? 'hover:bg-rose-100 text-rose-700' : 'hover:bg-primary/20 text-foreground'
-              }`}
-            >
-              {user.is_admin ? (
-                <>
-                  <UserX size={15} className="text-rose-600 shrink-0" />
-                  <span>Gỡ quyền Admin</span>
-                </>
-              ) : (
-                <>
-                  <Shield size={15} className="text-primary shrink-0" />
-                  <span>Cấp quyền Admin</span>
-                </>
-              )}
-            </button>
           </div>,
           document.body,
         )}
@@ -229,19 +196,7 @@ export default function AdminRolesPage() {
   // Full User Profiles state for Tab 1
   const [accountUsers, setAccountUsers] = useState<AdminUserProfile[]>([])
   const [accountsLoading, setAccountsLoading] = useState(true)
-  const [accountActionLoading, setAccountActionLoading] = useState<string | null>(null)
   const [learnerFilter, setLearnerFilter] = useState<LearnerFilterCategory>('all')
-
-  // ConfirmModal for Account Management Actions
-  const [accountConfirmModal, setAccountConfirmModal] = useState<{
-    open: boolean
-    title: string
-    description: string
-    confirmLabel?: string
-    cancelLabel?: string
-    variant?: 'primary' | 'danger'
-    onConfirm: () => void
-  } | null>(null)
 
   const canAssignRoles = hasPermission('role.assign') || hasPermission('role.revoke')
   const canEditMatrix = isSuperAdmin
@@ -370,42 +325,6 @@ export default function AdminRolesPage() {
     return groups
   }, [filteredPermissions])
 
-  // Account Toggle Handlers for Tab 1
-  const handleToggleAdmin = (targetUserId: string, currentAdminStatus: boolean) => {
-    if (accountActionLoading) return
-
-    setAccountConfirmModal({
-      open: true,
-      title: currentAdminStatus ? 'Gỡ quyền Admin' : 'Cấp quyền Admin',
-      description: currentAdminStatus
-        ? 'Bạn có chắc chắn muốn gỡ quyền Admin của người dùng này không?'
-        : 'Bạn có chắc chắn muốn cấp quyền Admin cho người dùng này không?',
-      confirmLabel: currentAdminStatus ? 'Gỡ quyền Admin' : 'Xác nhận cấp Admin',
-      cancelLabel: 'Hủy',
-      variant: currentAdminStatus ? 'danger' : 'primary',
-      onConfirm: async () => {
-        setAccountConfirmModal(null)
-        try {
-          setAccountActionLoading(targetUserId)
-          const result = await adminService.updateUserAdminStatus(targetUserId, !currentAdminStatus)
-          setAccountUsers((prev) =>
-            prev.map((u) =>
-              u.id === targetUserId
-                ? { ...u, is_admin: result.isAdmin, allow_password_login: result.isAdmin ? u.allow_password_login : false }
-                : u,
-            ),
-          )
-          await loadOverview(query)
-        } catch (err: unknown) {
-          console.error(err)
-          setError(err instanceof Error ? err.message : 'Không thể thay đổi quyền quản trị')
-        } finally {
-          setAccountActionLoading(null)
-        }
-      },
-    })
-  }
-
   // Account Columns Builder for Tab 1
   const accountColumns = useMemo(
     () => [
@@ -517,17 +436,13 @@ export default function AdminRolesPage() {
               >
                 <ShieldCheck size={14} /> Phân quyền
               </Button>
-              <UserActionKebabMenu
-                user={row}
-                actionLoading={accountActionLoading === row.id}
-                onToggleAdmin={handleToggleAdmin}
-              />
+              <UserActionKebabMenu user={row} />
             </div>
           )
         },
       },
     ],
-    [canAssignRoles, accountActionLoading, overview.users],
+    [canAssignRoles, overview.users],
   )
 
   const accountSearchFilter = (row: AdminUserProfile, searchQuery: string) => {
@@ -1380,19 +1295,6 @@ export default function AdminRolesPage() {
         </ul>
       </ConfirmModal>
 
-      {/* CONFIRMATION DIALOG FOR ACCOUNT MANAGEMENT ACTIONS */}
-      {accountConfirmModal && (
-        <ConfirmModal
-          open={accountConfirmModal.open}
-          title={accountConfirmModal.title}
-          description={accountConfirmModal.description}
-          confirmLabel={accountConfirmModal.confirmLabel}
-          cancelLabel={accountConfirmModal.cancelLabel}
-          variant={accountConfirmModal.variant ?? 'primary'}
-          onConfirm={accountConfirmModal.onConfirm}
-          onCancel={() => setAccountConfirmModal(null)}
-        />
-      )}
       <ConfirmModal
         open={Boolean(mfaResetTarget)}
         title="Đặt lại MFA quản trị"
