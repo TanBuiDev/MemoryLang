@@ -268,11 +268,15 @@ The authenticated `nav.study` sidebar link resumes an active stored flashcard se
   - `search-images` — proxies Unsplash (primary), Pexels, and Pixabay APIs for vocabulary illustrations. All images are downloaded and re-uploaded to `vocabulary-images` bucket. API keys stored in `.env` and synced to Edge Function secrets via `pnpm sync:secrets`.
   - `generate-audio` — Google Cloud Text-to-Speech (WaveNet voices) with audio caching in Cloudflare R2. Accepts `text`, `language` (BCP-47), and optional `voice` name. Returns `audioUrl` + `cached` flag.
   - `process-payment` — PayOS checkout, payment status/cancel actions, subscription cancellation, and unauthenticated PayOS webhook processing. Deployed with `--no-verify-jwt` so PayOS webhooks can reach the function; app actions still validate the Supabase auth header inside the function.
-  - `manage-rbac` — MFA- and active-admin-session-gated role/permission mutations. The role-console confirmation creates/refreshes its admin session through `start-admin-session` before invoking this function; the function also establishes a session for its current token if a token refresh changed the `session_id` between requests. It authorizes through guarded RPCs, writes audit data through service-role-only RPCs, and both functions return CORS headers for the app origin.
+  - `manage-rbac` — MFA- and active-admin-session-gated role/permission mutations. The role console closes its confirmation dialog immediately after submission, shows non-blocking synchronization feedback, and refreshes its overview after the Edge Function completes. The function establishes a session for its current token if a token refresh changed the `session_id` between requests. It authorizes through guarded RPCs, writes audit data through service-role-only RPCs, and both functions return CORS headers for the app origin.
   - `ai-chat` — authenticated AI Tutor chat with Gemini/OpenAI provider selection, daily tier quota, and persisted session history. Gemini uses native function calling for read-only, JWT-scoped learner data tools; assistant messages retain the verified evidence labels in `chat_messages.metadata`. Direct learning-data and grammar-catalog replies are formatted deterministically from the RPC payload rather than letting the model paraphrase counts. Replies mirror the latest learner-message language unless target-language practice is explicitly requested; the chat page inserts an optimistic user message and a thinking state before the provider responds. Requires the AI chat migrations plus `AI_PROVIDER`, provider API key, and model secrets before deployment.
   - `send-email` — handles transactional emails and daily/weekly notifications via Resend API (`RESEND_API_KEY`). Includes HTML templates, List-Unsubscribe headers, and mock mode fallback.
   - `daily-study-reminder` — queries active profiles with pending SM-2 review terms and triggers daily study reminder emails.
 - Dashboard: https://supabase.com/dashboard/project/brwvbpkgimhamivmaflu
+
+### MFA settings
+
+`MfaSetupSection` lists the active TOTP factors for the current user. It permits enrollment only while no TOTP factor is active; Supabase returns the QR code and secret only during that initial enrollment, so an active factor must be transferred through the authenticator app or safely replaced rather than attempting to regenerate its original secret.
 
 ## Frontend Deployment & Chunk Cache
 - Vite emits hashed lazy chunks under `/assets`. Cloudflare Pages only serves the current deployment on the custom domain, so users with an older in-memory SPA can request stale chunks after a new deploy.
@@ -288,7 +292,7 @@ See `AGENTS.md` for commit workflow. Conventional commits: `feat:`, `fix:`, `doc
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **MemoryLang** (8242 symbols, 13948 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **MemoryLang** (8269 symbols, 13960 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
