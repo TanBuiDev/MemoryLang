@@ -26,7 +26,15 @@ Deno.serve(async (req) => {
     p_ip_address: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
     p_user_agent: req.headers.get('user-agent'),
   })
-  if (error) return json({ error: error.code === '42501' ? 'MFA verification is required.' : 'Unable to start an admin session.' }, error.code === '42501' ? 403 : 400)
+  if (error) {
+    if (error.code === '42501') {
+      const reason = error.message.includes('Google OAuth')
+        ? 'google_oauth_required'
+        : 'mfa_required'
+      return json({ data: { ready: false, reason } })
+    }
+    return json({ error: 'Unable to start an administrative session.' }, 400)
+  }
   const admin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
   const { data: eventId } = await admin.rpc('record_admin_session_alert', { p_user_id: user.id, p_auth_session_id: sessionId, p_user_agent: req.headers.get('user-agent') })
   if (eventId) {
@@ -36,5 +44,5 @@ Deno.serve(async (req) => {
       await admin.rpc('mark_security_email_sent', { p_outbox_id: email.id, p_error: response.ok ? null : 'Email dispatch failed.' })
     }
   }
-  return json({ data: { expiresAt: data.expires_at } })
+  return json({ data: { ready: true, expiresAt: data.expires_at } })
 })

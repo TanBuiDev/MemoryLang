@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { BrandLogo, BrandMark } from '@/components/common/BrandLogo'
 import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
@@ -10,10 +10,13 @@ import { isSupabaseConfigured } from '@/services/supabase/client'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState(
+    (location.state as { message?: string } | null)?.message ?? '',
+  )
 
   async function submit(event: FormEvent) {
     event.preventDefault()

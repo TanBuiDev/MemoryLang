@@ -8,5 +8,7 @@ describe('AdminRoute session gate', () => {
     expect(source).toContain("functions.invoke('start-admin-session')")
     expect(source).toContain('adminSessionReady')
     expect(source).toContain('Navigate to="/mfa-challenge"')
+    expect(source).toContain('google_oauth_required')
+    expect(source).toContain('Navigate to="/login"')
   })
 })

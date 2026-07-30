@@ -22,4 +22,12 @@ describe('admin security Edge Function contracts', () => {
     expect(source).toContain('auth.admin.signOut')
     expect(source).toContain('auth.admin.mfa.deleteFactor')
   })
+
+  it('returns a generic Google reauthentication state without exposing account roles', async () => {
+    const source = await readFile(resolve(process.cwd(), 'supabase/functions/start-admin-session/index.ts'), 'utf8')
+
+    expect(source).toContain("'google_oauth_required'")
+    expect(source).toContain("'mfa_required'")
+    expect(source).not.toContain('admin account')
+  })
 })
