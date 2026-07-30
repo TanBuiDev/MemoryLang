@@ -11,6 +11,27 @@ function getSessionId(authHeader: string) {
   } catch { return null }
 }
 
+function getClientIp(req: Request) {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? ''
+}
+
+function getMaskedNetworkLabel(ipAddress: string) {
+  const ipv4Parts = ipAddress.split('.')
+  if (ipv4Parts.length === 4 && ipv4Parts.every((part) => /^\d{1,3}$/.test(part))) {
+    return `${ipv4Parts.slice(0, 3).join('.')}.xxx`
+  }
+  if (ipAddress.includes(':')) {
+    return `${ipAddress.split(':').slice(0, 4).join(':')}::/64`
+  }
+  return 'Không xác định'
+}
+
+async function hashNetworkSignal(ipAddress: string) {
+  if (!ipAddress) return null
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ipAddress))
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers })
   if (req.method !== 'POST') return json({ error: 'Only POST is supported.' }, 405)
@@ -21,9 +42,10 @@ Deno.serve(async (req) => {
   if (authError || !user) return json({ error: 'Unauthorized.' }, 401)
   const sessionId = getSessionId(authHeader)
   if (!sessionId) return json({ error: 'Invalid authentication session.' }, 401)
+  const clientIp = getClientIp(req)
   const { data, error } = await supabaseUser.rpc('start_admin_session', {
     p_auth_session_id: sessionId,
-    p_ip_address: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+    p_ip_address: null,
     p_user_agent: req.headers.get('user-agent'),
   })
   if (error) {
@@ -36,7 +58,13 @@ Deno.serve(async (req) => {
     return json({ error: 'Unable to start an administrative session.' }, 400)
   }
   const admin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
-  const { data: eventId } = await admin.rpc('record_admin_session_alert', { p_user_id: user.id, p_auth_session_id: sessionId, p_user_agent: req.headers.get('user-agent') })
+  const { data: eventId } = await admin.rpc('record_admin_session_alert', {
+    p_user_id: user.id,
+    p_auth_session_id: sessionId,
+    p_user_agent: req.headers.get('user-agent'),
+    p_ip_hash: await hashNetworkSignal(clientIp),
+    p_network_label: getMaskedNetworkLabel(clientIp),
+  })
   if (eventId) {
     const { data: outbox } = await admin.rpc('claim_security_email_outbox', { p_event_id: eventId })
     for (const email of outbox ?? []) {

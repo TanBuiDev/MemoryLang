@@ -18,6 +18,7 @@ interface SendEmailRequest {
     unsubscribeUrl?: string
     eventLabel?: string
     deviceLabel?: string
+    networkLabel?: string
     occurredAt?: string
     [key: string]: any
   }
@@ -124,7 +125,7 @@ function renderHtmlTemplate(template: SendEmailRequest['template'], data: SendEm
       bodyContent = `
         <h1 style="font-size: 24px; font-weight: 900; margin-top: 0; color: #1c293c;">🔐 Cảnh báo bảo mật MemoryLang</h1>
         <p style="font-size: 16px; line-height: 1.5; color: #334155;">${data.eventLabel || 'Một hoạt động bảo mật đã xảy ra trên tài khoản quản trị của bạn.'}</p>
-        <p style="font-size: 14px; line-height: 1.5; color: #475569;">Thiết bị: ${data.deviceLabel || 'Không xác định'}<br/>Thời điểm: ${data.occurredAt || new Date().toISOString()}</p>
+        <p style="font-size: 14px; line-height: 1.5; color: #475569;">Thiết bị: ${data.deviceLabel || 'Không xác định'}<br/>Mạng: ${data.networkLabel || 'Không xác định'}<br/>Thời điểm: ${data.occurredAt || new Date().toISOString()}</p>
         <p style="font-size: 14px; color: #475569;">Nếu đây không phải là bạn, hãy liên hệ ngay với quản trị viên bảo mật.</p>
       `
       break

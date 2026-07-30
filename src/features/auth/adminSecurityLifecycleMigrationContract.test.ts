@@ -65,4 +65,16 @@ describe('admin security lifecycle migration', () => {
     expect(migration).toContain('revoke all on function public.is_admin() from public, anon, service_role')
     expect(migration).toContain('grant execute on function public.is_admin() to authenticated')
   })
+
+  it('records a hashed network signal and a masked network label for new admin sessions', () => {
+    const migration = readFileSync(
+      resolve(process.cwd(), 'supabase/migrations/20260730144758_add_admin_session_ip_signals.sql'),
+      'utf8',
+    )
+
+    expect(migration).toContain('p_ip_hash text')
+    expect(migration).toContain('p_network_label text')
+    expect(migration).toContain('ip_hash')
+    expect(migration).toContain('networkLabel')
+  })
 })

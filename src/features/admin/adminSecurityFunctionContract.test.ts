@@ -30,4 +30,13 @@ describe('admin security Edge Function contracts', () => {
     expect(source).toContain("'mfa_required'")
     expect(source).not.toContain('admin account')
   })
+
+  it('adds a masked network signal to new-device security alerts', async () => {
+    const source = await readFile(resolve(process.cwd(), 'supabase/functions/start-admin-session/index.ts'), 'utf8')
+    const emailSource = await readFile(resolve(process.cwd(), 'supabase/functions/send-email/index.ts'), 'utf8')
+
+    expect(source).toContain('p_ip_hash')
+    expect(source).toContain('p_network_label')
+    expect(emailSource).toContain('networkLabel')
+  })
 })
