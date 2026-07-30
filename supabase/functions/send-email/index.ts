@@ -9,13 +9,16 @@ const corsHeaders = {
 interface SendEmailRequest {
   to: string
   subject: string
-  template: 'transactional_welcome' | 'transactional_payment_success' | 'daily_reminder' | 'weekly_digest'
+  template: 'transactional_welcome' | 'transactional_payment_success' | 'daily_reminder' | 'weekly_digest' | 'security_alert'
   data: {
     displayName?: string
     dueCount?: number
     rememberedCount?: number
     planName?: string
     unsubscribeUrl?: string
+    eventLabel?: string
+    deviceLabel?: string
+    occurredAt?: string
     [key: string]: any
   }
 }
@@ -117,6 +120,15 @@ function renderHtmlTemplate(template: SendEmailRequest['template'], data: SendEm
       `
       break
     }
+    case 'security_alert': {
+      bodyContent = `
+        <h1 style="font-size: 24px; font-weight: 900; margin-top: 0; color: #1c293c;">🔐 Cảnh báo bảo mật MemoryLang</h1>
+        <p style="font-size: 16px; line-height: 1.5; color: #334155;">${data.eventLabel || 'Một hoạt động bảo mật đã xảy ra trên tài khoản quản trị của bạn.'}</p>
+        <p style="font-size: 14px; line-height: 1.5; color: #475569;">Thiết bị: ${data.deviceLabel || 'Không xác định'}<br/>Thời điểm: ${data.occurredAt || new Date().toISOString()}</p>
+        <p style="font-size: 14px; color: #475569;">Nếu đây không phải là bạn, hãy liên hệ ngay với quản trị viên bảo mật.</p>
+      `
+      break
+    }
     case 'transactional_welcome':
     default: {
       bodyContent = `
@@ -169,6 +181,11 @@ serve(async (req) => {
   }
 
   try {
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    const authorization = req.headers.get('authorization')
+    if (!serviceRoleKey || authorization !== `Bearer ${serviceRoleKey}`) {
+      return new Response(JSON.stringify({ error: 'Forbidden.' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
     const senderEmail = Deno.env.get('RESEND_SENDER_EMAIL') || 'MemoryLang <notifications@memorylang.app>'
 
@@ -211,10 +228,10 @@ serve(async (req) => {
         to: [payload.to],
         subject: payload.subject,
         html: htmlContent,
-        headers: {
+        headers: payload.template !== 'security_alert' ? {
           'List-Unsubscribe': `<${unsubscribeUrl}>`,
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-        },
+        } : undefined,
       }),
     })
 
