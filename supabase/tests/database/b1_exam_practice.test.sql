@@ -310,6 +310,19 @@ values
     '{}'::jsonb,
     now(),
     now()
+  ),
+  (
+    '91000000-0000-0000-0000-000000000004',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated',
+    'authenticated',
+    'b1-creator-only@example.test',
+    crypt('local-test-password', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{}'::jsonb,
+    now(),
+    now()
   );
 
 update public.profiles
@@ -324,6 +337,30 @@ select
   'B1 exam creation test administrator'
 from security.roles
 where code = 'exam_admin';
+
+insert into security.roles (id, code, name, description, is_system)
+values (
+  '91200000-0000-0000-0000-000000000001',
+  'clone_creator',
+  'Clone creator fixture',
+  'Can create exams but cannot read clone sources',
+  false
+);
+
+insert into security.role_permissions (role_id, permission_id)
+select
+  '91200000-0000-0000-0000-000000000001',
+  id
+from security.permissions
+where code = 'exam.create';
+
+insert into security.user_roles (user_id, role_id, granted_by, reason)
+values (
+  '91000000-0000-0000-0000-000000000004',
+  '91200000-0000-0000-0000-000000000001',
+  '91000000-0000-0000-0000-000000000001',
+  'B1 clone source authorization fixture'
+);
 
 insert into public.subscriptions (
   id,
@@ -572,6 +609,478 @@ values
     4,
     true
   );
+
+insert into public.exams (
+  id,
+  title,
+  category,
+  description,
+  time_limit_minutes,
+  total_questions,
+  is_published,
+  access_tier,
+  created_by,
+  source_key,
+  cefr_level,
+  default_time_minutes,
+  exam_format
+)
+values (
+  '98000000-0000-0000-0000-000000000001',
+  'B1 clone source fixture',
+  'GENERAL',
+  'Authored source exam that must remain independent from its clones.',
+  135,
+  1,
+  false,
+  'pro',
+  '91000000-0000-0000-0000-000000000001',
+  'b1-clone-source-fixture',
+  'B1',
+  135,
+  'b1_practice'
+);
+
+insert into public.exams (
+  id,
+  title,
+  category,
+  is_published,
+  access_tier,
+  created_by,
+  source_key,
+  cefr_level,
+  default_time_minutes,
+  exam_format,
+  deleted_at
+)
+values (
+  '98000000-0000-0000-0000-000000000002',
+  'Deleted B1 clone source fixture',
+  'GENERAL',
+  false,
+  'free',
+  '91000000-0000-0000-0000-000000000001',
+  'deleted-b1-clone-source-fixture',
+  'B1',
+  60,
+  'b1_practice',
+  now()
+);
+
+insert into public.practice_activities (
+  id,
+  source_key,
+  skill,
+  activity_type,
+  title,
+  instructions,
+  content,
+  passage,
+  audio_url,
+  is_published,
+  access_tier,
+  metadata,
+  created_by,
+  presentation_type,
+  grading_mode,
+  content_schema_version,
+  content_blocks,
+  presentation_config,
+  review_config
+)
+values
+  (
+    '98100000-0000-0000-0000-000000000001',
+    'clone-source-choice',
+    'reading',
+    'multiple_choice',
+    'Authored choice resource',
+    'Choose the best answer.',
+    '<p>Authored activity content.</p>',
+    '<p>Authored source passage.</p>',
+    'https://cdn.example.test/b1/source-audio.mp3',
+    true,
+    'pro',
+    '{"difficulty":"authored-choice"}'::jsonb,
+    '91000000-0000-0000-0000-000000000001',
+    'choice_list',
+    'single_choice',
+    3,
+    '[{"type":"rich_text","value":"<p>Authored choice block.</p>"}]'::jsonb,
+    '{"layout":"stacked"}'::jsonb,
+    '{"show_translation":true}'::jsonb
+  ),
+  (
+    '98100000-0000-0000-0000-000000000002',
+    'clone-source-matching',
+    'reading',
+    'multiple_choice',
+    'Authored matching resource',
+    'Match every item.',
+    'Authored matching content.',
+    null,
+    null,
+    true,
+    'pro',
+    '{"difficulty":"authored-matching"}'::jsonb,
+    '91000000-0000-0000-0000-000000000001',
+    'matching',
+    'matching',
+    2,
+    '[{"type":"instructions","value":"Match these authored pairs."}]'::jsonb,
+    '{"matching":{"leftItems":[{"id":"left-1","text":"Monday"}],"rightItems":[{"id":"right-1","text":"Thứ Hai"}],"pairs":[{"leftId":"left-1","rightId":"right-1"}]}}'::jsonb,
+    '{"show_answers":true}'::jsonb
+  ),
+  (
+    '98100000-0000-0000-0000-000000000003',
+    'clone-source-ordering',
+    'listening',
+    'multiple_choice',
+    'Authored ordering resource',
+    'Put the steps in order.',
+    'Authored ordering content.',
+    null,
+    null,
+    true,
+    'pro',
+    '{"difficulty":"authored-ordering"}'::jsonb,
+    '91000000-0000-0000-0000-000000000001',
+    'ordering',
+    'ordered_list',
+    4,
+    '[{"type":"instructions","value":"Order these authored items."}]'::jsonb,
+    '{"ordering":{"items":[{"id":"first","text":"First","correctPosition":1},{"id":"second","text":"Second","correctPosition":2}]}}'::jsonb,
+    '{"show_answers":true}'::jsonb
+  );
+
+insert into public.practice_questions (
+  id,
+  activity_id,
+  source_key,
+  source_number,
+  question_type,
+  prompt,
+  options,
+  accepted_answers,
+  source_page,
+  image_url,
+  order_index,
+  metadata,
+  translation,
+  explanation
+)
+values (
+  '98300000-0000-0000-0000-000000000001',
+  '98100000-0000-0000-0000-000000000001',
+  'clone-source-choice-q1',
+  'C-7',
+  'multiple_choice',
+  'Which authored option is correct?',
+  '[{"key":"A","text":"Alpha","is_correct":true},{"key":"B","text":"Beta","is_correct":false}]'::jsonb,
+  '["Alpha","First option"]'::jsonb,
+  27,
+  'https://cdn.example.test/b1/source-sign.png',
+  4,
+  '{"image_alt":"Authored sign","image_crop":"top"}'::jsonb,
+  'Phương án nào đúng?',
+  'Alpha is correct because this is the authored fixture.'
+);
+
+insert into public.practice_prompts (
+  id,
+  source_key,
+  skill,
+  title,
+  prompt,
+  instructions,
+  content,
+  source_page,
+  image_url,
+  audio_url,
+  is_published,
+  access_tier,
+  metadata,
+  created_by,
+  presentation_type,
+  grading_mode,
+  content_schema_version,
+  content_blocks,
+  presentation_config,
+  review_config
+)
+values
+  (
+    '98200000-0000-0000-0000-000000000001',
+    'clone-source-writing',
+    'writing',
+    'Authored writing resource',
+    'Write an authored email.',
+    'Write at least 100 words.',
+    '<p>Authored writing context.</p>',
+    31,
+    null,
+    null,
+    true,
+    'pro',
+    '{"audience":"friend"}'::jsonb,
+    '91000000-0000-0000-0000-000000000001',
+    'long_form_prompt',
+    'sample_compare',
+    5,
+    '[{"type":"rich_text","value":"<p>Authored writing block.</p>"}]'::jsonb,
+    '{"minimum_words":100}'::jsonb,
+    '{"comparison":"sample"}'::jsonb
+  ),
+  (
+    '98200000-0000-0000-0000-000000000002',
+    'clone-source-speaking',
+    'speaking',
+    'Authored speaking resource',
+    'Describe an authored photograph.',
+    'Prepare for one minute.',
+    '<p>Authored speaking context.</p>',
+    32,
+    'https://cdn.example.test/b1/stale-speaking-image.png',
+    null,
+    false,
+    'pro',
+    '{"audience":"examiner"}'::jsonb,
+    '91000000-0000-0000-0000-000000000001',
+    'speaking_script_prompt',
+    'sample_compare',
+    6,
+    '[{"type":"rich_text","value":"<p>Authored speaking block.</p>"}]'::jsonb,
+    '{"preparation_seconds":60}'::jsonb,
+    '{"comparison":"sample"}'::jsonb
+  );
+
+insert into public.exam_sections (
+  id,
+  exam_id,
+  source_key,
+  skill,
+  title,
+  instructions,
+  resource_type,
+  resource_id,
+  order_index,
+  is_required,
+  suggested_time_minutes,
+  metadata
+)
+values
+  (
+    '98400000-0000-0000-0000-000000000001',
+    '98000000-0000-0000-0000-000000000001',
+    'clone-source-choice-section',
+    'reading',
+    'Choice section',
+    'Authored choice section instructions.',
+    'activity',
+    '98100000-0000-0000-0000-000000000001',
+    2,
+    true,
+    12,
+    '{"section":"choice"}'::jsonb
+  ),
+  (
+    '98400000-0000-0000-0000-000000000002',
+    '98000000-0000-0000-0000-000000000001',
+    'clone-source-matching-section',
+    'reading',
+    'Matching section',
+    'Authored matching section instructions.',
+    'activity',
+    '98100000-0000-0000-0000-000000000002',
+    4,
+    false,
+    null,
+    '{"section":"matching"}'::jsonb
+  ),
+  (
+    '98400000-0000-0000-0000-000000000003',
+    '98000000-0000-0000-0000-000000000001',
+    'clone-source-ordering-section',
+    'listening',
+    'Ordering section',
+    'Authored ordering section instructions.',
+    'activity',
+    '98100000-0000-0000-0000-000000000003',
+    6,
+    true,
+    15,
+    '{"section":"ordering"}'::jsonb
+  ),
+  (
+    '98400000-0000-0000-0000-000000000004',
+    '98000000-0000-0000-0000-000000000001',
+    'clone-source-writing-section',
+    'writing',
+    'Writing section',
+    'Authored writing section instructions.',
+    'prompt',
+    '98200000-0000-0000-0000-000000000001',
+    8,
+    true,
+    30,
+    '{"section":"writing"}'::jsonb
+  ),
+  (
+    '98400000-0000-0000-0000-000000000005',
+    '98000000-0000-0000-0000-000000000001',
+    'clone-source-speaking-section',
+    'speaking',
+    'Speaking section',
+    'Authored speaking section instructions.',
+    'prompt',
+    '98200000-0000-0000-0000-000000000002',
+    10,
+    false,
+    20,
+    '{"section":"speaking"}'::jsonb
+  );
+
+insert into public.practice_prompt_samples (id, prompt_id, title, content)
+values
+  (
+    '98500000-0000-0000-0000-000000000001',
+    '98200000-0000-0000-0000-000000000001',
+    'Authored writing sample',
+    'This is the authored writing sample.'
+  ),
+  (
+    '98500000-0000-0000-0000-000000000002',
+    '98200000-0000-0000-0000-000000000002',
+    'Authored speaking sample',
+    'This is the authored speaking sample.'
+  );
+
+insert into public.exam_media_assets (
+  id,
+  media_kind,
+  bucket_id,
+  storage_path,
+  public_url,
+  display_name,
+  created_by
+)
+values
+  (
+    '98600000-0000-0000-0000-000000000001',
+    'audio',
+    'external',
+    'clone-fixture/source-audio.mp3',
+    'https://cdn.example.test/b1/source-audio.mp3',
+    'Clone source audio',
+    '91000000-0000-0000-0000-000000000001'
+  ),
+  (
+    '98600000-0000-0000-0000-000000000002',
+    'image',
+    'external',
+    'clone-fixture/source-sign.png',
+    'https://cdn.example.test/b1/source-sign.png',
+    'Clone source sign',
+    '91000000-0000-0000-0000-000000000001'
+  );
+
+insert into public.exam_media_asset_usages (
+  id,
+  asset_id,
+  resource_type,
+  resource_id,
+  usage_role
+)
+values
+  (
+    '98700000-0000-0000-0000-000000000001',
+    '98600000-0000-0000-0000-000000000001',
+    'activity',
+    '98100000-0000-0000-0000-000000000001',
+    'audio'
+  ),
+  (
+    '98700000-0000-0000-0000-000000000002',
+    '98600000-0000-0000-0000-000000000002',
+    'question',
+    '98300000-0000-0000-0000-000000000001',
+    'image'
+  ),
+  (
+    '98700000-0000-0000-0000-000000000003',
+    '98600000-0000-0000-0000-000000000002',
+    'prompt',
+    '98200000-0000-0000-0000-000000000002',
+    'image'
+  );
+
+insert into public.exam_attempts (
+  id,
+  exam_id,
+  user_id,
+  status,
+  target_duration_seconds,
+  exam_snapshot,
+  current_section_source_key,
+  submitted_at
+)
+values (
+  '98800000-0000-0000-0000-000000000001',
+  '98000000-0000-0000-0000-000000000001',
+  '91000000-0000-0000-0000-000000000002',
+  'submitted',
+  8100,
+  '{"exam":{"source_key":"b1-clone-source-fixture"},"sections":[]}'::jsonb,
+  'clone-source-choice-section',
+  now()
+);
+
+insert into public.exam_attempt_grading_snapshots (attempt_id, grading_snapshot)
+values (
+  '98800000-0000-0000-0000-000000000001',
+  '{"sections":[]}'::jsonb
+);
+
+insert into public.practice_draft_versions (
+  id,
+  user_id,
+  prompt_id,
+  version_number,
+  content,
+  word_count
+)
+values (
+  '98900000-0000-0000-0000-000000000001',
+  '91000000-0000-0000-0000-000000000002',
+  '98200000-0000-0000-0000-000000000001',
+  1,
+  'Authored learner draft.',
+  3
+);
+
+insert into public.exam_section_attempts (
+  id,
+  attempt_id,
+  exam_section_source_key,
+  status,
+  progress,
+  score,
+  max_score,
+  draft_version_id,
+  completed_at
+)
+values (
+  '98900000-0000-0000-0000-000000000002',
+  '98800000-0000-0000-0000-000000000001',
+  'clone-source-writing-section',
+  'completed',
+  '{"draft":"Authored learner draft."}'::jsonb,
+  1,
+  1,
+  '98900000-0000-0000-0000-000000000001',
+  now()
+);
 
 select extensions.throws_ok(
   $$
@@ -1445,6 +1954,996 @@ select extensions.is(
   ),
   1::bigint,
   'repeating a B1 creation request leaves exactly one exam row'
+);
+
+select set_config(
+  'request.jwt.claim.sub',
+  '91000000-0000-0000-0000-000000000004',
+  true
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"91000000-0000-0000-0000-000000000004","role":"authenticated"}',
+  true
+);
+select extensions.throws_ok(
+  $$
+    select public.create_b1_exam(
+      '99000000-0000-0000-0000-000000000099',
+      'Unreadable source clone',
+      null,
+      'free',
+      90,
+      'structure_only',
+      '98000000-0000-0000-0000-000000000001'
+    )
+  $$,
+  '42501',
+  'B1_CREATE_FORBIDDEN',
+  'clone creation requires exam.read in addition to exam.create'
+);
+
+select set_config(
+  'request.jwt.claim.sub',
+  '91000000-0000-0000-0000-000000000001',
+  true
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"91000000-0000-0000-0000-000000000001","role":"authenticated"}',
+  true
+);
+select extensions.throws_ok(
+  $$
+    select public.create_b1_exam(
+      '99000000-0000-0000-0000-000000000098',
+      'Missing source clone',
+      null,
+      'free',
+      90,
+      'structure_only',
+      null
+    )
+  $$,
+  '22023',
+  'B1_SOURCE_UNAVAILABLE',
+  'clone creation rejects a missing source exam'
+);
+select extensions.throws_ok(
+  $$
+    select public.create_b1_exam(
+      '99000000-0000-0000-0000-000000000097',
+      'Legacy source clone',
+      null,
+      'free',
+      90,
+      'full_content',
+      '92000000-0000-0000-0000-000000000001'
+    )
+  $$,
+  '22023',
+  'B1_SOURCE_UNAVAILABLE',
+  'clone creation rejects a legacy source exam'
+);
+select extensions.throws_ok(
+  $$
+    select public.create_b1_exam(
+      '99000000-0000-0000-0000-000000000096',
+      'Nonexistent source clone',
+      null,
+      'free',
+      90,
+      'structure_only',
+      '98000000-0000-0000-0000-000000000999'
+    )
+  $$,
+  '22023',
+  'B1_SOURCE_UNAVAILABLE',
+  'clone creation rejects a nonexistent source exam'
+);
+select extensions.throws_ok(
+  $$
+    select public.create_b1_exam(
+      '99000000-0000-0000-0000-000000000095',
+      'Deleted source clone',
+      null,
+      'free',
+      90,
+      'full_content',
+      '98000000-0000-0000-0000-000000000002'
+    )
+  $$,
+  '22023',
+  'B1_SOURCE_UNAVAILABLE',
+  'clone creation rejects a deleted B1 source exam'
+);
+reset role;
+select extensions.ok(
+  not exists (
+    select 1
+    from public.exams
+    where title in (
+      'Unreadable source clone',
+      'Missing source clone',
+      'Legacy source clone',
+      'Nonexistent source clone',
+      'Deleted source clone'
+    )
+  )
+    and not exists (
+      select 1
+      from public.b1_exam_creation_requests
+      where request_id in (
+        '99000000-0000-0000-0000-000000000099',
+        '99000000-0000-0000-0000-000000000098',
+        '99000000-0000-0000-0000-000000000097',
+        '99000000-0000-0000-0000-000000000096',
+        '99000000-0000-0000-0000-000000000095'
+      )
+    ),
+  'rejected clone requests leave no partial exam or idempotency record'
+);
+set local role authenticated;
+
+select extensions.lives_ok(
+  $$
+    select public.create_b1_exam(
+      '99000000-0000-0000-0000-000000000001',
+      'Structure-only clone',
+      'Fresh structure without authored content.',
+      'free',
+      90,
+      'structure_only',
+      '98000000-0000-0000-0000-000000000001'
+    )
+  $$,
+  'exam administrators can create a structure-only B1 clone'
+);
+select extensions.results_eq(
+  $$
+    select
+      e.title,
+      e.description,
+      e.access_tier,
+      e.default_time_minutes,
+      e.exam_format,
+      e.cefr_level,
+      e.is_published,
+      e.created_by,
+      e.cloned_from_exam_id,
+      e.clone_mode
+    from public.exams e
+    where e.id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where requested_by = '91000000-0000-0000-0000-000000000001'
+        and request_id = '99000000-0000-0000-0000-000000000001'
+    )
+  $$,
+  $$
+    values (
+      'Structure-only clone'::text,
+      'Fresh structure without authored content.'::text,
+      'free'::text,
+      90,
+      'b1_practice'::text,
+      'B1'::text,
+      false,
+      '91000000-0000-0000-0000-000000000001'::uuid,
+      '98000000-0000-0000-0000-000000000001'::uuid,
+      'structure_only'::text
+    )
+  $$,
+  'structure-only clone stores new exam metadata and source lineage'
+);
+select extensions.results_eq(
+  $$
+    select
+      clone_section.order_index,
+      clone_section.title,
+      clone_section.skill,
+      clone_section.resource_type,
+      clone_section.is_required,
+      clone_section.suggested_time_minutes,
+      clone_section.id <> source_section.id,
+      clone_section.resource_id <> source_section.resource_id,
+      clone_section.source_key <> source_section.source_key
+    from public.exam_sections clone_section
+    join public.exam_sections source_section
+      on source_section.exam_id = '98000000-0000-0000-0000-000000000001'
+      and source_section.order_index = clone_section.order_index
+    where clone_section.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000001'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+    order by clone_section.order_index
+  $$,
+  $$
+    values
+      (2, 'Choice section'::text, 'reading'::text, 'activity'::text, true, 12, true, true, true),
+      (4, 'Matching section'::text, 'reading'::text, 'activity'::text, false, null::integer, true, true, true),
+      (6, 'Ordering section'::text, 'listening'::text, 'activity'::text, true, 15, true, true, true),
+      (8, 'Writing section'::text, 'writing'::text, 'prompt'::text, true, 30, true, true, true),
+      (10, 'Speaking section'::text, 'speaking'::text, 'prompt'::text, false, 20, true, true, true)
+  $$,
+  'structure-only clone preserves section structure while regenerating IDs and source keys'
+);
+select extensions.results_eq(
+  $$
+    select
+      es.order_index,
+      coalesce(pa.presentation_type, pp.presentation_type),
+      coalesce(pa.grading_mode, pp.grading_mode),
+      es.resource_type,
+      coalesce(pa.title, pp.title),
+      coalesce(pa.skill, pp.skill),
+      coalesce(pa.is_published, pp.is_published),
+      coalesce(pa.access_tier, pp.access_tier),
+      coalesce(pa.created_by, pp.created_by),
+      coalesce(pa.source_key, pp.source_key) <> source_resource.source_key
+    from public.exam_sections es
+    left join public.practice_activities pa
+      on es.resource_type = 'activity' and pa.id = es.resource_id
+    left join public.practice_prompts pp
+      on es.resource_type = 'prompt' and pp.id = es.resource_id
+    join lateral (
+      select coalesce(source_activity.source_key, source_prompt.source_key) as source_key
+      from public.exam_sections source_section
+      left join public.practice_activities source_activity
+        on source_section.resource_type = 'activity' and source_activity.id = source_section.resource_id
+      left join public.practice_prompts source_prompt
+        on source_section.resource_type = 'prompt' and source_prompt.id = source_section.resource_id
+      where source_section.exam_id = '98000000-0000-0000-0000-000000000001'
+        and source_section.order_index = es.order_index
+    ) source_resource on true
+    where es.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000001'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+    order by es.order_index
+  $$,
+  $$
+    values
+      (2, 'choice_list'::text, 'single_choice'::text, 'activity'::text, 'Choice section'::text, 'reading'::text, false, 'free'::text, '91000000-0000-0000-0000-000000000001'::uuid, true),
+      (4, 'matching'::text, 'matching'::text, 'activity'::text, 'Matching section'::text, 'reading'::text, false, 'free'::text, '91000000-0000-0000-0000-000000000001'::uuid, true),
+      (6, 'ordering'::text, 'ordered_list'::text, 'activity'::text, 'Ordering section'::text, 'listening'::text, false, 'free'::text, '91000000-0000-0000-0000-000000000001'::uuid, true),
+      (8, 'long_form_prompt'::text, 'sample_compare'::text, 'prompt'::text, 'Writing section'::text, 'writing'::text, false, 'free'::text, '91000000-0000-0000-0000-000000000001'::uuid, true),
+      (10, 'speaking_script_prompt'::text, 'sample_compare'::text, 'prompt'::text, 'Speaking section'::text, 'speaking'::text, false, 'free'::text, '91000000-0000-0000-0000-000000000001'::uuid, true)
+  $$,
+  'structure-only clone preserves presentation modes with fresh builder-compatible draft resources'
+);
+select extensions.results_eq(
+  $$
+    select pa.presentation_type, pa.activity_type, pa.presentation_config
+    from public.exam_sections es
+    join public.practice_activities pa on pa.id = es.resource_id
+    where es.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000001'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+    order by es.order_index
+  $$,
+  $$
+    values
+      ('choice_list'::text, 'multiple_choice'::text, '{}'::jsonb),
+      ('matching'::text, 'multiple_choice'::text, '{"matching":{"leftItems":[],"rightItems":[],"pairs":[]}}'::jsonb),
+      ('ordering'::text, 'multiple_choice'::text, '{"ordering":{"items":[]}}'::jsonb)
+  $$,
+  'structure-only objective resources use builder-compatible empty configurations'
+);
+select extensions.results_eq(
+  $$
+    select
+      es.order_index,
+      pq.source_number,
+      pq.question_type,
+      pq.prompt,
+      pq.options,
+      pq.accepted_answers,
+      pq.order_index,
+      pq.id <> '98300000-0000-0000-0000-000000000001'::uuid,
+      pq.source_key <> 'clone-source-choice-q1'
+    from public.exam_sections es
+    join public.practice_questions pq on pq.activity_id = es.resource_id
+    where es.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000001'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+    order by es.order_index, pq.order_index
+  $$,
+  $$
+    values (
+      2,
+      '1'::text,
+      'multiple_choice'::text,
+      ''::text,
+      '[{"key":"A","text":"","is_correct":true},{"key":"B","text":"","is_correct":false},{"key":"C","text":"","is_correct":false},{"key":"D","text":"","is_correct":false}]'::jsonb,
+      '[]'::jsonb,
+      0,
+      true,
+      true
+    )
+  $$,
+  'structure-only clone creates one empty starter question and none for matching or ordering'
+);
+select extensions.ok(
+  not exists (
+    select 1
+    from public.exam_sections es
+    where es.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000001'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+      and (
+        es.instructions is not null
+        or es.metadata <> '{}'::jsonb
+      )
+  )
+    and not exists (
+      select 1
+      from public.exam_sections es
+      join public.practice_activities pa on pa.id = es.resource_id
+      where es.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where request_id = '99000000-0000-0000-0000-000000000001'
+          and requested_by = '91000000-0000-0000-0000-000000000001'
+      )
+        and (
+          pa.instructions is not null
+          or pa.content is not null
+          or pa.passage is not null
+          or pa.audio_url is not null
+          or pa.metadata <> '{}'::jsonb
+          or pa.content_blocks <> '[]'::jsonb
+          or pa.review_config <> '{}'::jsonb
+        )
+    )
+    and not exists (
+      select 1
+      from public.exam_sections es
+      join public.practice_questions pq on pq.activity_id = es.resource_id
+      where es.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where request_id = '99000000-0000-0000-0000-000000000001'
+          and requested_by = '91000000-0000-0000-0000-000000000001'
+      )
+        and (
+          pq.prompt <> ''
+          or pq.accepted_answers <> '[]'::jsonb
+          or pq.source_page is not null
+          or pq.image_url is not null
+          or pq.metadata <> '{}'::jsonb
+          or pq.translation is not null
+          or pq.explanation is not null
+        )
+    )
+    and not exists (
+      select 1
+      from public.exam_sections es
+      join public.practice_prompts pp on pp.id = es.resource_id
+      where es.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where request_id = '99000000-0000-0000-0000-000000000001'
+          and requested_by = '91000000-0000-0000-0000-000000000001'
+      )
+        and (
+          pp.prompt <> ''
+          or pp.instructions is not null
+          or pp.content is not null
+          or pp.source_page is not null
+          or pp.image_url is not null
+          or pp.audio_url is not null
+          or pp.metadata <> '{}'::jsonb
+          or pp.content_blocks <> '[]'::jsonb
+          or pp.presentation_config <> '{}'::jsonb
+          or pp.review_config <> '{}'::jsonb
+        )
+    ),
+  'structure-only resources contain no authored text, answers, review metadata, or URLs'
+);
+select extensions.ok(
+  not exists (
+    select 1
+    from public.practice_prompt_samples samples
+    join public.exam_sections es on es.resource_id = samples.prompt_id
+    where es.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000001'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+  )
+    and not exists (
+      select 1
+      from public.exam_media_asset_usages usage
+      where usage.resource_id in (
+        select es.resource_id
+        from public.exam_sections es
+        where es.exam_id = (
+          select exam_id
+          from public.b1_exam_creation_requests
+          where request_id = '99000000-0000-0000-0000-000000000001'
+            and requested_by = '91000000-0000-0000-0000-000000000001'
+        )
+        union all
+        select pq.id
+        from public.exam_sections es
+        join public.practice_questions pq on pq.activity_id = es.resource_id
+        where es.exam_id = (
+          select exam_id
+          from public.b1_exam_creation_requests
+          where request_id = '99000000-0000-0000-0000-000000000001'
+            and requested_by = '91000000-0000-0000-0000-000000000001'
+        )
+      )
+    ),
+  'structure-only clone creates no prompt samples or media usages'
+);
+
+select extensions.lives_ok(
+  $$
+    select public.create_b1_exam(
+      '99000000-0000-0000-0000-000000000002',
+      'Full-content clone',
+      'Independent authored content with shared media assets.',
+      'free',
+      105,
+      'full_content',
+      '98000000-0000-0000-0000-000000000001'
+    )
+  $$,
+  'exam administrators can create a full-content B1 clone'
+);
+select extensions.results_eq(
+  $$
+    select
+      e.title,
+      e.description,
+      e.access_tier,
+      e.default_time_minutes,
+      e.exam_format,
+      e.cefr_level,
+      e.is_published,
+      e.created_by,
+      e.cloned_from_exam_id,
+      e.clone_mode
+    from public.exams e
+    where e.id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where requested_by = '91000000-0000-0000-0000-000000000001'
+        and request_id = '99000000-0000-0000-0000-000000000002'
+    )
+  $$,
+  $$
+    values (
+      'Full-content clone'::text,
+      'Independent authored content with shared media assets.'::text,
+      'free'::text,
+      105,
+      'b1_practice'::text,
+      'B1'::text,
+      false,
+      '91000000-0000-0000-0000-000000000001'::uuid,
+      '98000000-0000-0000-0000-000000000001'::uuid,
+      'full_content'::text
+    )
+  $$,
+  'full-content clone stores new exam metadata and source lineage'
+);
+select extensions.ok(
+  (
+    select count(*) = 5
+      and bool_and(
+        clone_section.id <> source_section.id
+        and clone_section.resource_id <> source_section.resource_id
+        and clone_section.source_key <> source_section.source_key
+        and clone_section.title = source_section.title
+        and clone_section.skill = source_section.skill
+        and clone_section.instructions is not distinct from source_section.instructions
+        and clone_section.resource_type = source_section.resource_type
+        and clone_section.order_index = source_section.order_index
+        and clone_section.is_required = source_section.is_required
+        and clone_section.suggested_time_minutes is not distinct from source_section.suggested_time_minutes
+        and clone_section.metadata = source_section.metadata
+      )
+    from public.exam_sections clone_section
+    join public.exam_sections source_section
+      on source_section.exam_id = '98000000-0000-0000-0000-000000000001'
+      and source_section.order_index = clone_section.order_index
+    where clone_section.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000002'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+  ),
+  'full-content clone deep-copies every section field into new IDs and source keys'
+);
+select extensions.ok(
+  (
+    select count(*) = 3
+      and bool_and(
+        clone_activity.id <> source_activity.id
+        and clone_activity.source_key <> source_activity.source_key
+        and clone_activity.skill = source_activity.skill
+        and clone_activity.activity_type = source_activity.activity_type
+        and clone_activity.title = source_activity.title
+        and clone_activity.instructions is not distinct from source_activity.instructions
+        and clone_activity.content is not distinct from source_activity.content
+        and clone_activity.passage is not distinct from source_activity.passage
+        and clone_activity.audio_url is not distinct from source_activity.audio_url
+        and clone_activity.metadata = source_activity.metadata
+        and clone_activity.presentation_type is not distinct from source_activity.presentation_type
+        and clone_activity.grading_mode is not distinct from source_activity.grading_mode
+        and clone_activity.content_schema_version = source_activity.content_schema_version
+        and clone_activity.content_blocks = source_activity.content_blocks
+        and clone_activity.presentation_config = source_activity.presentation_config
+        and clone_activity.review_config = source_activity.review_config
+        and clone_activity.is_published = false
+        and clone_activity.access_tier = 'free'
+        and clone_activity.created_by = '91000000-0000-0000-0000-000000000001'
+      )
+    from public.exam_sections clone_section
+    join public.exam_sections source_section
+      on source_section.exam_id = '98000000-0000-0000-0000-000000000001'
+      and source_section.order_index = clone_section.order_index
+      and source_section.resource_type = 'activity'
+    join public.practice_activities clone_activity on clone_activity.id = clone_section.resource_id
+    join public.practice_activities source_activity on source_activity.id = source_section.resource_id
+    where clone_section.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000002'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+  ),
+  'full-content clone copies every activity field consumed by attempt and result renderers'
+);
+select extensions.ok(
+  (
+    select count(*) = 2
+      and bool_and(
+        clone_prompt.id <> source_prompt.id
+        and clone_prompt.source_key <> source_prompt.source_key
+        and clone_prompt.skill = source_prompt.skill
+        and clone_prompt.title = source_prompt.title
+        and clone_prompt.prompt = source_prompt.prompt
+        and clone_prompt.instructions is not distinct from source_prompt.instructions
+        and clone_prompt.content is not distinct from source_prompt.content
+        and clone_prompt.source_page is not distinct from source_prompt.source_page
+        and clone_prompt.image_url is not distinct from case
+          when source_prompt.id = '98200000-0000-0000-0000-000000000002'::uuid
+            then 'https://cdn.example.test/b1/source-sign.png'
+          else source_prompt.image_url
+        end
+        and clone_prompt.audio_url is not distinct from source_prompt.audio_url
+        and clone_prompt.metadata = source_prompt.metadata
+        and clone_prompt.presentation_type is not distinct from source_prompt.presentation_type
+        and clone_prompt.grading_mode is not distinct from source_prompt.grading_mode
+        and clone_prompt.content_schema_version = source_prompt.content_schema_version
+        and clone_prompt.content_blocks = source_prompt.content_blocks
+        and clone_prompt.presentation_config = source_prompt.presentation_config
+        and clone_prompt.review_config = source_prompt.review_config
+        and clone_prompt.is_published = false
+        and clone_prompt.access_tier = 'free'
+        and clone_prompt.created_by = '91000000-0000-0000-0000-000000000001'
+      )
+    from public.exam_sections clone_section
+    join public.exam_sections source_section
+      on source_section.exam_id = '98000000-0000-0000-0000-000000000001'
+      and source_section.order_index = clone_section.order_index
+      and source_section.resource_type = 'prompt'
+    join public.practice_prompts clone_prompt on clone_prompt.id = clone_section.resource_id
+    join public.practice_prompts source_prompt on source_prompt.id = source_section.resource_id
+    where clone_section.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000002'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+  ),
+  'full-content clone copies every prompt field consumed by attempt and result renderers'
+);
+select extensions.ok(
+  (
+    select count(*) = 1
+      and bool_and(
+        clone_question.id <> source_question.id
+        and clone_question.source_key <> source_question.source_key
+        and clone_question.source_number is not distinct from source_question.source_number
+        and clone_question.question_type = source_question.question_type
+        and clone_question.prompt = source_question.prompt
+        and clone_question.options = source_question.options
+        and clone_question.accepted_answers = source_question.accepted_answers
+        and clone_question.source_page is not distinct from source_question.source_page
+        and clone_question.image_url is not distinct from source_question.image_url
+        and clone_question.order_index = source_question.order_index
+        and clone_question.metadata = source_question.metadata
+        and clone_question.translation is not distinct from source_question.translation
+        and clone_question.explanation is not distinct from source_question.explanation
+      )
+    from public.exam_sections clone_section
+    join public.exam_sections source_section
+      on source_section.exam_id = '98000000-0000-0000-0000-000000000001'
+      and source_section.order_index = clone_section.order_index
+      and source_section.resource_type = 'activity'
+    join public.practice_questions clone_question on clone_question.activity_id = clone_section.resource_id
+    join public.practice_questions source_question
+      on source_question.activity_id = source_section.resource_id
+      and source_question.order_index = clone_question.order_index
+    where clone_section.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000002'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+  ),
+  'full-content clone copies question options, answers, review text, metadata, and URLs into new rows'
+);
+select extensions.ok(
+  (
+    select count(*) = 2
+      and bool_and(
+        clone_sample.id <> source_sample.id
+        and clone_sample.prompt_id <> source_sample.prompt_id
+        and clone_sample.title = source_sample.title
+        and clone_sample.content = source_sample.content
+      )
+    from public.exam_sections clone_section
+    join public.exam_sections source_section
+      on source_section.exam_id = '98000000-0000-0000-0000-000000000001'
+      and source_section.order_index = clone_section.order_index
+      and source_section.resource_type = 'prompt'
+    join public.practice_prompt_samples clone_sample on clone_sample.prompt_id = clone_section.resource_id
+    join public.practice_prompt_samples source_sample
+      on source_sample.prompt_id = source_section.resource_id
+      and source_sample.title = clone_sample.title
+    where clone_section.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000002'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+  ),
+  'full-content clone deep-copies Writing and Speaking samples into new IDs'
+);
+select extensions.results_eq(
+  $$
+    select usage.asset_id, usage.resource_type, usage.usage_role,
+      usage.id not in (
+        '98700000-0000-0000-0000-000000000001'::uuid,
+        '98700000-0000-0000-0000-000000000002'::uuid,
+        '98700000-0000-0000-0000-000000000003'::uuid
+      )
+    from public.exam_media_asset_usages usage
+    where usage.resource_id in (
+      select es.resource_id
+      from public.exam_sections es
+      where es.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where request_id = '99000000-0000-0000-0000-000000000002'
+          and requested_by = '91000000-0000-0000-0000-000000000001'
+      )
+      union all
+      select pq.id
+      from public.exam_sections es
+      join public.practice_questions pq on pq.activity_id = es.resource_id
+      where es.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where request_id = '99000000-0000-0000-0000-000000000002'
+          and requested_by = '91000000-0000-0000-0000-000000000001'
+      )
+    )
+    order by usage.resource_type
+  $$,
+  $$
+    values
+      ('98600000-0000-0000-0000-000000000001'::uuid, 'activity'::text, 'audio'::text, true),
+      ('98600000-0000-0000-0000-000000000002'::uuid, 'prompt'::text, 'image'::text, true),
+      ('98600000-0000-0000-0000-000000000002'::uuid, 'question'::text, 'image'::text, true)
+  $$,
+  'full-content clone creates distinct usage rows that share the source media asset IDs'
+);
+select extensions.results_eq(
+  $$
+    select
+      clone_activity.audio_url,
+      source_prompt.image_url,
+      clone_prompt.image_url,
+      clone_question.image_url,
+      (select count(*) from public.exam_media_assets)
+    from public.exam_sections clone_choice_section
+    join public.practice_activities clone_activity on clone_activity.id = clone_choice_section.resource_id
+    join public.practice_questions clone_question on clone_question.activity_id = clone_activity.id
+    join public.exam_sections clone_speaking_section
+      on clone_speaking_section.exam_id = clone_choice_section.exam_id
+      and clone_speaking_section.order_index = 10
+    join public.practice_prompts clone_prompt on clone_prompt.id = clone_speaking_section.resource_id
+    join public.practice_prompts source_prompt
+      on source_prompt.id = '98200000-0000-0000-0000-000000000002'
+    where clone_choice_section.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000002'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+      and clone_choice_section.order_index = 2
+  $$,
+  $$
+    values (
+      'https://cdn.example.test/b1/source-audio.mp3'::text,
+      'https://cdn.example.test/b1/stale-speaking-image.png'::text,
+      'https://cdn.example.test/b1/source-sign.png'::text,
+      'https://cdn.example.test/b1/source-sign.png'::text,
+      2::bigint
+    )
+  $$,
+  'full-content clone keeps resource URLs aligned while creating no media asset rows'
+);
+reset role;
+select extensions.results_eq(
+  $$
+    select
+      (select count(*) from public.exam_attempts),
+      (select count(*) from public.exam_attempt_grading_snapshots),
+      (select count(*) from public.exam_section_attempts),
+      (select count(*) from public.practice_draft_versions)
+  $$,
+  $$ values (1::bigint, 1::bigint, 1::bigint, 1::bigint) $$,
+  'cloning creates no learner attempts, grading results, section progress, or draft versions'
+);
+set local role authenticated;
+
+insert into public.exam_media_assets (
+  id,
+  media_kind,
+  bucket_id,
+  storage_path,
+  public_url,
+  display_name,
+  replaces_asset_id,
+  created_by
+)
+values (
+  '98600000-0000-0000-0000-000000000003',
+  'audio',
+  'external',
+  'clone-fixture/replacement-audio.mp3',
+  'https://cdn.example.test/b1/replacement-audio.mp3',
+  'Clone-only replacement audio',
+  '98600000-0000-0000-0000-000000000001',
+  '91000000-0000-0000-0000-000000000001'
+);
+select extensions.lives_ok(
+  $$
+    update public.exam_media_asset_usages usage
+    set asset_id = '98600000-0000-0000-0000-000000000003'
+    where usage.resource_type = 'activity'
+      and usage.usage_role = 'audio'
+      and usage.resource_id = (
+        select es.resource_id
+        from public.exam_sections es
+        where es.exam_id = (
+          select exam_id
+          from public.b1_exam_creation_requests
+          where request_id = '99000000-0000-0000-0000-000000000002'
+            and requested_by = '91000000-0000-0000-0000-000000000001'
+        )
+          and es.order_index = 2
+      )
+  $$,
+  'clone media usage can move to a replacement asset without changing the source usage'
+);
+select extensions.lives_ok(
+  $$
+    update public.practice_activities activity
+    set audio_url = 'https://cdn.example.test/b1/replacement-audio.mp3'
+    where activity.id = (
+      select es.resource_id
+      from public.exam_sections es
+      where es.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where request_id = '99000000-0000-0000-0000-000000000002'
+          and requested_by = '91000000-0000-0000-0000-000000000001'
+      )
+        and es.order_index = 2
+    )
+  $$,
+  'clone resource URL can move to the replacement asset URL'
+);
+select extensions.results_eq(
+  $$
+    select
+      source_activity.audio_url,
+      source_usage.asset_id,
+      clone_activity.audio_url,
+      clone_usage.asset_id
+    from public.practice_activities source_activity
+    join public.exam_media_asset_usages source_usage
+      on source_usage.resource_type = 'activity'
+      and source_usage.resource_id = source_activity.id
+      and source_usage.usage_role = 'audio'
+    join public.exam_sections clone_section
+      on clone_section.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where request_id = '99000000-0000-0000-0000-000000000002'
+          and requested_by = '91000000-0000-0000-0000-000000000001'
+      )
+      and clone_section.order_index = 2
+    join public.practice_activities clone_activity on clone_activity.id = clone_section.resource_id
+    join public.exam_media_asset_usages clone_usage
+      on clone_usage.resource_type = 'activity'
+      and clone_usage.resource_id = clone_activity.id
+      and clone_usage.usage_role = 'audio'
+    where source_activity.id = '98100000-0000-0000-0000-000000000001'
+  $$,
+  $$
+    values (
+      'https://cdn.example.test/b1/source-audio.mp3'::text,
+      '98600000-0000-0000-0000-000000000001'::uuid,
+      'https://cdn.example.test/b1/replacement-audio.mp3'::text,
+      '98600000-0000-0000-0000-000000000003'::uuid
+    )
+  $$,
+  'media replacement is copy-on-write for clone usage and URL state'
+);
+reset role;
+select extensions.lives_ok(
+  $$
+    do $clone_edit$
+    begin
+      update public.practice_activities activity
+      set passage = '<p>Clone-only edited passage.</p>'
+      where activity.id = (
+        select es.resource_id
+        from public.exam_sections es
+        where es.exam_id = (
+          select exam_id
+          from public.b1_exam_creation_requests
+          where request_id = '99000000-0000-0000-0000-000000000002'
+            and requested_by = '91000000-0000-0000-0000-000000000001'
+        )
+          and es.order_index = 2
+      );
+
+      update public.practice_questions question
+      set
+        prompt = 'Clone-only edited question?',
+        explanation = 'Clone-only edited explanation.'
+      where question.activity_id = (
+        select es.resource_id
+        from public.exam_sections es
+        where es.exam_id = (
+          select exam_id
+          from public.b1_exam_creation_requests
+          where request_id = '99000000-0000-0000-0000-000000000002'
+            and requested_by = '91000000-0000-0000-0000-000000000001'
+        )
+          and es.order_index = 2
+      );
+
+      update public.practice_prompt_samples sample
+      set content = 'Clone-only edited writing sample.'
+      where sample.prompt_id = (
+        select es.resource_id
+        from public.exam_sections es
+        where es.exam_id = (
+          select exam_id
+          from public.b1_exam_creation_requests
+          where request_id = '99000000-0000-0000-0000-000000000002'
+            and requested_by = '91000000-0000-0000-0000-000000000001'
+        )
+          and es.order_index = 8
+      );
+    end;
+    $clone_edit$;
+  $$,
+  'full clone content can be edited independently'
+);
+set local role authenticated;
+select extensions.results_eq(
+  $$
+    select
+      source_activity.passage,
+      clone_activity.passage,
+      source_question.prompt,
+      clone_question.prompt,
+      source_question.explanation,
+      clone_question.explanation,
+      source_sample.content,
+      clone_sample.content
+    from public.practice_activities source_activity
+    join public.practice_questions source_question on source_question.activity_id = source_activity.id
+    join public.practice_prompt_samples source_sample
+      on source_sample.id = '98500000-0000-0000-0000-000000000001'
+    join public.exam_sections clone_choice_section
+      on clone_choice_section.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where request_id = '99000000-0000-0000-0000-000000000002'
+          and requested_by = '91000000-0000-0000-0000-000000000001'
+      )
+      and clone_choice_section.order_index = 2
+    join public.practice_activities clone_activity on clone_activity.id = clone_choice_section.resource_id
+    join public.practice_questions clone_question on clone_question.activity_id = clone_activity.id
+    join public.exam_sections clone_writing_section
+      on clone_writing_section.exam_id = clone_choice_section.exam_id
+      and clone_writing_section.order_index = 8
+    join public.practice_prompt_samples clone_sample
+      on clone_sample.prompt_id = clone_writing_section.resource_id
+      and clone_sample.title = source_sample.title
+    where source_activity.id = '98100000-0000-0000-0000-000000000001'
+  $$,
+  $$
+    values (
+      '<p>Authored source passage.</p>'::text,
+      '<p>Clone-only edited passage.</p>'::text,
+      'Which authored option is correct?'::text,
+      'Clone-only edited question?'::text,
+      'Alpha is correct because this is the authored fixture.'::text,
+      'Clone-only edited explanation.'::text,
+      'This is the authored writing sample.'::text,
+      'Clone-only edited writing sample.'::text
+    )
+  $$,
+  'editing cloned content and samples leaves the source rows unchanged'
+);
+select extensions.results_eq(
+  $$
+    select
+      source_question.image_url,
+      source_usage.asset_id,
+      clone_question.image_url,
+      clone_usage.asset_id,
+      source_usage.id <> clone_usage.id
+    from public.practice_questions source_question
+    join public.exam_media_asset_usages source_usage
+      on source_usage.resource_type = 'question'
+      and source_usage.resource_id = source_question.id
+      and source_usage.usage_role = 'image'
+    join public.exam_sections clone_section
+      on clone_section.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where request_id = '99000000-0000-0000-0000-000000000002'
+          and requested_by = '91000000-0000-0000-0000-000000000001'
+      )
+      and clone_section.order_index = 2
+    join public.practice_questions clone_question on clone_question.activity_id = clone_section.resource_id
+    join public.exam_media_asset_usages clone_usage
+      on clone_usage.resource_type = 'question'
+      and clone_usage.resource_id = clone_question.id
+      and clone_usage.usage_role = 'image'
+    where source_question.id = '98300000-0000-0000-0000-000000000001'
+  $$,
+  $$
+    values (
+      'https://cdn.example.test/b1/source-sign.png'::text,
+      '98600000-0000-0000-0000-000000000002'::uuid,
+      'https://cdn.example.test/b1/source-sign.png'::text,
+      '98600000-0000-0000-0000-000000000002'::uuid,
+      true
+    )
+  $$,
+  'question image media remains shared only through distinct usage rows'
 );
 
 set local role authenticated;
