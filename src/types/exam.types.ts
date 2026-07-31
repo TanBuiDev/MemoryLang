@@ -1,6 +1,8 @@
 export type ExamCategory = 'TOEIC' | 'IELTS' | 'TOEFL' | 'GENERAL'
 export type PassageType = 'none' | 'single' | 'double' | 'triple'
 export type ExamAccessTier = 'free' | 'pro'
+export type ExamFormat = 'legacy' | 'b1_practice'
+export type B1InitializationMode = 'blank' | 'structure_only' | 'full_content'
 export type ExamPresentationType =
   | 'choice_list'
   | 'boolean_list'
@@ -76,10 +78,21 @@ export interface Exam {
   total_questions: number
   is_published: boolean
   access_tier: ExamAccessTier
+  exam_format: ExamFormat
+  cloned_from_exam_id: string | null
+  clone_mode: B1InitializationMode | null
   created_by?: string | null
   created_at: string
   updated_at: string
   deleted_at?: string | null
+}
+
+export interface B1ExamCloneSource {
+  id: string
+  title: string
+  is_published: boolean
+  section_count: number
+  updated_at: string
 }
 
 export interface ExamDetail extends Exam {

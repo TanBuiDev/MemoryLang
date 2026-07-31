@@ -10,6 +10,7 @@ select extensions.has_table('public', 'practice_prompts', 'practice prompts tabl
 select extensions.has_table('public', 'exam_attempts', 'learner exam attempts table exists');
 select extensions.has_table('public', 'exam_section_attempts', 'learner section attempts table exists');
 select extensions.has_table('public', 'practice_draft_versions', 'learner writing and speaking draft versions table exists');
+select extensions.has_table('public', 'b1_exam_creation_requests', 'B1 exam creation request table exists');
 
 select extensions.has_column('public', 'exams', 'source_key', 'exams expose a stable source key');
 select extensions.has_column('public', 'exams', 'cefr_level', 'exams expose a CEFR level');
@@ -18,6 +19,14 @@ select extensions.has_column(
   'exams',
   'default_time_minutes',
   'exams expose a default practice duration'
+);
+select extensions.has_column('public', 'exams', 'exam_format', 'exams expose an exam format');
+select extensions.has_column('public', 'exams', 'cloned_from_exam_id', 'exams expose their clone source');
+select extensions.has_column('public', 'exams', 'clone_mode', 'exams expose their clone mode');
+select extensions.is(
+  (select exam_format from public.exams where source_key = 'b1-de-full-copy'),
+  'b1_practice',
+  'seeded B1 exam is backfilled'
 );
 select extensions.has_column(
   'public',
@@ -154,6 +163,10 @@ select extensions.ok(
     and (select relrowsecurity from pg_class where oid = 'public.practice_draft_versions'::regclass),
   'learner attempt and draft tables have RLS enabled'
 );
+select extensions.ok(
+  (select relrowsecurity from pg_class where oid = 'public.b1_exam_creation_requests'::regclass),
+  'B1 exam creation requests have RLS enabled'
+);
 
 select extensions.ok(
   has_table_privilege('authenticated', 'public.exam_sections', 'SELECT')
@@ -193,6 +206,13 @@ select extensions.ok(
     and not has_table_privilege('authenticated', 'public.exam_section_attempts', 'UPDATE')
     and not has_table_privilege('authenticated', 'public.practice_draft_versions', 'INSERT'),
   'learner writes use guarded RPCs and grading snapshots remain private'
+);
+select extensions.ok(
+  has_table_privilege('authenticated', 'public.b1_exam_creation_requests', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.b1_exam_creation_requests', 'INSERT')
+    and not has_table_privilege('authenticated', 'public.b1_exam_creation_requests', 'UPDATE')
+    and not has_table_privilege('authenticated', 'public.b1_exam_creation_requests', 'DELETE'),
+  'B1 exam creation request writes are reserved for guarded RPCs'
 );
 select extensions.has_function(
   'public',

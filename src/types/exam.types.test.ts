@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   isB1ContentArtifact,
+  type B1ExamCloneSource,
+  type B1InitializationMode,
+  type Exam,
   type ExamAttempt,
   type ExamAttemptStatus,
+  type ExamFormat,
   type PracticeDraftVersion,
 } from './exam.types'
 
@@ -225,5 +229,64 @@ describe('learner B1 attempt contracts', () => {
 
     expect(version.version_number).toBe(3)
     expect(version.word_count).toBe(4)
+  })
+})
+
+describe('B1 exam creation contracts', () => {
+  it('models explicit legacy and B1 clone metadata', () => {
+    const legacyFormat: ExamFormat = 'legacy'
+    const cloneMode: B1InitializationMode = 'full_content'
+    const legacyExam: Exam = {
+      id: 'exam-legacy-1',
+      title: 'Legacy exam',
+      category: 'GENERAL',
+      description: null,
+      source_key: null,
+      cefr_level: null,
+      default_time_minutes: null,
+      time_limit_minutes: 60,
+      total_questions: 20,
+      is_published: true,
+      access_tier: 'free',
+      exam_format: legacyFormat,
+      cloned_from_exam_id: null,
+      clone_mode: null,
+      created_by: null,
+      created_at: '2026-08-01T00:00:00.000Z',
+      updated_at: '2026-08-01T00:00:00.000Z',
+      deleted_at: null,
+    }
+    const cloneSource: B1ExamCloneSource = {
+      id: 'exam-source-1',
+      title: 'B1 source exam',
+      is_published: true,
+      section_count: 8,
+      updated_at: '2026-08-01T00:00:00.000Z',
+    }
+    const exam: Exam = {
+      id: 'exam-1',
+      title: 'B1 clone',
+      category: 'GENERAL',
+      description: null,
+      source_key: null,
+      cefr_level: 'B1',
+      default_time_minutes: 120,
+      time_limit_minutes: 120,
+      total_questions: 0,
+      is_published: false,
+      access_tier: 'free',
+      created_by: null,
+      created_at: '2026-08-01T00:00:00.000Z',
+      updated_at: '2026-08-01T00:00:00.000Z',
+      deleted_at: null,
+      exam_format: 'b1_practice',
+      cloned_from_exam_id: cloneSource.id,
+      clone_mode: cloneMode,
+    }
+
+    expect(legacyFormat).toBe('legacy')
+    expect(legacyExam.cloned_from_exam_id).toBeNull()
+    expect(exam.clone_mode).toBe('full_content')
+    expect(cloneSource.section_count).toBe(8)
   })
 })
