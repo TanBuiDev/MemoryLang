@@ -316,6 +316,15 @@ update public.profiles
 set is_admin = true
 where id = '91000000-0000-0000-0000-000000000001';
 
+insert into security.user_roles (user_id, role_id, granted_by, reason)
+select
+  '91000000-0000-0000-0000-000000000001',
+  id,
+  '91000000-0000-0000-0000-000000000001',
+  'B1 exam creation test administrator'
+from security.roles
+where code = 'exam_admin';
+
 insert into public.subscriptions (
   id,
   user_id,
@@ -1027,6 +1036,415 @@ select extensions.is(
   ),
   2::bigint,
   'profile admins can read both published and draft practice content'
+);
+
+select extensions.has_function(
+  'public',
+  'create_b1_exam',
+  array['uuid', 'text', 'text', 'text', 'integer', 'text', 'uuid'],
+  'guarded B1 exam creation RPC exists'
+);
+select extensions.ok(
+  has_function_privilege(
+    'authenticated',
+    'public.create_b1_exam(uuid,text,text,text,integer,text,uuid)',
+    'EXECUTE'
+  )
+    and not has_function_privilege(
+      'anon',
+      'public.create_b1_exam(uuid,text,text,text,integer,text,uuid)',
+      'EXECUTE'
+  ),
+  'only authenticated clients can invoke B1 exam creation'
+);
+select extensions.ok(
+  not has_function_privilege(
+    'authenticated',
+    'public.b1_exam_generated_source_key(uuid,uuid,text,text)',
+    'EXECUTE'
+  )
+    and not has_function_privilege(
+      'authenticated',
+      'public.b1_exam_blank_activity_payload(text)',
+      'EXECUTE'
+    )
+    and not has_function_privilege(
+      'authenticated',
+      'public.b1_exam_blank_prompt_payload(text)',
+      'EXECUTE'
+    ),
+  'B1 exam creation helpers are not directly executable by clients'
+);
+
+select set_config(
+  'request.jwt.claim.sub',
+  '91000000-0000-0000-0000-000000000002',
+  true
+);
+select extensions.throws_ok(
+  $$
+    select public.create_b1_exam(
+      '97000000-0000-0000-0000-000000000099',
+      'Forbidden B1 exam',
+      null,
+      'free',
+      120,
+      'blank',
+      null
+    )
+  $$,
+  '42501',
+  'B1_CREATE_FORBIDDEN',
+  'users without exam.create cannot create a B1 exam'
+);
+
+select set_config(
+  'request.jwt.claim.sub',
+  '91000000-0000-0000-0000-000000000001',
+  true
+);
+select extensions.throws_ok(
+  $$
+    select public.create_b1_exam(
+      '97000000-0000-0000-0000-000000000098',
+      '   ',
+      null,
+      'free',
+      120,
+      'blank',
+      null
+    )
+  $$,
+  '22023',
+  'B1_TITLE_REQUIRED',
+  'blank B1 exams require a non-blank title'
+);
+select extensions.throws_ok(
+  $$
+    select public.create_b1_exam(
+      '97000000-0000-0000-0000-000000000097',
+      'Invalid duration B1 exam',
+      null,
+      'free',
+      481,
+      'blank',
+      null
+    )
+  $$,
+  '22023',
+  'B1_DURATION_INVALID',
+  'blank B1 exams reject durations longer than 480 minutes'
+);
+select extensions.throws_ok(
+  $$
+    select public.create_b1_exam(
+      '97000000-0000-0000-0000-000000000096',
+      'Invalid source B1 exam',
+      null,
+      'free',
+      120,
+      'blank',
+      '92000000-0000-0000-0000-000000000001'
+    )
+  $$,
+  '22023',
+  'B1_SOURCE_NOT_ALLOWED',
+  'blank B1 exams reject a source exam'
+);
+
+select extensions.lives_ok(
+  $$
+    select public.create_b1_exam(
+      '97000000-0000-0000-0000-000000000001',
+      'Blank B1 Practice',
+      'Draft scaffold',
+      'free',
+      120,
+      'blank',
+      null
+    )
+  $$,
+  'exam administrators can create a scaffolded blank B1 exam'
+);
+select extensions.results_eq(
+  $$
+    select
+      title,
+      description,
+      access_tier,
+      default_time_minutes,
+      exam_format,
+      cefr_level,
+      is_published,
+      created_by
+    from public.exams
+    where id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where requested_by = '91000000-0000-0000-0000-000000000001'
+        and request_id = '97000000-0000-0000-0000-000000000001'
+    )
+  $$,
+  $$
+    values (
+      'Blank B1 Practice'::text,
+      'Draft scaffold'::text,
+      'free'::text,
+      120,
+      'b1_practice'::text,
+      'B1'::text,
+      false,
+      '91000000-0000-0000-0000-000000000001'::uuid
+    )
+  $$,
+  'blank creation stores one unpublished B1 practice exam'
+);
+select extensions.results_eq(
+  $$
+    select es.title, es.skill, es.resource_type, es.order_index, es.is_required
+    from public.exam_sections es
+    where es.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where requested_by = '91000000-0000-0000-0000-000000000001'
+        and request_id = '97000000-0000-0000-0000-000000000001'
+    )
+    order by es.order_index
+  $$,
+  $$
+    values
+      ('Reading'::text, 'reading'::text, 'activity'::text, 1, true),
+      ('Listening'::text, 'listening'::text, 'activity'::text, 2, true),
+      ('Writing'::text, 'writing'::text, 'prompt'::text, 3, true),
+      ('Speaking'::text, 'speaking'::text, 'prompt'::text, 4, true)
+  $$,
+  'blank creation adds the four required B1 sections in skill order'
+);
+select extensions.results_eq(
+  $$
+    select
+      es.skill,
+      pa.activity_type,
+      pa.presentation_type,
+      pa.grading_mode,
+      pa.is_published,
+      pa.created_by
+    from public.exam_sections es
+    join public.practice_activities pa on pa.id = es.resource_id
+    where es.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where requested_by = '91000000-0000-0000-0000-000000000001'
+        and request_id = '97000000-0000-0000-0000-000000000001'
+    )
+    order by es.order_index
+  $$,
+  $$
+    values
+      (
+        'reading'::text,
+        'multiple_choice'::text,
+        'choice_list'::text,
+        'single_choice'::text,
+        false,
+        '91000000-0000-0000-0000-000000000001'::uuid
+      ),
+      (
+        'listening'::text,
+        'multiple_choice'::text,
+        'choice_list'::text,
+        'single_choice'::text,
+        false,
+        '91000000-0000-0000-0000-000000000001'::uuid
+      )
+  $$,
+  'Reading and Listening receive compatible draft objective activities'
+);
+select extensions.is(
+  (
+    select count(*)
+    from public.exam_sections es
+    join public.practice_activities pa on pa.id = es.resource_id
+    join public.practice_questions pq on pq.activity_id = pa.id
+    where es.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where requested_by = '91000000-0000-0000-0000-000000000001'
+        and request_id = '97000000-0000-0000-0000-000000000001'
+    )
+      and pq.prompt = ''
+      and pq.accepted_answers = '[]'::jsonb
+      and pq.translation is null
+      and pq.explanation is null
+  ),
+  2::bigint,
+  'objective activities receive editable starter questions without authored answers or review text'
+);
+select extensions.results_eq(
+  $$
+    select
+      es.skill,
+      pp.presentation_type,
+      pp.grading_mode,
+      pp.prompt,
+      pp.is_published,
+      pp.created_by
+    from public.exam_sections es
+    join public.practice_prompts pp on pp.id = es.resource_id
+    where es.exam_id = (
+      select exam_id
+      from public.b1_exam_creation_requests
+      where requested_by = '91000000-0000-0000-0000-000000000001'
+        and request_id = '97000000-0000-0000-0000-000000000001'
+    )
+    order by es.order_index
+  $$,
+  $$
+    values
+      (
+        'writing'::text,
+        'long_form_prompt'::text,
+        'manual'::text,
+        ''::text,
+        false,
+        '91000000-0000-0000-0000-000000000001'::uuid
+      ),
+      (
+        'speaking'::text,
+        'speaking_script_prompt'::text,
+        'manual'::text,
+        ''::text,
+        false,
+        '91000000-0000-0000-0000-000000000001'::uuid
+      )
+  $$,
+  'Writing and Speaking receive compatible draft prompt resources'
+);
+select extensions.ok(
+  (
+    with created_source_keys as (
+      select e.source_key
+      from public.exams e
+      where e.id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where requested_by = '91000000-0000-0000-0000-000000000001'
+          and request_id = '97000000-0000-0000-0000-000000000001'
+      )
+      union all
+      select es.source_key
+      from public.exam_sections es
+      where es.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where requested_by = '91000000-0000-0000-0000-000000000001'
+          and request_id = '97000000-0000-0000-0000-000000000001'
+      )
+      union all
+      select pa.source_key
+      from public.exam_sections es
+      join public.practice_activities pa on pa.id = es.resource_id
+      where es.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where requested_by = '91000000-0000-0000-0000-000000000001'
+          and request_id = '97000000-0000-0000-0000-000000000001'
+      )
+      union all
+      select pq.source_key
+      from public.exam_sections es
+      join public.practice_activities pa on pa.id = es.resource_id
+      join public.practice_questions pq on pq.activity_id = pa.id
+      where es.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where requested_by = '91000000-0000-0000-0000-000000000001'
+          and request_id = '97000000-0000-0000-0000-000000000001'
+      )
+      union all
+      select pp.source_key
+      from public.exam_sections es
+      join public.practice_prompts pp on pp.id = es.resource_id
+      where es.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where requested_by = '91000000-0000-0000-0000-000000000001'
+          and request_id = '97000000-0000-0000-0000-000000000001'
+      )
+    )
+    select
+      count(*) = count(distinct source_key)
+      and bool_and(btrim(source_key) <> '')
+    from created_source_keys
+  ),
+  'every generated exam, section, resource, and question source key is non-blank and unique'
+);
+select extensions.ok(
+  not exists (
+    select 1
+    from public.exam_media_asset_usages usage
+    where usage.resource_id in (
+      select es.resource_id
+      from public.exam_sections es
+      where es.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where requested_by = '91000000-0000-0000-0000-000000000001'
+          and request_id = '97000000-0000-0000-0000-000000000001'
+      )
+      union all
+      select pq.id
+      from public.exam_sections es
+      join public.practice_activities pa on pa.id = es.resource_id
+      join public.practice_questions pq on pq.activity_id = pa.id
+      where es.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where requested_by = '91000000-0000-0000-0000-000000000001'
+          and request_id = '97000000-0000-0000-0000-000000000001'
+      )
+    )
+  )
+    and not exists (
+      select 1
+      from public.practice_prompt_samples samples
+      join public.exam_sections es on es.resource_id = samples.prompt_id
+      where es.exam_id = (
+        select exam_id
+        from public.b1_exam_creation_requests
+        where requested_by = '91000000-0000-0000-0000-000000000001'
+          and request_id = '97000000-0000-0000-0000-000000000001'
+      )
+    ),
+  'blank creation adds no media usages or prompt samples'
+);
+select extensions.is(
+  public.create_b1_exam(
+    '97000000-0000-0000-0000-000000000001',
+    'Blank B1 Practice',
+    'Draft scaffold',
+    'free',
+    120,
+    'blank',
+    null
+  ),
+  (
+    select exam_id
+    from public.b1_exam_creation_requests
+    where requested_by = '91000000-0000-0000-0000-000000000001'
+      and request_id = '97000000-0000-0000-0000-000000000001'
+  ),
+  'repeating a B1 creation request returns the original exam ID'
+);
+select extensions.is(
+  (
+    select count(*)
+    from public.exams
+    where title = 'Blank B1 Practice'
+      and created_by = '91000000-0000-0000-0000-000000000001'
+  ),
+  1::bigint,
+  'repeating a B1 creation request leaves exactly one exam row'
 );
 
 set local role authenticated;
