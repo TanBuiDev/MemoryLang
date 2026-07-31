@@ -1,3 +1,4 @@
+// Deployment revision: restore the production function blob after metadata/blob drift.
 import { createClient } from 'npm:@supabase/supabase-js'
 import { z } from 'npm:zod'
 
@@ -22,6 +23,7 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Cache-Control': 'no-store',
   'Content-Type': 'application/json',
 }
 
