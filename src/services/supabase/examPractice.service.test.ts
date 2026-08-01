@@ -31,6 +31,7 @@ describe('examPracticeService', () => {
     ])
 
     expect(from).toHaveBeenCalledWith('exams')
+    expect(query.eq).toHaveBeenCalledWith('exam_format', 'b1_practice')
     expect(query.eq).toHaveBeenCalledWith('cefr_level', 'B1')
     expect(query.eq).toHaveBeenCalledWith('is_published', true)
     expect(query.is).toHaveBeenCalledWith('deleted_at', null)

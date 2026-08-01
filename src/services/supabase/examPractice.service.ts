@@ -31,6 +31,7 @@ export const examPracticeService = {
     const { data, error } = await supabase
       .from('exams')
       .select('*')
+      .eq('exam_format', 'b1_practice')
       .eq('cefr_level', 'B1')
       .eq('is_published', true)
       .is('deleted_at', null)

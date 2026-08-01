@@ -2083,6 +2083,22 @@ select extensions.ok(
     ),
   'rejected clone requests leave no partial exam or idempotency record'
 );
+select extensions.has_function(
+  'public',
+  'set_b1_exam_published_guarded',
+  array['uuid', 'boolean'],
+  'B1 publication is scoped to an explicit exam ID'
+);
+select extensions.ok(
+  to_regprocedure('public.set_b1_exam_published_guarded(boolean)') is null,
+  'the singleton B1 publication signature is removed'
+);
+select extensions.ok(
+  has_function_privilege('authenticated', 'public.set_b1_exam_published_guarded(uuid,boolean)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.set_b1_exam_published_guarded(uuid,boolean)', 'EXECUTE'),
+  'only authenticated clients can invoke exam-scoped publication'
+);
+
 set local role authenticated;
 
 select extensions.lives_ok(
@@ -2949,29 +2965,149 @@ select extensions.results_eq(
 set local role authenticated;
 select set_config(
   'request.jwt.claim.sub',
-  '91000000-0000-0000-0000-000000000002',
+  '91000000-0000-0000-0000-000000000001',
   true
 );
 select set_config(
   'request.jwt.claims',
-  '{"sub":"91000000-0000-0000-0000-000000000002","role":"authenticated","user_metadata":{"role":"admin"}}',
+  '{"sub":"91000000-0000-0000-0000-000000000001","role":"authenticated"}',
   true
 );
 
 select extensions.lives_ok(
   $$
+    do $prepare_clone$
+    begin
+      update public.practice_activities activity
+      set is_published = true,
+          audio_url = case when activity.skill = 'listening' then 'https://cdn.example.test/b1/ready-clone-listening.mp3' else activity.audio_url end
+      where exists (
+        select 1 from public.exam_sections section
+        where section.exam_id = (
+          select exam_id from public.b1_exam_creation_requests
+          where request_id = '99000000-0000-0000-0000-000000000002'
+            and requested_by = '91000000-0000-0000-0000-000000000001'
+        ) and section.resource_type = 'activity' and section.resource_id = activity.id and section.is_required
+      );
+      update public.practice_prompts prompt
+      set is_published = true
+      where exists (
+        select 1 from public.exam_sections section
+        where section.exam_id = (
+          select exam_id from public.b1_exam_creation_requests
+          where request_id = '99000000-0000-0000-0000-000000000002'
+            and requested_by = '91000000-0000-0000-0000-000000000001'
+        ) and section.resource_type = 'prompt' and section.resource_id = prompt.id and section.is_required
+      );
+    end;
+    $prepare_clone$;
+  $$,
+  'the full-content clone can be prepared for exam-scoped publication'
+);
+select extensions.lives_ok(
+  $$ select public.set_b1_exam_published_guarded((
+    select exam_id from public.b1_exam_creation_requests
+    where request_id = '99000000-0000-0000-0000-000000000002'
+      and requested_by = '91000000-0000-0000-0000-000000000001'
+  ), true) $$,
+  'publishing a ready B1 clone ignores a different incomplete B1 clone'
+);
+select extensions.results_eq(
+  $$
+    select is_published from public.exams where id = (
+      select exam_id from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000002'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+  $$,
+  $$ values (true::boolean) $$,
+  'publishing changes only the requested ready clone'
+);
+select extensions.results_eq(
+  $$
+    select is_published from public.exams where id = (
+      select exam_id from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000001'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+  $$,
+  $$ values (false::boolean) $$,
+  'publishing does not inspect or publish the incomplete clone'
+);
+select extensions.lives_ok(
+  $$ select public.set_b1_exam_published_guarded((
+    select exam_id from public.b1_exam_creation_requests
+    where request_id = '99000000-0000-0000-0000-000000000002'
+      and requested_by = '91000000-0000-0000-0000-000000000001'
+  ), false) $$,
+  'unpublishing targets the requested ready clone'
+);
+select extensions.results_eq(
+  $$
+    select is_published from public.exams where id = (
+      select exam_id from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000001'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+  $$,
+  $$ values (false::boolean) $$,
+  'unpublishing leaves the incomplete clone untouched'
+);
+select extensions.lives_ok(
+  $$ select public.set_b1_exam_published_guarded((
+    select exam_id from public.b1_exam_creation_requests
+    where request_id = '99000000-0000-0000-0000-000000000002'
+      and requested_by = '91000000-0000-0000-0000-000000000001'
+  ), true) $$,
+  'the ready clone can be republished for learner eligibility'
+);
+select extensions.throws_ok(
+  $$ select public.set_b1_exam_published_guarded('92000000-0000-0000-0000-000000000001', true) $$,
+  '22023', 'B1_EXAM_UNAVAILABLE', 'legacy exams cannot be published through the B1 publication RPC'
+);
+select extensions.throws_ok(
+  $$ select public.set_b1_exam_published_guarded('98000000-0000-0000-0000-000000000002', true) $$,
+  '22023', 'B1_EXAM_UNAVAILABLE', 'deleted B1 exams cannot be published'
+);
+
+select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000002', true);
+select set_config('request.jwt.claims', '{"sub":"91000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
+select extensions.throws_ok(
+  $$ select public.set_b1_exam_published_guarded((
+    select exam_id from public.b1_exam_creation_requests
+    where request_id = '99000000-0000-0000-0000-000000000002'
+      and requested_by = '91000000-0000-0000-0000-000000000001'
+  ), false) $$,
+  '42501', 'B1_PUBLISH_FORBIDDEN', 'callers without exam.publish cannot change publication'
+);
+
+select extensions.lives_ok(
+  $$
     select public.start_b1_exam_attempt(
-      '92000000-0000-0000-0000-000000000001',
+      (
+        select exam_id from public.b1_exam_creation_requests
+        where request_id = '99000000-0000-0000-0000-000000000002'
+          and requested_by = '91000000-0000-0000-0000-000000000001'
+      ),
       7200
     )
   $$,
-  'learners can start an accessible exam through the guarded RPC'
+  'learners can start a published ready B1 clone through the guarded RPC'
+);
+select extensions.throws_ok(
+  $$ select public.start_b1_exam_attempt('92000000-0000-0000-0000-000000000001', 7200) $$,
+  '42501', 'exam is not available',
+  'learners cannot start a published legacy exam even when its CEFR level is B1'
 );
 select extensions.is(
   (
     select count(*)
     from public.exam_attempts
-    where exam_id = '92000000-0000-0000-0000-000000000001'
+    where exam_id = (
+      select exam_id from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000002'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
   ),
   1::bigint,
   'learners can read only their own newly created attempt'
@@ -2980,7 +3116,11 @@ select extensions.is(
   (
     select target_duration_seconds
     from public.exam_attempts
-    where exam_id = '92000000-0000-0000-0000-000000000001'
+    where exam_id = (
+      select exam_id from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000002'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
   ),
   7200,
   'attempt keeps the learner-selected duration'
@@ -2989,9 +3129,13 @@ select extensions.is(
   (
     select jsonb_array_length(exam_snapshot -> 'sections')
     from public.exam_attempts
-    where exam_id = '92000000-0000-0000-0000-000000000001'
+    where exam_id = (
+      select exam_id from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000002'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
   ),
-  1,
+  3,
   'attempt snapshot contains only sections accessible to the learner'
 );
 select extensions.lives_ok(
@@ -3000,9 +3144,20 @@ select extensions.lives_ok(
       (
         select id
         from public.exam_attempts
-        where exam_id = '92000000-0000-0000-0000-000000000001'
+        where exam_id = (
+          select exam_id from public.b1_exam_creation_requests
+          where request_id = '99000000-0000-0000-0000-000000000002'
+            and requested_by = '91000000-0000-0000-0000-000000000001'
+        )
       ),
-      'b1-grammar-section',
+      (
+        select source_key from public.exam_sections
+        where exam_id = (
+          select exam_id from public.b1_exam_creation_requests
+          where request_id = '99000000-0000-0000-0000-000000000002'
+            and requested_by = '91000000-0000-0000-0000-000000000001'
+        ) and order_index = 2
+      ),
       '{"answers":{"b1-grammar-question-1":"A"}}'::jsonb,
       'completed'
     )
@@ -3013,7 +3168,22 @@ select extensions.is(
   (
     select status
     from public.exam_section_attempts
-    where exam_section_source_key = 'b1-grammar-section'
+    where attempt_id = (
+      select id from public.exam_attempts
+      where exam_id = (
+        select exam_id from public.b1_exam_creation_requests
+        where request_id = '99000000-0000-0000-0000-000000000002'
+          and requested_by = '91000000-0000-0000-0000-000000000001'
+      )
+    )
+      and exam_section_source_key = (
+        select source_key from public.exam_sections
+        where exam_id = (
+          select exam_id from public.b1_exam_creation_requests
+          where request_id = '99000000-0000-0000-0000-000000000002'
+            and requested_by = '91000000-0000-0000-0000-000000000001'
+        ) and order_index = 2
+      )
   ),
   'completed',
   'autosave changes the owned section state'
