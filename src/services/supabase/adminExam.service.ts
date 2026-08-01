@@ -1,7 +1,103 @@
 import { supabase } from '@/services/supabase/client'
-import type { Exam, ExamCategory, ExamDetail, ExamPassageSet, ExamQuestion } from '@/types/exam.types'
+import type {
+  B1ExamCloneSource,
+  B1InitializationMode,
+  Exam,
+  ExamAccessTier,
+  ExamCategory,
+  ExamDetail,
+  ExamPassageSet,
+  ExamQuestion,
+} from '@/types/exam.types'
+
+export interface CreateB1ExamInput {
+  requestId: string
+  title: string
+  description: string
+  accessTier: ExamAccessTier
+  defaultTimeMinutes: number
+  initializationMode: B1InitializationMode
+  sourceExamId: string | null
+}
+
+export type B1ExamCreationErrorCode =
+  | 'B1_CREATE_FORBIDDEN'
+  | 'B1_SOURCE_UNAVAILABLE'
+  | 'B1_TITLE_REQUIRED'
+  | 'B1_DURATION_INVALID'
+
+const B1_EXAM_CREATION_ERROR_MESSAGES: Record<B1ExamCreationErrorCode, string> = {
+  B1_CREATE_FORBIDDEN: 'Bạn không có quyền tạo đề B1.',
+  B1_SOURCE_UNAVAILABLE: 'Đề nguồn không còn khả dụng. Vui lòng chọn đề khác.',
+  B1_TITLE_REQUIRED: 'Vui lòng nhập tiêu đề đề B1.',
+  B1_DURATION_INVALID: 'Thời lượng phải từ 1 đến 480 phút.',
+}
+
+export class B1ExamCreationError extends Error {
+  readonly code: B1ExamCreationErrorCode
+
+  constructor(code: B1ExamCreationErrorCode) {
+    super(B1_EXAM_CREATION_ERROR_MESSAGES[code])
+    this.name = 'B1ExamCreationError'
+    this.code = code
+  }
+}
+
+function getB1ExamCreationErrorCode(error: { message?: string }): B1ExamCreationErrorCode | null {
+  const code = error.message as B1ExamCreationErrorCode
+  return code in B1_EXAM_CREATION_ERROR_MESSAGES ? code : null
+}
 
 export const adminExamService = {
+  async listB1CloneSources(search?: string): Promise<B1ExamCloneSource[]> {
+    let query = supabase
+      .from('exams')
+      .select('id, title, is_published, updated_at, exam_sections(count)')
+      .eq('exam_format', 'b1_practice')
+      .is('deleted_at', null)
+
+    const normalizedSearch = search?.trim()
+    if (normalizedSearch) {
+      const escapedSearch = normalizedSearch.replace(/[\\%_]/g, '\\$&')
+      query = query.ilike('title', `%${escapedSearch}%`)
+    }
+
+    const { data, error } = await query
+      .order('updated_at', { ascending: false })
+      .limit(1000)
+
+    if (error) throw error
+
+    return (data ?? []).map((exam: any) => ({
+      id: exam.id,
+      title: exam.title,
+      is_published: exam.is_published,
+      section_count: exam.exam_sections?.[0]?.count ?? 0,
+      updated_at: exam.updated_at,
+    })) as B1ExamCloneSource[]
+  },
+
+  async createB1Exam(input: CreateB1ExamInput): Promise<string> {
+    const { data, error } = await supabase.rpc('create_b1_exam', {
+      p_request_id: input.requestId,
+      p_title: input.title.trim(),
+      p_description: input.description.trim() || null,
+      p_access_tier: input.accessTier,
+      p_default_time_minutes: input.defaultTimeMinutes,
+      p_initialization_mode: input.initializationMode,
+      p_source_exam_id: input.sourceExamId,
+    })
+
+    if (error) {
+      console.error('Failed to create B1 exam:', error)
+      const code = getB1ExamCreationErrorCode(error)
+      if (code) throw new B1ExamCreationError(code)
+      throw error
+    }
+
+    return data as string
+  },
+
   // 1. List all exams for Admin
   async listExams(category?: ExamCategory): Promise<Exam[]> {
     let query = supabase
