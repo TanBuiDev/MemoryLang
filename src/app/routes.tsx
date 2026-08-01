@@ -294,7 +294,7 @@ export const router = createBrowserRouter([
                     ),
                   },
                   { path: 'listening', element: <AdminListeningPage /> },
-                  { path: 'exam-media', element: <AdminExamMediaPage /> },
+                  { path: 'exams/:id/media', element: <AdminExamMediaPage /> },
                   {
                     path: 'reading',
                     element: (

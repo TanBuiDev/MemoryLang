@@ -63,7 +63,6 @@ const sidebarCategories: SidebarCategory[] = [
       { name: 'Quản lý Luyện nghe', to: '/app/admin/listening', icon: Headphones, phase: 3, isReady: true },
       { name: 'Quản lý Bài đọc', to: '/app/admin/reading', icon: FileText, phase: 3, isReady: true },
       { name: 'Quản lý Đề thi', to: '/app/admin/exams', icon: Layers, phase: 3, isReady: true },
-      { name: 'Media đề B1', to: '/app/admin/exam-media', icon: Volume2, phase: 3, isReady: true },
       { name: 'Quản lý Trò chơi', to: '/app/admin/games', icon: Gamepad2, phase: 3, isReady: true },
     ],
   },

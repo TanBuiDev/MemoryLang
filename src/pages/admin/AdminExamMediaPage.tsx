@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FileAudio, FolderArchive, ImagePlus, Loader2, MessageSquare, Sparkles, Trash2, Upload, Volume2 } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label, Textarea } from '@/components/ui/input'
@@ -22,6 +23,7 @@ type PendingAudioAction =
   | { resource: B1MediaResource; kind: 'tts' }
 
 export default function AdminExamMediaPage() {
+  const { id } = useParams()
   const queryClient = useQueryClient()
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const [activeTab, setActiveTab] = useState<'audio' | 'signs' | 'reviews' | 'vault'>('audio')
@@ -35,34 +37,34 @@ export default function AdminExamMediaPage() {
   const [pendingDeleteAsset, setPendingDeleteAsset] = useState<ExamMediaAsset | null>(null)
   const [isApplyingAudioAction, setIsApplyingAudioAction] = useState(false)
 
-  const resourcesQuery = useQuery({ queryKey: ['admin-b1-media'], queryFn: adminExamMediaService.listResources })
-  const signsQuery = useQuery({ queryKey: ['admin-b1-signs'], queryFn: adminExamMediaService.listSigns })
-  const questionReviewsQuery = useQuery({ queryKey: ['admin-b1-question-reviews'], queryFn: adminExamMediaService.listQuestionReviews })
-  const assetsQuery = useQuery({ queryKey: ['admin-b1-media-assets'], queryFn: adminExamMediaService.listAssets })
+  const resourcesQuery = useQuery({ queryKey: ['admin-b1-media', id], queryFn: () => adminExamMediaService.listResources(id!), enabled: Boolean(id) })
+  const signsQuery = useQuery({ queryKey: ['admin-b1-signs', id], queryFn: () => adminExamMediaService.listSigns(id!), enabled: Boolean(id) })
+  const questionReviewsQuery = useQuery({ queryKey: ['admin-b1-question-reviews', id], queryFn: () => adminExamMediaService.listQuestionReviews(id!), enabled: Boolean(id) })
+  const assetsQuery = useQuery({ queryKey: ['admin-b1-media-assets', id], queryFn: () => adminExamMediaService.listAssets(id!), enabled: Boolean(id) })
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['admin-b1-media'] })
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ['admin-b1-media', id] })
 
   const updateAudio = useMutation({
-    mutationFn: ({ resource, url }: { resource: B1MediaResource; url: string | null }) => adminExamMediaService.setAudioUrl(resource, url),
+    mutationFn: ({ resource, url }: { resource: B1MediaResource; url: string | null }) => adminExamMediaService.setAudioUrl(id!, resource, url),
     onSuccess: async () => { await refresh(); showToast({ type: 'success', title: 'Đã lưu audio cho nội dung B1' }) },
     onError: () => showToast({ type: 'error', title: 'Không thể lưu audio' }),
   })
 
   const publish = useMutation({
-    mutationFn: ({ resource, value }: { resource: B1MediaResource; value: boolean }) => adminExamMediaService.setPublished(resource, value),
+    mutationFn: ({ resource, value }: { resource: B1MediaResource; value: boolean }) => adminExamMediaService.setPublished(id!, resource, value),
     onSuccess: refresh,
   })
 
   const publishExam = useMutation({
-    mutationFn: (isPublished: boolean) => adminExamMediaService.setB1ExamPublished(isPublished),
+    mutationFn: (isPublished: boolean) => adminExamMediaService.setExamPublished(id!, isPublished),
     onSuccess: () => showToast({ type: 'success', title: 'Đã cập nhật trạng thái xuất bản đề B1' }),
     onError: () => showToast({ type: 'error', title: 'Không thể xuất bản đề B1' }),
   })
 
   const updateQuestionReview = useMutation({
-    mutationFn: () => adminExamMediaService.updateQuestionReview(selectedQuestion!.id, { translation: questionTranslation.trim() || null, explanation: questionExplanation.trim() || null }),
+    mutationFn: () => adminExamMediaService.updateQuestionReview(id!, selectedQuestion!.id, { translation: questionTranslation.trim() || null, explanation: questionExplanation.trim() || null }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['admin-b1-question-reviews'] })
+      await queryClient.invalidateQueries({ queryKey: ['admin-b1-question-reviews', id] })
       showToast({ type: 'success', title: 'Đã lưu bản dịch và lời giải' })
     },
     onError: () => showToast({ type: 'error', title: 'Không thể lưu lời giải' }),
@@ -81,25 +83,25 @@ export default function AdminExamMediaPage() {
       if (action.kind === 'url') {
         if (!action.url) await updateAudio.mutateAsync({ resource: action.resource, url: null })
         else {
-          const asset = await adminExamMediaService.createExternalAudioAsset({ url: action.url, displayName: `${action.resource.title} · URL`, replacesAssetId: findAttachedAudioAsset(action.resource)?.id })
-          await adminExamMediaService.attachAudioAsset(action.resource, asset)
+          const asset = await adminExamMediaService.createExternalAudioAsset(id!, { url: action.url, displayName: `${action.resource.title} · URL`, replacesAssetId: findAttachedAudioAsset(action.resource)?.id })
+          await adminExamMediaService.attachAudioAsset(id!, action.resource, asset)
           await refresh()
-          await queryClient.invalidateQueries({ queryKey: ['admin-b1-media-assets'] })
+          await queryClient.invalidateQueries({ queryKey: ['admin-b1-media-assets', id] })
         }
       } else if (action.kind === 'upload') {
-        const asset = await adminExamMediaService.uploadAudio(action.file, action.resource.source_key, findAttachedAudioAsset(action.resource)?.id)
+        const asset = await adminExamMediaService.uploadAudio(id!, action.file, action.resource.source_key, findAttachedAudioAsset(action.resource)?.id)
         setAudioUrl(asset.public_url)
-        await adminExamMediaService.attachAudioAsset(action.resource, asset)
+        await adminExamMediaService.attachAudioAsset(id!, action.resource, asset)
         await refresh()
-        await queryClient.invalidateQueries({ queryKey: ['admin-b1-media-assets'] })
+        await queryClient.invalidateQueries({ queryKey: ['admin-b1-media-assets', id] })
       } else {
         const result = await generateAudio(action.resource.text, language)
         if (!result.audioUrl) throw new Error('TTS chưa tạo được audio')
         setAudioUrl(result.audioUrl)
-        const asset = await adminExamMediaService.createExternalAudioAsset({ url: result.audioUrl, displayName: `${action.resource.title} · TTS`, languageCode: language, transcript: action.resource.text, replacesAssetId: findAttachedAudioAsset(action.resource)?.id })
-        await adminExamMediaService.attachAudioAsset(action.resource, asset)
+        const asset = await adminExamMediaService.createExternalAudioAsset(id!, { url: result.audioUrl, displayName: `${action.resource.title} · TTS`, languageCode: language, transcript: action.resource.text, replacesAssetId: findAttachedAudioAsset(action.resource)?.id })
+        await adminExamMediaService.attachAudioAsset(id!, action.resource, asset)
         await refresh()
-        await queryClient.invalidateQueries({ queryKey: ['admin-b1-media-assets'] })
+        await queryClient.invalidateQueries({ queryKey: ['admin-b1-media-assets', id] })
         showToast({ type: 'success', title: 'Đã tạo và gắn audio TTS' })
       }
     } catch (error) {
@@ -128,10 +130,10 @@ export default function AdminExamMediaPage() {
     if (!file) return
     try {
       const replacingAsset = (assetsQuery.data ?? []).find((candidate) => candidate.media_kind === 'image' && candidate.usages.some((usage) => usage.resource_type === 'question' && usage.resource_id === questionId && usage.usage_role === 'image'))
-      const asset = await adminExamMediaService.uploadSignImage(file, sourceKey, replacingAsset?.id)
-      await adminExamMediaService.attachSignImage(questionId, asset)
-      await queryClient.invalidateQueries({ queryKey: ['admin-b1-signs'] })
-      await queryClient.invalidateQueries({ queryKey: ['admin-b1-media-assets'] })
+      const asset = await adminExamMediaService.uploadSignImage(id!, file, sourceKey, replacingAsset?.id)
+      await adminExamMediaService.attachSignImage(id!, questionId, asset)
+      await queryClient.invalidateQueries({ queryKey: ['admin-b1-signs', id] })
+      await queryClient.invalidateQueries({ queryKey: ['admin-b1-media-assets', id] })
       showToast({ type: 'success', title: 'Đã lưu ảnh biển báo' })
     } catch { showToast({ type: 'error', title: 'Không thể tải ảnh biển báo lên' }) }
   }
@@ -139,8 +141,8 @@ export default function AdminExamMediaPage() {
   const onSignAltUpdate = async (sign: B1SignQuestion, imageAlt: string) => {
     if (imageAlt.trim() === sign.image_alt) return
     try {
-      await adminExamMediaService.updateSignImageAlt(sign, imageAlt)
-      await queryClient.invalidateQueries({ queryKey: ['admin-b1-signs'] })
+      await adminExamMediaService.updateSignImageAlt(id!, sign, imageAlt)
+      await queryClient.invalidateQueries({ queryKey: ['admin-b1-signs', id] })
       showToast({ type: 'success', title: 'Đã lưu mô tả ảnh biển báo' })
     } catch { showToast({ type: 'error', title: 'Không thể lưu mô tả ảnh biển báo' }) }
   }
@@ -148,8 +150,8 @@ export default function AdminExamMediaPage() {
   const onSignCropUpdate = async (sign: B1SignQuestion, imageCrop: string) => {
     if (imageCrop === sign.image_crop) return
     try {
-      await adminExamMediaService.updateSignImageCrop(sign, imageCrop)
-      await queryClient.invalidateQueries({ queryKey: ['admin-b1-signs'] })
+      await adminExamMediaService.updateSignImageCrop(id!, sign, imageCrop)
+      await queryClient.invalidateQueries({ queryKey: ['admin-b1-signs', id] })
       showToast({ type: 'success', title: 'Đã lưu khung hiển thị ảnh biển báo' })
     } catch { showToast({ type: 'error', title: 'Không thể lưu khung hiển thị ảnh biển báo' }) }
   }
@@ -157,14 +159,18 @@ export default function AdminExamMediaPage() {
   const deleteAsset = async () => {
     if (!pendingDeleteAsset) return
     try {
-      await adminExamMediaService.deleteAsset(pendingDeleteAsset)
-      await queryClient.invalidateQueries({ queryKey: ['admin-b1-media-assets'] })
+      await adminExamMediaService.deleteAsset(id!, pendingDeleteAsset)
+      await queryClient.invalidateQueries({ queryKey: ['admin-b1-media-assets', id] })
       showToast({ type: 'success', title: 'Đã xóa media không còn được sử dụng' })
     } catch (error) {
       showToast({ type: 'error', title: 'Không thể xóa media', message: error instanceof Error ? error.message : undefined })
     } finally {
       setPendingDeleteAsset(null)
     }
+  }
+
+  if (!id) {
+    return <div role="alert" className="neo-card border-3 border-rose-500 bg-rose-50 p-5 font-bold text-rose-950">Không tìm thấy mã đề thi để quản lý media.</div>
   }
 
   return (
@@ -184,6 +190,9 @@ export default function AdminExamMediaPage() {
         </div>
 
         <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <Button asChild variant="ghost" className="px-5 text-xs font-black">
+            <Link to={`/app/admin/exams/${id}`}>Quay lại trình xây dựng đề</Link>
+          </Button>
           <Button
             onClick={() => publishExam.mutate(true)}
             disabled={publishExam.isPending || !readyToPublish}
