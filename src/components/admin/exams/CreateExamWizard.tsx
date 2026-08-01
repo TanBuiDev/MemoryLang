@@ -101,6 +101,12 @@ export function CreateExamWizard({ open, onClose, onCreated }: CreateExamWizardP
   const [submitError, setSubmitError] = useState<string | null>(null)
   const requestIdRef = useRef<string | null>(null)
   const b1SessionActiveRef = useRef(false)
+  const dialogRef = useRef<HTMLElement>(null)
+  const confirmingRef = useRef(confirming)
+  const submittingRef = useRef(submitting)
+
+  confirmingRef.current = confirming
+  submittingRef.current = submitting
 
   useEffect(() => {
     if (!open) return
@@ -109,6 +115,55 @@ export function CreateExamWizard({ open, onClose, onCreated }: CreateExamWizardP
       b1SessionActiveRef.current = true
     }
   }, [open, state.format])
+
+  useEffect(() => {
+    if (!open) return
+
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    dialogRef.current?.focus()
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (confirmingRef.current) return
+
+      if (event.key === 'Escape') {
+        if (submittingRef.current) return
+        event.preventDefault()
+        requestIdRef.current = null
+        b1SessionActiveRef.current = false
+        dispatch({ type: 'reset' })
+        setConfirming(false)
+        setSubmitError(null)
+        onClose()
+        return
+      }
+
+      if (event.key !== 'Tab' || !dialogRef.current) return
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      ))
+      if (focusable.length === 0) {
+        event.preventDefault()
+        dialogRef.current.focus()
+        return
+      }
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      previouslyFocused?.focus()
+    }
+  }, [onClose, open])
 
   if (!open) return null
 
@@ -206,7 +261,7 @@ export function CreateExamWizard({ open, onClose, onCreated }: CreateExamWizardP
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <section role="dialog" aria-modal="true" aria-labelledby="create-exam-wizard-title" className="neo-card max-h-[90vh] w-full max-w-2xl overflow-y-auto bg-card p-6">
+      <section ref={dialogRef} role="dialog" aria-modal={!confirming} aria-hidden={confirming} aria-labelledby="create-exam-wizard-title" tabIndex={-1} className="neo-card max-h-[90vh] w-full max-w-2xl overflow-y-auto bg-card p-6">
         <div className="flex items-start justify-between gap-4 border-b-2 border-border pb-4">
           <div>
             <p className="text-xs font-black uppercase tracking-wide text-secondary">Tạo đề thi</p>
@@ -217,7 +272,7 @@ export function CreateExamWizard({ open, onClose, onCreated }: CreateExamWizardP
 
         <p className="mt-3 text-sm font-bold text-muted-foreground">Bước {['format', 'details', 'initialization', 'source', 'summary'].indexOf(state.step) + 1}/5</p>
         {state.errors.length > 0 ? <div role="alert" className="mt-4 border-2 border-danger bg-red-50 p-3 text-sm font-bold text-danger">{state.errors.map((error) => <p key={error}>{error}</p>)}</div> : null}
-        {submitError ? <p role="alert" className="mt-4 border-2 border-danger bg-red-50 p-3 text-sm font-bold text-danger">{submitError}</p> : null}
+        {submitError && !confirming ? <p role="alert" className="mt-4 border-2 border-danger bg-red-50 p-3 text-sm font-bold text-danger">{submitError}</p> : null}
 
         <div className="mt-5">
           {state.step === 'format' ? (
@@ -277,7 +332,9 @@ export function CreateExamWizard({ open, onClose, onCreated }: CreateExamWizardP
         {state.step !== 'format' ? <div className="mt-6 flex justify-between gap-3 border-t-2 border-border pt-4"><Button type="button" variant="ghost" onClick={back} disabled={submitting}>Quay lại</Button>{state.step === 'details' ? <Button type="button" onClick={state.format === 'legacy' ? submitLegacy : nextFromDetails} disabled={submitting}>{state.format === 'legacy' && submitting ? 'Đang tạo...' : state.format === 'legacy' ? 'Tạo đề thi' : 'Tiếp tục'}</Button> : null}{state.step === 'initialization' ? <Button type="button" onClick={nextFromInitialization}>Tiếp tục</Button> : null}{state.step === 'source' ? <Button type="button" onClick={nextFromSource}>Tiếp tục</Button> : null}{state.step === 'summary' ? <Button type="button" onClick={() => setConfirming(true)}>Tạo đề B1</Button> : null}</div> : null}
       </section>
 
-      <ConfirmModal open={confirming} title={state.format === 'legacy' ? 'Tạo đề thi?' : 'Tạo đề B1?'} description="Bạn có thể tiếp tục chỉnh sửa nội dung ngay sau khi tạo." confirmLabel={submitting ? 'Đang tạo...' : 'Xác nhận tạo đề'} cancelLabel="Quay lại kiểm tra" variant="primary" confirmDisabled={submitting} onConfirm={() => void submit()} onCancel={() => !submitting && setConfirming(false)} />
+      <ConfirmModal open={confirming} title={state.format === 'legacy' ? 'Tạo đề thi?' : 'Tạo đề B1?'} description="Bạn có thể tiếp tục chỉnh sửa nội dung ngay sau khi tạo." confirmLabel={submitting ? 'Đang tạo...' : 'Xác nhận tạo đề'} cancelLabel="Quay lại kiểm tra" variant="primary" confirmDisabled={submitting} onConfirm={() => void submit()} onCancel={() => !submitting && setConfirming(false)}>
+        {submitError ? <p role="alert" className="border-2 border-danger bg-red-50 p-3 text-sm font-bold text-danger">{submitError}</p> : null}
+      </ConfirmModal>
     </div>
   )
 }

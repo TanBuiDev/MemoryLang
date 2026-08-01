@@ -108,6 +108,23 @@ describe('CreateExamWizard', () => {
     }
   })
 
+  it('requires a source before a full-content clone can continue', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(adminExamService.listB1CloneSources).mockResolvedValue([])
+      render(<CreateExamWizard open onClose={vi.fn()} onCreated={vi.fn()} />)
+      chooseB1()
+      continueB1Details()
+      fireEvent.click(screen.getByRole('button', { name: /Sao chép toàn bộ nội dung/i }))
+      fireEvent.click(screen.getByRole('button', { name: 'Tiếp tục' }))
+      await act(async () => vi.advanceTimersByTime(250))
+      fireEvent.click(screen.getByRole('button', { name: 'Tiếp tục' }))
+      expect(screen.getByRole('alert')).toHaveTextContent('Vui lòng chọn đề B1 nguồn.')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('prevents invalid B1 title and duration submissions with Vietnamese feedback', () => {
     render(<CreateExamWizard open onClose={vi.fn()} onCreated={vi.fn()} />)
     chooseB1()
@@ -126,13 +143,15 @@ describe('CreateExamWizard', () => {
     continueB1Details('B1 giữ nguyên')
     fireEvent.click(screen.getByRole('button', { name: /Tạo đề trống/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Tiếp tục' }))
+    const wizard = screen.getByRole('dialog', { name: 'Trình tạo đề trực quan' })
     fireEvent.click(screen.getByRole('button', { name: 'Tạo đề B1' }))
+    expect(wizard).toHaveAttribute('aria-hidden', 'true')
     const confirm = screen.getByRole('dialog', { name: 'Tạo đề B1?' })
     fireEvent.click(screen.getByRole('button', { name: 'Xác nhận tạo đề' }))
     expect(within(confirm).getByRole('button', { name: 'Đang tạo...' })).toBeDisabled()
 
     await act(async () => rejectFirstRequest!(new Error('Mạng không ổn định')))
-    expect(screen.getByRole('alert')).toHaveTextContent('Mạng không ổn định')
+    expect(within(confirm).getByRole('alert')).toHaveTextContent('Mạng không ổn định')
     expect(createB1Exam).toHaveBeenCalledWith(expect.objectContaining({ requestId: 'request-1', title: 'B1 giữ nguyên' }))
     expect(screen.getByText('B1 giữ nguyên')).toBeInTheDocument()
 
@@ -141,5 +160,29 @@ describe('CreateExamWizard', () => {
     expect(onCreated).toHaveBeenCalledWith('b1-1', 'b1_practice')
     expect(createB1Exam.mock.calls[1][0].requestId).toBe('request-1')
     expect(globalThis.crypto.randomUUID).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: /Đề thi truyền thống/i })).toBeInTheDocument()
+  })
+
+  it('focuses, traps focus in, escapes and restores focus from the wizard', () => {
+    const onClose = vi.fn()
+    const trigger = document.createElement('button')
+    document.body.append(trigger)
+    trigger.focus()
+    const { rerender } = render(<CreateExamWizard open onClose={onClose} onCreated={vi.fn()} />)
+
+    const wizard = screen.getByRole('dialog', { name: 'Trình tạo đề trực quan' })
+    const lastButton = screen.getByRole('button', { name: /B1 Practice/i })
+    expect(wizard).toHaveFocus()
+
+    lastButton.focus()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(screen.getByRole('button', { name: 'Đóng' })).toHaveFocus()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: /Đề thi truyền thống/i })).toBeInTheDocument()
+    rerender(<CreateExamWizard open={false} onClose={onClose} onCreated={vi.fn()} />)
+    expect(trigger).toHaveFocus()
+    trigger.remove()
   })
 })
