@@ -3320,14 +3320,29 @@ select extensions.lives_ok(
         )
       ),
       (
-        select source_key from public.exam_sections
-        where exam_id = (
+        select clone_section.source_key
+        from public.exam_sections clone_section
+        where clone_section.exam_id = (
           select exam_id from public.b1_exam_creation_requests
           where request_id = '99000000-0000-0000-0000-000000000002'
             and requested_by = '91000000-0000-0000-0000-000000000001'
-        ) and order_index = 2
+        ) and clone_section.order_index = 2
       ),
-      '{"answers":{"b1-grammar-question-1":"A"}}'::jsonb,
+      jsonb_build_object('answers', jsonb_build_object(
+        (
+          select clone_question.source_key
+          from public.exam_sections clone_section
+          join public.practice_questions clone_question on clone_question.activity_id = clone_section.resource_id
+          where clone_section.exam_id = (
+            select exam_id from public.b1_exam_creation_requests
+            where request_id = '99000000-0000-0000-0000-000000000002'
+              and requested_by = '91000000-0000-0000-0000-000000000001'
+          ) and clone_section.order_index = 2
+          order by clone_question.order_index
+          limit 1
+        ),
+        'A'
+      )),
       'completed'
     )
   $$,
@@ -3357,6 +3372,191 @@ select extensions.is(
   'completed',
   'autosave changes the owned section state'
 );
+select extensions.lives_ok(
+  $$
+    select public.submit_b1_exam_attempt(
+      (
+        select id from public.exam_attempts
+        where exam_id = (
+          select exam_id from public.b1_exam_creation_requests
+          where request_id = '99000000-0000-0000-0000-000000000002'
+            and requested_by = '91000000-0000-0000-0000-000000000001'
+        )
+      )
+    )
+  $$,
+  'learners can submit a published ready full-content B1 clone'
+);
+reset role;
+select extensions.ok(
+  (
+    with clone_attempt as (
+      select attempt.id, attempt.status, attempt.exam_snapshot, grading.grading_snapshot, clone_exam.source_key as clone_exam_source_key
+      from public.exam_attempts attempt
+      join public.exam_attempt_grading_snapshots grading on grading.attempt_id = attempt.id
+      join public.exams clone_exam on clone_exam.id = attempt.exam_id
+      where attempt.exam_id = (
+        select exam_id from public.b1_exam_creation_requests
+        where request_id = '99000000-0000-0000-0000-000000000002'
+          and requested_by = '91000000-0000-0000-0000-000000000001'
+      )
+    )
+    select clone_attempt.status = 'submitted'
+      and clone_attempt.exam_snapshot #>> '{exam,source_key}' = clone_attempt.clone_exam_source_key
+      and not exists (
+        select 1
+        from clone_attempt
+        cross join lateral jsonb_array_elements(clone_attempt.exam_snapshot -> 'sections') learner_section(value)
+        where not exists (
+          select 1 from public.exam_sections clone_section
+          where clone_section.exam_id = (
+            select exam_id from public.b1_exam_creation_requests
+            where request_id = '99000000-0000-0000-0000-000000000002'
+              and requested_by = '91000000-0000-0000-0000-000000000001'
+          )
+            and clone_section.source_key = learner_section.value ->> 'source_key'
+        )
+        or exists (
+          select 1 from public.exam_sections source_section
+          where source_section.exam_id = '98000000-0000-0000-0000-000000000001'
+            and source_section.source_key = learner_section.value ->> 'source_key'
+        )
+      )
+      and not exists (
+        select 1
+        from clone_attempt
+        cross join lateral jsonb_array_elements(clone_attempt.exam_snapshot -> 'sections') learner_section(value)
+        where (
+          learner_section.value ->> 'resource_type' = 'activity'
+          and (
+            not exists (
+              select 1
+              from public.exam_sections clone_section
+              join public.practice_activities clone_activity on clone_activity.id = clone_section.resource_id
+              where clone_section.exam_id = (
+                select exam_id from public.b1_exam_creation_requests
+                where request_id = '99000000-0000-0000-0000-000000000002'
+                  and requested_by = '91000000-0000-0000-0000-000000000001'
+              )
+                and clone_activity.source_key = learner_section.value #>> '{resource,source_key}'
+            )
+            or exists (
+              select 1 from public.exam_sections source_section
+              join public.practice_activities source_activity on source_activity.id = source_section.resource_id
+              where source_section.exam_id = '98000000-0000-0000-0000-000000000001'
+                and source_activity.source_key = learner_section.value #>> '{resource,source_key}'
+            )
+          )
+        ) or (
+          learner_section.value ->> 'resource_type' = 'prompt'
+          and (
+            not exists (
+              select 1
+              from public.exam_sections clone_section
+              join public.practice_prompts clone_prompt on clone_prompt.id = clone_section.resource_id
+              where clone_section.exam_id = (
+                select exam_id from public.b1_exam_creation_requests
+                where request_id = '99000000-0000-0000-0000-000000000002'
+                  and requested_by = '91000000-0000-0000-0000-000000000001'
+              )
+                and clone_prompt.source_key = learner_section.value #>> '{resource,source_key}'
+            )
+            or exists (
+              select 1 from public.exam_sections source_section
+              join public.practice_prompts source_prompt on source_prompt.id = source_section.resource_id
+              where source_section.exam_id = '98000000-0000-0000-0000-000000000001'
+                and source_prompt.source_key = learner_section.value #>> '{resource,source_key}'
+            )
+          )
+        )
+      )
+      and not exists (
+        select 1
+        from clone_attempt
+        cross join lateral jsonb_array_elements(clone_attempt.exam_snapshot -> 'sections') learner_section(value)
+        cross join lateral jsonb_array_elements(coalesce(learner_section.value #> '{resource,questions}', '[]'::jsonb)) learner_question(value)
+        where not exists (
+          select 1
+          from public.exam_sections clone_section
+          join public.practice_questions clone_question on clone_question.activity_id = clone_section.resource_id
+          where clone_section.exam_id = (
+            select exam_id from public.b1_exam_creation_requests
+            where request_id = '99000000-0000-0000-0000-000000000002'
+              and requested_by = '91000000-0000-0000-0000-000000000001'
+          )
+            and clone_question.source_key = learner_question.value ->> 'source_key'
+        )
+        or exists (
+          select 1
+          from public.exam_sections source_section
+          join public.practice_questions source_question on source_question.activity_id = source_section.resource_id
+          where source_section.exam_id = '98000000-0000-0000-0000-000000000001'
+            and source_question.source_key = learner_question.value ->> 'source_key'
+        )
+      )
+      and not exists (
+        select 1
+        from clone_attempt
+        cross join lateral jsonb_array_elements(clone_attempt.grading_snapshot -> 'sections') grading_section(value)
+        where not exists (
+          select 1 from public.exam_sections clone_section
+          where clone_section.exam_id = (
+            select exam_id from public.b1_exam_creation_requests
+            where request_id = '99000000-0000-0000-0000-000000000002'
+              and requested_by = '91000000-0000-0000-0000-000000000001'
+          )
+            and clone_section.source_key = grading_section.value ->> 'section_source_key'
+        )
+        or exists (
+          select 1 from public.exam_sections source_section
+          where source_section.exam_id = '98000000-0000-0000-0000-000000000001'
+            and source_section.source_key = grading_section.value ->> 'section_source_key'
+        )
+      )
+      and not exists (
+        select 1
+        from clone_attempt
+        cross join lateral jsonb_array_elements(clone_attempt.grading_snapshot -> 'sections') grading_section(value)
+        cross join lateral jsonb_array_elements(coalesce(grading_section.value -> 'questions', '[]'::jsonb)) grading_question(value)
+        where not exists (
+          select 1
+          from public.exam_sections clone_section
+          join public.practice_questions clone_question on clone_question.activity_id = clone_section.resource_id
+          where clone_section.exam_id = (
+            select exam_id from public.b1_exam_creation_requests
+            where request_id = '99000000-0000-0000-0000-000000000002'
+              and requested_by = '91000000-0000-0000-0000-000000000001'
+          )
+            and clone_question.source_key = grading_question.value ->> 'source_key'
+        )
+        or exists (
+          select 1
+          from public.exam_sections source_section
+          join public.practice_questions source_question on source_question.activity_id = source_section.resource_id
+          where source_section.exam_id = '98000000-0000-0000-0000-000000000001'
+            and source_question.source_key = grading_question.value ->> 'source_key'
+        )
+      )
+    from clone_attempt
+  ),
+  'submitted clone attempts keep clone-only section and question keys in learner and grading snapshots'
+);
+select extensions.results_eq(
+  $$
+    select source_activity.passage, source_question.prompt, source_question.explanation
+    from public.practice_activities source_activity
+    join public.practice_questions source_question on source_question.activity_id = source_activity.id
+    where source_activity.id = '98100000-0000-0000-0000-000000000001'
+      and source_question.id = '98300000-0000-0000-0000-000000000001'
+  $$,
+  $$ values (
+    '<p>Authored source passage.</p>'::text,
+    'Which authored option is correct?'::text,
+    'Alpha is correct because this is the authored fixture.'::text
+  ) $$,
+  'starting, saving, and submitting a clone attempt leaves the source content unchanged'
+);
+set local role authenticated;
 select extensions.lives_ok(
   $$ select public.create_practice_draft_version('95000000-0000-0000-0000-000000000001', 'Version one.') $$,
   'learners can save their first prompt version'

@@ -37,28 +37,29 @@ describe('ExamHubPage', () => {
     useAuthStore.setState({ user: { id: 'learner-1' } as never, profile: null })
     vi.mocked(examPracticeService.listAvailableExams).mockResolvedValue([
       {
-        id: 'b1-1',
-        title: 'B1 DeFull – Đề tổng hợp',
-        description: 'Luyện đủ kỹ năng',
-        default_time_minutes: 120,
+        id: 'b1-clone-1',
+        title: 'B1 Clone – Đề luyện độc lập',
+        description: 'Bản sao đề B1 đã xuất bản, luyện đủ kỹ năng.',
+        source_key: 'b1-exam-clone-fixture-learner-catalog',
+        default_time_minutes: 105,
         access_tier: 'free',
       },
     ] as never)
     vi.mocked(examPracticeService.listUserAttempts).mockResolvedValue([])
   })
 
-  it('offers a shared-timer mock exam and lets the learner start it', async () => {
+  it('lists a published cloned B1 exam and starts the returned attempt by its ID', async () => {
     vi.mocked(examPracticeService.startAttempt).mockResolvedValue({ id: 'attempt-1' } as never)
     const user = userEvent.setup()
 
     renderPage()
 
-    expect(await screen.findByText('B1 DeFull – Đề tổng hợp')).toBeInTheDocument()
+    expect(await screen.findByText('B1 Clone – Đề luyện độc lập')).toBeInTheDocument()
     expect(screen.getByText('Đồng hồ chung cho toàn bộ bài thi')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Bắt đầu đề' }))
 
-    expect(examPracticeService.startAttempt).toHaveBeenCalledWith('b1-1', 7200)
+    expect(examPracticeService.startAttempt).toHaveBeenCalledWith('b1-clone-1', 7200)
     expect(await screen.findByText('Attempt session reached')).toBeInTheDocument()
   })
 
