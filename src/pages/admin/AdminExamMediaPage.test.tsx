@@ -87,6 +87,7 @@ describe('AdminExamMediaPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Lưu đường dẫn audio' }))
 
     await waitFor(() => expect(adminExamMediaService.clearAudioAsset).toHaveBeenCalledWith('exam-1', expect.objectContaining({ id: 'listen-1' })))
+    expect(adminExamMediaService.clearAudioAsset).toHaveBeenCalledTimes(1)
     expect(adminExamMediaService.setAudioUrl).not.toHaveBeenCalled()
   })
 

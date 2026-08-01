@@ -3103,8 +3103,144 @@ select extensions.throws_ok(
   '22023', 'B1_EXAM_UNAVAILABLE', 'deleted B1 exams cannot be published'
 );
 
+select extensions.has_function(
+  'public',
+  'clear_b1_exam_audio_asset_atomically',
+  array['uuid', 'text', 'uuid'],
+  'atomic B1 audio clear RPC exists'
+);
+select extensions.ok(
+  has_function_privilege('authenticated', 'public.clear_b1_exam_audio_asset_atomically(uuid,text,uuid)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.clear_b1_exam_audio_asset_atomically(uuid,text,uuid)', 'EXECUTE'),
+  'only authenticated users can invoke atomic B1 audio clear'
+);
+
+insert into public.exam_media_asset_usages (id, asset_id, resource_type, resource_id, usage_role)
+values (
+  '98700000-0000-0000-0000-000000000004',
+  '98600000-0000-0000-0000-000000000001',
+  'prompt',
+  '98200000-0000-0000-0000-000000000001',
+  'audio'
+);
+
+select extensions.throws_ok(
+  $$
+    select public.clear_b1_exam_audio_asset_atomically(
+      (
+        select exam_id from public.b1_exam_creation_requests
+        where request_id = '99000000-0000-0000-0000-000000000002'
+          and requested_by = '91000000-0000-0000-0000-000000000001'
+      ),
+      'activity',
+      '98100000-0000-0000-0000-000000000001'
+    )
+  $$,
+  '22023', 'B1_MEDIA_RESOURCE_UNAVAILABLE',
+  'atomic audio clear refuses a resource outside the requested B1 exam'
+);
+
+reset role;
+create function public.fail_b1_audio_usage_clear_test()
+returns trigger
+language plpgsql
+as $$
+begin
+  raise exception using errcode = 'P0001', message = 'B1_MEDIA_USAGE_DELETE_FORCED_FAILURE';
+end;
+$$;
+create trigger fail_b1_audio_usage_clear_test
+before delete on public.exam_media_asset_usages
+for each row
+when (
+  old.resource_type = 'activity'
+  and old.resource_id = '98100000-0000-0000-0000-000000000001'::uuid
+  and old.usage_role = 'audio'
+)
+execute function public.fail_b1_audio_usage_clear_test();
+set local role authenticated;
+
+select extensions.throws_ok(
+  $$
+    select public.clear_b1_exam_audio_asset_atomically(
+      '98000000-0000-0000-0000-000000000001',
+      'activity',
+      '98100000-0000-0000-0000-000000000001'
+    )
+  $$,
+  'P0001', 'B1_MEDIA_USAGE_DELETE_FORCED_FAILURE',
+  'atomic audio clear rolls back when usage deletion fails'
+);
+select extensions.results_eq(
+  $$
+    select
+      activity.audio_url,
+      exists (
+        select 1 from public.exam_media_asset_usages usage
+        where usage.resource_type = 'activity'
+          and usage.resource_id = activity.id
+          and usage.usage_role = 'audio'
+      ),
+      exists (
+        select 1 from public.exam_media_asset_usages usage
+        where usage.id = '98700000-0000-0000-0000-000000000004'
+      )
+    from public.practice_activities activity
+    where activity.id = '98100000-0000-0000-0000-000000000001'
+  $$,
+  $$ values ('https://cdn.example.test/b1/source-audio.mp3'::text, true, true) $$,
+  'failed atomic clear commits neither the target URL nor either usage row'
+);
+
+reset role;
+drop trigger fail_b1_audio_usage_clear_test on public.exam_media_asset_usages;
+drop function public.fail_b1_audio_usage_clear_test();
+set local role authenticated;
+
+select extensions.lives_ok(
+  $$
+    select public.clear_b1_exam_audio_asset_atomically(
+      '98000000-0000-0000-0000-000000000001',
+      'activity',
+      '98100000-0000-0000-0000-000000000001'
+    )
+  $$,
+  'atomic audio clear removes the requested resource usage'
+);
+select extensions.results_eq(
+  $$
+    select
+      activity.audio_url,
+      exists (
+        select 1 from public.exam_media_asset_usages usage
+        where usage.resource_type = 'activity'
+          and usage.resource_id = activity.id
+          and usage.usage_role = 'audio'
+      ),
+      exists (
+        select 1 from public.exam_media_asset_usages usage
+        where usage.id = '98700000-0000-0000-0000-000000000004'
+      )
+    from public.practice_activities activity
+    where activity.id = '98100000-0000-0000-0000-000000000001'
+  $$,
+  $$ values (null::text, false, true) $$,
+  'successful atomic clear changes only the selected resource and keeps the shared usage'
+);
+
 select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000002', true);
 select set_config('request.jwt.claims', '{"sub":"91000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
+select extensions.throws_ok(
+  $$
+    select public.clear_b1_exam_audio_asset_atomically(
+      '98000000-0000-0000-0000-000000000001',
+      'activity',
+      '98100000-0000-0000-0000-000000000001'
+    )
+  $$,
+  '42501', 'B1_MEDIA_UPDATE_FORBIDDEN',
+  'callers without exam.update cannot clear B1 audio'
+);
 select extensions.throws_ok(
   $$ select public.set_b1_exam_published_guarded((
     select exam_id from public.b1_exam_creation_requests

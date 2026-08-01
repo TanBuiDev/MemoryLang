@@ -131,16 +131,6 @@ async function replaceAssetUsage(input: { assetId: string; resourceType: B1Media
   if (insertError) throw insertError
 }
 
-async function removeAssetUsage(input: { resourceType: B1MediaResourceKind | 'question'; resourceId: string; usageRole: ExamMediaAssetUsage['usage_role'] }): Promise<void> {
-  const { error } = await supabase
-    .from('exam_media_asset_usages')
-    .delete()
-    .eq('resource_type', input.resourceType)
-    .eq('resource_id', input.resourceId)
-    .eq('usage_role', input.usageRole)
-  if (error) throw error
-}
-
 export const adminExamMediaService = {
   async listResources(examId: string): Promise<B1MediaResource[]> {
     const sections = await listExamSectionResources(examId)
@@ -196,16 +186,12 @@ export const adminExamMediaService = {
   },
 
   async clearAudioAsset(examId: string, resource: B1MediaResource): Promise<void> {
-    await assertResourceBelongsToExam(examId, resource.kind, resource.id)
-    const table = resource.kind === 'activity' ? 'practice_activities' : 'practice_prompts'
-    const { error: updateError } = await supabase.from(table).update({ audio_url: null }).eq('id', resource.id)
-    if (updateError) throw updateError
-    try {
-      await removeAssetUsage({ resourceType: resource.kind, resourceId: resource.id, usageRole: 'audio' })
-    } catch (usageError) {
-      await supabase.from(table).update({ audio_url: resource.audio_url }).eq('id', resource.id)
-      throw usageError
-    }
+    const { error } = await supabase.rpc('clear_b1_exam_audio_asset_atomically', {
+      p_exam_id: examId,
+      p_resource_type: resource.kind,
+      p_resource_id: resource.id,
+    })
+    if (error) throw error
   },
 
   async listAssets(examId: string): Promise<ExamMediaAsset[]> {
