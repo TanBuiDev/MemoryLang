@@ -45,6 +45,7 @@ describe('AdminB1ExamContentBuilderPage', () => {
       id: 'exam-1',
       title: 'Đề B1',
       source_key: 'b1-de-full-copy',
+      exam_format: 'b1_practice',
       is_published: false,
       sections: [
         {
@@ -110,16 +111,23 @@ describe('AdminB1ExamContentBuilderPage', () => {
   it('renders section structure and editing workspace without JSON textareas', async () => {
     renderPage()
 
-    expect(await screen.findByRole('heading', { name: 'Trình xây dựng nội dung đề B1' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Trình xây dựng nội dung đề' })).toBeInTheDocument()
     expect(screen.getAllByText('Grammar and Use of English').length).toBeGreaterThan(0)
     expect(screen.queryByText(/JSON/i)).not.toBeInTheDocument()
+  })
+
+  it('uses generic builder copy and keeps media scoped to the current exam route', async () => {
+    renderPage()
+
+    expect(await screen.findByRole('heading', { name: 'Trình xây dựng nội dung đề' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Quản lý media và TTS/i })).toHaveAttribute('href', '/app/admin/exams/exam-1/media')
   })
 
   it('shows a publish checklist with actionable missing-content issues when clicking Tab 3', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    expect(await screen.findByRole('heading', { name: 'Trình xây dựng nội dung đề B1' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Trình xây dựng nội dung đề' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Kiểm tra xuất bản/i }))
 
     expect(await screen.findByRole('heading', { name: 'Kiểm tra trước khi xuất bản' })).toBeInTheDocument()
@@ -129,7 +137,7 @@ describe('AdminB1ExamContentBuilderPage', () => {
   it('reorders sections via drag and drop and persists the new exam order', async () => {
     renderPage()
 
-    await screen.findByRole('heading', { name: 'Trình xây dựng nội dung đề B1' })
+    await screen.findByRole('heading', { name: 'Trình xây dựng nội dung đề' })
     const firstSectionCard = screen.getByTestId('section-item-0')
     const secondSectionCard = screen.getByTestId('section-item-1')
 
@@ -154,7 +162,7 @@ describe('AdminB1ExamContentBuilderPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await screen.findByRole('heading', { name: 'Trình xây dựng nội dung đề B1' })
+    await screen.findByRole('heading', { name: 'Trình xây dựng nội dung đề' })
     await user.click(screen.getByRole('button', { name: 'Thêm section' }))
     await user.type(screen.getByLabelText('Tên section'), 'Ngữ pháp mới')
     await user.click(screen.getByRole('button', { name: 'Tạo section' }))
@@ -175,7 +183,7 @@ describe('AdminB1ExamContentBuilderPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    expect(await screen.findByRole('heading', { name: 'Trình xây dựng nội dung đề B1' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Trình xây dựng nội dung đề' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Lưu cách trình bày' }))
 
     expect(adminExamContentService.updateResourcePresentation).toHaveBeenCalledWith({

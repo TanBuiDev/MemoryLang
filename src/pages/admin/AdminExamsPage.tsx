@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   FileText,
   Plus,
@@ -9,10 +9,10 @@ import {
   Pencil,
   Trash2,
   Layers,
-  Sparkles,
   ChevronRight,
   FileAudio,
 } from 'lucide-react'
+import { CreateExamWizard } from '@/components/admin/exams/CreateExamWizard'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Select } from '@/components/ui/select'
@@ -21,17 +21,15 @@ import { adminExamService } from '@/services/supabase/adminExam.service'
 import type { Exam, ExamCategory } from '@/types/exam.types'
 
 export default function AdminExamsPage() {
+  const navigate = useNavigate()
   const [exams, setExams] = useState<Exam[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
 
-  // Create Modal state
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [newTitle, setNewTitle] = useState('')
-  const [newCategory, setNewCategory] = useState<ExamCategory>('TOEIC')
-  const [creating, setCreating] = useState(false)
+  // Create wizard state
+  const [isCreateWizardOpen, setIsCreateWizardOpen] = useState(false)
 
   // Edit Modal state
   const [editingExam, setEditingExam] = useState<Exam | null>(null)
@@ -90,35 +88,11 @@ export default function AdminExamsPage() {
     }
   }
 
-  const handleCreateExam = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newTitle.trim()) {
-      showToast({ type: 'error', title: 'Lỗi', message: 'Vui lòng nhập tên đề thi.' })
-      return
-    }
-
-    try {
-      setCreating(true)
-      const created = await adminExamService.createExam({
-        title: newTitle.trim(),
-        category: newCategory,
-        is_published: false,
-      })
-
-      setExams((prev) => [created, ...prev])
-      setShowCreateModal(false)
-      setNewTitle('')
-      showToast({
-        type: 'success',
-        title: 'Đã tạo đề thi',
-        message: `Đã tạo đề "${created.title}". Hãy vào Trình xây dựng để thêm Part và câu hỏi!`,
-      })
-    } catch (err: any) {
-      console.error(err)
-      showToast({ type: 'error', title: 'Lỗi', message: err.message || 'Không thể tạo đề thi' })
-    } finally {
-      setCreating(false)
-    }
+  const handleExamCreated = async (examId: string, examFormat: Exam['exam_format']) => {
+    await loadExams()
+    navigate(examFormat === 'b1_practice'
+      ? `/app/admin/exams/${examId}/content`
+      : `/app/admin/exams/${examId}/builder`)
   }
 
   const handleDeleteExam = async () => {
@@ -159,7 +133,7 @@ export default function AdminExamsPage() {
           </div>
         </div>
 
-        <Button variant="primary" onClick={() => setShowCreateModal(true)} className="px-5 py-2.5 text-xs font-black shrink-0">
+        <Button variant="primary" onClick={() => setIsCreateWizardOpen(true)} className="px-5 py-2.5 text-xs font-black shrink-0">
           <Plus size={16} />
           Tạo Đề thi mới
         </Button>
@@ -185,17 +159,15 @@ export default function AdminExamsPage() {
             { id: 'CAMBRIDGE', label: 'Cambridge' },
             { id: 'GENERAL', label: 'Tổng hợp / Khác' },
           ].map((tab) => (
-            <button
+            <Button
               key={tab.id}
+              type="button"
+              variant={selectedCategory === tab.id ? 'primary' : 'ghost'}
               onClick={() => setSelectedCategory(tab.id)}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-black border-2 border-border transition-all shadow-[2px_2px_0_var(--border)] active:translate-y-[1px] active:shadow-none ${
-                selectedCategory === tab.id
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-card text-foreground hover:bg-muted'
-              }`}
+              className="min-h-0 px-3.5 py-1.5 text-xs"
             >
               {tab.label}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -258,15 +230,15 @@ export default function AdminExamsPage() {
               {/* Action buttons */}
               <div className="flex items-center gap-2 pt-2 border-t-2 border-dashed border-border">
                 <Button variant="primary" asChild className="flex-1 min-h-9 text-xs">
-                  <Link to={exam.source_key === 'b1-de-full-copy' ? `/app/admin/exams/${exam.id}/content` : `/app/admin/exams/${exam.id}/builder`}>
+                  <Link to={exam.exam_format === 'b1_practice' ? `/app/admin/exams/${exam.id}/content` : `/app/admin/exams/${exam.id}/builder`}>
                     <Layers size={14} />
-                    {exam.source_key === 'b1-de-full-copy' ? 'Quản lý nội dung B1' : 'Xây dựng Đề'}
+                    {exam.exam_format === 'b1_practice' ? 'Quản lý nội dung B1' : 'Xây dựng Đề'}
                     <ChevronRight size={14} />
                   </Link>
                 </Button>
-                {exam.source_key === 'b1-de-full-copy' && (
+                {exam.exam_format === 'b1_practice' && (
                   <Button variant="secondary" asChild className="min-h-9 px-3 text-xs" title="Quản lý Media & TTS đề B1">
-                    <Link to="/app/admin/exam-media">
+                    <Link to={`/app/admin/exams/${exam.id}/media`}>
                       <FileAudio size={14} /> Media
                     </Link>
                   </Button>
@@ -293,65 +265,11 @@ export default function AdminExamsPage() {
         </div>
       )}
 
-      {/* Modal Create Exam */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="neo-card p-6 bg-card border-3 border-border shadow-[6px_6px_0_var(--border)] rounded-2xl w-full max-w-lg flex flex-col gap-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b-2 border-border pb-3">
-              <h2 className="text-lg font-black text-foreground flex items-center gap-2">
-                <Sparkles size={20} className="text-primary" />
-                TẠO ĐỀ THI MỚI
-              </h2>
-              <button
-                type="button"
-                onClick={() => setShowCreateModal(false)}
-                className="text-xs font-bold text-muted-foreground hover:text-foreground"
-              >
-                ✕ Đóng
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateExam} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-foreground">Tên đề thi *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="VD: ETS TOEIC Reading 2026 - Test 1"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  className="px-3.5 py-2.5 border-2 border-border rounded-xl bg-background text-xs font-bold focus:outline-none focus:border-primary"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-foreground">Loại bài thi / Thể loại</label>
-                <Select
-                  value={newCategory}
-                  onChange={(val) => setNewCategory(val as ExamCategory)}
-                  options={[
-                    { value: 'TOEIC', label: 'TOEIC' },
-                    { value: 'IELTS', label: 'IELTS' },
-                    { value: 'TOEFL', label: 'TOEFL' },
-                    { value: 'THPTQG', label: 'THPT Quốc Gia' },
-                    { value: 'CAMBRIDGE', label: 'Cambridge' },
-                    { value: 'GENERAL', label: 'Tổng hợp / Khác' },
-                  ]}
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t-2 border-border">
-                <Button variant="ghost" type="button" onClick={() => setShowCreateModal(false)}>
-                  Hủy
-                </Button>
-                <Button variant="primary" type="submit" disabled={creating}>
-                  {creating ? 'Đang tạo...' : 'Tạo Đề & Vào Builder'}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CreateExamWizard
+        open={isCreateWizardOpen}
+        onClose={() => setIsCreateWizardOpen(false)}
+        onCreated={handleExamCreated}
+      />
 
       {/* Modal Edit Exam */}
       {editingExam && (
@@ -362,13 +280,13 @@ export default function AdminExamsPage() {
                 <Pencil size={20} className="text-primary" />
                 CHỈNH SỬA THÔNG TIN ĐỀ THI
               </h2>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 onClick={() => setEditingExam(null)}
-                className="text-xs font-bold text-muted-foreground hover:text-foreground"
+                className="min-h-0 px-2 py-1 text-xs"
               >
                 ✕ Đóng
-              </button>
+              </Button>
             </div>
 
             <form onSubmit={handleUpdateExam} className="flex flex-col gap-4">

@@ -1,6 +1,6 @@
 import { getPresentationDefinition, isGradingModeCompatible } from '@/features/exam-content/presentationRegistry'
 import { supabase } from '@/services/supabase/client'
-import type { ExamGradingMode, ExamPresentationType, ExamResourceType, ExamSkill, PracticePromptSample } from '@/types/exam.types'
+import type { ExamFormat, ExamGradingMode, ExamPresentationType, ExamResourceType, ExamSkill, PracticePromptSample } from '@/types/exam.types'
 
 export interface AdminExamContentQuestion {
   id: string
@@ -57,6 +57,7 @@ export interface AdminExamContentExam {
   id: string
   title: string
   source_key: string | null
+  exam_format: ExamFormat
   is_published: boolean
   sections: AdminExamContentSection[]
 }
@@ -93,9 +94,12 @@ function getStarterOptions(presentationType: ExamPresentationType) {
 export const adminExamContentService = {
   async getExamContent(examId: string): Promise<AdminExamContentExam> {
     const exam = await throwOnError(
-      await supabase.from('exams').select('id,title,source_key,is_published').eq('id', examId).single(),
+      await supabase.from('exams').select('id,title,source_key,exam_format,is_published').eq('id', examId).single(),
       'Không tìm thấy đề thi.',
     ) as Omit<AdminExamContentExam, 'sections'>
+    if (exam.exam_format !== 'b1_practice') {
+      throw new Error('Chỉ đề B1 Practice mới dùng được trình xây dựng nội dung này.')
+    }
     const sections = await throwOnError(
       await supabase.from('exam_sections').select('*').eq('exam_id', examId).order('order_index'),
       'Không thể tải cấu trúc đề thi.',

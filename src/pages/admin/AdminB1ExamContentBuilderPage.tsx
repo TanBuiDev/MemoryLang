@@ -161,7 +161,7 @@ export function AdminB1ExamContentBuilderPage() {
   const closeCreateSectionModal = useCallback(() => setIsCreateSectionOpen(false), [])
 
   const examQuery = useQuery({
-    queryKey: ['admin-b1-exam-content', id],
+    queryKey: ['admin-exam-content', id],
     queryFn: () => adminExamContentService.getExamContent(id),
     enabled: Boolean(id),
   })
@@ -310,7 +310,7 @@ export function AdminB1ExamContentBuilderPage() {
       }
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+      await queryClient.invalidateQueries({ queryKey: ['admin-exam-content', id] })
       showToast({ type: 'success', title: 'Đã lưu cách trình bày và nội dung section!' })
     },
   })
@@ -326,9 +326,9 @@ export function AdminB1ExamContentBuilderPage() {
   const reorderSections = useMutation({
     mutationFn: (sectionIds: string[]) => adminExamContentService.reorderSections(sectionIds),
     onMutate: async (newOrderIds) => {
-      await queryClient.cancelQueries({ queryKey: ['admin-b1-exam-content', id] })
-      const previousExamData = queryClient.getQueryData(['admin-b1-exam-content', id])
-      queryClient.setQueryData(['admin-b1-exam-content', id], (old: unknown) => {
+      await queryClient.cancelQueries({ queryKey: ['admin-exam-content', id] })
+      const previousExamData = queryClient.getQueryData(['admin-exam-content', id])
+      queryClient.setQueryData(['admin-exam-content', id], (old: unknown) => {
         if (!old || typeof old !== 'object' || !Array.isArray((old as Record<string, unknown>).sections)) return old
         const examRecord = old as { sections: Array<{ id: string }> }
         const sectionMap = new Map(examRecord.sections.map((s) => [s.id, s]))
@@ -339,12 +339,12 @@ export function AdminB1ExamContentBuilderPage() {
     },
     onError: (_err, _variables, context) => {
       if (context?.previousExamData) {
-        queryClient.setQueryData(['admin-b1-exam-content', id], context.previousExamData)
+        queryClient.setQueryData(['admin-exam-content', id], context.previousExamData)
       }
       showToast({ type: 'error', title: 'Không thể lưu thứ tự section' })
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+      void queryClient.invalidateQueries({ queryKey: ['admin-exam-content', id] })
     },
   })
 
@@ -389,7 +389,7 @@ export function AdminB1ExamContentBuilderPage() {
     reordered.splice(dropIndex, 0, removed)
 
     // Instantly update React Query Cache at 0ms delay!
-    queryClient.setQueryData(['admin-b1-exam-content', id], (old: unknown) => {
+    queryClient.setQueryData(['admin-exam-content', id], (old: unknown) => {
       if (!old || typeof old !== 'object') return old
       return { ...old, sections: reordered }
     })
@@ -428,7 +428,7 @@ export function AdminB1ExamContentBuilderPage() {
     onSuccess: async () => {
       setPendingDeleteSectionId(null)
       setSelectedSectionKey(null)
-      await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+      await queryClient.invalidateQueries({ queryKey: ['admin-exam-content', id] })
     },
   })
 
@@ -450,7 +450,7 @@ export function AdminB1ExamContentBuilderPage() {
       setSelectedSectionKey(section.source_key)
       setNewSectionTitle('')
       setIsCreateSectionOpen(false)
-      await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+      await queryClient.invalidateQueries({ queryKey: ['admin-exam-content', id] })
       showToast({ type: 'success', title: 'Đã tạo section mới!' })
     },
   })
@@ -482,7 +482,7 @@ export function AdminB1ExamContentBuilderPage() {
           gaps: [...current.gaps, { id: question.id, label: question.source_number ?? String(current.gaps.length + 1), acceptedAnswers: question.accepted_answers ?? [] }],
         } : current)
       }
-      await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+      await queryClient.invalidateQueries({ queryKey: ['admin-exam-content', id] })
       showToast({ type: 'success', title: 'Đã thêm câu hỏi mới!' })
     },
   })
@@ -497,7 +497,7 @@ export function AdminB1ExamContentBuilderPage() {
         gaps: current.gaps.filter((gap) => gap.id !== questionId),
       } : current)
       setPendingDeleteQuestionId(null)
-      await queryClient.invalidateQueries({ queryKey: ['admin-b1-exam-content', id] })
+      await queryClient.invalidateQueries({ queryKey: ['admin-exam-content', id] })
     },
   })
 
@@ -525,19 +525,19 @@ export function AdminB1ExamContentBuilderPage() {
           </Button>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-black uppercase text-primary tracking-wider bg-primary/10 px-2 py-0.5 border border-primary/30">Quản trị đề B1</span>
+              <span className="text-[11px] font-black uppercase text-primary tracking-wider bg-primary/10 px-2 py-0.5 border border-primary/30">Quản trị đề</span>
               <span className={`border border-border px-2 py-0.5 text-[11px] font-black ${examQuery.data.is_published ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-foreground'}`}>
                 {examQuery.data.is_published ? 'Đã xuất bản' : 'Bản nháp'}
               </span>
             </div>
-            <h1 className="text-2xl font-black text-foreground mt-0.5">Trình xây dựng nội dung đề B1</h1>
+            <h1 className="text-2xl font-black text-foreground mt-0.5">Trình xây dựng nội dung đề</h1>
             <p className="text-xs font-bold text-muted-foreground mt-0.5">{examQuery.data.title}</p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <Button asChild variant="secondary" className="min-h-9 px-3.5 text-xs font-black">
-            <Link to="/app/admin/exam-media"><FileAudio size={15} /> Quản lý media và TTS</Link>
+            <Link to={`/app/admin/exams/${id}/media`}><FileAudio size={15} /> Quản lý media và TTS</Link>
           </Button>
           <div className={`flex items-center gap-1.5 px-3 py-1.5 border-2 border-border text-xs font-black ${publishReadiness.canPublish ? 'bg-emerald-100 text-emerald-950' : 'bg-rose-100 text-rose-950'}`}>
             {publishReadiness.canPublish ? <ShieldCheck size={16} className="text-emerald-700" /> : <ShieldAlert size={16} className="text-rose-700" />}

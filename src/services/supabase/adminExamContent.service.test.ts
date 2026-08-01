@@ -13,7 +13,7 @@ describe('adminExamContentService', () => {
   })
 
   it('loads ordered B1 sections with their typed activity resources and questions', async () => {
-    const exam = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { id: 'exam-1', title: 'B1 Mock', source_key: 'b1-de-full-copy', is_published: false }, error: null }) }
+    const exam = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { id: 'exam-1', title: 'B1 Mock', source_key: 'b1-de-full-copy', exam_format: 'b1_practice', is_published: false }, error: null }) }
     const sections = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockResolvedValue({ data: [{ id: 'section-1', exam_id: 'exam-1', source_key: 'grammar', skill: 'grammar', title: 'Grammar', resource_type: 'activity', resource_id: 'activity-1', order_index: 0, is_required: true }], error: null }) }
     const activities = { select: vi.fn().mockReturnThis(), in: vi.fn().mockResolvedValue({ data: [{ id: 'activity-1', source_key: 'grammar', title: 'Grammar', skill: 'grammar', activity_type: 'multiple_choice', presentation_type: 'choice_list', grading_mode: 'single_choice', is_published: false }], error: null }) }
     const questions = { select: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), order: vi.fn().mockResolvedValue({ data: [{ id: 'question-1', activity_id: 'activity-1', source_key: 'grammar-1', prompt: 'Choose one', order_index: 0 }], error: null }) }
@@ -26,10 +26,11 @@ describe('adminExamContentService', () => {
         resource: { id: 'activity-1', presentation_type: 'choice_list', questions: [{ id: 'question-1' }] },
       }],
     })
+    expect(exam.select).toHaveBeenCalledWith('id,title,source_key,exam_format,is_published')
   })
 
   it('loads Writing and Speaking samples with each prompt resource for publish validation', async () => {
-    const exam = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { id: 'exam-1', title: 'B1 Mock', source_key: 'b1-de-full-copy', is_published: false }, error: null }) }
+    const exam = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { id: 'exam-1', title: 'B1 Mock', source_key: 'b1-de-full-copy', exam_format: 'b1_practice', is_published: false }, error: null }) }
     const sections = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockResolvedValue({ data: [{ id: 'section-1', exam_id: 'exam-1', source_key: 'writing', skill: 'writing', title: 'Writing', resource_type: 'prompt', resource_id: 'prompt-1', order_index: 0, is_required: true }], error: null }) }
     const prompts = { select: vi.fn().mockReturnThis(), in: vi.fn().mockResolvedValue({ data: [{ id: 'prompt-1', source_key: 'writing', title: 'Writing', skill: 'writing', presentation_type: 'long_form_prompt', grading_mode: 'sample_compare', is_published: false }], error: null }) }
     const samples = { select: vi.fn().mockReturnThis(), in: vi.fn().mockResolvedValue({ data: [{ id: 'sample-1', prompt_id: 'prompt-1', title: 'Bài mẫu', content: 'Dear ...' }], error: null }) }
@@ -150,6 +151,21 @@ describe('adminExamContentService', () => {
     expect(section.insert).toHaveBeenCalledWith(expect.objectContaining({
       exam_id: 'exam-1', source_key: 'new-grammar', resource_type: 'activity', resource_id: 'activity-2', order_index: 18,
     }))
+  })
+
+  it('rejects a legacy exam before loading B1-only section resources', async () => {
+    const exam = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { id: 'legacy-1', title: 'TOEIC', source_key: 'b1-de-full-copy', exam_format: 'legacy', is_published: false },
+        error: null,
+      }),
+    }
+    from.mockReturnValueOnce(exam as never)
+
+    await expect(adminExamContentService.getExamContent('legacy-1')).rejects.toThrow('Chỉ đề B1 Practice mới dùng được trình xây dựng nội dung này.')
+    expect(from).toHaveBeenCalledTimes(1)
   })
 
   it('creates an ordering section without a placeholder practice question', async () => {
