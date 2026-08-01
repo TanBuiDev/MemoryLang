@@ -2976,6 +2976,20 @@ select set_config(
 
 select extensions.lives_ok(
   $$
+    select public.create_b1_exam(
+      '99000000-0000-0000-0000-000000000003',
+      'Published counter clone',
+      'Independent published clone used to prove unpublish isolation.',
+      'free',
+      105,
+      'full_content',
+      '98000000-0000-0000-0000-000000000001'
+    )
+  $$,
+  'exam administrators can create a published-state counter clone'
+);
+select extensions.lives_ok(
+  $$
     do $prepare_clone$
     begin
       update public.practice_activities activity
@@ -2983,9 +2997,9 @@ select extensions.lives_ok(
           audio_url = case when activity.skill = 'listening' then 'https://cdn.example.test/b1/ready-clone-listening.mp3' else activity.audio_url end
       where exists (
         select 1 from public.exam_sections section
-        where section.exam_id = (
+        where section.exam_id in (
           select exam_id from public.b1_exam_creation_requests
-          where request_id = '99000000-0000-0000-0000-000000000002'
+          where request_id in ('99000000-0000-0000-0000-000000000002', '99000000-0000-0000-0000-000000000003')
             and requested_by = '91000000-0000-0000-0000-000000000001'
         ) and section.resource_type = 'activity' and section.resource_id = activity.id and section.is_required
       );
@@ -2993,9 +3007,9 @@ select extensions.lives_ok(
       set is_published = true
       where exists (
         select 1 from public.exam_sections section
-        where section.exam_id = (
+        where section.exam_id in (
           select exam_id from public.b1_exam_creation_requests
-          where request_id = '99000000-0000-0000-0000-000000000002'
+          where request_id in ('99000000-0000-0000-0000-000000000002', '99000000-0000-0000-0000-000000000003')
             and requested_by = '91000000-0000-0000-0000-000000000001'
         ) and section.resource_type = 'prompt' and section.resource_id = prompt.id and section.is_required
       );
@@ -3037,6 +3051,14 @@ select extensions.results_eq(
 select extensions.lives_ok(
   $$ select public.set_b1_exam_published_guarded((
     select exam_id from public.b1_exam_creation_requests
+    where request_id = '99000000-0000-0000-0000-000000000003'
+      and requested_by = '91000000-0000-0000-0000-000000000001'
+  ), true) $$,
+  'the counter clone can be published before unpublish isolation is checked'
+);
+select extensions.lives_ok(
+  $$ select public.set_b1_exam_published_guarded((
+    select exam_id from public.b1_exam_creation_requests
     where request_id = '99000000-0000-0000-0000-000000000002'
       and requested_by = '91000000-0000-0000-0000-000000000001'
   ), false) $$,
@@ -3046,12 +3068,23 @@ select extensions.results_eq(
   $$
     select is_published from public.exams where id = (
       select exam_id from public.b1_exam_creation_requests
-      where request_id = '99000000-0000-0000-0000-000000000001'
+      where request_id = '99000000-0000-0000-0000-000000000002'
         and requested_by = '91000000-0000-0000-0000-000000000001'
     )
   $$,
   $$ values (false::boolean) $$,
-  'unpublishing leaves the incomplete clone untouched'
+  'unpublishing changes the requested ready clone to false'
+);
+select extensions.results_eq(
+  $$
+    select is_published from public.exams where id = (
+      select exam_id from public.b1_exam_creation_requests
+      where request_id = '99000000-0000-0000-0000-000000000003'
+        and requested_by = '91000000-0000-0000-0000-000000000001'
+    )
+  $$,
+  $$ values (true::boolean) $$,
+  'unpublishing leaves the separately published counter clone true'
 );
 select extensions.lives_ok(
   $$ select public.set_b1_exam_published_guarded((
