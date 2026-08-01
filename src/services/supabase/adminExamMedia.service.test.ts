@@ -154,6 +154,29 @@ describe('adminExamMediaService', () => {
     expect(insertUsage.insert).toHaveBeenCalledWith({ asset_id: 'asset-1', resource_type: 'activity', resource_id: 'activity-1', usage_role: 'audio' })
   })
 
+  it('clears only the selected resource usage when its old audio asset is shared', async () => {
+    const sections = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockResolvedValue({ data: [{ resource_type: 'activity', resource_id: 'activity-1' }], error: null }) }
+    const removeUsage = { delete: vi.fn(), eq: vi.fn() }
+    const update = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) }
+    removeUsage.delete.mockReturnValue(removeUsage)
+    removeUsage.eq.mockReturnValueOnce(removeUsage).mockReturnValueOnce(removeUsage).mockResolvedValueOnce({ error: null })
+    from.mockReturnValueOnce(sections as never)
+    from.mockReturnValueOnce(update as never)
+    from.mockReturnValueOnce(removeUsage as never)
+
+    await expect(adminExamMediaService.clearAudioAsset('exam-1', {
+      id: 'activity-1', kind: 'activity', source_key: 'listen', title: 'Listening', skill: 'listening', text: '', audio_url: 'https://cdn.example/old.mp3', is_published: false,
+    })).resolves.toBeUndefined()
+
+    expect(removeUsage.delete).toHaveBeenCalledOnce()
+    expect(removeUsage.eq).toHaveBeenNthCalledWith(1, 'resource_type', 'activity')
+    expect(removeUsage.eq).toHaveBeenNthCalledWith(2, 'resource_id', 'activity-1')
+    expect(removeUsage.eq).toHaveBeenNthCalledWith(3, 'usage_role', 'audio')
+    expect(removeUsage.eq).not.toHaveBeenCalledWith('asset_id', 'asset-old-shared')
+    expect(update.update).toHaveBeenCalledWith({ audio_url: null })
+    expect(update.eq).toHaveBeenCalledWith('id', 'activity-1')
+  })
+
   it('refuses to delete an asset that is still attached to content', async () => {
     const exam = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'exam-1' }, error: null }) }
     const usages = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ count: 1, error: null }) }

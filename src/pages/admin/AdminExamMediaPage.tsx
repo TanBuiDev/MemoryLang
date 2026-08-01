@@ -50,6 +50,12 @@ export default function AdminExamMediaPage() {
     onError: () => showToast({ type: 'error', title: 'Không thể lưu audio' }),
   })
 
+  const clearAudio = useMutation({
+    mutationFn: (resource: B1MediaResource) => adminExamMediaService.clearAudioAsset(id!, resource),
+    onSuccess: async () => { await refresh(); showToast({ type: 'success', title: 'Đã gỡ audio khỏi nội dung B1' }) },
+    onError: () => showToast({ type: 'error', title: 'Không thể gỡ audio' }),
+  })
+
   const publish = useMutation({
     mutationFn: ({ resource, value }: { resource: B1MediaResource; value: boolean }) => adminExamMediaService.setPublished(id!, resource, value),
     onSuccess: refresh,
@@ -81,7 +87,7 @@ export default function AdminExamMediaPage() {
     setIsApplyingAudioAction(true)
     try {
       if (action.kind === 'url') {
-        if (!action.url) await updateAudio.mutateAsync({ resource: action.resource, url: null })
+        if (!action.url) await clearAudio.mutateAsync(action.resource)
         else {
           const asset = await adminExamMediaService.createExternalAudioAsset(id!, { url: action.url, displayName: `${action.resource.title} · URL`, replacesAssetId: findAttachedAudioAsset(action.resource)?.id })
           await adminExamMediaService.attachAudioAsset(id!, action.resource, asset)

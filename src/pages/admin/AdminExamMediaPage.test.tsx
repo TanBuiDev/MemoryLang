@@ -8,7 +8,7 @@ import { adminExamMediaService } from '@/services/supabase/adminExamMedia.servic
 vi.mock('@/services/supabase/adminExamMedia.service', () => ({
   adminExamMediaService: {
     listResources: vi.fn(), listSigns: vi.fn(), listQuestionReviews: vi.fn(),
-    setAudioUrl: vi.fn(), setPublished: vi.fn(), setExamPublished: vi.fn(),
+    setAudioUrl: vi.fn(), clearAudioAsset: vi.fn(), setPublished: vi.fn(), setExamPublished: vi.fn(),
     uploadAudio: vi.fn(), uploadSignImage: vi.fn(), setSignImage: vi.fn(), updateSignImageAlt: vi.fn(), updateSignImageCrop: vi.fn(), updateQuestionReview: vi.fn(),
     listAssets: vi.fn(), createExternalAudioAsset: vi.fn(), attachAudioAsset: vi.fn(), attachSignImage: vi.fn(), deleteAsset: vi.fn(),
   },
@@ -63,6 +63,31 @@ describe('AdminExamMediaPage', () => {
 
     expect(await screen.findByText(/Đang được dùng trong 2 section/i)).toBeInTheDocument()
     expect(screen.getByText(/B1 DeFull.*B1 luyện tập/i)).toBeInTheDocument()
+  })
+
+  it('clears a selected resource through the scoped clear service while its old asset has another usage', async () => {
+    vi.mocked(adminExamMediaService.listResources).mockResolvedValue([{
+      id: 'listen-1', source_key: 'listening-1', title: 'Listening 1', skill: 'listening', kind: 'activity', text: 'Listen.', audio_url: 'https://cdn.example/old.mp3', is_published: false,
+    }])
+    vi.mocked(adminExamMediaService.listSigns).mockResolvedValue([])
+    vi.mocked(adminExamMediaService.listQuestionReviews).mockResolvedValue([])
+    vi.mocked(adminExamMediaService.listAssets).mockResolvedValue([{
+      id: 'asset-old-shared', media_kind: 'audio', bucket_id: 'audio_assets', storage_path: 'b1/old.mp3', public_url: 'https://cdn.example/old.mp3', display_name: 'Shared audio', version_number: 1, replaces_asset_id: null, created_at: '2026-08-01T00:00:00Z', usage_count: 2,
+      usages: [
+        { resource_type: 'activity', resource_id: 'listen-1', usage_role: 'audio' },
+        { resource_type: 'activity', resource_id: 'listen-2', usage_role: 'audio' },
+      ],
+    }])
+    vi.mocked(adminExamMediaService.clearAudioAsset).mockResolvedValue(undefined)
+
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Quản lý' }))
+    fireEvent.change(screen.getByLabelText('Đường dẫn audio'), { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu đường dẫn audio' }))
+
+    await waitFor(() => expect(adminExamMediaService.clearAudioAsset).toHaveBeenCalledWith('exam-1', expect.objectContaining({ id: 'listen-1' })))
+    expect(adminExamMediaService.setAudioUrl).not.toHaveBeenCalled()
   })
 
   it('lets an admin set accessible alt text and a display crop for a sign image', async () => {
