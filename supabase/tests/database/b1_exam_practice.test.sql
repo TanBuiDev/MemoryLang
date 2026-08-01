@@ -167,6 +167,16 @@ select extensions.ok(
   (select relrowsecurity from pg_class where oid = 'public.b1_exam_creation_requests'::regclass),
   'B1 exam creation requests have RLS enabled'
 );
+select extensions.ok(
+  exists (
+    select 1
+    from pg_policy
+    where polrelid = 'public.b1_exam_creation_requests'::regclass
+      and polname = 'users can read their B1 exam creation requests'
+      and position('SELECT auth.uid()' in pg_get_expr(polqual, polrelid)) > 0
+  ),
+  'B1 creation-request reads cache auth UID once per query'
+);
 
 select extensions.ok(
   has_table_privilege('authenticated', 'public.exam_sections', 'SELECT')
