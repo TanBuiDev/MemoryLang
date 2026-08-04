@@ -1094,55 +1094,6 @@ export function VocabularyDetailPage() {
 
         {/* Thanh công cụ điều hướng/thao tác (actions) */}
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-background border-t-2 border-border p-3.5 flex items-center justify-center gap-1.5 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] sm:static sm:bg-transparent sm:border-none sm:p-0 sm:shadow-none sm:w-auto sm:flex-row sm:flex-wrap">
-          {isAdmin && (
-            <Button
-              variant="primary"
-              className="hidden sm:inline-flex border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
-              disabled={enrichingIpa}
-              onClick={async () => {
-                setEnrichingIpa(true)
-                setFormError(null)
-                try {
-                  const activeInput = document.querySelector<HTMLInputElement>('[class*="w-\\[300px\\]"]') ?? document.querySelector<HTMLInputElement>('[class*="w-\\[500px\\]"]')
-                  const sourceText = activeInput?.value?.trim() || item.source_text
-                  const enriched = await enrichVocabulary(sourceText, item.source_language, item.native_language)
-                  if (enriched.ipa) {
-                    await handleSaveField({
-                      ipa: enriched.ipa,
-                      part_of_speech: enriched.partOfSpeech ?? item.part_of_speech,
-                    })
-                  } else {
-                    setFormError('Không tìm thấy IPA cho từ này. Bạn có thể nhập thủ công.')
-                  }
-                } catch {
-                  setFormError('Không thể tìm IPA. Kiểm tra kết nối mạng.')
-                }
-                setEnrichingIpa(false)
-              }}
-              title={t('vocabulary.regenerateIpa')}
-            >
-              {enrichingIpa ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-            </Button>
-          )}
-          {isAdmin && (
-            <Button
-              variant="primary"
-              className="hidden sm:inline-flex border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
-              disabled={isTranslating}
-              onClick={() => void handleTranslate()}
-              title={t('vocabulary.translate')}
-            >
-              {isTranslating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <img src={translateIcon} className="h-4 w-4 scale-[1.75]" alt="" />
-              )}
-            </Button>
-          )}
           <HotkeyTooltip hotkey="Alt + ←">
             <Button
               variant="ghost"
@@ -1191,20 +1142,6 @@ export function VocabularyDetailPage() {
               <Volume2 className="h-4 w-4" />
             </Button>
           </HotkeyTooltip>
-          <HotkeyTooltip hotkey="Alt + A">
-            <Button
-              variant={autoPlayEnabled ? "primary" : "ghost"}
-              className="hidden sm:inline-flex border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
-              onClick={() => {
-                const next = !autoPlayEnabled
-                setAutoPlayEnabled(next)
-                localStorage.setItem('memorylang_vocab_auto_play', String(next))
-              }}
-              title={t('vocabulary.autoPlay')}
-            >
-              <img src={autoplayIcon} className="h-4 w-4 scale-[1.75]" alt="" />
-            </Button>
-          </HotkeyTooltip>
 
           <div className="h-6 w-0.5 bg-border mx-1 hidden sm:block" />
 
@@ -1251,8 +1188,8 @@ export function VocabularyDetailPage() {
             </span>
           )}
 
-          {/* Menu hành động dọc trên điện thoại */}
-          <div className="relative sm:hidden" ref={menuRef}>
+          {/* Menu kebab bên phải nút Xóa */}
+          <div className="relative" ref={menuRef}>
             <span ref={menuButtonRef}>
               <Button
                 variant="ghost"
@@ -1269,7 +1206,7 @@ export function VocabularyDetailPage() {
 
             <div
               className={cn(
-                "absolute bottom-full right-0 mb-3 flex flex-col gap-2 p-2 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] rounded-md transition-all duration-200 origin-bottom-right z-40 w-44",
+                "absolute bottom-full sm:bottom-auto sm:top-full right-0 mb-3 sm:mb-0 sm:mt-2 flex flex-col gap-2 p-2 bg-card border-2 border-border shadow-[4px_4px_0_var(--border)] rounded-md transition-all duration-200 origin-bottom-right sm:origin-top-right z-40 w-48",
                 isActionsMenuOpen
                   ? "opacity-100 scale-100 pointer-events-auto"
                   : "opacity-0 scale-95 pointer-events-none"
@@ -1290,26 +1227,6 @@ export function VocabularyDetailPage() {
               >
                 <img src={autoplayIcon} className="h-4 w-4 scale-[1.75]" alt="" />
                 <span>{t('vocabulary.autoPlay')}</span>
-              </Button>
-
-              <Button
-                variant={item.flagged ? "primary" : "ghost"}
-                className={cn(
-                  "justify-start gap-2 h-9 w-full text-xs font-bold border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none",
-                  item.flagged ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-                onClick={async () => {
-                  setIsActionsMenuOpen(false)
-                  if (item.flagged) {
-                    await vocabularyService.unflagTerm(item.id)
-                  } else {
-                    await vocabularyService.flagTerm(item.id)
-                  }
-                  await invalidateVocabularyQueries()
-                }}
-              >
-                <Flag className={cn("h-4 w-4", item.flagged ? "text-warning fill-warning" : "text-muted-foreground")} />
-                <span>{item.flagged ? t('vocabulary.unflagTerm') : t('vocabulary.flagTerm')}</span>
               </Button>
 
               {isAdmin && (
@@ -1367,10 +1284,30 @@ export function VocabularyDetailPage() {
                 </Button>
               )}
 
+              <Button
+                variant={item.flagged ? "primary" : "ghost"}
+                className={cn(
+                  "sm:hidden justify-start gap-2 h-9 w-full text-xs font-bold border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none",
+                  item.flagged ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={async () => {
+                  setIsActionsMenuOpen(false)
+                  if (item.flagged) {
+                    await vocabularyService.unflagTerm(item.id)
+                  } else {
+                    await vocabularyService.flagTerm(item.id)
+                  }
+                  await invalidateVocabularyQueries()
+                }}
+              >
+                <Flag className={cn("h-4 w-4", item.flagged ? "text-warning fill-warning" : "text-muted-foreground")} />
+                <span>{item.flagged ? t('vocabulary.unflagTerm') : t('vocabulary.flagTerm')}</span>
+              </Button>
+
               {isAdmin && (
                 <Button
                   variant="danger"
-                  className="justify-start gap-2 h-9 w-full text-xs font-bold border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+                  className="sm:hidden justify-start gap-2 h-9 w-full text-xs font-bold border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
                   onClick={() => {
                     setIsActionsMenuOpen(false)
                     setIsDeleting(true)
