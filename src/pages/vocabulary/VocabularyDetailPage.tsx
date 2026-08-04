@@ -970,7 +970,7 @@ export function VocabularyDetailPage() {
   return (
     <div key={id} className="pb-20 sm:pb-0 max-w-7xl mx-auto space-y-6">
       {/* Main Vocabulary Header Card */}
-      <div className="neo-card p-6 sm:p-8 bg-white border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] rounded-2xl relative space-y-4">
+      <div className="neo-card p-2.5 bg-white border-4 border-slate-900 shadow-[6px_6px_0px_0px_#000] rounded-2xl relative space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-1.5 min-w-0 max-w-full flex-1">
             <div className="flex items-center gap-2">
