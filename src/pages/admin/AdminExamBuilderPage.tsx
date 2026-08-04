@@ -296,28 +296,9 @@ export default function AdminExamBuilderPage() {
       setPassages([{ id: 'p1', type: 'article', title: 'Đoạn văn 1', content_html: '' }])
     }
 
-    const defaultStartNumbers: Record<number, number> = { 1: 1, 2: 7, 3: 32, 4: 71, 5: 101, 6: 131, 7: 147 }
-    let nextQNum = defaultStartNumbers[partNum] || 1
-
-    if (exam?.passage_sets) {
-      let maxInPart = 0
-      exam.passage_sets.forEach((set) => {
-        if (set.part_number === partNum && set.questions) {
-          set.questions.forEach((q) => {
-            if (q.question_number && q.question_number > maxInPart) {
-              maxInPart = q.question_number
-            }
-          })
-        }
-      })
-      if (maxInPart > 0) {
-        nextQNum = maxInPart + 1
-      }
-    }
-
     setQuestions([
       {
-        question_number: nextQNum,
+        question_number: 101,
         question_text: '',
         question_type: 'multiple_choice',
         options: [
