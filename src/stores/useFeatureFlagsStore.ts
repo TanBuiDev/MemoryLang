@@ -54,6 +54,7 @@ const DEFAULT_FLAGS: Record<string, boolean> = {
   tts_auto_generate: true,
   mascot_radial_fab: true,
   learning_analytics_dashboard: true,
+  vocabulary_translate: true,
 }
 
 export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({

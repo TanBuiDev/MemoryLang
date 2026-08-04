@@ -83,6 +83,7 @@ const KNOWN_FEATURE_FLAGS: Array<FeatureFlag & { category: 'main_nav' | 'more_na
   { flag: 'matching_quiz', label: 'Bài trắc nghiệm Nối từ', category: 'features', enabled: false, description: 'Cho phép học tập qua trò chơi nối từ vựng (MVP 3)' },
   { flag: 'fill_blank_quiz', label: 'Bài trắc nghiệm Điền từ', category: 'features', enabled: false, description: 'Cho phép làm bài điền từ vào khoảng trống (MVP 3)' },
   { flag: 'learning_analytics_dashboard', label: 'Phân tích học tập nâng cao', category: 'features', enabled: true, description: 'Hiển thị biểu đồ phân tích tần suất học tập Java API' },
+  { flag: 'vocabulary_translate', label: 'Nút Dịch nghĩa', category: 'features', enabled: true, description: 'Bật/tắt nút dịch ở trang chi tiết từ vựng' },
 
   // 5. System Integrations
   { flag: 'google_oauth', label: 'Đăng nhập Google OAuth', category: 'system', enabled: true, description: 'Cho phép người dùng đăng nhập tài khoản bằng Google' },

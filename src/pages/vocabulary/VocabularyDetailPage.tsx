@@ -25,6 +25,7 @@ import { isSupabaseConfigured, supabase } from '@/services/supabase/client'
 import { createEmptyRelationshipGroups, relationshipService } from '@/services/supabase/relationship.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useFeatureFlagsStore } from '@/stores/useFeatureFlagsStore'
 import { RelatedTermsSection } from '@/components/vocabulary/RelatedTermsSection'
 import { relationshipDisplayOrder, relationshipLabelKeys } from '@/components/vocabulary/relationshipDisplay'
 import type { ExampleSentence, Meaning, RelationType, VocabularyItem } from '@/types/vocabulary.types'
@@ -118,6 +119,7 @@ export function VocabularyDetailPage() {
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
   const isAdmin = Boolean(profile?.is_admin)
+  const isTranslateEnabled = useFeatureFlagsStore((state) => state.isFeatureEnabled('vocabulary_translate', true))
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
 
   const { data: posOptionsSetting } = useQuery({
@@ -1265,7 +1267,7 @@ export function VocabularyDetailPage() {
                 </Button>
               )}
 
-              {isAdmin && (
+              {isAdmin && isTranslateEnabled && (
                 <Button
                   variant="primary"
                   disabled={isTranslating}
