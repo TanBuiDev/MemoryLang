@@ -51,6 +51,19 @@ function roleLabel(role: RbacRole) {
   return role.name || role.code.replaceAll('_', ' ')
 }
 
+async function getEdgeFunctionErrorMessage(error: unknown, fallback: string) {
+  if (error && typeof error === 'object' && 'context' in error) {
+    const context = (error as { context?: { json?: () => Promise<unknown> } }).context
+    if (context && typeof context.json === 'function') {
+      const body = await context.json().catch(() => null)
+      if (body && typeof body === 'object' && 'error' in body && typeof body.error === 'string') {
+        return body.error
+      }
+    }
+  }
+  return error instanceof Error ? error.message : fallback
+}
+
 function getRoleBadgeStyle(roleCode: string) {
   switch (roleCode) {
     case 'super_admin':
@@ -559,7 +572,7 @@ export default function AdminRolesPage() {
     setResettingMfa(true)
     try {
       const { error: invokeError } = await supabase.functions.invoke('admin-security', { body: { action: 'reset_mfa', targetUserId: mfaResetTarget.id } })
-      if (invokeError) throw invokeError
+      if (invokeError) throw new Error(await getEdgeFunctionErrorMessage(invokeError, 'Không thể đặt lại MFA.'))
       setMfaResetTarget(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể đặt lại MFA.')

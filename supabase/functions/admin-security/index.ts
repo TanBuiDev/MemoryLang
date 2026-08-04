@@ -26,7 +26,6 @@ Deno.serve(async (req) => {
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
   const { data: factors, error: factorError } = await admin.auth.admin.mfa.listFactors({ userId: body.targetUserId })
   if (factorError) return json({ error: 'Unable to inspect MFA factors.' }, 400)
-  await admin.auth.admin.signOut(body.targetUserId, 'global')
   for (const factor of factors?.totp ?? []) {
     const { error } = await admin.auth.admin.mfa.deleteFactor({ id: factor.id, userId: body.targetUserId })
     if (error) return json({ error: 'Unable to reset MFA.' }, 400)

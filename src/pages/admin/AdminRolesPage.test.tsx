@@ -31,6 +31,7 @@ import AdminRolesPage from './AdminRolesPage'
 
 describe('AdminRolesPage', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     invoke.mockResolvedValue({
       data: {
         data: {
@@ -160,6 +161,30 @@ describe('AdminRolesPage', () => {
     expect(await screen.findByText('Exam administrator')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /quản lý vai trò target user/i }))
     expect(screen.getByRole('checkbox', { name: /security administrator/i })).toBeInTheDocument()
+  })
+
+  it('shows the Edge Function response when an MFA reset is rejected', async () => {
+    const user = userEvent.setup()
+    invoke.mockResolvedValueOnce({
+      data: null,
+      error: {
+        message: 'Edge Function returned a non-2xx status code',
+        context: {
+          json: vi.fn().mockResolvedValue({ error: 'Unable to inspect MFA factors.' }),
+        },
+      },
+    })
+    render(
+      <MemoryRouter>
+        <AdminRolesPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: /phân quyền vai trò/i }))
+    await user.click(screen.getByRole('button', { name: /reset mfa/i }))
+    await user.click(screen.getByRole('button', { name: /xác nhận đặt lại mfa/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to inspect MFA factors.')
   })
 
   it('keeps matrix edits as drafts until an administrator saves and confirms them in Tab 3', async () => {
