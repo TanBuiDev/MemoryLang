@@ -57,8 +57,7 @@ export default function AdminExamBuilderPage() {
   const [activePassageTab, setActivePassageTab] = useState<number>(0)
   const [collapsedQuestions, setCollapsedQuestions] = useState<Record<number, boolean>>({})
   const [allCollapsed, setAllCollapsed] = useState<boolean>(false)
-  const [pendingSelectSet, setPendingSelectSet] = useState<ExamPassageSet | null>(null)
-  const [showUnsavedConfirmModal, setShowUnsavedConfirmModal] = useState<boolean>(false)
+
 
   // Edit Exam Metadata Modal State
   const [showEditExamModal, setShowEditExamModal] = useState(false)
@@ -271,14 +270,13 @@ export default function AdminExamBuilderPage() {
     setIsDirty(false)
   }
 
-  const handleAttemptSelectSet = (set: ExamPassageSet) => {
+  const handleAttemptSelectSet = async (set: ExamPassageSet) => {
     if (selectedSetId === set.id) return
     if (isDirty) {
-      setPendingSelectSet(set)
-      setShowUnsavedConfirmModal(true)
-    } else {
-      selectPassageSet(set)
+      const success = await handleSavePassageSet()
+      if (!success) return
     }
+    selectPassageSet(set)
   }
 
   const initNewSet = (partNum: number = 1, type: PassageType = 'single') => {
@@ -350,27 +348,20 @@ export default function AdminExamBuilderPage() {
     setCollapsedQuestions(updated)
   }
 
-  const handlePartNumberChange = (newPartNum: number) => {
-    const oldPart = partNumber
-    setPartNumber(newPartNum)
-    setIsDirty(true)
-    
-    // Smart Title auto-update
-    if (setTitle.trim() === `Phần ${oldPart} - Cụm câu hỏi mới`) {
-      setSetTitle(`Phần ${newPartNum} - Cụm câu hỏi mới`)
+  const handleAttemptCreateNewSet = async (newPartNum: number) => {
+    if (isDirty) {
+      const success = await handleSavePassageSet()
+      if (!success) return
     }
+    let defaultType: PassageType = 'none'
+    if ([3, 4, 6, 7].includes(newPartNum)) {
+      defaultType = 'single'
+    }
+    initNewSet(newPartNum, defaultType)
+  }
 
-    // Auto-adjust passage type for standard TOEIC format if passage content is mostly empty
-    const hasMeaningfulPassages = passages.some(p => p.content_html.trim().length > 10)
-    if (!hasMeaningfulPassages) {
-      if ([1, 2, 5].includes(newPartNum)) {
-        handlePassageTypeChange('none')
-      } else if ([3, 4, 6].includes(newPartNum)) {
-        handlePassageTypeChange('single')
-      } else if (newPartNum === 7 && passageType === 'none') {
-        handlePassageTypeChange('single')
-      }
-    }
+  const handlePartNumberChange = async (newPartNum: number) => {
+    await handleAttemptCreateNewSet(newPartNum)
   }
 
   const handlePassageTypeChange = (type: PassageType) => {
@@ -434,8 +425,8 @@ export default function AdminExamBuilderPage() {
     )
   }
 
-  const handleSavePassageSet = async () => {
-    if (!id || !exam) return
+  const handleSavePassageSet = async (): Promise<boolean> => {
+    if (!id || !exam) return false
     try {
       setSaving(true)
       const savedSet = await adminExamService.savePassageSet(
@@ -455,9 +446,11 @@ export default function AdminExamBuilderPage() {
       showToast({ type: 'success', title: 'Đã lưu Cụm bài đọc', message: 'Dữ liệu cụm bài đọc và câu hỏi đã lưu thành công.' })
       setIsDirty(false)
       await loadExam(savedSet.id, true)
+      return true
     } catch (err: any) {
       console.error(err)
       showToast({ type: 'error', title: 'Lỗi', message: err.message || 'Không thể lưu cụm bài đọc' })
+      return false
     } finally {
       setSaving(false)
     }
@@ -581,7 +574,7 @@ export default function AdminExamBuilderPage() {
                   <button
                     key={pNum}
                     type="button"
-                    onClick={() => initNewSet(pNum)}
+                    onClick={() => void handleAttemptCreateNewSet(pNum)}
                     className="px-2 py-0.5 rounded text-[11px] font-black border border-primary bg-card hover:bg-primary hover:text-white transition"
                     title={`Tạo cụm mới cho Part ${pNum}`}
                   >
@@ -1131,24 +1124,7 @@ export default function AdminExamBuilderPage() {
         }}
       />
 
-      {/* Unsaved Changes Confirmation Modal */}
-      <ConfirmModal
-        open={showUnsavedConfirmModal}
-        title="Dữ liệu chưa được lưu!"
-        description="Bạn đang có thay đổi chưa lưu ở cụm hiện tại. Chuyển sang cụm khác sẽ làm mất các thay đổi chưa lưu."
-        confirmLabel="Bỏ qua & Chuyển cụm"
-        cancelLabel="Ở lại lưu"
-        variant="primary"
-        onConfirm={() => {
-          if (pendingSelectSet) selectPassageSet(pendingSelectSet)
-          setShowUnsavedConfirmModal(false)
-          setPendingSelectSet(null)
-        }}
-        onCancel={() => {
-          setShowUnsavedConfirmModal(false)
-          setPendingSelectSet(null)
-        }}
-      />
+    
 
       {/* Delete Passage Set Confirmation Modal */}
       <ConfirmModal
