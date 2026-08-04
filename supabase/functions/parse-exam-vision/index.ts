@@ -15,14 +15,8 @@ type CandidateKey = {
 }
 
 function corsHeaders(req: Request) {
-  const allowedOrigins = (Deno.env.get('APP_ALLOWED_ORIGINS')
-    ?? 'https://memorylang.app,http://localhost:5173,http://127.0.0.1:5173')
-    .split(',')
-    .map((origin) => origin.trim())
-  const origin = req.headers.get('Origin')
-
   return {
-    ...(origin && allowedOrigins.includes(origin) ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {}),
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   }

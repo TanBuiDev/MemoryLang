@@ -350,6 +350,29 @@ export default function AdminExamBuilderPage() {
     setCollapsedQuestions(updated)
   }
 
+  const handlePartNumberChange = (newPartNum: number) => {
+    const oldPart = partNumber
+    setPartNumber(newPartNum)
+    setIsDirty(true)
+    
+    // Smart Title auto-update
+    if (setTitle.trim() === `Phần ${oldPart} - Cụm câu hỏi mới`) {
+      setSetTitle(`Phần ${newPartNum} - Cụm câu hỏi mới`)
+    }
+
+    // Auto-adjust passage type for standard TOEIC format if passage content is mostly empty
+    const hasMeaningfulPassages = passages.some(p => p.content_html.trim().length > 10)
+    if (!hasMeaningfulPassages) {
+      if ([1, 2, 5].includes(newPartNum)) {
+        handlePassageTypeChange('none')
+      } else if ([3, 4, 6].includes(newPartNum)) {
+        handlePassageTypeChange('single')
+      } else if (newPartNum === 7 && passageType === 'none') {
+        handlePassageTypeChange('single')
+      }
+    }
+  }
+
   const handlePassageTypeChange = (type: PassageType) => {
     setPassageType(type)
     if (type === 'none') {
@@ -700,10 +723,7 @@ export default function AdminExamBuilderPage() {
                 <label className="text-xs font-black text-foreground">Thuộc Phần thi (Part)</label>
                 <Select
                   value={String(partNumber)}
-                  onChange={(val) => {
-                    setPartNumber(Number(val))
-                    setIsDirty(true)
-                  }}
+                  onChange={(val) => handlePartNumberChange(Number(val))}
                   options={[
                     { value: '1', label: 'Phần 1 (Part 1)' },
                     { value: '2', label: 'Phần 2 (Part 2)' },
