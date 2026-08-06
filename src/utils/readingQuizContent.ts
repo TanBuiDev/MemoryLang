@@ -1,6 +1,8 @@
 import type { ReadingQuestion } from '@/types/reading.types'
 
-const NUMBERED_BLANK_PATTERN = /(\(\s*(\d+)\s*\))\s*_{2,}/g
+// Matches combinations of underscores, hyphens, or dots and numbers like:
+// "_______ 131." or "(131) _______" or "[ 131 ] _______" or "131. _______" or just "_______"
+const BLANK_PATTERN = /(?:[_\-.]{3,}\s*(?:\[|\()?(\d+)(?:\.|\]|\))?)|(?:(?:\[|\()?(\d+)(?:\.|\]|\))?\s*[_\-.]{3,})|(?:[_\-.]{3,})/g
 
 export function fillReadingQuizBlanks(
   html: string,
@@ -8,12 +10,9 @@ export function fillReadingQuizBlanks(
 ): string {
   if (!html || questions.length === 0) return html
 
-  const answers = new Map(
-    questions.map((question, index) => [
-      index + 1,
-      question.options.find((option) => option.is_correct)?.text.trim() || '',
-    ])
-  )
+  // We will map questions in order of appearance
+  let questionIndex = 0
+
   const doc = document.implementation.createHTMLDocument('')
   doc.body.innerHTML = html
   const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT)
@@ -27,7 +26,7 @@ export function fillReadingQuizBlanks(
 
   textNodes.forEach((textNode) => {
     const source = textNode.data
-    const matches = Array.from(source.matchAll(NUMBERED_BLANK_PATTERN))
+    const matches = Array.from(source.matchAll(BLANK_PATTERN))
     if (matches.length === 0) return
 
     const fragment = doc.createDocumentFragment()
@@ -36,23 +35,40 @@ export function fillReadingQuizBlanks(
 
     matches.forEach((match) => {
       const start = match.index ?? 0
-      const blankNumber = Number(match[2])
-      const answer = answers.get(blankNumber)
-      if (!answer) return
-
-      replaced = true
+      
       const prevSlice = source.slice(lastIndex, start)
       fragment.append(prevSlice)
+      lastIndex = start + match[0].length
 
-      // Ensure space before (1) if preceding text ends with a word/number character
+      if (questionIndex >= questions.length) {
+        // Just append the original blank
+        fragment.append(match[0])
+        return
+      }
+      
+      const question = questions[questionIndex]
+      const answer = question.options.find((option) => option.is_correct)?.text.trim()
+      questionIndex++
+
+      if (!answer) {
+        fragment.append(match[0])
+        return
+      }
+
+      replaced = true
+
+      // Ensure space before if needed
       if (/[a-zA-Z0-9]$/.test(prevSlice)) {
         fragment.append(' ')
       }
 
-      fragment.append(`${match[1]} `)
+      const numberMatches = match[0].match(/\d+/)
+      const qNum = numberMatches ? numberMatches[0] : String(questionIndex)
+
+      fragment.append(`[ ${qNum} ] `)
 
       const marker = doc.createElement('span')
-      marker.setAttribute('data-reading-quiz-answer', String(blankNumber))
+      marker.setAttribute('data-reading-quiz-answer', String(qNum))
       marker.setAttribute(
         'style',
         'background: #fde047; color: #0f172a; font-weight: 900; padding: 0.05em 0.3em; border: 1px solid #0f172a; border-radius: 0.35em; box-decoration-break: clone; -webkit-box-decoration-break: clone; white-space: normal; overflow-wrap: anywhere; line-height: 1.5;'
@@ -60,9 +76,7 @@ export function fillReadingQuizBlanks(
       marker.textContent = answer
       fragment.append(marker)
 
-      lastIndex = start + match[0].length
-
-      // Ensure space after answer marker if following text starts with a word/number character
+      // Ensure space after if needed
       const nextSlice = source.slice(lastIndex)
       if (/^[a-zA-Z0-9]/.test(nextSlice)) {
         fragment.append(' ')
