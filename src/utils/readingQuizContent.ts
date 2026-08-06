@@ -2,7 +2,7 @@ import type { ReadingQuestion } from '@/types/reading.types'
 
 // Matches combinations of underscores, hyphens, or dots and numbers like:
 // "_______ 131." or "(131) _______" or "[ 131 ] _______" or "131. _______" or just "_______"
-const BLANK_PATTERN = /(?:[-_.—–]{2,}(?:\s|&nbsp;)*(?:\[|\()?(\d+)(?:\.|\]|\))?)|(?:(?:\[|\()?(\d+)(?:\.|\]|\))?(?:\s|&nbsp;)*[-_.—–]{2,})|(?:[-_.—–]{2,})/g
+const BLANK_PATTERN = /(?:[-_.—–]{2,}(?:\s|&nbsp;|<[^>]+>)*(?:\[|\()?(\d+)(?:<[^>]+>)?(?:\.|\]|\))?(?:<[^>]+>)?)|(?:(?:\[|\()?(\d+)(?:<[^>]+>)?(?:\.|\]|\))?(?:<[^>]+>)?(?:\s|&nbsp;|<[^>]+>)*[-_.—–]{2,})|(?:[-_.—–]{2,})/g
 
 export function fillReadingQuizBlanks(
   html: string,
