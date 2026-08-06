@@ -170,7 +170,7 @@ export const BulkReadingImportModal: React.FC<BulkReadingImportModalProps> = ({
       }
 
       let finalPassageHtml = result.passageHtml || ''
-      if (isFillInTheBlank && finalPassageHtml) {
+      if (finalPassageHtml) {
         // Normalize any hyphens or dots to underscores for uniformity
         finalPassageHtml = finalPassageHtml.replace(/([_\-.]{3,})\s*(?:\[|\()?(\d+)(?:\.|\]|\))?/g, '_______ $2.')
       }
