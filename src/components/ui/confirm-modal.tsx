@@ -43,8 +43,13 @@ export function ConfirmModal({
   }
 
   useEffect(() => {
+    if (open) {
+      soundEffects.play('modalOpen')
+    }
+  }, [open])
+
+  useEffect(() => {
     if (!open) return
-    soundEffects.play('modalOpen')
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
     dialogRef.current?.focus()
 
