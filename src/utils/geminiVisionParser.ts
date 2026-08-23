@@ -79,17 +79,36 @@ export function fileToBase64(file: File | Blob): Promise<string> {
   })
 }
 
+export interface ParsedExamSetResult {
+  passageHtml?: string
+  questions: ParsedExamQuestion[]
+}
+
+export interface ParseExamVisionOptions {
+  needAnswers?: boolean
+  needExplanations?: boolean
+  isFillInTheBlank?: boolean
+}
+
 /**
  * Parses questions using Supabase Edge Function Proxy (100% Enterprise Security)
  */
-export async function parseQuestionsWithGeminiVision(imageBase64: string): Promise<ParsedExamQuestion[]> {
+export async function parseQuestionsWithGeminiVision(
+  imagesBase64: string | string[],
+  options?: ParseExamVisionOptions
+): Promise<ParsedExamSetResult> {
+  const images = Array.isArray(imagesBase64) ? imagesBase64 : [imagesBase64]
   const { data, error } = await supabase.functions.invoke<{
     ok: boolean
+    passageHtml?: string
     questions: any[]
     error?: string
   }>('parse-exam-vision', {
     body: {
-      imageBase64,
+      images,
+      needAnswers: options?.needAnswers ?? true,
+      needExplanations: options?.needExplanations ?? true,
+      isFillInTheBlank: options?.isFillInTheBlank ?? false,
     },
   })
 
@@ -110,15 +129,66 @@ export async function parseQuestionsWithGeminiVision(imageBase64: string): Promi
     throw new Error(data?.error || 'Dịch vụ AI Vision không trả về dữ liệu câu hỏi hợp lệ.')
   }
 
-  return data.questions.map((q: any) => ({
-    questionNumber: q.questionNumber || null,
-    questionText: q.questionText || '',
-    options: (q.options || []).map((opt: any) => ({
-      key: opt.key,
-      text: opt.text,
-      is_correct: Boolean(opt.is_correct),
-    })),
-    explanationHtml: q.explanationHtml || '',
-    rawBlock: q.questionText,
-  }))
+  return {
+    passageHtml: data.passageHtml,
+    questions: data.questions.map((q: any) => ({
+      questionNumber: q.questionNumber || null,
+      questionText: q.questionText || '',
+      options: (q.options || []).map((opt: any) => ({
+        key: opt.key,
+        text: opt.text,
+        is_correct: Boolean(opt.is_correct),
+      })),
+      explanationHtml: q.explanationHtml || '',
+      rawBlock: q.questionText,
+    }))
+  }
+}
+
+/**
+ * Parses text using Supabase Edge Function Proxy (AI Text)
+ */
+export async function parseQuestionsWithGeminiText(textContent: string): Promise<ParsedExamSetResult> {
+  const { data, error } = await supabase.functions.invoke<{
+    ok: boolean
+    passageHtml?: string
+    questions: any[]
+    error?: string
+  }>('parse-exam-text', {
+    body: {
+      textContent,
+    },
+  })
+
+  if (error) {
+    let detailedMsg = error.message
+    try {
+      if (error.context && typeof error.context.json === 'function') {
+        const body = await error.context.json()
+        if (body?.error) detailedMsg = body.error
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(detailedMsg || 'Không thể kết nối dịch vụ bóc tách đề thi AI Text.')
+  }
+
+  if (!data || !data.ok || !Array.isArray(data.questions)) {
+    throw new Error(data?.error || 'Dịch vụ AI Text không trả về dữ liệu hợp lệ.')
+  }
+
+  return {
+    passageHtml: data.passageHtml,
+    questions: data.questions.map((q: any) => ({
+      questionNumber: q.questionNumber || null,
+      questionText: q.questionText || '',
+      options: (q.options || []).map((opt: any) => ({
+        key: opt.key,
+        text: opt.text,
+        is_correct: Boolean(opt.is_correct),
+      })),
+      explanationHtml: q.explanationHtml || '',
+      rawBlock: q.questionText,
+    }))
+  }
 }

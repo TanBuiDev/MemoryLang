@@ -698,11 +698,29 @@ export default function MatchingGamePage() {
                     stateClasses
                   )}
                 >
-                  <div className="flex justify-between items-center w-full">
-                    <span className="font-bold text-xs sm:text-sm leading-tight sm:leading-snug break-words">
-                      {item.translation}
-                    </span>
-
+                  <div className="flex justify-between items-center w-full gap-2">
+                    <div className="font-bold text-xs sm:text-sm leading-tight sm:leading-snug break-words flex-1 flex flex-col w-full text-left">
+                      {(item.translation || '').split(';').map((part, i, arr) => {
+                        const trimmed = part.trim()
+                        const match = trimmed.match(/^(\([^)]+\))\s*(.*)$/)
+                        const isLast = i === arr.length - 1
+                        const borderClass = isLast ? '' : 'border-b-2 border-dashed border-slate-900/20'
+                        
+                        if (match) {
+                          return (
+                            <div key={i} className={`flex items-center py-1.5 sm:py-2 gap-2 sm:gap-3 ${borderClass}`}>
+                              <span className="font-black opacity-85 whitespace-nowrap shrink-0">{match[1]}</span>
+                              <span className="flex-1">{match[2]}</span>
+                            </div>
+                          )
+                        }
+                        return (
+                          <div key={i} className={`py-1.5 sm:py-2 flex items-center ${borderClass}`}>
+                            {trimmed}
+                          </div>
+                        )
+                      })}
+                    </div>
                     {/* Correct/Incorrect Icons */}
                     {phase === 'reviewing' && (
                       <span className="shrink-0 ml-1">

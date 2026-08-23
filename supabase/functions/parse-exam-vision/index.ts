@@ -4,7 +4,11 @@ import { z } from 'https://esm.sh/zod@4.4.3'
 const DEFAULT_MODEL = 'gemini-2.0-flash'
 const REQUEST_TIMEOUT_MS = 30_000
 const requestSchema = z.object({
-  imageBase64: z.string().max(7_000_000).regex(/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=\s]+$/),
+  images: z.array(z.string().regex(/^(data:image\/[a-zA-Z0-9.-]+;base64,)?([A-Za-z0-9+/=\s]+)$/)).max(10).optional(),
+  imageBase64: z.string().regex(/^(data:image\/[a-zA-Z0-9.-]+;base64,)?([A-Za-z0-9+/=\s]+)$/).optional(),
+  needAnswers: z.boolean().default(true),
+  needExplanations: z.boolean().default(true),
+  isFillInTheBlank: z.boolean().default(false),
 })
 
 type CandidateKey = {
@@ -51,24 +55,51 @@ function getSessionId(authHeader: string) {
   } catch { return null }
 }
 
-const prompt = `You are an expert TOEIC / English exam parsing assistant.
-Analyze this exam image. Extract ALL questions and choices (A, B, C, D) visible in the image, even if arranged in 2 columns.
-Also determine the CORRECT answer choice (A, B, C, or D) for each question based on English grammar and context.
-
-Return ONLY a valid JSON array of objects with this exact format:
-[
-  {
-    "questionNumber": 101,
-    "questionText": "The lecture will take place at 6:00 P.M., ------- which attendees may ask questions.",
-    "options": [
-      { "key": "A", "text": "across", "is_correct": false },
-      { "key": "B", "text": "after", "is_correct": true },
-      { "key": "C", "text": "inside", "is_correct": false },
-      { "key": "D", "text": "among", "is_correct": false }
-    ],
-    "explanationHtml": "Giải thích chi tiết bằng Tiếng Việt..."
+function buildPrompt(opts: { needAnswers: boolean; needExplanations: boolean; isFillInTheBlank: boolean }) {
+  let p = `You are an expert TOEIC / English exam parsing assistant.
+Analyze the provided exam image(s). Extract ALL questions and choices (A, B, C, D) visible in the image, even if arranged in 2 columns.
+`
+  if (opts.needAnswers) {
+    p += `Also determine the CORRECT answer choice (A, B, C, or D) for each question based on English grammar and context.\n`
+  } else {
+    p += `You DO NOT need to determine the correct answer. Just set is_correct to false for all options (or true for A, it doesn't matter).\n`
   }
-]`
+
+  p += `
+If there is a Reading Passage visible (e.g. Email, Notice, Article) before or around the questions:
+1. Format it beautifully using basic HTML tags (like <p>, <br>, <b>, <i>) to make it look like a well-formatted email, letter, or article. Do not include the questions in this HTML.
+2. If there is NO Reading Passage (only questions), set passageHtml to null.
+3. ABSOLUTELY CRITICAL: If the image ONLY contains a reading passage and NO explicit multiple choice options (A, B, C, D) are visible, you MUST set the "questions" array to exactly []. Do NOT guess, hallucinate, or make up options to fill the blanks. If you don't see (A), (B), (C), (D) in the image, "questions" is [].
+`
+  if (opts.isFillInTheBlank) {
+    p += `3. CRITICAL FOR FILL-IN-THE-BLANK: 
+   - DO NOT hallucinate or make up a "questionText" if it's not explicitly in the image. For fill-in-the-blank questions (where only A,B,C,D are present), output an empty string "" or a generic phrase like "Choose the correct word/phrase to complete the blank." for questionText.
+   - For the blanks inside the Reading Passage, you MUST use exactly this format with underscores: \`_______ 131.\` or \`_______ 132.\` etc. Do NOT use hyphens (----) and DO NOT omit the question number! The blank must be represented as at least 5 underscores followed by a space, the question number, and a period.
+`
+  }
+
+  p += `
+Return ONLY a valid JSON object with this exact format (if there are no questions, "questions" MUST be []):
+{
+  "passageHtml": "<p><b>Subject:</b> Welcome to our service</p>..." | null,
+  "questions": [
+    {
+      "questionNumber": 101,
+      "questionText": "The lecture will take place at 6:00 P.M., ------- which attendees may ask questions.",
+      "options": [
+        { "key": "A", "text": "across", "is_correct": false },
+        { "key": "B", "text": "after", "is_correct": true },
+        { "key": "C", "text": "inside", "is_correct": false },
+        { "key": "D", "text": "among", "is_correct": false }
+      ]`
+      
+  if (opts.needExplanations) {
+    p += `,\n      "explanationHtml": "Giải thích chi tiết bằng Tiếng Việt..."\n    }\n  ]\n}`
+  } else {
+    p += `\n    }\n  ]\n}`
+  }
+  return p
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) })
@@ -95,7 +126,26 @@ Deno.serve(async (req) => {
     return response(req, { ok: false, error: 'Invalid JSON request body.' }, 400)
   }
   const parsed = requestSchema.safeParse(rawBody)
-  if (!parsed.success) return response(req, { ok: false, error: 'Invalid image payload.' }, 400)
+  if (!parsed.success) return response(req, { ok: false, error: 'Invalid payload schema.' }, 400)
+
+  const images = parsed.data.images || (parsed.data.imageBase64 ? [parsed.data.imageBase64] : [])
+  if (images.length === 0) return response(req, { ok: false, error: 'No image provided.' }, 400)
+
+  const imageParts = images.map((img) => {
+    const cleanBase64 = img.replace(/^data:image\/[a-zA-Z0-9.-]+;base64,/, '').replace(/\s/g, '')
+    let mimeType = 'image/jpeg'
+    const match = img.match(/^data:(image\/[a-zA-Z0-9.-]+);base64,/)
+    if (match) {
+      mimeType = match[1]
+    }
+    return { inlineData: { mimeType, data: cleanBase64 } }
+  })
+
+  const aiPrompt = buildPrompt({
+    needAnswers: parsed.data.needAnswers,
+    needExplanations: parsed.data.needExplanations,
+    isFillInTheBlank: parsed.data.isFillInTheBlank,
+  })
 
   const supabaseAdmin = getSupabaseAdmin()
   const { data: dbPoolKeys, error: keyPoolError } = await supabaseAdmin.rpc('get_active_keys_for_service', {
@@ -112,8 +162,7 @@ Deno.serve(async (req) => {
     encrypted_value: key.encrypted_value,
     model_name: key.model_name || DEFAULT_MODEL,
   }))
-  const cleanBase64 = parsed.data.imageBase64.replace(/^data:image\/\w+;base64,/, '').replace(/\s/g, '')
-  const mimeType = parsed.data.imageBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg'
+  
   let lastStatusCode = 503
 
   for (const candidate of candidates) {
@@ -127,7 +176,7 @@ Deno.serve(async (req) => {
           headers: { 'Content-Type': 'application/json' },
           signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
           body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType, data: cleanBase64 } }] }],
+            contents: [{ parts: [{ text: aiPrompt }, ...imageParts] }],
             generationConfig: { temperature: 0.1, responseMimeType: 'application/json' },
           }),
         },
@@ -161,8 +210,8 @@ Deno.serve(async (req) => {
         lastStatusCode = 502
         continue
       }
-      const questions = JSON.parse(candidateText.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim())
-      if (!Array.isArray(questions)) {
+      const parsedData = JSON.parse(candidateText.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim())
+      if (!parsedData || !Array.isArray(parsedData.questions)) {
         lastStatusCode = 502
         continue
       }
@@ -181,7 +230,7 @@ Deno.serve(async (req) => {
         status_code: 200,
         response_time_ms: responseTimeMs,
       })
-      return response(req, { ok: true, questions })
+      return response(req, { ok: true, passageHtml: parsedData.passageHtml, questions: parsedData.questions })
     } catch (error) {
       lastStatusCode = 502
       console.error('parse-exam-vision provider request failed', {

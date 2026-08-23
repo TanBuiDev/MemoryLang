@@ -14,6 +14,7 @@ import {
   Sparkles,
   CheckCircle2,
   Check,
+  Upload,
 } from 'lucide-react'
 import {
   adminReadingService,
@@ -35,10 +36,8 @@ import { readingService } from '@/services/supabase/reading.service'
 import { ReadingVocabularyPopover } from '@/components/reading/ReadingVocabularyPopover'
 import { ReadingAudioPreview } from '@/components/reading/ReadingAudioPreview'
 import { ReadingRichTextEditor } from '@/components/reading/ReadingRichTextEditor'
-import {
-  BulkQuestionImportModal,
-  type ImportedReadingQuestion,
-} from '@/components/reading/BulkQuestionImportModal'
+import { BulkReadingImportModal } from '@/components/reading/BulkReadingImportModal'
+import type { ParsedExamQuestion } from '@/utils/examQuestionImport'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { getReadingVocabularyMatchMessage } from '@/utils/readingAdminUi'
 import type {
@@ -106,7 +105,7 @@ export default function AdminReadingEditorPage() {
 
   // Questions state
   const [questions, setQuestions] = useState<LocalQuestion[]>([])
-  const [bulkImportOpen, setBulkImportOpen] = useState(false)
+  const [bulkReadingImportOpen, setBulkReadingImportOpen] = useState(false)
 
   // Unsaved changes tracking
   const [isDirty, setIsDirty] = useState(false)
@@ -273,24 +272,30 @@ export default function AdminReadingEditorPage() {
     })
   }
 
-  const handleBulkQuestionImport = (importedQuestions: ImportedReadingQuestion[]) => {
+  const handleBulkReadingImport = (passageHtml: string, importedQuestions: ParsedExamQuestion[]) => {
     const importedAt = Date.now()
-    setQuestions((prev) => [
-      ...prev,
-      ...importedQuestions.map((question, index) => ({
-        id: `temp-import-${importedAt}-${index}`,
-        question_text: question.questionText,
-        question_type: 'multiple_choice' as const,
-        options: question.options,
-        points: 1,
-      })),
-    ])
+    if (passageHtml) {
+      const newContent = contentInput ? `${contentInput}<br><br>${passageHtml}` : passageHtml
+      handleContentChange(newContent)
+    }
+    if (importedQuestions && importedQuestions.length > 0) {
+      setQuestions((prev) => [
+        ...prev,
+        ...importedQuestions.map((question, index) => ({
+          id: `temp-import-${importedAt}-${index}`,
+          question_text: question.questionText,
+          question_type: 'multiple_choice' as const,
+          options: question.options.map(opt => ({ text: opt.text, is_correct: opt.is_correct })),
+          points: 1,
+        })),
+      ])
+    }
     setIsDirty(true)
-    setBulkImportOpen(false)
+    setBulkReadingImportOpen(false)
     showToast({
       type: 'success',
-      title: 'Đã thêm câu hỏi',
-      message: `Đã thêm ${importedQuestions.length} câu hỏi vào bài đọc.`,
+      title: 'Đã nhập thông minh',
+      message: `Đã nhập bài đọc và ${importedQuestions?.length || 0} câu hỏi.`,
     })
   }
 
@@ -647,6 +652,16 @@ export default function AdminReadingEditorPage() {
             </Button>
             <Button
               type="button"
+              variant="secondary"
+              onClick={() => setBulkReadingImportOpen(true)}
+              className="neo-button h-8 min-h-0 px-3 text-xs bg-purple-100 hover:bg-purple-200 text-purple-950 border-2 border-slate-900 shadow-[1.5px_1.5px_0px_0px_#000] flex items-center gap-1.5 cursor-pointer"
+              title="Nhập thông minh toàn bài (Bài đọc + Câu hỏi)"
+            >
+              <ListPlus size={14} className="text-purple-800" />
+              <span>Nhập thông minh</span>
+            </Button>
+            <Button
+              type="button"
               variant={editorMode === 'edit' ? 'secondary' : 'ghost'}
               onClick={() => setEditorMode('edit')}
               className="h-8 min-h-0 px-3 text-xs"
@@ -772,12 +787,11 @@ export default function AdminReadingEditorPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              variant="secondary"
-              onClick={() => setBulkImportOpen(true)}
-              className="neo-button h-9 px-3 text-xs bg-purple-100 hover:bg-purple-200 text-purple-950 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] font-black rounded-xl flex items-center gap-1.5 cursor-pointer"
+              onClick={() => setBulkReadingImportOpen(true)}
+              className="neo-button h-9 px-4 bg-purple-100 hover:bg-purple-200 text-purple-950 font-black text-xs border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] rounded-xl flex items-center gap-1.5 cursor-pointer"
             >
-              <ListPlus size={15} />
-              <span>Nhập hàng loạt</span>
+              <Upload size={15} />
+              <span>Nhập thông minh</span>
             </Button>
 
             <Button
@@ -940,10 +954,10 @@ export default function AdminReadingEditorPage() {
         />
       )}
 
-      <BulkQuestionImportModal
-        open={bulkImportOpen}
-        onCancel={() => setBulkImportOpen(false)}
-        onImport={handleBulkQuestionImport}
+      <BulkReadingImportModal
+        open={bulkReadingImportOpen}
+        onClose={() => setBulkReadingImportOpen(false)}
+        onImport={handleBulkReadingImport}
       />
 
       <ConfirmModal

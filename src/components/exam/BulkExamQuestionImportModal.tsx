@@ -160,14 +160,14 @@ export const BulkExamQuestionImportModal: React.FC<BulkExamQuestionImportModalPr
     setAiVisionError(null)
     try {
       const base64 = await fileToBase64(file)
-      const questions = await parseQuestionsWithGeminiVision(base64)
+      const result = await parseQuestionsWithGeminiVision(base64)
 
-      if (!questions || questions.length === 0) {
+      if (!result.questions || result.questions.length === 0) {
         setAiVisionError('Không tìm thấy câu hỏi hợp lệ trong bức ảnh này.')
         return
       }
 
-      setParsedList(questions)
+      setParsedList(result.questions)
     } catch (err: any) {
       setAiVisionError(err.message || 'Lỗi khi bóc tách câu hỏi với AI Vision.')
     } finally {

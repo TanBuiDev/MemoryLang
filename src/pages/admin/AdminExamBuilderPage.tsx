@@ -22,6 +22,7 @@ import { Select } from '@/components/ui/select'
 import { showToast } from '@/components/ui/toast'
 import { adminExamService } from '@/services/supabase/adminExam.service'
 import { BulkExamQuestionImportModal } from '@/components/exam/BulkExamQuestionImportModal'
+import { BulkPassageImportModal } from '@/components/exam/BulkPassageImportModal'
 import { parseSingleQuestionText } from '@/utils/examQuestionImport'
 import type {
   ExamCategory,
@@ -67,6 +68,7 @@ export default function AdminExamBuilderPage() {
 
   // Bulk Question Import State
   const [showBulkImportModal, setShowBulkImportModal] = useState(false)
+  const [showBulkPassageModal, setShowBulkPassageModal] = useState(false)
 
   // Delete modal state
   const [pendingDeleteSetId, setPendingDeleteSetId] = useState<string | null>(null)
@@ -768,10 +770,20 @@ export default function AdminExamBuilderPage() {
             {passageType !== 'none' && (
               <div className="flex flex-col gap-3 pt-3 border-t-2 border-dashed border-border">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <FileText size={14} className="text-primary" />
-                    NỘI DUNG ĐOẠN VĂN ({passages.length} ĐOẠN)
-                  </h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-xs font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <FileText size={14} className="text-primary" />
+                      NỘI DUNG ĐOẠN VĂN ({passages.length} ĐOẠN)
+                    </h3>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => setShowBulkPassageModal(true)}
+                      className="h-6 px-2 text-[10px] font-black border border-primary/30 text-primary bg-primary/5 hover:bg-primary/20"
+                    >
+                      <Sparkles size={12} className="mr-1" />
+                      Nhập AI Thông minh
+                    </Button>
+                  </div>
 
                   {passages.length > 1 && (
                     <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border">
@@ -1121,6 +1133,20 @@ export default function AdminExamBuilderPage() {
         onImport={(imported) => {
           handleBulkImport(imported)
           setIsDirty(true)
+        }}
+      />
+
+      {/* Bulk Passage Import Modal */}
+      <BulkPassageImportModal
+        open={showBulkPassageModal}
+        onClose={() => setShowBulkPassageModal(false)}
+        onImport={(passageHtml) => {
+          if (passageType !== 'none' && passages.length > 0) {
+            const updated = [...passages]
+            updated[activePassageTab].content_html = passageHtml
+            setPassages(updated)
+            setIsDirty(true)
+          }
         }}
       />
 
