@@ -11,6 +11,7 @@ import {
   Layers,
   ChevronRight,
   FileAudio,
+  Link2,
 } from 'lucide-react'
 import { CreateExamWizard } from '@/components/admin/exams/CreateExamWizard'
 import { Button } from '@/components/ui/button'
@@ -86,6 +87,16 @@ export default function AdminExamsPage() {
     } finally {
       setUpdating(false)
     }
+  }
+
+  const handleCopyLink = (examId: string) => {
+    const url = `${window.location.origin}/e/${examId}`
+    navigator.clipboard.writeText(url)
+    showToast({
+      type: 'success',
+      title: 'Đã copy link',
+      message: 'Bạn có thể gửi link này cho học viên.',
+    })
   }
 
   const handleExamCreated = async (examId: string, examFormat: Exam['exam_format']) => {
@@ -251,6 +262,16 @@ export default function AdminExamsPage() {
                 >
                   <Pencil size={14} />
                 </Button>
+                {exam.is_published && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleCopyLink(exam.id)}
+                    className="min-h-9 px-3 text-xs text-blue-600 hover:text-white hover:bg-blue-600"
+                    title="Copy link làm bài"
+                  >
+                    <Link2 size={14} />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   onClick={() => setPendingDeleteId(exam.id)}
