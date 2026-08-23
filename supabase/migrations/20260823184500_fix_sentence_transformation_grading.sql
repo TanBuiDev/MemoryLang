@@ -41,9 +41,9 @@ begin
               or
               regexp_replace(lower(btrim(regexp_replace(
                 concat_ws(' ', 
-                  trim((regexp_split_to_array(split_part(question.value ->> 'prompt', E'\n', 2), '\.{3,}|_{3,}|…'))[1]),
+                  trim((regexp_split_to_array(split_part(question.value ->> 'prompt', E'\n', 2), '[.]{3,}|_{3,}|…'))[1]),
                   trim(coalesce(section_attempt.progress -> 'answers' ->> (question.value ->> 'source_key'), '')),
-                  trim((regexp_split_to_array(split_part(question.value ->> 'prompt', E'\n', 2), '\.{3,}|_{3,}|…'))[2])
+                  trim((regexp_split_to_array(split_part(question.value ->> 'prompt', E'\n', 2), '[.]{3,}|_{3,}|…'))[2])
                 )
               , '[[:punct:]]', '', 'g'))), '\s+', ' ', 'g')
                 = any(array(select regexp_replace(lower(btrim(regexp_replace(value #>> '{}', '[[:punct:]]', '', 'g'))), '\s+', ' ', 'g') from jsonb_array_elements(coalesce(question.value -> 'accepted_answers', '[]'::jsonb)) value))
