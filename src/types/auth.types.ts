@@ -14,6 +14,8 @@ export interface Profile {
   is_admin?: boolean
   allow_password_login?: boolean
   email?: string | null
+  avatar_url?: string | null
+  last_active_at?: string | null
   daily_goal?: number
   default_study_mode?: StudyMode
   email_reminders_enabled?: boolean

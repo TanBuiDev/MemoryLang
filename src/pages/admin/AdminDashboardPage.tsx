@@ -15,6 +15,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { adminService } from '@/services/supabase/admin.service'
 import type { AdminUserStats } from '@/types/admin.types'
+import type { Profile } from '@/types/auth.types'
+import { formatDistanceToNow } from 'date-fns'
+import { vi } from 'date-fns/locale'
 
 interface StatCardProps {
   title: string
@@ -41,6 +44,7 @@ function StatCard({ title, value, description, icon: Icon, colorClass }: StatCar
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<AdminUserStats | null>(null)
+  const [onlineUsersList, setOnlineUsersList] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -48,8 +52,12 @@ export default function AdminDashboardPage() {
     async function loadStats() {
       try {
         setLoading(true)
-        const data = await adminService.getDashboardStats()
+        const [data, onlineData] = await Promise.all([
+          adminService.getDashboardStats(),
+          adminService.getOnlineUsers()
+        ])
         setStats(data)
+        setOnlineUsersList(onlineData)
       } catch (err: any) {
         console.error(err)
         setError(err.message || 'Không thể tải thống kê hệ thống')
@@ -138,6 +146,37 @@ export default function AdminDashboardPage() {
 
       {/* Quick Action & System Health Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+        {/* Online Users List */}
+        <div className="neo-card p-5 bg-white border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] flex flex-col gap-4 rounded-2xl">
+          <h3 className="text-base font-black border-b-2 border-slate-900 pb-2 text-slate-900 flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-emerald-500" />
+              <span>ĐANG HOẠT ĐỘNG (5 PHÚT)</span>
+            </span>
+            <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-xs">{onlineUsersList.length}</span>
+          </h3>
+          <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-2">
+            {onlineUsersList.length === 0 ? (
+              <div className="text-center py-4 text-slate-500 text-sm font-semibold">
+                Không có ai đang online
+              </div>
+            ) : (
+              onlineUsersList.map(user => (
+                <div key={user.id} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border-2 border-slate-200">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-sm text-slate-900 truncate max-w-[150px] sm:max-w-[200px]" title={user.display_name || user.email || 'Ẩn danh'}>
+                      {user.display_name || user.email || 'Người dùng ẩn danh'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-black text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded uppercase">
+                    {user.last_active_at ? formatDistanceToNow(new Date(user.last_active_at), { addSuffix: true, locale: vi }) : 'Vừa xong'}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
         {/* Quick Actions */}
         <div className="neo-card p-5 bg-white border-3 border-slate-900 shadow-[5px_5px_0px_0px_#000] flex flex-col gap-4 rounded-2xl">
           <h3 className="text-base font-black border-b-2 border-slate-900 pb-2 text-slate-900 flex items-center gap-2">

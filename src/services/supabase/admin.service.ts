@@ -118,6 +118,26 @@ export const adminService = {
     }
   },
 
+  // 1b. Get Online Users
+  async getOnlineUsers(): Promise<Profile[]> {
+    const fiveMinutesAgo = new Date()
+    fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5)
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .gte('last_active_at', fiveMinutesAgo.toISOString())
+      .order('last_active_at', { ascending: false })
+      .limit(50)
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Failed to fetch online users', error)
+      return []
+    }
+    
+    return data || []
+  },
+
   // 2. Users Management
   async listUsers(): Promise<any[]> {
     const { data, error } = await supabase
