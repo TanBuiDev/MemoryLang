@@ -4,6 +4,7 @@ import { AppLoading } from '@/components/common/AppLoading'
 import { isSupabaseConfigured, supabase } from '@/services/supabase/client'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useMfaChallenge } from '@/hooks/useMfaChallenge'
+import { useUserTracking } from '@/hooks/useUserTracking'
 import { authService } from '@/services/supabase/auth.service'
 
 interface AdminSecurityStatus {
@@ -13,6 +14,7 @@ interface AdminSecurityStatus {
 }
 
 export function ProtectedRoute() {
+  useUserTracking()
   const { user, profile, loading, session, setProfile } = useAuthStore()
   const location = useLocation()
   const { loading: mfaLoading, requiresChallenge } = useMfaChallenge()
