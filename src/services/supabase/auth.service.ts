@@ -22,10 +22,10 @@ export const authService = {
     }),
   signInWithPassword: (email: string, password: string) => supabase.auth.signInWithPassword({ email, password }),
 
-  signInWithGoogle: () =>
+  signInWithGoogle: (options?: { redirectTo?: string }) =>
     supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/app/dashboard` },
+      options: { redirectTo: options?.redirectTo ?? `${window.location.origin}/app/dashboard` },
     }),
   resetPassword: (email: string) =>
     supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login` }),

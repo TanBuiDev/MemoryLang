@@ -52,7 +52,7 @@ export function ProtectedRoute() {
   }, [accessToken, profile, requiresChallenge, setProfile, user])
 
   if (loading || (Boolean(user) && mfaLoading) || (Boolean(user) && activationCheckedToken !== accessToken)) return <AppLoading />
-  if (isSupabaseConfigured && !user) return <Navigate to="/login" replace />
+  if (isSupabaseConfigured && !user) return <Navigate to="/login" state={{ returnTo: `${location.pathname}${location.search}` }} replace />
   if (requiresChallenge) return <Navigate to="/mfa-challenge" state={{ returnTo: `${location.pathname}${location.search}` }} replace />
   if (!profile) return <AppLoading />
   const signedInWithGoogle = session?.user.app_metadata.provider === 'google'

@@ -20,7 +20,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { InlineChoicePassageAttempt } from '@/components/exam/presentations/InlineChoicePassageAttempt'
 import { ChoiceListAttempt } from '@/components/exam/presentations/ChoiceListAttempt'
@@ -222,6 +222,8 @@ function getSkillBadgeLabel(skill: string) {
 export function ExamAttemptPage() {
   const { attemptId = '' } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const isStandalone = location.pathname.startsWith('/e/')
   const queryClient = useQueryClient()
   const mainRef = useRef<HTMLElement>(null)
   const questionRefs = useRef<Record<string, HTMLElement | null>>({})
@@ -489,7 +491,8 @@ export function ExamAttemptPage() {
         title: 'Đã nộp bài thành công',
         message: `Bạn làm đúng ${result.score}/${result.max_score} câu khách quan.`,
       })
-      navigate(`/app/exams/attempt/${attemptId}/result`, { replace: true })
+      const resultUrl = isStandalone ? `/e/attempt/${attemptId}/result` : `/app/exams/attempt/${attemptId}/result`
+      navigate(resultUrl, { replace: true })
     },
     onError: () => {
       submissionStartedRef.current = false
@@ -627,7 +630,7 @@ export function ExamAttemptPage() {
         <div className="neo-card p-10 text-center font-black space-y-4">
           <HelpCircle className="mx-auto text-danger" size={40} />
           <h2 className="text-2xl">Không tìm thấy lần làm bài thi này</h2>
-          <Button variant="primary" onClick={() => navigate('/app/exams')}>
+          <Button variant="primary" onClick={() => navigate(isStandalone && attemptDetail?.attempt?.exam_id ? `/e/${attemptDetail.attempt.exam_id}` : '/app/exams')}>
             Quay lại danh sách đề thi
           </Button>
         </div>
@@ -640,7 +643,7 @@ export function ExamAttemptPage() {
         <div className="neo-card p-10 text-center font-black space-y-4">
           <AlertTriangle className="mx-auto text-warning" size={40} />
           <h2 className="text-2xl">Đề thi chưa có dữ liệu phần làm bài</h2>
-          <Button variant="primary" onClick={() => navigate('/app/exams')}>
+          <Button variant="primary" onClick={() => navigate(isStandalone && attemptDetail?.attempt?.exam_id ? `/e/${attemptDetail.attempt.exam_id}` : '/app/exams')}>
             Quay lại danh sách đề thi
           </Button>
         </div>
@@ -675,7 +678,7 @@ export function ExamAttemptPage() {
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="ghost"
-                onClick={() => navigate('/app/exams')}
+                onClick={() => navigate(isStandalone && attemptDetail?.attempt?.exam_id ? `/e/${attemptDetail.attempt.exam_id}` : '/app/exams')}
                 className="h-7 px-2 text-xs font-black"
               >
                 <ArrowLeft size={14} className="mr-1" /> Danh sách đề

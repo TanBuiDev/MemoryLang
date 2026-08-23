@@ -17,11 +17,12 @@ export function LoginPage() {
   const [message, setMessage] = useState(
     (location.state as { message?: string } | null)?.message ?? '',
   )
+  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo ?? '/app/dashboard'
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!isSupabaseConfigured) {
-      navigate('/app/dashboard')
+      navigate(returnTo)
       return
     }
     const { data, error } = await authService.signInWithPassword(email, password)
@@ -42,7 +43,7 @@ export function LoginPage() {
     }
 
     setMessage(t('auth.loggedIn'))
-    navigate('/app/dashboard')
+    navigate(returnTo)
   }
 
   return (
@@ -59,7 +60,7 @@ export function LoginPage() {
           <div><Label>{t('settings.email')}</Label><Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" /></div>
           <div><Label>{t('auth.password')}</Label><PasswordInput value={password} onChange={(event) => setPassword(event.target.value)} /></div>
           <Button type="submit">{t('auth.login')}</Button>
-          <Button type="button" variant="secondary" onClick={() => void authService.signInWithGoogle()}>{t('auth.googleLogin')}</Button>
+          <Button type="button" variant="secondary" onClick={() => void authService.signInWithGoogle({ redirectTo: window.location.origin + returnTo })}>{t('auth.googleLogin')}</Button>
         </form>
         {message ? <p className="mt-3 text-sm font-bold">{message}</p> : null}
         <p className="mt-4 text-sm font-semibold">

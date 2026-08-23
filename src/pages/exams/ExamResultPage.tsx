@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useQueries } from '@tanstack/react-query'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { InlineGapPassageResult, type QuestionOptionsMap } from '@/components/exam/presentations/InlineGapPassageResult'
 import { ChoiceQuestionResult } from '@/components/exam/presentations/ChoiceQuestionResult'
@@ -213,6 +213,8 @@ function getPromptIds(snapshot: Record<string, unknown> | undefined): string[] {
 export function ExamResultPage() {
   const { attemptId = '' } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const isStandalone = location.pathname.startsWith('/e/')
   const [activeFilter, setActiveFilter] = useState<'all' | 'correct' | 'incorrect'>('all')
   const [selectedSectionKey, setSelectedSectionKey] = useState<string | null>(null)
 
@@ -238,7 +240,7 @@ export function ExamResultPage() {
         completedAttempt.target_duration_seconds,
       )
     },
-    onSuccess: (newAttempt) => navigate(`/app/exams/attempt/${newAttempt.id}`),
+    onSuccess: (newAttempt) => navigate(isStandalone ? `/e/attempt/${newAttempt.id}` : `/app/exams/attempt/${newAttempt.id}`),
   })
 
   if (attemptQuery.isLoading) {
@@ -271,7 +273,7 @@ export function ExamResultPage() {
       <div className="mx-auto max-w-7xl p-6">
         <div className="neo-card p-10 text-center space-y-4">
           <p className="font-black text-lg">Bài thi này chưa được nộp.</p>
-          <Button onClick={() => navigate(`/app/exams/attempt/${attemptId}`)} variant="primary">
+          <Button onClick={() => navigate(isStandalone ? `/e/attempt/${attemptId}` : `/app/exams/attempt/${attemptId}`)} variant="primary">
             Quay lại tiếp tục làm bài
           </Button>
         </div>

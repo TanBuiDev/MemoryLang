@@ -76,6 +76,8 @@ const AdminExamMediaPage = lazyWithChunkRecovery(() => import('@/pages/admin/Adm
 const ExamHubPage = lazyWithChunkRecovery(() => import('@/pages/exams/ExamHubPage').then(m => ({ default: m.ExamHubPage })))
 const ExamAttemptPage = lazyWithChunkRecovery(() => import('@/pages/exams/ExamAttemptPage').then(m => ({ default: m.ExamAttemptPage })))
 const ExamResultPage = lazyWithChunkRecovery(() => import('@/pages/exams/ExamResultPage').then(m => ({ default: m.ExamResultPage })))
+const StandaloneLayout = lazyWithChunkRecovery(() => import('@/components/layout/StandaloneLayout').then(m => ({ default: m.StandaloneLayout })))
+const StandaloneExamLandingPage = lazyWithChunkRecovery(() => import('@/pages/exams/StandaloneExamLandingPage').then(m => ({ default: m.StandaloneExamLandingPage })))
 
 function RootLayout() {
   return (
@@ -102,6 +104,19 @@ export const router = createBrowserRouter([
       {
         element: <ProtectedRoute />,
         children: [
+          {
+            path: '/e',
+            element: (
+              <React.Suspense fallback={<AppLoading />}>
+                <StandaloneLayout />
+              </React.Suspense>
+            ),
+            children: [
+              { path: ':examId', element: <React.Suspense fallback={<AppLoading />}><StandaloneExamLandingPage /></React.Suspense> },
+              { path: 'attempt/:attemptId', element: <React.Suspense fallback={<AppLoading />}><ExamAttemptPage /></React.Suspense> },
+              { path: 'attempt/:attemptId/result', element: <React.Suspense fallback={<AppLoading />}><ExamResultPage /></React.Suspense> },
+            ]
+          },
           {
             path: '/app',
             element: <AppLayout />,
