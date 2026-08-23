@@ -35,17 +35,17 @@ const iconMap: Record<ToastType, typeof Info> = {
 }
 
 const accentMap: Record<ToastType, string> = {
-  info: 'border-blue-400 bg-blue-50',
-  success: 'border-emerald-400 bg-emerald-50',
-  warning: 'border-amber-400 bg-amber-50',
-  error: 'border-rose-400 bg-rose-50',
+  info: 'border-blue-400 bg-blue-50 dark:bg-blue-950/60 dark:border-blue-700',
+  success: 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 dark:border-emerald-700',
+  warning: 'border-amber-400 bg-amber-50 dark:bg-amber-950/60 dark:border-amber-700',
+  error: 'border-rose-400 bg-rose-50 dark:bg-rose-950/60 dark:border-rose-700',
 }
 
 const iconColorMap: Record<ToastType, string> = {
-  info: 'text-blue-600',
-  success: 'text-emerald-600',
-  warning: 'text-amber-600',
-  error: 'text-rose-600',
+  info: 'text-blue-600 dark:text-blue-400',
+  success: 'text-emerald-600 dark:text-emerald-400',
+  warning: 'text-amber-600 dark:text-amber-400',
+  error: 'text-rose-600 dark:text-rose-400',
 }
 
 function SingleToast({
