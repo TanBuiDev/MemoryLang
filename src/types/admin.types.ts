@@ -37,6 +37,7 @@ export interface AdminUserStats {
   totalUsers: number
   newUsers7d: number
   activeUsers30d: number
+  onlineUsers: number
   totalVocab: number
   globalVocab: number
   totalDecks: number

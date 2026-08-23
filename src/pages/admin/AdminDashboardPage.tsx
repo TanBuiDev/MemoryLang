@@ -100,11 +100,18 @@ export default function AdminDashboardPage() {
           colorClass="bg-purple-300"
         />
         <StatCard
+          title="Đang Online"
+          value={loading ? '...' : stats?.onlineUsers ?? 0}
+          description="Người dùng trực tuyến trong 5 phút qua"
+          icon={Zap}
+          colorClass="bg-emerald-300"
+        />
+        <StatCard
           title="Thư viện từ vựng"
           value={loading ? '...' : stats?.globalVocab ?? 0}
           description={loading ? '...' : `Đang được học: ${stats?.totalVocab ?? 0}`}
           icon={BookOpen}
-          colorClass="bg-emerald-300"
+          colorClass="bg-orange-300"
         />
         <StatCard
           title="Bộ từ vựng (Decks)"

@@ -54,6 +54,18 @@ export const adminService = {
       .gte('created_at', sevenDaysAgo.toISOString())
     if (err2) throw err2
 
+    // Đếm người dùng online (5 phút)
+    const fiveMinutesAgo = new Date()
+    fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5)
+    const { count: onlineUsers, error: errOnline } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .gte('last_active_at', fiveMinutesAgo.toISOString())
+    if (errOnline && errOnline.code !== 'PGRST116') {
+      console.error('Online count error', errOnline)
+      // Không throw để tránh crash dashboard nếu schema cũ chưa cập nhật
+    }
+
     // Đếm tổng active user_terms của tất cả người dùng
     const { count: totalVocab, error: err3 } = await supabase
       .from('user_terms')
@@ -98,6 +110,7 @@ export const adminService = {
       totalUsers: totalUsers ?? 0,
       newUsers7d: newUsers7d ?? 0,
       activeUsers30d: activeUsersSet.size || (totalUsers ?? 0), // Fallback về totalUsers nếu không có session
+      onlineUsers: onlineUsers ?? 0,
       totalVocab: totalVocab ?? 0,
       globalVocab: globalVocab ?? 0,
       totalDecks: totalDecks ?? 0,
