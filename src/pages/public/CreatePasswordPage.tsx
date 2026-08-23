@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate, Navigate } from 'react-router-dom'
+import { useNavigate, Navigate, useLocation } from 'react-router-dom'
 import { BrandLogo, BrandMark } from '@/components/common/BrandLogo'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
@@ -26,9 +26,12 @@ export function CreatePasswordPage() {
   const [message, setMessage] = useState('')
   const [isError, setIsError] = useState(false)
 
+  const location = useLocation()
+  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo ?? '/app/dashboard'
+  
   if (!isSupabaseConfigured || !user) return <Navigate to="/login" replace />
-  if (profile?.password_set && profile?.onboarding_completed) return <Navigate to="/app/dashboard" replace />
-  if (profile?.password_set) return <Navigate to="/onboarding" replace />
+  if (profile?.password_set && profile?.onboarding_completed) return <Navigate to={returnTo} replace />
+  if (profile?.password_set) return <Navigate to="/onboarding" state={{ returnTo }} replace />
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -55,7 +58,12 @@ export function CreatePasswordPage() {
       await authService.markPasswordSet(user!.id)
       const updated = await authService.getProfile(user!.id)
       if (updated) setProfile(updated)
-      navigate(updated?.onboarding_completed ? '/app/dashboard' : '/onboarding')
+      
+      if (updated?.onboarding_completed) {
+        navigate(returnTo)
+      } else {
+        navigate('/onboarding', { state: { returnTo } })
+      }
     } catch (error) {
       setMessage(getErrorMessage(error))
       setIsError(true)

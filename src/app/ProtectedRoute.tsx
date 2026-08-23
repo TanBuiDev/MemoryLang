@@ -52,12 +52,12 @@ export function ProtectedRoute() {
   }, [accessToken, profile, requiresChallenge, setProfile, user])
 
   if (loading || (Boolean(user) && mfaLoading) || (Boolean(user) && activationCheckedToken !== accessToken)) return <AppLoading />
-  if (isSupabaseConfigured && !user) return <Navigate to="/login" state={{ returnTo: `${location.pathname}${location.search}` }} replace />
-  if (requiresChallenge) return <Navigate to="/mfa-challenge" state={{ returnTo: `${location.pathname}${location.search}` }} replace />
+  if (isSupabaseConfigured && !user) return <Navigate to="/login" state={{ returnTo: (location.state as { returnTo?: string } | null)?.returnTo ?? `${location.pathname}${location.search}` }} replace />
+  if (requiresChallenge) return <Navigate to="/mfa-challenge" state={{ returnTo: (location.state as { returnTo?: string } | null)?.returnTo ?? `${location.pathname}${location.search}` }} replace />
   if (!profile) return <AppLoading />
   const signedInWithGoogle = session?.user.app_metadata.provider === 'google'
-  if (!profile.password_set && !signedInWithGoogle) return <Navigate to="/create-password" replace />
-  if (!profile.onboarding_completed) return <Navigate to="/onboarding" replace />
+  if (!profile.password_set && !signedInWithGoogle) return <Navigate to="/create-password" state={{ returnTo: (location.state as { returnTo?: string } | null)?.returnTo ?? `${location.pathname}${location.search}` }} replace />
+  if (!profile.onboarding_completed) return <Navigate to="/onboarding" state={{ returnTo: (location.state as { returnTo?: string } | null)?.returnTo ?? `${location.pathname}${location.search}` }} replace />
 
   return <Outlet />
 }

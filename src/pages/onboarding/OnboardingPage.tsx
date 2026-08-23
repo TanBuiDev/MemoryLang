@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate, Navigate } from 'react-router-dom'
+import { useNavigate, Navigate, useLocation } from 'react-router-dom'
 import { BrandLogo, BrandMark } from '@/components/common/BrandLogo'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
@@ -23,11 +23,13 @@ export function OnboardingPage() {
   const [dailyGoal, setDailyGoal] = useState(10)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const location = useLocation()
+  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo ?? '/app/dashboard'
   const t = createTranslator(getDefaultUiLanguage(nativeLanguage))
 
   if (!user) return <Navigate to="/login" replace />
   if (loading || (isSupabaseConfigured && !profile)) return null
-  if (profile && !profile.password_set) return <Navigate to="/create-password" replace />
+  if (profile && !profile.password_set) return <Navigate to="/create-password" state={{ returnTo }} replace />
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -52,7 +54,7 @@ export function OnboardingPage() {
         setProfile(profile)
       }
 
-      navigate('/app/dashboard')
+      navigate(returnTo)
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Could not finish onboarding.')
     } finally {

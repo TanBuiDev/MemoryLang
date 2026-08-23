@@ -259,8 +259,8 @@ export function ExamResultPage() {
         <div className="neo-card p-10 text-center space-y-4">
           <p className="font-black text-lg text-danger">Không tìm thấy kết quả bài làm.</p>
           <Button asChild variant="secondary">
-            <Link to="/app/exams">
-              <ArrowLeft size={16} /> Quay lại danh sách đề
+            <Link to={isStandalone ? '/' : '/app/exams'}>
+              <ArrowLeft size={16} /> {isStandalone ? 'Về trang chủ' : 'Quay lại danh sách đề'}
             </Link>
           </Button>
         </div>
@@ -418,8 +418,8 @@ export function ExamResultPage() {
 
           <div className="flex flex-wrap items-center gap-2.5">
             <Button asChild variant="secondary" className="font-black shadow-[3px_3px_0_var(--border)]">
-              <Link to="/app/exams">
-                <ArrowLeft size={16} /> Quay lại danh sách đề
+              <Link to={isStandalone ? '/' : '/app/exams'}>
+                <ArrowLeft size={16} /> {isStandalone ? 'Về trang chủ' : 'Quay lại danh sách đề'}
               </Link>
             </Button>
             <Button

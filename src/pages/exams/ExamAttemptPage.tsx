@@ -630,8 +630,8 @@ export function ExamAttemptPage() {
         <div className="neo-card p-10 text-center font-black space-y-4">
           <HelpCircle className="mx-auto text-danger" size={40} />
           <h2 className="text-2xl">Không tìm thấy lần làm bài thi này</h2>
-          <Button variant="primary" onClick={() => navigate(isStandalone && attemptDetail?.attempt?.exam_id ? `/e/${attemptDetail.attempt.exam_id}` : '/app/exams')}>
-            Quay lại danh sách đề thi
+          <Button variant="primary" onClick={() => navigate(isStandalone ? '/' : '/app/exams')}>
+            {isStandalone ? 'Trở về trang chủ' : 'Quay lại danh sách đề thi'}
           </Button>
         </div>
       </div>
@@ -643,8 +643,8 @@ export function ExamAttemptPage() {
         <div className="neo-card p-10 text-center font-black space-y-4">
           <AlertTriangle className="mx-auto text-warning" size={40} />
           <h2 className="text-2xl">Đề thi chưa có dữ liệu phần làm bài</h2>
-          <Button variant="primary" onClick={() => navigate(isStandalone && attemptDetail?.attempt?.exam_id ? `/e/${attemptDetail.attempt.exam_id}` : '/app/exams')}>
-            Quay lại danh sách đề thi
+          <Button variant="primary" onClick={() => navigate(isStandalone ? '/' : '/app/exams')}>
+            {isStandalone ? 'Trở về trang chủ' : 'Quay lại danh sách đề thi'}
           </Button>
         </div>
       </div>
@@ -678,10 +678,10 @@ export function ExamAttemptPage() {
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="ghost"
-                onClick={() => navigate(isStandalone && attemptDetail?.attempt?.exam_id ? `/e/${attemptDetail.attempt.exam_id}` : '/app/exams')}
+                onClick={() => navigate(isStandalone ? '/' : '/app/exams')}
                 className="h-7 px-2 text-xs font-black"
               >
-                <ArrowLeft size={14} className="mr-1" /> Danh sách đề
+                <ArrowLeft size={14} className="mr-1" /> {isStandalone ? 'Thoát' : 'Danh sách đề'}
               </Button>
               <span className="text-muted-foreground font-bold">/</span>
               <span className="text-xs font-black uppercase text-secondary">
