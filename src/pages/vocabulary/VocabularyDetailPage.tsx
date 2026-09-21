@@ -397,26 +397,54 @@ export function VocabularyDetailPage() {
 
   const [pageInputValue, setPageInputValue] = useState('')
   const [pageInputError, setPageInputError] = useState(false)
+  const [isPagePickerOpen, setIsPagePickerOpen] = useState(false)
+  const pageInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (currentIndex !== -1) {
       setPageInputValue(String(currentIndex + 1))
       setPageInputError(false)
+      setIsPagePickerOpen(false)
     }
   }, [currentIndex])
 
+  const pagePickerValue = /^\d+$/.test(pageInputValue)
+    ? Math.min(Math.max(Number(pageInputValue), 1), vocabularyIds.length)
+    : currentIndex + 1
+
+  const pagePickerSlots = Array.from({ length: 5 }, (_, index) => {
+    const position = pagePickerValue + index - 2
+    return position >= 1 && position <= vocabularyIds.length ? position : null
+  })
+
+  const updatePagePickerValue = (step: number) => {
+    const nextPosition = Math.min(Math.max(pagePickerValue + step, 1), vocabularyIds.length)
+    setPageInputValue(String(nextPosition))
+    setPageInputError(false)
+    setIsPagePickerOpen(true)
+  }
+
+  const navigateToPage = (pageNum: number) => {
+    const targetId = vocabularyIds[pageNum - 1]
+    setPageInputError(false)
+    setIsPagePickerOpen(false)
+
+    if (targetId && targetId !== id) {
+      navigate(`/app/vocabulary/${targetId}`, { state: { vocabularyIds } })
+    }
+    pageInputRef.current?.blur()
+  }
+
   const handlePageInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      updatePagePickerValue(e.key === 'ArrowDown' ? 1 : -1)
+    } else if (e.key === 'Enter') {
       const pageNum = Number(pageInputValue)
       const isValidPage = /^\d+$/.test(pageInputValue) && Number.isInteger(pageNum) && pageNum >= 1 && pageNum <= vocabularyIds.length
 
       if (isValidPage) {
-        setPageInputError(false)
-        const targetId = vocabularyIds[pageNum - 1]
-        if (targetId && targetId !== id) {
-          navigate(`/app/vocabulary/${targetId}`, { state: { vocabularyIds } })
-        }
-        e.currentTarget.blur()
+        navigateToPage(pageNum)
       } else {
         setPageInputError(true)
       }
@@ -430,6 +458,13 @@ export function VocabularyDetailPage() {
   const handlePageInputBlur = () => {
     setPageInputValue(String(currentIndex + 1))
     setPageInputError(false)
+    setIsPagePickerOpen(false)
+  }
+
+  const handlePagePickerWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    if (e.deltaY === 0) return
+    updatePagePickerValue(e.deltaY > 0 ? 1 : -1)
   }
 
   const targetOptions = useMemo(
@@ -1106,8 +1141,12 @@ export function VocabularyDetailPage() {
             </Button>
           </HotkeyTooltip>
           {currentIndex !== -1 && (
-            <div className="relative flex items-center flex-nowrap whitespace-nowrap text-sm font-black px-2.5 h-10 rounded bg-card border-2 border-border text-center select-none shadow-[3px_3px_0px_var(--border)]">
+            <div
+              className="relative flex items-center flex-nowrap whitespace-nowrap text-sm font-black px-2.5 h-10 rounded bg-card border-2 border-border text-center select-none shadow-[3px_3px_0px_var(--border)]"
+              onWheel={handlePagePickerWheel}
+            >
               <input
+                ref={pageInputRef}
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
@@ -1115,17 +1154,59 @@ export function VocabularyDetailPage() {
                 onChange={(e) => {
                   setPageInputValue(e.target.value)
                   setPageInputError(false)
+                  setIsPagePickerOpen(true)
                 }}
-                onFocus={(e) => e.currentTarget.select()}
+                onFocus={(e) => {
+                  e.currentTarget.select()
+                  setIsPagePickerOpen(true)
+                }}
                 onKeyDown={handlePageInputKeyDown}
                 onBlur={handlePageInputBlur}
                 className={`w-10 bg-transparent text-center focus:outline-none focus:bg-muted rounded border p-0.5 font-black ${pageInputError ? 'border-destructive text-destructive' : 'border-transparent focus:border-border'}`}
+                role="combobox"
                 aria-label={t('vocabulary.positionInputLabel')}
                 aria-describedby={pageInputError ? 'vocabulary-position-error' : undefined}
                 aria-invalid={pageInputError}
+                aria-haspopup="listbox"
+                aria-expanded={isPagePickerOpen}
+                aria-controls="vocabulary-position-picker"
+                aria-activedescendant={isPagePickerOpen ? `vocabulary-position-${pagePickerValue}` : undefined}
                 title={t('vocabulary.positionInputHint', { total: vocabularyIds.length })}
               />
               <span className="text-muted-foreground pl-0.5 font-bold">/ {vocabularyIds.length}</span>
+              {isPagePickerOpen && (
+                <div
+                  id="vocabulary-position-picker"
+                  role="listbox"
+                  aria-label={t('vocabulary.positionPickerLabel')}
+                  className="absolute bottom-[calc(100%+0.75rem)] left-1/2 z-50 grid w-16 -translate-x-1/2 grid-rows-5 overflow-hidden rounded-lg border-2 border-border bg-card p-1 shadow-[4px_4px_0_var(--border)]"
+                  onMouseDown={(e) => e.preventDefault()}
+                >
+                  {pagePickerSlots.map((position, index) => (
+                    <div
+                      key={`${position ?? 'empty'}-${index}`}
+                      data-testid="position-picker-slot"
+                      className="flex h-8 items-center justify-center"
+                    >
+                      {position !== null && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          role="option"
+                          id={`vocabulary-position-${position}`}
+                          aria-label={t('vocabulary.positionPickerOption', { position })}
+                          aria-selected={position === pagePickerValue}
+                          tabIndex={-1}
+                          className={`h-8 min-h-8 w-full px-0 py-0 text-sm transition-all ${position === pagePickerValue ? 'border-2 border-border bg-primary text-primary-foreground shadow-[2px_2px_0_var(--border)]' : index === 0 || index === 4 ? 'border-transparent opacity-40 shadow-none hover:opacity-100' : 'border-transparent opacity-70 shadow-none hover:opacity-100'}`}
+                          onClick={() => navigateToPage(position)}
+                        >
+                          {position}
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
               {pageInputError && (
                 <span
                   id="vocabulary-position-error"

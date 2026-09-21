@@ -67,6 +67,8 @@ vi.mock('@/i18n', () => ({
         'vocabulary.positionInputLabel': 'Vị trí từ vựng',
         'vocabulary.positionInputHint': 'Nhập vị trí từ 1 đến {total}',
         'vocabulary.positionInputError': 'Nhập số nguyên từ 1 đến {total}.',
+        'vocabulary.positionPickerLabel': 'Chọn vị trí từ vựng',
+        'vocabulary.positionPickerOption': 'Chuyển đến từ số {position}',
       }
       let template = map[key] || key
       if (params) {
@@ -358,6 +360,71 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     expect(pageInput).toHaveFocus()
     expect(pageInput).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByRole('alert')).toHaveTextContent('Nhập số nguyên từ 1 đến 3.')
+  })
+
+  it('mở wheel picker 5 dòng và giữ vị trí đang chọn ở dòng giữa', async () => {
+    const user = userEvent.setup()
+    const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3', 'entry-4', 'entry-5'] }
+    renderPage('/app/vocabulary/entry-2', state)
+
+    expect(await screen.findByText('two')).toBeInTheDocument()
+
+    await user.click(screen.getByLabelText('Vị trí từ vựng'))
+
+    const picker = screen.getByRole('listbox', { name: 'Chọn vị trí từ vựng' })
+    const slots = within(picker).getAllByTestId('position-picker-slot')
+    expect(slots).toHaveLength(5)
+    expect(within(slots[2]).getByRole('option')).toHaveTextContent('2')
+    expect(within(slots[2]).getByRole('option')).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('cuộn chỉ thay đổi số xem trước rồi Enter mới chuyển từ', async () => {
+    const user = userEvent.setup()
+    const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3', 'entry-4', 'entry-5'] }
+    renderPage('/app/vocabulary/entry-2', state)
+
+    expect(await screen.findByText('two')).toBeInTheDocument()
+
+    const pageInput = screen.getByLabelText('Vị trí từ vựng')
+    await user.click(pageInput)
+    const entry3CallsBeforeWheel = vi.mocked(relationshipService.getCard).mock.calls.filter(([termId]) => termId === 'entry-3').length
+    fireEvent.wheel(pageInput, { deltaY: 100 })
+
+    expect(pageInput).toHaveValue('3')
+    expect(vi.mocked(relationshipService.getCard).mock.calls.filter(([termId]) => termId === 'entry-3')).toHaveLength(entry3CallsBeforeWheel)
+
+    await user.keyboard('{Enter}')
+    expect(vi.mocked(relationshipService.getCard).mock.calls.filter(([termId]) => termId === 'entry-3')).toHaveLength(entry3CallsBeforeWheel + 1)
+  })
+
+  it('click một số bất kỳ trong 5 dòng sẽ chuyển ngay và đóng picker', async () => {
+    const user = userEvent.setup()
+    const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3', 'entry-4', 'entry-5'] }
+    renderPage('/app/vocabulary/entry-2', state)
+
+    expect(await screen.findByText('two')).toBeInTheDocument()
+
+    await user.click(screen.getByLabelText('Vị trí từ vựng'))
+    await user.click(screen.getByRole('option', { name: 'Chuyển đến từ số 4' }))
+
+    expect(relationshipService.getCard).toHaveBeenCalledWith('entry-4')
+    expect(screen.queryByRole('listbox', { name: 'Chọn vị trí từ vựng' })).not.toBeInTheDocument()
+  })
+
+  it('dùng phím mũi tên để thay đổi số đang chọn mà không rời ô nhập', async () => {
+    const user = userEvent.setup()
+    const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3', 'entry-4', 'entry-5'] }
+    renderPage('/app/vocabulary/entry-2', state)
+
+    expect(await screen.findByText('two')).toBeInTheDocument()
+
+    const pageInput = screen.getByLabelText('Vị trí từ vựng')
+    await user.click(pageInput)
+    await user.keyboard('{ArrowDown}')
+
+    expect(pageInput).toHaveValue('3')
+    expect(pageInput).toHaveFocus()
+    expect(screen.getByRole('option', { name: 'Chuyển đến từ số 3' })).toHaveAttribute('aria-selected', 'true')
   })
 
   it('điều hướng đến từ tiếp theo khi xóa từ hiện tại', async () => {
