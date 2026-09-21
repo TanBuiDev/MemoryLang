@@ -143,6 +143,7 @@ Every page checks `isSupabaseConfigured && Boolean(user)`. If false, uses hardco
 Quiz demo sessions scope vocabulary by deck through `getDemoVocabularyForDeck()`. Study demo mode still uses the shared `demoVocabulary` list when a deck is selected until that flow is explicitly scoped.
 
 ### Vocabulary data model
+- The vocabulary detail position control selects its current number on focus for quick replacement. Enter validates and navigates before returning focus to page-level shortcuts; Escape or blur cancels unconfirmed input, and out-of-range/non-integer values keep focus with an accessible inline error.
 - **meanings**: Definition/explanation of the word (English, from Dictionary API).
 - **translation**: Direct translation of the word to user's native language (e.g., banana → quả chuối).
 - **examples[].translation**: Translation of the example sentence.

@@ -396,42 +396,40 @@ export function VocabularyDetailPage() {
   }, [id, autoPlayEnabled, item])
 
   const [pageInputValue, setPageInputValue] = useState('')
+  const [pageInputError, setPageInputError] = useState(false)
 
   useEffect(() => {
     if (currentIndex !== -1) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync page input with currentIndex changes
       setPageInputValue(String(currentIndex + 1))
+      setPageInputError(false)
     }
   }, [currentIndex])
 
   const handlePageInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      const pageNum = parseInt(pageInputValue, 10)
-      if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= vocabularyIds.length) {
+      const pageNum = Number(pageInputValue)
+      const isValidPage = /^\d+$/.test(pageInputValue) && Number.isInteger(pageNum) && pageNum >= 1 && pageNum <= vocabularyIds.length
+
+      if (isValidPage) {
+        setPageInputError(false)
         const targetId = vocabularyIds[pageNum - 1]
         if (targetId && targetId !== id) {
           navigate(`/app/vocabulary/${targetId}`, { state: { vocabularyIds } })
         }
+        e.currentTarget.blur()
       } else {
-        setPageInputValue(String(currentIndex + 1))
+        setPageInputError(true)
       }
-      e.currentTarget.blur()
     } else if (e.key === 'Escape') {
       setPageInputValue(String(currentIndex + 1))
+      setPageInputError(false)
       e.currentTarget.blur()
     }
   }
 
   const handlePageInputBlur = () => {
-    const pageNum = parseInt(pageInputValue, 10)
-    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= vocabularyIds.length) {
-      const targetId = vocabularyIds[pageNum - 1]
-      if (targetId && targetId !== id) {
-        navigate(`/app/vocabulary/${targetId}`, { state: { vocabularyIds } })
-      }
-    } else {
-      setPageInputValue(String(currentIndex + 1))
-    }
+    setPageInputValue(String(currentIndex + 1))
+    setPageInputError(false)
   }
 
   const targetOptions = useMemo(
@@ -1108,19 +1106,35 @@ export function VocabularyDetailPage() {
             </Button>
           </HotkeyTooltip>
           {currentIndex !== -1 && (
-            <div className="flex items-center flex-nowrap whitespace-nowrap text-sm font-black px-2.5 h-10 rounded bg-card border-2 border-border text-center select-none shadow-[3px_3px_0px_var(--border)]">
+            <div className="relative flex items-center flex-nowrap whitespace-nowrap text-sm font-black px-2.5 h-10 rounded bg-card border-2 border-border text-center select-none shadow-[3px_3px_0px_var(--border)]">
               <input
-                type="number"
-                min={1}
-                max={vocabularyIds.length}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={pageInputValue}
-                onChange={(e) => setPageInputValue(e.target.value)}
+                onChange={(e) => {
+                  setPageInputValue(e.target.value)
+                  setPageInputError(false)
+                }}
+                onFocus={(e) => e.currentTarget.select()}
                 onKeyDown={handlePageInputKeyDown}
                 onBlur={handlePageInputBlur}
-                className="w-10 bg-transparent text-center focus:outline-none focus:bg-muted rounded border border-transparent focus:border-border p-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none font-black"
-                aria-label="Vị trí trang"
+                className={`w-10 bg-transparent text-center focus:outline-none focus:bg-muted rounded border p-0.5 font-black ${pageInputError ? 'border-destructive text-destructive' : 'border-transparent focus:border-border'}`}
+                aria-label={t('vocabulary.positionInputLabel')}
+                aria-describedby={pageInputError ? 'vocabulary-position-error' : undefined}
+                aria-invalid={pageInputError}
+                title={t('vocabulary.positionInputHint', { total: vocabularyIds.length })}
               />
               <span className="text-muted-foreground pl-0.5 font-bold">/ {vocabularyIds.length}</span>
+              {pageInputError && (
+                <span
+                  id="vocabulary-position-error"
+                  role="alert"
+                  className="absolute right-0 top-[calc(100%+0.5rem)] z-50 rounded-md border-2 border-border bg-destructive px-2 py-1 text-xs font-black text-destructive-foreground shadow-[3px_3px_0_var(--border)]"
+                >
+                  {t('vocabulary.positionInputError', { total: vocabularyIds.length })}
+                </span>
+              )}
             </div>
           )}
           <HotkeyTooltip hotkey="Alt + →">

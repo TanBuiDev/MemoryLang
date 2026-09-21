@@ -64,6 +64,9 @@ vi.mock('@/i18n', () => ({
         'vocabulary.deleteConfirmSingle': 'Xóa "{word}"?',
         'settings.studyHotkeys': 'Phím tắt',
         'vocabulary.audio': 'Âm thanh',
+        'vocabulary.positionInputLabel': 'Vị trí từ vựng',
+        'vocabulary.positionInputHint': 'Nhập vị trí từ 1 đến {total}',
+        'vocabulary.positionInputError': 'Nhập số nguyên từ 1 đến {total}.',
       }
       let template = map[key] || key
       if (params) {
@@ -131,7 +134,7 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     expect(await screen.findByText('one')).toBeInTheDocument()
 
     // Xác nhận chỉ số vị trí hiển thị đúng
-    expect(screen.getByLabelText('Vị trí trang')).toHaveValue(1)
+    expect(screen.getByLabelText('Vị trí từ vựng')).toHaveValue('1')
     expect(screen.getByText('/ 3')).toBeInTheDocument()
 
     // Nút Lùi lại (quay lại) phải bị vô hiệu hóa
@@ -164,7 +167,7 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     expect(await screen.findByText('two')).toBeInTheDocument()
 
     // Chỉ số vị trí hiển thị đúng (dựa trên danh sách fallback lấy từ mockTerms: entry-1, entry-2, entry-3)
-    expect(screen.getByLabelText('Vị trí trang')).toHaveValue(2)
+    expect(screen.getByLabelText('Vị trí từ vựng')).toHaveValue('2')
     expect(screen.getByText('/ 3')).toBeInTheDocument()
 
     // Cả hai nút điều hướng Lùi lại và Tiếp theo đều không bị vô hiệu hóa ở vị trí số 2
@@ -294,20 +297,67 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     expect(await screen.findByText('one')).toBeInTheDocument()
 
     // Tìm ô nhập vị trí trang
-    const pageInput = screen.getByLabelText('Vị trí trang')
+    const pageInput = screen.getByLabelText('Vị trí từ vựng')
     expect(pageInput).toBeInTheDocument()
-    expect(pageInput).toHaveValue(1)
+    expect(pageInput).toHaveValue('1')
 
     // Xóa số 1 cũ và nhập số 3
     await user.clear(pageInput)
     await user.type(pageInput, '3')
-    expect(pageInput).toHaveValue(3)
+    expect(pageInput).toHaveValue('3')
 
     // Nhấn Enter
     await user.keyboard('{Enter}')
 
     // Xác nhận đã gọi API lấy từ vựng thứ 3 (entry-3)
     expect(relationshipService.getCard).toHaveBeenCalledWith('entry-3')
+  })
+
+  it('chọn toàn bộ số hiện tại khi focus để có thể nhập vị trí mới ngay', async () => {
+    const user = userEvent.setup()
+    const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3'] }
+    renderPage('/app/vocabulary/entry-2', state)
+
+    expect(await screen.findByText('two')).toBeInTheDocument()
+
+    const pageInput = screen.getByLabelText('Vị trí từ vựng')
+    await user.click(pageInput)
+    await user.keyboard('3')
+
+    expect(pageInput).toHaveValue('3')
+  })
+
+  it('hủy giá trị chưa xác nhận khi click ra ngoài thay vì tự điều hướng', async () => {
+    const user = userEvent.setup()
+    const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3'] }
+    renderPage('/app/vocabulary/entry-1', state)
+
+    expect(await screen.findByText('one')).toBeInTheDocument()
+
+    const pageInput = screen.getByLabelText('Vị trí từ vựng')
+    await user.click(pageInput)
+    await user.keyboard('3')
+    await user.click(screen.getByText('one'))
+
+    expect(pageInput).toHaveValue('1')
+    expect(relationshipService.getCard).not.toHaveBeenCalledWith('entry-3')
+  })
+
+  it('giữ focus và hiển thị lỗi khi vị trí nhập không hợp lệ', async () => {
+    const user = userEvent.setup()
+    const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3'] }
+    renderPage('/app/vocabulary/entry-1', state)
+
+    expect(await screen.findByText('one')).toBeInTheDocument()
+
+    const pageInput = screen.getByLabelText('Vị trí từ vựng')
+    await user.click(pageInput)
+    await user.keyboard('4')
+    await user.keyboard('{Enter}')
+
+    expect(pageInput).toHaveFocus()
+    expect(pageInput).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('alert')).toHaveTextContent('Nhập số nguyên từ 1 đến 3.')
   })
 
   it('điều hướng đến từ tiếp theo khi xóa từ hiện tại', async () => {
