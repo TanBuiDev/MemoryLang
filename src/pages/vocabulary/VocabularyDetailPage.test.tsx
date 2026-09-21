@@ -362,7 +362,7 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Nhập số nguyên từ 1 đến 3.')
   })
 
-  it('mở wheel picker 5 dòng và giữ vị trí đang chọn ở dòng giữa', async () => {
+  it('dùng chính ô nhập làm dòng giữa của wheel picker mà không hiển thị số bị trùng', async () => {
     const user = userEvent.setup()
     const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3', 'entry-4', 'entry-5'] }
     renderPage('/app/vocabulary/entry-2', state)
@@ -374,8 +374,12 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     const picker = screen.getByRole('listbox', { name: 'Chọn vị trí từ vựng' })
     const slots = within(picker).getAllByTestId('position-picker-slot')
     expect(slots).toHaveLength(5)
-    expect(within(slots[2]).getByRole('option')).toHaveTextContent('2')
+    expect(picker).toHaveAttribute('data-layout', 'centered-on-input')
+    expect(within(slots[2]).getByRole('option')).toBeEmptyDOMElement()
     expect(within(slots[2]).getByRole('option')).toHaveAttribute('aria-selected', 'true')
+    expect(within(picker).queryByText('2')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Vị trí từ vựng')).toHaveValue('2')
+    expect(screen.getByTestId('vocabulary-action-toolbar')).toHaveClass('bottom-16')
   })
 
   it('cuộn chỉ thay đổi số xem trước rồi Enter mới chuyển từ', async () => {
@@ -425,6 +429,24 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     expect(pageInput).toHaveValue('3')
     expect(pageInput).toHaveFocus()
     expect(screen.getByRole('option', { name: 'Chuyển đến từ số 3' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('click lại ô số giữa khi picker đang mở sẽ xác nhận vị trí xem trước', async () => {
+    const user = userEvent.setup()
+    const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3', 'entry-4', 'entry-5'] }
+    renderPage('/app/vocabulary/entry-2', state)
+
+    expect(await screen.findByText('two')).toBeInTheDocument()
+
+    const pageInput = screen.getByLabelText('Vị trí từ vựng')
+    await user.click(pageInput)
+    fireEvent.wheel(pageInput, { deltaY: 100 })
+    const entry3CallsBeforeConfirm = vi.mocked(relationshipService.getCard).mock.calls.filter(([termId]) => termId === 'entry-3').length
+
+    await user.click(pageInput)
+
+    expect(vi.mocked(relationshipService.getCard).mock.calls.filter(([termId]) => termId === 'entry-3')).toHaveLength(entry3CallsBeforeConfirm + 1)
+    expect(screen.queryByRole('listbox', { name: 'Chọn vị trí từ vựng' })).not.toBeInTheDocument()
   })
 
   it('điều hướng đến từ tiếp theo khi xóa từ hiện tại', async () => {

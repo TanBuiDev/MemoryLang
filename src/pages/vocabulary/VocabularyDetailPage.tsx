@@ -399,6 +399,7 @@ export function VocabularyDetailPage() {
   const [pageInputError, setPageInputError] = useState(false)
   const [isPagePickerOpen, setIsPagePickerOpen] = useState(false)
   const pageInputRef = useRef<HTMLInputElement>(null)
+  const pageInputWasOpenOnPointerDownRef = useRef(false)
 
   useEffect(() => {
     if (currentIndex !== -1) {
@@ -1128,7 +1129,13 @@ export function VocabularyDetailPage() {
         </div>
 
         {/* Thanh công cụ điều hướng/thao tác (actions) */}
-        <div className="fixed bottom-0 left-0 right-0 z-30 bg-background border-t-2 border-border p-3.5 flex items-center justify-center gap-1.5 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] sm:static sm:bg-transparent sm:border-none sm:p-0 sm:shadow-none sm:w-auto sm:flex-row sm:flex-wrap">
+        <div
+          data-testid="vocabulary-action-toolbar"
+          className={cn(
+            "fixed left-0 right-0 z-30 bg-background border-t-2 border-border p-3.5 flex items-center justify-center gap-1.5 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] sm:static sm:bg-transparent sm:border-none sm:p-0 sm:shadow-none sm:w-auto sm:flex-row sm:flex-wrap",
+            isPagePickerOpen ? "bottom-16" : "bottom-0"
+          )}
+        >
           <HotkeyTooltip hotkey="Alt + ←">
             <Button
               variant="ghost"
@@ -1145,68 +1152,90 @@ export function VocabularyDetailPage() {
               className="relative flex items-center flex-nowrap whitespace-nowrap text-sm font-black px-2.5 h-10 rounded bg-card border-2 border-border text-center select-none shadow-[3px_3px_0px_var(--border)]"
               onWheel={handlePagePickerWheel}
             >
-              <input
-                ref={pageInputRef}
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={pageInputValue}
-                onChange={(e) => {
-                  setPageInputValue(e.target.value)
-                  setPageInputError(false)
-                  setIsPagePickerOpen(true)
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.select()
-                  setIsPagePickerOpen(true)
-                }}
-                onKeyDown={handlePageInputKeyDown}
-                onBlur={handlePageInputBlur}
-                className={`w-10 bg-transparent text-center focus:outline-none focus:bg-muted rounded border p-0.5 font-black ${pageInputError ? 'border-destructive text-destructive' : 'border-transparent focus:border-border'}`}
-                role="combobox"
-                aria-label={t('vocabulary.positionInputLabel')}
-                aria-describedby={pageInputError ? 'vocabulary-position-error' : undefined}
-                aria-invalid={pageInputError}
-                aria-haspopup="listbox"
-                aria-expanded={isPagePickerOpen}
-                aria-controls="vocabulary-position-picker"
-                aria-activedescendant={isPagePickerOpen ? `vocabulary-position-${pagePickerValue}` : undefined}
-                title={t('vocabulary.positionInputHint', { total: vocabularyIds.length })}
-              />
-              <span className="text-muted-foreground pl-0.5 font-bold">/ {vocabularyIds.length}</span>
-              {isPagePickerOpen && (
-                <div
-                  id="vocabulary-position-picker"
-                  role="listbox"
-                  aria-label={t('vocabulary.positionPickerLabel')}
-                  className="absolute bottom-[calc(100%+0.75rem)] left-1/2 z-50 grid w-16 -translate-x-1/2 grid-rows-5 overflow-hidden rounded-lg border-2 border-border bg-card p-1 shadow-[4px_4px_0_var(--border)]"
-                  onMouseDown={(e) => e.preventDefault()}
-                >
-                  {pagePickerSlots.map((position, index) => (
-                    <div
-                      key={`${position ?? 'empty'}-${index}`}
-                      data-testid="position-picker-slot"
-                      className="flex h-8 items-center justify-center"
-                    >
-                      {position !== null && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          role="option"
-                          id={`vocabulary-position-${position}`}
-                          aria-label={t('vocabulary.positionPickerOption', { position })}
-                          aria-selected={position === pagePickerValue}
-                          tabIndex={-1}
-                          className={`h-8 min-h-8 w-full px-0 py-0 text-sm transition-all ${position === pagePickerValue ? 'border-2 border-border bg-primary text-primary-foreground shadow-[2px_2px_0_var(--border)]' : index === 0 || index === 4 ? 'border-transparent opacity-40 shadow-none hover:opacity-100' : 'border-transparent opacity-70 shadow-none hover:opacity-100'}`}
-                          onClick={() => navigateToPage(position)}
-                        >
-                          {position}
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="relative flex h-full w-10 items-center justify-center">
+                <input
+                  ref={pageInputRef}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={pageInputValue}
+                  onChange={(e) => {
+                    setPageInputValue(e.target.value)
+                    setPageInputError(false)
+                    setIsPagePickerOpen(true)
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.select()
+                    setIsPagePickerOpen(true)
+                  }}
+                  onPointerDown={() => {
+                    pageInputWasOpenOnPointerDownRef.current = isPagePickerOpen
+                  }}
+                  onClick={() => {
+                    if (pageInputWasOpenOnPointerDownRef.current) {
+                      const pageNum = Number(pageInputValue)
+                      if (/^\d+$/.test(pageInputValue) && pageNum >= 1 && pageNum <= vocabularyIds.length) {
+                        navigateToPage(pageNum)
+                      }
+                    }
+                  }}
+                  onKeyDown={handlePageInputKeyDown}
+                  onBlur={handlePageInputBlur}
+                  className={`relative z-[60] w-10 bg-card text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-1 rounded border p-0.5 font-black ${pageInputError ? 'border-destructive text-destructive' : isPagePickerOpen ? 'border-border bg-primary text-primary-foreground' : 'border-transparent'}`}
+                  role="combobox"
+                  aria-label={t('vocabulary.positionInputLabel')}
+                  aria-describedby={pageInputError ? 'vocabulary-position-error' : undefined}
+                  aria-invalid={pageInputError}
+                  aria-haspopup="listbox"
+                  aria-expanded={isPagePickerOpen}
+                  aria-controls="vocabulary-position-picker"
+                  aria-activedescendant={isPagePickerOpen ? `vocabulary-position-${pagePickerValue}` : undefined}
+                  title={t('vocabulary.positionInputHint', { total: vocabularyIds.length })}
+                />
+                {isPagePickerOpen && (
+                  <div
+                    id="vocabulary-position-picker"
+                    role="listbox"
+                    aria-label={t('vocabulary.positionPickerLabel')}
+                    data-layout="centered-on-input"
+                    className="absolute left-1/2 top-1/2 z-50 grid w-12 -translate-x-1/2 -translate-y-1/2 grid-rows-5 overflow-hidden rounded-lg border-2 border-border bg-card p-1 shadow-[4px_4px_0_var(--border)]"
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
+                    {pagePickerSlots.map((position, index) => (
+                      <div
+                        key={`${position ?? 'empty'}-${index}`}
+                        data-testid="position-picker-slot"
+                        className="flex h-8 items-center justify-center"
+                      >
+                        {position !== null && (index === 2 ? (
+                          <div
+                            role="option"
+                            id={`vocabulary-position-${position}`}
+                            aria-label={t('vocabulary.positionPickerOption', { position })}
+                            aria-selected="true"
+                            className="h-8 w-full"
+                          />
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            role="option"
+                            id={`vocabulary-position-${position}`}
+                            aria-label={t('vocabulary.positionPickerOption', { position })}
+                            aria-selected="false"
+                            tabIndex={-1}
+                            className={`h-8 min-h-8 w-full border-transparent px-0 py-0 text-sm shadow-none ${index === 0 || index === 4 ? 'opacity-40 hover:opacity-100' : 'opacity-70 hover:opacity-100'}`}
+                            onClick={() => navigateToPage(position)}
+                          >
+                            {position}
+                          </Button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <span className="relative z-[60] bg-card pl-0.5 font-bold text-muted-foreground">/ {vocabularyIds.length}</span>
               {pageInputError && (
                 <span
                   id="vocabulary-position-error"
