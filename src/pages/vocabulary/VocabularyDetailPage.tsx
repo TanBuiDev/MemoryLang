@@ -399,6 +399,7 @@ export function VocabularyDetailPage() {
   const [pageInputError, setPageInputError] = useState(false)
   const [isPagePickerOpen, setIsPagePickerOpen] = useState(false)
   const pageInputRef = useRef<HTMLInputElement>(null)
+  const pagePositionControlRef = useRef<HTMLDivElement>(null)
   const pageInputWasOpenOnPointerDownRef = useRef(false)
 
   useEffect(() => {
@@ -424,6 +425,20 @@ export function VocabularyDetailPage() {
     setPageInputError(false)
     setIsPagePickerOpen(true)
   }
+
+  useEffect(() => {
+    const positionControl = pagePositionControlRef.current
+    if (!positionControl) return
+
+    const handleWheel = (event: WheelEvent) => {
+      if (event.deltaY === 0) return
+      event.preventDefault()
+      updatePagePickerValue(event.deltaY > 0 ? 1 : -1)
+    }
+
+    positionControl.addEventListener('wheel', handleWheel, { passive: false })
+    return () => positionControl.removeEventListener('wheel', handleWheel)
+  }, [item, pagePickerValue, vocabularyIds.length])
 
   const navigateToPage = (pageNum: number) => {
     const targetId = vocabularyIds[pageNum - 1]
@@ -460,12 +475,6 @@ export function VocabularyDetailPage() {
     setPageInputValue(String(currentIndex + 1))
     setPageInputError(false)
     setIsPagePickerOpen(false)
-  }
-
-  const handlePagePickerWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    if (e.deltaY === 0) return
-    updatePagePickerValue(e.deltaY > 0 ? 1 : -1)
   }
 
   const targetOptions = useMemo(
@@ -1149,8 +1158,8 @@ export function VocabularyDetailPage() {
           </HotkeyTooltip>
           {currentIndex !== -1 && (
             <div
+              ref={pagePositionControlRef}
               className="relative flex items-center flex-nowrap whitespace-nowrap text-sm font-black px-2.5 h-10 rounded bg-card border-2 border-border text-center select-none shadow-[3px_3px_0px_var(--border)]"
-              onWheel={handlePagePickerWheel}
             >
               <div className="relative flex h-full w-10 items-center justify-center">
                 <input
@@ -1172,11 +1181,15 @@ export function VocabularyDetailPage() {
                     pageInputWasOpenOnPointerDownRef.current = isPagePickerOpen
                   }}
                   onClick={() => {
-                    if (pageInputWasOpenOnPointerDownRef.current) {
-                      const pageNum = Number(pageInputValue)
-                      if (/^\d+$/.test(pageInputValue) && pageNum >= 1 && pageNum <= vocabularyIds.length) {
-                        navigateToPage(pageNum)
-                      }
+                    if (!pageInputWasOpenOnPointerDownRef.current) {
+                      setPageInputValue('')
+                      setPageInputError(false)
+                      return
+                    }
+
+                    const pageNum = Number(pageInputValue)
+                    if (/^\d+$/.test(pageInputValue) && pageNum >= 1 && pageNum <= vocabularyIds.length) {
+                      navigateToPage(pageNum)
                     }
                   }}
                   onKeyDown={handlePageInputKeyDown}

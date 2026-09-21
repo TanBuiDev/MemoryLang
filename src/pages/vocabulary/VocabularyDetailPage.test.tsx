@@ -315,7 +315,7 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     expect(relationshipService.getCard).toHaveBeenCalledWith('entry-3')
   })
 
-  it('chọn toàn bộ số hiện tại khi focus để có thể nhập vị trí mới ngay', async () => {
+  it('xóa số hiện tại khi click lần đầu để có thể nhập vị trí mới ngay', async () => {
     const user = userEvent.setup()
     const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3'] }
     renderPage('/app/vocabulary/entry-2', state)
@@ -324,9 +324,32 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
 
     const pageInput = screen.getByLabelText('Vị trí từ vựng')
     await user.click(pageInput)
+    expect(pageInput).toHaveValue('')
     await user.keyboard('3')
 
     expect(pageInput).toHaveValue('3')
+  })
+
+  it('đăng ký wheel listener không passive để ngăn cuộn cả trang', async () => {
+    const addEventListenerSpy = vi.spyOn(EventTarget.prototype, 'addEventListener')
+
+    try {
+      const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3'] }
+      renderPage('/app/vocabulary/entry-1', state)
+
+      expect(await screen.findByText('one')).toBeInTheDocument()
+      expect(addEventListenerSpy.mock.calls).toEqual(
+        expect.arrayContaining([
+          expect.arrayContaining([
+            'wheel',
+            expect.any(Function),
+            expect.objectContaining({ passive: false }),
+          ]),
+        ])
+      )
+    } finally {
+      addEventListenerSpy.mockRestore()
+    }
   })
 
   it('hủy giá trị chưa xác nhận khi click ra ngoài thay vì tự điều hướng', async () => {
@@ -378,7 +401,7 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     expect(within(slots[2]).getByRole('option')).toBeEmptyDOMElement()
     expect(within(slots[2]).getByRole('option')).toHaveAttribute('aria-selected', 'true')
     expect(within(picker).queryByText('2')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Vị trí từ vựng')).toHaveValue('2')
+    expect(screen.getByLabelText('Vị trí từ vựng')).toHaveValue('')
     expect(screen.getByTestId('vocabulary-action-toolbar')).toHaveClass('bottom-16')
   })
 
