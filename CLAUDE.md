@@ -69,6 +69,8 @@ src/
 | `language_profiles` | Per-language learning config |
 | `global_terms` | Shared vocabulary cache |
 | `user_terms` | Per-user vocabulary progress (status, counts, review schedule, SRS state) linked to `global_terms` |
+| `vocabulary_proposals` | Deduplicated learner suggestions awaiting admin review, ranked by vote count |
+| `vocabulary_proposal_votes` | One vote per learner and pending vocabulary proposal |
 | `term_relationships` | Directed links between user vocabulary terms (derivative, collocation, synonym, antonym, idiom, related) |
 | `decks` | Vocabulary collections |
 | `deck_terms` | Many-to-many join between decks and vocabulary terms; current app code links deck entries by `global_term_id` |
@@ -143,6 +145,7 @@ Every page checks `isSupabaseConfigured && Boolean(user)`. If false, uses hardco
 Quiz demo sessions scope vocabulary by deck through `getDemoVocabularyForDeck()`. Study demo mode still uses the shared `demoVocabulary` list when a deck is selected until that flow is explicitly scoped.
 
 ### Vocabulary data model
+- Learners cannot create `global_terms` directly. When a vocabulary search has no result, an authenticated learner can submit a suggestion through `submit_vocabulary_proposal`; pending duplicates share one proposal row and each learner contributes at most one vote. Admin review is exposed through `review_vocabulary_proposal`: approval enriches and adds only to `global_terms` (never automatically to a proposer's `user_terms`), while rejection removes the item from the pending queue. Proposal tables deny direct learner writes and rely on RLS plus authenticated RPC grants.
 - The vocabulary detail position control clears its current number on the first pointer click for immediate replacement and opens an accessible five-row wheel centered on the existing input itself, with two neighboring positions above and two below rather than duplicating the selected number in a separate popup. The fixed mobile toolbar lifts while the wheel is open so the lower rows remain visible. Its native non-passive wheel handler prevents the page from scrolling while the user previews nearby positions; scrolling or Arrow Up/Down changes the preview without navigating. Enter, clicking the center input again, or clicking any visible neighboring number navigates and closes the picker. Escape or blur cancels unconfirmed input, and out-of-range/non-integer values keep focus with an accessible inline error.
 - Vocabulary audio uses latest-request-wins coordination across cached files, generated TTS, and browser SpeechSynthesis. Changing the detail route stops the previous playback, auto-play ignores React Query placeholder data, cached blobs are reused only when their source URL still matches, broken cached blobs are removed before retrying the source URL, and file playback honors `repeat` plus `onEnd` without allowing an obsolete request to resume later. Detail-page playback passes the vocabulary source language, and short supported language codes are normalized to their full speech locales.
 - **meanings**: Definition/explanation of the word (English, from Dictionary API).

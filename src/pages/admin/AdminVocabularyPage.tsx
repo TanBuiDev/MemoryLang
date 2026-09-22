@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, FileDown, FileSpreadsheet, RefreshCw, Trash2 } from 'lucide-react'
+import { BookOpen, CheckCircle2, FileDown, FileSpreadsheet, Inbox, RefreshCw, Trash2, XCircle } from 'lucide-react'
 import { adminService } from '@/services/supabase/admin.service'
+import { enrichVocabulary } from '@/services/api/enrichVocabulary.api'
+import {
+  vocabularyProposalService,
+  type VocabularyProposal,
+} from '@/services/supabase/vocabularyProposal.service'
 import { DataTable } from '@/components/admin/DataTable'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -12,6 +17,10 @@ export default function AdminVocabularyPage() {
   const [error, setError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [proposals, setProposals] = useState<VocabularyProposal[]>([])
+  const [proposalsLoading, setProposalsLoading] = useState(true)
+  const [reviewingProposalId, setReviewingProposalId] = useState<string | null>(null)
+  const [pendingRejectProposal, setPendingRejectProposal] = useState<VocabularyProposal | null>(null)
 
   const loadTerms = async () => {
     try {
@@ -26,9 +35,80 @@ export default function AdminVocabularyPage() {
     }
   }
 
+  const loadProposals = async () => {
+    try {
+      setProposalsLoading(true)
+      const data = await vocabularyProposalService.listPending()
+      setProposals(data)
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message || 'Không thể tải các đề xuất từ vựng')
+    } finally {
+      setProposalsLoading(false)
+    }
+  }
+
   useEffect(() => {
     void loadTerms()
+    void loadProposals()
   }, [])
+
+  const handleApproveProposal = async (proposal: VocabularyProposal) => {
+    try {
+      setError(null)
+      setReviewingProposalId(proposal.id)
+      const enriched = await enrichVocabulary(
+        proposal.source_text,
+        proposal.source_language,
+        proposal.native_language,
+      )
+      const hasUsefulContent = Boolean(enriched.translationText?.trim())
+        || enriched.meanings.some((meaning) => Boolean(meaning.text.trim() || meaning.translation?.trim()))
+      if (!hasUsefulContent) {
+        throw new Error('Chưa lấy được nghĩa đáng tin cậy cho từ này. Vui lòng thử duyệt lại sau.')
+      }
+
+      await vocabularyProposalService.approve(proposal.id, enriched)
+      setProposals((current) => current.filter((item) => item.id !== proposal.id))
+      showToast({
+        type: 'success',
+        title: 'Đã duyệt đề xuất',
+        message: `“${proposal.source_text}” đã được thêm vào kho từ vựng dùng chung.`,
+      })
+      void loadTerms()
+    } catch (err: any) {
+      console.error(err)
+      const message = err.message || 'Không thể duyệt đề xuất từ vựng'
+      setError(message)
+      showToast({ type: 'error', title: 'Duyệt đề xuất thất bại', message })
+    } finally {
+      setReviewingProposalId(null)
+    }
+  }
+
+  const handleRejectProposal = async () => {
+    if (!pendingRejectProposal) return
+    const proposal = pendingRejectProposal
+    try {
+      setError(null)
+      setReviewingProposalId(proposal.id)
+      await vocabularyProposalService.reject(proposal.id)
+      setProposals((current) => current.filter((item) => item.id !== proposal.id))
+      showToast({
+        type: 'success',
+        title: 'Đã từ chối đề xuất',
+        message: `“${proposal.source_text}” đã được gỡ khỏi hàng chờ.`,
+      })
+    } catch (err: any) {
+      console.error(err)
+      const message = err.message || 'Không thể từ chối đề xuất từ vựng'
+      setError(message)
+      showToast({ type: 'error', title: 'Từ chối đề xuất thất bại', message })
+    } finally {
+      setReviewingProposalId(null)
+      setPendingRejectProposal(null)
+    }
+  }
 
   const handleDelete = async (id: string) => {
     try {
@@ -180,6 +260,70 @@ export default function AdminVocabularyPage() {
     },
   ]
 
+  const proposalColumns = [
+    {
+      header: 'Từ đề xuất',
+      className: 'w-[28%]',
+      accessor: (row: VocabularyProposal) => (
+        <div>
+          <p className="font-black text-slate-900">{row.source_text}</p>
+          <p className="mt-0.5 text-[11px] font-bold text-slate-500">
+            {row.source_language.toUpperCase()} → {row.native_language.toUpperCase()}
+          </p>
+        </div>
+      ),
+    },
+    {
+      header: 'Mức ưu tiên',
+      className: 'w-[18%]',
+      accessor: (row: VocabularyProposal) => (
+        <span className="inline-flex rounded-lg border-2 border-slate-900 bg-amber-200 px-2.5 py-1 text-xs font-black text-slate-900">
+          {row.vote_count} lượt
+        </span>
+      ),
+    },
+    {
+      header: 'Ngày gửi',
+      className: 'w-[20%]',
+      accessor: (row: VocabularyProposal) => (
+        <span className="text-xs font-bold text-slate-600">
+          {new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(row.created_at))}
+        </span>
+      ),
+    },
+    {
+      header: 'Hành động',
+      className: 'w-[34%]',
+      accessor: (row: VocabularyProposal) => {
+        const isReviewing = reviewingProposalId === row.id
+        return (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="primary"
+              disabled={isReviewing}
+              onClick={() => void handleApproveProposal(row)}
+              className="min-h-9 px-3 py-1.5 text-xs"
+            >
+              <CheckCircle2 size={15} />
+              {isReviewing ? 'Đang xử lý...' : 'Duyệt & thêm'}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isReviewing}
+              onClick={() => setPendingRejectProposal(row)}
+              className="min-h-9 px-3 py-1.5 text-xs"
+            >
+              <XCircle size={15} />
+              Từ chối
+            </Button>
+          </div>
+        )
+      },
+    },
+  ]
+
   const searchFilter = (row: any, query: string) => {
     return row.source_text.toLowerCase().includes(query.toLowerCase())
   }
@@ -245,6 +389,54 @@ export default function AdminVocabularyPage() {
         </div>
       )}
 
+      <section className="flex flex-col gap-3" aria-labelledby="proposal-queue-title">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Inbox className="h-5 w-5 text-purple-700" aria-hidden="true" />
+              <h2 id="proposal-queue-title" className="text-lg font-black text-slate-900">
+                ĐỀ XUẤT ĐANG CHỜ DUYỆT
+              </h2>
+              {!proposalsLoading && (
+                <span className="rounded-full border-2 border-slate-900 bg-purple-200 px-2 py-0.5 text-xs font-black">
+                  {proposals.length}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs font-bold text-slate-500">
+              Đề xuất trùng nhau được gộp thành lượt và ưu tiên theo số lượt cao nhất.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => void loadProposals()}
+            disabled={proposalsLoading}
+            className="min-h-9 px-3 py-1.5 text-xs"
+          >
+            <RefreshCw size={14} className={proposalsLoading ? 'animate-spin' : ''} />
+            Làm mới đề xuất
+          </Button>
+        </div>
+
+        {proposals.length > 0 || proposalsLoading ? (
+          <DataTable
+            columns={proposalColumns}
+            data={proposals}
+            searchPlaceholder="Tìm trong đề xuất..."
+            searchFilter={(row, query) => row.source_text.toLowerCase().includes(query.toLowerCase())}
+            isLoading={proposalsLoading}
+            fitContent
+          />
+        ) : (
+          <div className="neo-card border-3 border-slate-900 bg-emerald-50 p-5 text-center shadow-[4px_4px_0px_0px_#000]">
+            <CheckCircle2 className="mx-auto h-7 w-7 text-emerald-700" aria-hidden="true" />
+            <p className="mt-2 font-black text-slate-900">Không có đề xuất đang chờ</p>
+            <p className="mt-1 text-xs font-bold text-slate-500">Hàng chờ đã được xử lý hết.</p>
+          </div>
+        )}
+      </section>
+
       {/* DataTable */}
       <DataTable
         columns={columns}
@@ -267,6 +459,18 @@ export default function AdminVocabularyPage() {
           void handleDelete(pendingDeleteId)
         }}
         onCancel={() => setPendingDeleteId(null)}
+      />
+      <ConfirmModal
+        open={pendingRejectProposal !== null}
+        title="Từ chối đề xuất?"
+        description={pendingRejectProposal
+          ? `“${pendingRejectProposal.source_text}” sẽ được gỡ khỏi hàng chờ đề xuất.`
+          : ''}
+        confirmLabel="Xác nhận từ chối"
+        cancelLabel="Hủy"
+        variant="danger"
+        onConfirm={() => void handleRejectProposal()}
+        onCancel={() => setPendingRejectProposal(null)}
       />
     </div>
   )
