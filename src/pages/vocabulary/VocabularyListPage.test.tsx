@@ -6,9 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { VocabularyListPage } from '@/pages/vocabulary/VocabularyListPage'
 import { deckService } from '@/services/supabase/deck.service'
+import { vocabularyProposalService } from '@/services/supabase/vocabularyProposal.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { speak } from '@/utils/audio'
+
+const toastMocks = vi.hoisted(() => ({ showToast: vi.fn() }))
 
 vi.mock('@tanstack/react-virtual', () => ({
   useVirtualizer: ({ count }: { count: number }) => ({
@@ -22,6 +25,10 @@ vi.mock('@/services/supabase/client', () => ({ isSupabaseConfigured: true, supab
 vi.mock('@/services/supabase/vocabulary.service', () => ({
   vocabularyService: { list: vi.fn(), create: vi.fn(), update: vi.fn(), removeMany: vi.fn() },
 }))
+vi.mock('@/services/supabase/vocabularyProposal.service', () => ({
+  vocabularyProposalService: { submit: vi.fn() },
+}))
+vi.mock('@/components/ui/toast', () => ({ showToast: toastMocks.showToast }))
 vi.mock('@/services/supabase/deck.service', () => ({
   deckService: {
     list: vi.fn(),
@@ -208,6 +215,31 @@ describe('VocabularyListPage learner flows', () => {
     await user.type(search, 'apple{Enter}')
 
     expect(screen.queryByText('Thêm Từ Vựng Mới')).not.toBeInTheDocument()
+  })
+
+  it('cho người học gửi một lượt đề xuất khi không tìm thấy từ', async () => {
+    const user = userEvent.setup()
+    vi.mocked(vocabularyService.list).mockResolvedValue([])
+    vi.mocked(vocabularyProposalService.submit).mockResolvedValue({
+      outcome: 'merged',
+      proposal_id: 'proposal-1',
+      vote_count: 3,
+    })
+    renderPage()
+
+    const search = await screen.findByRole('searchbox', { name: 'Tìm từ vựng' })
+    await user.type(search, 'take off')
+    await user.click(await screen.findByRole('button', { name: 'Đề xuất từ này' }))
+
+    expect(vocabularyProposalService.submit).toHaveBeenCalledWith({
+      sourceText: 'take off',
+      sourceLanguage: 'en',
+      nativeLanguage: 'vi',
+    })
+    expect(toastMocks.showToast).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'success',
+      title: 'Đã ghi nhận lượt đề xuất',
+    }))
   })
 
   it('tìm theo bản dịch, nghĩa và thẻ', async () => {

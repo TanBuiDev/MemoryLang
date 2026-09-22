@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Input, Label } from '@/components/ui/input'
+import { showToast } from '@/components/ui/toast'
 import { buildLessonBatch } from '@/features/decks/bulkLessons'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { useAudioPreload } from '@/hooks/useAudioPreload'
@@ -23,6 +24,7 @@ import { studyLocalDb } from '@/services/local/studyLocalDb'
 import { isSupabaseConfigured } from '@/services/supabase/client'
 import { deckService } from '@/services/supabase/deck.service'
 import { isSubscriptionLimitError } from '@/services/supabase/subscription.errors'
+import { vocabularyProposalService } from '@/services/supabase/vocabularyProposal.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
@@ -445,6 +447,50 @@ export function VocabularyListPage() {
       ])
     },
   })
+  const proposalMutation = useMutation({
+    mutationFn: (sourceText: string) => vocabularyProposalService.submit({
+      sourceText,
+      sourceLanguage: profile?.current_target_language ?? 'en',
+      nativeLanguage: profile?.native_language ?? 'vi',
+    }),
+    onSuccess: (result) => {
+      if (result.outcome === 'already_available') {
+        showToast({
+          type: 'info',
+          title: t('vocabulary.proposalAlreadyAvailableTitle'),
+          message: t('vocabulary.proposalAlreadyAvailableMessage'),
+        })
+        void queryClient.invalidateQueries({ queryKey: ['vocabulary', user?.id] })
+        return
+      }
+
+      if (result.outcome === 'already_voted') {
+        showToast({
+          type: 'info',
+          title: t('vocabulary.proposalAlreadyVotedTitle'),
+          message: t('vocabulary.proposalAlreadyVotedMessage'),
+        })
+        return
+      }
+
+      showToast({
+        type: 'success',
+        title: result.outcome === 'merged'
+          ? t('vocabulary.proposalMergedTitle')
+          : t('vocabulary.proposalSentTitle'),
+        message: result.outcome === 'merged'
+          ? t('vocabulary.proposalMergedMessage', { count: result.vote_count ?? 1 })
+          : t('vocabulary.proposalSentMessage'),
+      })
+    },
+    onError: (error) => {
+      showToast({
+        type: 'error',
+        title: t('vocabulary.proposalFailedTitle'),
+        message: error instanceof Error ? error.message : t('vocabulary.proposalFailedMessage'),
+      })
+    },
+  })
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -499,6 +545,12 @@ export function VocabularyListPage() {
     if (!term || !profile?.is_admin || rawVocabulary.some((item) => matchesVocabularySearch(item, term))) return
     setQuickAddWord(term)
     setQuickAddModalOpen(true)
+  }
+
+  function submitProposal() {
+    const term = searchText.trim()
+    if (!term || !user || profile?.is_admin || proposalMutation.isPending) return
+    proposalMutation.mutate(term)
   }
 
   const hasActiveFilters = filters.statuses.size > 0 || filters.itemTypes.size > 0 || filters.flagged || filters.noDeck || filters.deckId !== null
@@ -790,6 +842,17 @@ export function VocabularyListPage() {
               <>
                 <Button onClick={openQuickAdd}>{t('vocabulary.notFoundAdd')}</Button>
                 <span className="text-xs text-muted-foreground font-semibold">{t('vocabulary.notFoundPressEnter')}</span>
+              </>
+            ) : user ? (
+              <>
+                <Button onClick={submitProposal} disabled={proposalMutation.isPending}>
+                  {proposalMutation.isPending
+                    ? t('vocabulary.proposalSending')
+                    : t('vocabulary.proposalSubmit')}
+                </Button>
+                <span className="max-w-md text-xs text-muted-foreground font-semibold">
+                  {t('vocabulary.proposalHint')}
+                </span>
               </>
             ) : null}
           </div>
