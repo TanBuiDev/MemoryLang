@@ -154,8 +154,15 @@ export function VocabularyListPage() {
         setIsSortOpen(false)
       }
     }
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') setIsSortOpen(false)
+    }
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
   }, [])
 
   const filters = useMemo(() => parseFilterParams(searchParams), [searchParams])
@@ -495,6 +502,17 @@ export function VocabularyListPage() {
   }
 
   const hasActiveFilters = filters.statuses.size > 0 || filters.itemTypes.size > 0 || filters.flagged || filters.noDeck || filters.deckId !== null
+  const dueCount = rawVocabulary.filter((item) => item.next_review_at && new Date(item.next_review_at) <= new Date()).length
+
+  function toggleQuickStatus(status: VocabularyStatus) {
+    const statuses = new Set(filters.statuses)
+    if (statuses.size === 1 && statuses.has(status)) statuses.clear()
+    else {
+      statuses.clear()
+      statuses.add(status)
+    }
+    setFilters({ ...filters, statuses })
+  }
 
   const headerActions = selectMode ? (
     <div className="flex flex-wrap items-center gap-2">
@@ -515,6 +533,11 @@ export function VocabularyListPage() {
     </div>
   ) : (
     <div className="flex flex-wrap items-center gap-2">
+      {dueCount > 0 ? (
+        <Button asChild variant="primary">
+          <Link to="/app/review">{t('vocabulary.reviewNow', { count: dueCount })}</Link>
+        </Button>
+      ) : null}
       <Button
         variant={hasActiveFilters ? 'secondary' : 'ghost'}
         onClick={() => setFilterOpen(true)}
@@ -588,6 +611,9 @@ export function VocabularyListPage() {
           <div className="w-full sm:w-48 relative" ref={sortDropdownRef}>
             <button
               type="button"
+              aria-label={t('vocabulary.sortLabel')}
+              aria-haspopup="listbox"
+              aria-expanded={isSortOpen}
               onClick={() => setIsSortOpen(!isSortOpen)}
               className="flex items-center justify-between w-full min-h-10 rounded-[var(--radius)] border-2 border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-[2px_2px_0_var(--border)] outline-none transition hover:translate-x-[0.5px] hover:translate-y-[0.5px] hover:shadow-[1px_1px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_var(--border)]"
             >
@@ -601,7 +627,7 @@ export function VocabularyListPage() {
               <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isSortOpen && "rotate-180")} />
             </button>
             {isSortOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] rounded-[var(--radius)] overflow-hidden py-1 divide-y divide-border animate-in fade-in duration-100">
+              <div role="listbox" aria-label={t('vocabulary.sortLabel')} className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] rounded-[var(--radius)] overflow-hidden py-1 divide-y divide-border animate-in fade-in duration-100">
                 {[
                   { value: 'newest', label: t('vocabulary.sortNewest') },
                   { value: 'oldest', label: t('vocabulary.sortOldest') },
@@ -612,6 +638,8 @@ export function VocabularyListPage() {
                   <button
                     key={opt.value}
                     type="button"
+                    role="option"
+                    aria-selected={sortOrder === opt.value}
                     onClick={() => {
                       setSortOrder(opt.value as any)
                       setIsSortOpen(false)
@@ -631,6 +659,30 @@ export function VocabularyListPage() {
           </div>
         </div>
         <div className="flex overflow-x-auto pb-1.5 -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap md:overflow-x-visible gap-1.5 scrollbar-none shrink-0 max-w-full">
+          <Button
+            type="button"
+            variant={filters.statuses.size === 1 && filters.statuses.has('need_review') ? 'secondary' : 'ghost'}
+            onClick={() => toggleQuickStatus('need_review')}
+            className="shrink-0 text-xs"
+          >
+            {t('vocabulary.statusNeedReview')}
+          </Button>
+          <Button
+            type="button"
+            variant={filters.statuses.size === 1 && filters.statuses.has('difficult') ? 'secondary' : 'ghost'}
+            onClick={() => toggleQuickStatus('difficult')}
+            className="shrink-0 text-xs"
+          >
+            {t('vocabulary.statusDifficult')}
+          </Button>
+          <Button
+            type="button"
+            variant={filters.flagged ? 'secondary' : 'ghost'}
+            onClick={() => setFilters({ ...filters, flagged: !filters.flagged })}
+            className="shrink-0 text-xs"
+          >
+            {t('vocabulary.filterFlagged')}
+          </Button>
           {hasActiveFilters && (
             <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
               <span className="whitespace-nowrap">
@@ -642,6 +694,7 @@ export function VocabularyListPage() {
                     idiom: 'vocabulary.idiom',
                     sentence: 'vocabulary.sentence',
                   }[it])),
+                  filters.flagged ? t('vocabulary.filterFlagged') : null,
                   filters.noDeck ? t('vocabulary.filterNoDeck') : null,
                   filters.deckId ? deckService.getDeckPath(filters.deckId, decksQuery.data ?? []) : null,
                 ].filter(Boolean).join(' · ')}
@@ -681,6 +734,22 @@ export function VocabularyListPage() {
               </>
             ) : null}
           </div>
+        </Card>
+      ) : null}
+      {deckedTermIdsQuery.isError || deckTermIdsQuery.isError || decksQuery.isError ? (
+        <Card role="alert" className="mb-4 border-danger bg-red-50">
+          <p className="font-black text-danger">{t('vocabulary.filterDataError')}</p>
+          <Button
+            className="mt-3"
+            variant="ghost"
+            onClick={() => {
+              void decksQuery.refetch()
+              if (filters.noDeck) void deckedTermIdsQuery.refetch()
+              if (filters.deckId) void deckTermIdsQuery.refetch()
+            }}
+          >
+            {t('actions.retry')}
+          </Button>
         </Card>
       ) : null}
       {!vocabularyQuery.isLoading && !vocabularyQuery.isError && vocabulary.length === 0 && rawVocabulary.length > 0 && !debouncedSearch.trim() ? (
@@ -723,6 +792,7 @@ export function VocabularyListPage() {
                         type="checkbox"
                         checked={selectedIds.has(item.id)}
                         onChange={() => toggleSelect(item.id)}
+                        aria-label={t('vocabulary.selectWord', { word: item.source_text })}
                         className="h-5 w-5 accent-slate-900 cursor-pointer"
                       />
                     ) : null}
@@ -759,7 +829,6 @@ export function VocabularyListPage() {
                     <div key="actions" className="flex gap-2 ml-auto">
                       {selectMode ? null : (
                         <>
-                          <Button asChild variant="secondary" className="neo-button text-xs font-black border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000]"><Link to={`/app/vocabulary/${item.id}`} state={{ vocabularyIds }}>{t('vocabulary.view')}</Link></Button>
                           {profile?.is_admin && <Button variant="ghost" onClick={() => requestDeleteSingle(item.id, item.source_text)} className="text-rose-600 hover:text-rose-800 text-xs font-black">{t('vocabulary.delete')}</Button>}
                         </>
                       )}

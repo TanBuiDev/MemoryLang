@@ -244,4 +244,45 @@ describe('VocabularyListPage learner flows', () => {
     const unscheduled = screen.getByRole('link', { name: 'I am looking forward to hearing from you.' })
     expect(scheduled.compareDocumentPosition(unscheduled) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
+
+  it('có lối tắt lọc từ khó và hiển thị số từ cần ôn', async () => {
+    const user = userEvent.setup()
+    vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary)
+    renderPage()
+
+    expect(await screen.findByRole('link', { name: 'Ôn ngay · 1' })).toHaveAttribute('href', '/app/review')
+    await user.click(screen.getByRole('button', { name: 'Từ khó' }))
+
+    expect(screen.getByRole('link', { name: 'break the ice' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'apple' })).not.toBeInTheDocument()
+  })
+
+  it('hiển thị đầy đủ bộ lọc gắn cờ đang hoạt động', async () => {
+    vi.mocked(vocabularyService.list).mockResolvedValue([{ ...demoVocabulary[0], flagged: true }])
+    renderPage('/app/vocabulary?flagged=1')
+
+    expect((await screen.findAllByText('Đã gắn cờ')).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('cung cấp ngữ nghĩa truy cập cho menu sắp xếp', async () => {
+    const user = userEvent.setup()
+    vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary.slice(0, 1))
+    renderPage()
+
+    const trigger = await screen.findByRole('button', { name: 'Sắp xếp từ vựng' })
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    await user.click(trigger)
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('listbox', { name: 'Sắp xếp từ vựng' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Sắp xếp theo mới nhất' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('báo lỗi khi không tải được dữ liệu phụ của bộ lọc', async () => {
+    vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary)
+    vi.mocked(deckService.getDeckedTermIds).mockRejectedValue(new Error('network'))
+    renderPage('/app/vocabulary?noDeck=1')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Không thể tải dữ liệu bộ lọc')
+  })
 })
