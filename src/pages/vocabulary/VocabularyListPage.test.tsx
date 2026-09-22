@@ -26,6 +26,9 @@ vi.mock('@/services/supabase/deck.service', () => ({
     list: vi.fn(),
     createLessonBatch: vi.fn(),
     getDeckPath: vi.fn((deckId, decks) => decks?.find((d: any) => d.id === deckId)?.name || ''),
+    getDeckedTermIds: vi.fn(),
+    collectDescendantIds: vi.fn(() => []),
+    listTerms: vi.fn(),
   },
 }))
 vi.mock('@/services/local/studyLocalDb', () => ({
@@ -38,10 +41,10 @@ vi.mock('@/services/local/studyLocalDb', () => ({
 vi.mock('@/hooks/useOnlineStatus', () => ({ useOnlineStatus: () => false }))
 vi.mock('@/utils/audio', () => ({ speak: vi.fn() }))
 
-function renderPage() {
+function renderPage(initialEntry = '/app/vocabulary') {
   return render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter><VocabularyListPage /></MemoryRouter>
+      <MemoryRouter initialEntries={[initialEntry]}><VocabularyListPage /></MemoryRouter>
     </QueryClientProvider>,
   )
 }
@@ -61,6 +64,8 @@ describe('VocabularyListPage bulk lessons', () => {
     })
     vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary.slice(0, 2))
     vi.mocked(deckService.list).mockResolvedValue([{ name: 'Bai hoc 04' }] as never)
+    vi.mocked(deckService.getDeckedTermIds).mockResolvedValue(new Set())
+    vi.mocked(deckService.listTerms).mockResolvedValue([])
   })
 
   it('projects generated lesson count from selected words and lesson size', async () => {
@@ -149,5 +154,79 @@ describe('VocabularyListPage bulk lessons', () => {
 
     expect(await screen.findByText('Không thể tạo bài học. Vui lòng thử lại.')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Xem bộ thẻ' })).not.toBeInTheDocument()
+  })
+})
+
+describe('VocabularyListPage learner flows', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useAuthStore.setState({
+      user: { id: 'user-1' } as never,
+      profile: { current_target_language: 'en', native_language: 'vi' } as never,
+    })
+    vi.mocked(deckService.list).mockResolvedValue([])
+    vi.mocked(deckService.getDeckedTermIds).mockResolvedValue(new Set())
+    vi.mocked(deckService.listTerms).mockResolvedValue([])
+  })
+
+  it('lọc từ chưa có bộ thẻ bằng global_term_id thay vì user term id', async () => {
+    const terms = demoVocabulary.slice(0, 2).map((term, index) => ({
+      ...term,
+      id: `user-term-${index + 1}`,
+      global_term_id: `global-term-${index + 1}`,
+    }))
+    vi.mocked(vocabularyService.list).mockResolvedValue(terms)
+    vi.mocked(deckService.getDeckedTermIds).mockResolvedValue(new Set(['global-term-1']))
+
+    renderPage('/app/vocabulary?noDeck=1')
+
+    expect(await screen.findByRole('link', { name: terms[1].source_text })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: terms[0].source_text })).not.toBeInTheDocument()
+  })
+
+  it('không mở hộp thêm từ khi Enter trên một từ đang tồn tại', async () => {
+    const user = userEvent.setup()
+    vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary.slice(0, 2))
+    renderPage()
+
+    const search = await screen.findByRole('searchbox', { name: 'Tìm từ vựng' })
+    await user.type(search, 'apple{Enter}')
+
+    expect(screen.queryByText('Thêm Từ Vựng Mới')).not.toBeInTheDocument()
+  })
+
+  it('tìm theo bản dịch, nghĩa và thẻ', async () => {
+    const user = userEvent.setup()
+    vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary)
+    renderPage()
+
+    const search = await screen.findByRole('searchbox', { name: 'Tìm từ vựng' })
+    await user.type(search, 'quả táo')
+    expect(await screen.findByRole('link', { name: 'apple' })).toBeInTheDocument()
+
+    await user.clear(search)
+    await user.type(search, 'reducing')
+    expect(await screen.findByRole('link', { name: 'break the ice' })).toBeInTheDocument()
+
+    await user.clear(search)
+    await user.type(search, 'business')
+    expect(await screen.findByRole('link', { name: 'I am looking forward to hearing from you.' })).toBeInTheDocument()
+  })
+
+  it('hiển thị trạng thái rỗng và nút xóa bộ lọc khi bộ lọc không có kết quả', async () => {
+    vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary.slice(0, 1))
+    renderPage('/app/vocabulary?statuses=memorized')
+
+    expect(await screen.findByText('Không có từ phù hợp')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Xóa bộ lọc' })).toBeInTheDocument()
+  })
+
+  it('đưa các từ chưa lên lịch xuống cuối khi sắp xếp theo lịch ôn', async () => {
+    vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary)
+    renderPage('/app/vocabulary?sort=next_review')
+
+    const scheduled = await screen.findByRole('link', { name: 'apple' })
+    const unscheduled = screen.getByRole('link', { name: 'I am looking forward to hearing from you.' })
+    expect(scheduled.compareDocumentPosition(unscheduled) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })

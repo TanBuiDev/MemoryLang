@@ -31,6 +31,29 @@ import type { VocabularyItem, VocabularyItemType, VocabularyStatus } from '@/typ
 import { speak } from '@/utils/audio'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
 
+const normalizeSearchValue = (value: string) => value
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .trim()
+  .toLowerCase()
+
+const matchesVocabularySearch = (item: VocabularyItem, search: string) => {
+  const normalizedSearch = normalizeSearchValue(search)
+  if (!normalizedSearch) return true
+
+  const searchableText = [
+    item.source_text,
+    item.translation,
+    item.note,
+    ...item.tags,
+    ...item.meanings.flatMap((meaning) => [meaning.text, meaning.translation]),
+  ]
+    .filter((value): value is string => Boolean(value))
+    .map(normalizeSearchValue)
+
+  return searchableText.some((value) => value.includes(normalizedSearch))
+}
+
 const statusLabelKeys: Record<VocabularyStatus, string> = {
   new: 'vocabulary.statusNew',
   learning: 'vocabulary.statusLearning',
@@ -47,6 +70,12 @@ const statusBorderClasses: Record<VocabularyStatus, string> = {
   memorized: 'border-l-secondary',
   difficult: 'border-l-destructive',
   need_review: 'border-l-amber-500',
+}
+
+const VALID_SORTS = ['newest', 'oldest', 'next_review', 'wrong', 'alpha'] as const
+const normalizeSort = (raw: string | null): string | null => {
+  if (!raw) return null
+  return VALID_SORTS.includes(raw as (typeof VALID_SORTS)[number]) ? raw : null
 }
 
 function parseFilterParams(params: URLSearchParams): {
@@ -169,11 +198,6 @@ export function VocabularyListPage() {
       return prev
     })
   }, [debouncedSearch, searchParams, setSearchParams])
-  const VALID_SORTS = ['newest', 'oldest', 'next_review', 'wrong', 'alpha'] as const
-  const normalizeSort = (raw: string | null): string | null => {
-    if (!raw) return null
-    return VALID_SORTS.includes(raw as any) ? raw : null
-  }
   const sortOrder = (normalizeSort(searchParams.get('sort')) as 'newest' | 'oldest' | 'next_review' | 'wrong' | 'alpha') || 
                     (normalizeSort(localStorage.getItem('vocab_list_sort')) as 'newest' | 'oldest' | 'next_review' | 'wrong' | 'alpha') || 
                     'newest'
@@ -194,12 +218,11 @@ export function VocabularyListPage() {
         return prev
       }, { replace: true })
     }
-  }, [])
+  }, [searchParams, setSearchParams])
   const rawVocabulary = filterActiveVocabulary(shouldUseRemoteData
     ? vocabularyQuery.data ?? cachedVocabulary
     : demoVocabulary).filter((v) => (v.item_type as string) !== 'grammar' && !v.tags?.some((t) => t === 'grammar' || t === 'pattern'))
   const vocabulary = useMemo(() => {
-    const normalizedSearch = debouncedSearch.trim().toLowerCase()
     let filtered = rawVocabulary
 
     if (filters.statuses.size > 0) {
@@ -212,15 +235,15 @@ export function VocabularyListPage() {
       filtered = filtered.filter((item) => item.flagged)
     }
     if (filters.noDeck) {
-      filtered = filtered.filter((item) => !deckedTermIdsQuery.data?.has(item.id))
+      filtered = deckedTermIdsQuery.data
+        ? filtered.filter((item) => !deckedTermIdsQuery.data.has(item.global_term_id ?? item.id))
+        : []
     }
     if (filters.deckId && deckTermIdsQuery.data) {
       filtered = filtered.filter((item) => deckTermIdsQuery.data.has(item.global_term_id ?? item.id))
     }
-    if (normalizedSearch) {
-      filtered = filtered.filter((item) =>
-        item.source_text.toLowerCase().includes(normalizedSearch),
-      )
+    if (debouncedSearch.trim()) {
+      filtered = filtered.filter((item) => matchesVocabularySearch(item, debouncedSearch))
     }
     const sorted = [...filtered]
     if (sortOrder === 'alpha') {
@@ -230,12 +253,16 @@ export function VocabularyListPage() {
     } else if (sortOrder === 'oldest') {
       sorted.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
     } else if (sortOrder === 'next_review') {
-      sorted.sort((a, b) => (a.next_review_at ?? '').localeCompare(b.next_review_at ?? ''))
+      sorted.sort((a, b) => {
+        if (!a.next_review_at) return b.next_review_at ? 1 : 0
+        if (!b.next_review_at) return -1
+        return a.next_review_at.localeCompare(b.next_review_at)
+      })
     } else if (sortOrder === 'wrong') {
       sorted.sort((a, b) => (b.wrong_count ?? 0) - (a.wrong_count ?? 0))
     }
     return sorted
-  }, [debouncedSearch, filters, rawVocabulary, sortOrder, deckedTermIdsQuery.data])
+  }, [debouncedSearch, filters, rawVocabulary, sortOrder, deckedTermIdsQuery.data, deckTermIdsQuery.data])
 
   const vocabularyIds = useMemo(() => vocabulary.map((v) => v.id), [vocabulary])
 
@@ -338,6 +365,15 @@ export function VocabularyListPage() {
   const [lessonModalOpen, setLessonModalOpen] = useState(false)
   const [wordsPerLesson, setWordsPerLesson] = useState('10')
   const [lessonFeedback, setLessonFeedback] = useState<{ createdDecks: Deck[]; partial: boolean } | null>(null)
+
+  useEffect(() => {
+    if (!selectMode) return
+    setSelectedIds((current) => {
+      const visibleIds = new Set(vocabularyIds)
+      const next = new Set([...current].filter((selectedId) => visibleIds.has(selectedId)))
+      return next.size === current.size ? current : next
+    })
+  }, [selectMode, vocabularyIds])
   const parsedWordsPerLesson = Number(wordsPerLesson)
   const hasValidLessonSize = Number.isInteger(parsedWordsPerLesson) && parsedWordsPerLesson > 0
   const plannedLessons = useMemo(() => {
@@ -453,7 +489,7 @@ export function VocabularyListPage() {
 
   function openQuickAdd() {
     const term = searchText.trim()
-    if (!term) return
+    if (!term || !profile?.is_admin || rawVocabulary.some((item) => matchesVocabularySearch(item, term))) return
     setQuickAddWord(term)
     setQuickAddModalOpen(true)
   }
@@ -528,6 +564,10 @@ export function VocabularyListPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="flex-1 flex items-center gap-2">
             <Input
+              type="search"
+              aria-label={t('vocabulary.search')}
+              name="vocabulary-search"
+              autoComplete="off"
               placeholder={t('vocabulary.search')}
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
@@ -634,9 +674,26 @@ export function VocabularyListPage() {
           <p className="text-xl font-black">{t('vocabulary.notFoundTitle', { term: debouncedSearch.trim() })}</p>
           <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.notFoundDescription')}</p>
           <div className="mt-4 flex flex-col items-center gap-2">
-            <Button onClick={openQuickAdd}>{t('vocabulary.notFoundAdd')}</Button>
-            <span className="text-xs text-muted-foreground font-semibold">{t('vocabulary.notFoundPressEnter')}</span>
+            {profile?.is_admin ? (
+              <>
+                <Button onClick={openQuickAdd}>{t('vocabulary.notFoundAdd')}</Button>
+                <span className="text-xs text-muted-foreground font-semibold">{t('vocabulary.notFoundPressEnter')}</span>
+              </>
+            ) : null}
           </div>
+        </Card>
+      ) : null}
+      {!vocabularyQuery.isLoading && !vocabularyQuery.isError && vocabulary.length === 0 && rawVocabulary.length > 0 && !debouncedSearch.trim() ? (
+        <Card className="text-center">
+          <p className="text-xl font-black">{t('vocabulary.filteredEmptyTitle')}</p>
+          <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.filteredEmptyDescription')}</p>
+          <Button
+            className="mt-4"
+            variant="ghost"
+            onClick={() => setFilters({ statuses: new Set(), itemTypes: new Set(), flagged: false, noDeck: false, deckId: null })}
+          >
+            {t('vocabulary.clearFilters')}
+          </Button>
         </Card>
       ) : null}
       <div ref={containerRef} className="h-[calc(100vh-280px)] overflow-auto [scrollbar-gutter:stable] pr-2">

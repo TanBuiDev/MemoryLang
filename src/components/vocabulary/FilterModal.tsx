@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { X, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
@@ -45,6 +45,21 @@ interface FilterModalProps {
 export function FilterModal({ open, onClose, filters, onChange, decks }: FilterModalProps) {
   const { t } = useI18n()
   const sheetRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
+  const [draftFilters, setDraftFilters] = useState<FilterState>(() => ({
+    ...filters,
+    statuses: new Set(filters.statuses),
+    itemTypes: new Set(filters.itemTypes),
+  }))
+
+  useEffect(() => {
+    if (!open) return
+    setDraftFilters({
+      ...filters,
+      statuses: new Set(filters.statuses),
+      itemTypes: new Set(filters.itemTypes),
+    })
+  }, [filters, open])
 
   useEffect(() => {
     if (!open) return
@@ -59,33 +74,64 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
 
   useEffect(() => {
     if (!open) return
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    sheetRef.current?.focus()
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab' || !sheetRef.current) return
+
+      const focusable = Array.from(sheetRef.current.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), [href], [tabindex]:not([tabindex="-1"])'))
+      if (focusable.length === 0) {
+        e.preventDefault()
+        sheetRef.current.focus()
+        return
+      }
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
     }
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = previousOverflow
+      previouslyFocused?.focus()
+    }
   }, [open, onClose])
 
   if (!open) return null
 
   const toggleStatus = (status: VocabularyStatus) => {
-    const next = new Set(filters.statuses)
+    const next = new Set(draftFilters.statuses)
     if (next.has(status)) next.delete(status)
     else next.add(status)
-    onChange({ ...filters, statuses: next })
+    setDraftFilters({ ...draftFilters, statuses: next })
   }
 
   const toggleItemType = (type: VocabularyItemType) => {
-    const next = new Set(filters.itemTypes)
+    const next = new Set(draftFilters.itemTypes)
     if (next.has(type)) next.delete(type)
     else next.add(type)
-    onChange({ ...filters, itemTypes: next })
+    setDraftFilters({ ...draftFilters, itemTypes: next })
   }
 
-  const hasActiveFilters = filters.statuses.size > 0 || filters.itemTypes.size > 0 || filters.flagged || filters.noDeck || filters.deckId !== null
+  const hasActiveFilters = draftFilters.statuses.size > 0 || draftFilters.itemTypes.size > 0 || draftFilters.flagged || draftFilters.noDeck || draftFilters.deckId !== null
 
   const resetFilters = () => {
-    onChange({
+    setDraftFilters({
       statuses: new Set(),
       itemTypes: new Set(),
       flagged: false,
@@ -95,19 +141,24 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-end justify-center overscroll-contain bg-black/40 backdrop-blur-sm">
       <div
         ref={sheetRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className="w-full max-w-lg animate-in slide-in-from-bottom duration-300 rounded-t-2xl border-x-2 border-t-2 border-border bg-background shadow-[0_-8px_30px_rgba(0,0,0,0.25)]"
       >
         <div className="flex items-center justify-between border-b-2 border-border px-5 py-3.5">
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-black">{t('vocabulary.filter')}</h2>
+            <h2 id={titleId} className="text-lg font-black">{t('vocabulary.filter')}</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
+            aria-label="Đóng bộ lọc"
             className="flex h-8 w-8 items-center justify-center rounded-md border-2 border-border bg-card hover:bg-muted shadow-[2px_2px_0_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)]"
           >
             <X className="h-4 w-4" />
@@ -126,14 +177,14 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
                   key={status}
                   className={cn(
                     'flex items-center gap-2.5 rounded-md border-2 border-border px-3 py-2 cursor-pointer transition-all',
-                    filters.statuses.has(status)
+                    draftFilters.statuses.has(status)
                       ? 'bg-primary/10 border-primary'
                       : 'bg-card hover:bg-muted'
                   )}
                 >
                   <input
                     type="checkbox"
-                    checked={filters.statuses.has(status)}
+                    checked={draftFilters.statuses.has(status)}
                     onChange={() => toggleStatus(status)}
                     className="h-4 w-4 accent-primary rounded"
                   />
@@ -154,14 +205,14 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
                   key={type}
                   className={cn(
                     'flex items-center gap-2.5 rounded-md border-2 border-border px-3 py-2 cursor-pointer transition-all',
-                    filters.itemTypes.has(type)
+                    draftFilters.itemTypes.has(type)
                       ? 'bg-primary/10 border-primary'
                       : 'bg-card hover:bg-muted'
                   )}
                 >
                   <input
                     type="checkbox"
-                    checked={filters.itemTypes.has(type)}
+                    checked={draftFilters.itemTypes.has(type)}
                     onChange={() => toggleItemType(type)}
                     className="h-4 w-4 accent-primary rounded"
                   />
@@ -180,13 +231,13 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
               <label
                 className={cn(
                   'flex items-center gap-2.5 rounded-md border-2 border-border px-3 py-2 cursor-pointer transition-all',
-                  filters.flagged ? 'bg-primary/10 border-primary' : 'bg-card hover:bg-muted'
+                  draftFilters.flagged ? 'bg-primary/10 border-primary' : 'bg-card hover:bg-muted'
                 )}
               >
                 <input
                   type="checkbox"
-                  checked={filters.flagged}
-                  onChange={() => onChange({ ...filters, flagged: !filters.flagged })}
+                  checked={draftFilters.flagged}
+                  onChange={() => setDraftFilters({ ...draftFilters, flagged: !draftFilters.flagged })}
                   className="h-4 w-4 accent-primary rounded"
                 />
                 <span className="text-sm font-bold">{t('vocabulary.filterFlagged')}</span>
@@ -194,13 +245,13 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
               <label
                 className={cn(
                   'flex items-center gap-2.5 rounded-md border-2 border-border px-3 py-2 cursor-pointer transition-all',
-                  filters.noDeck ? 'bg-primary/10 border-primary' : 'bg-card hover:bg-muted'
+                  draftFilters.noDeck ? 'bg-primary/10 border-primary' : 'bg-card hover:bg-muted'
                 )}
               >
                 <input
                   type="checkbox"
-                  checked={filters.noDeck}
-                  onChange={() => onChange({ ...filters, noDeck: !filters.noDeck })}
+                  checked={draftFilters.noDeck}
+                  onChange={() => setDraftFilters({ ...draftFilters, noDeck: !draftFilters.noDeck, deckId: null })}
                   className="h-4 w-4 accent-primary rounded"
                 />
                 <span className="text-sm font-bold">{t('vocabulary.filterNoDeck')}</span>
@@ -215,8 +266,8 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
                 {t('decks.title')}
               </legend>
               <Select
-                value={filters.deckId ?? ''}
-                onChange={(val) => onChange({ ...filters, deckId: val || null })}
+                value={draftFilters.deckId ?? ''}
+                onChange={(val) => setDraftFilters({ ...draftFilters, deckId: val || null, noDeck: false })}
                 options={[
                   { value: '', label: t('vocabulary.allDecks') },
                   ...decks.map((deck) => ({ value: deck.id, label: deck.name }))
@@ -234,7 +285,14 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
               {t('vocabulary.reset')}
             </Button>
           )}
-          <Button type="button" className="flex-1 text-sm" onClick={onClose}>
+          <Button
+            type="button"
+            className="flex-1 text-sm"
+            onClick={() => {
+              onChange(draftFilters)
+              onClose()
+            }}
+          >
             {t('vocabulary.apply')}
           </Button>
         </div>
