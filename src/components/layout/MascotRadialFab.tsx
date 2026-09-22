@@ -3,6 +3,7 @@ import { Bot, FileText, Plus, X } from 'lucide-react'
 import { QuickNotesDrawer } from './QuickNotesDrawer'
 import { AddVocabularyModal } from './AddVocabularyModal'
 import { useChatStore } from '@/stores/useChatStore'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 // Mascot SVG Component
 function MascotIcon({ className = 'w-6 h-6' }: { className?: string }) {
@@ -34,6 +35,7 @@ export function MascotRadialFab() {
   const [isNotesOpen, setIsNotesOpen] = useState(false)
   const [isAddWordOpen, setIsAddWordOpen] = useState(false)
   const openAiModal = useChatStore((s) => s.openAiModal)
+  const isAdmin = useAuthStore((s) => Boolean(s.profile?.is_admin))
 
   return (
     <div className="fixed bottom-24 sm:bottom-6 right-6 z-[9999] select-none flex flex-col items-end">
@@ -63,7 +65,7 @@ export function MascotRadialFab() {
       </div>
 
       {/* Secondary item 2: Add Word (Diagonal Top-Left: x/y [60px] on mobile, [76px] on desktop) */}
-      <div 
+      {isAdmin ? <div
         className={`absolute transition-all duration-300 delay-[40ms] flex flex-col items-center justify-center ${
           isOpen 
             ? 'opacity-100 scale-100 -translate-x-[60px] -translate-y-[60px] sm:-translate-x-[76px] sm:-translate-y-[76px]' 
@@ -84,7 +86,7 @@ export function MascotRadialFab() {
         <span className="absolute -bottom-6 bg-white text-[9px] font-black border-2 border-border px-1.5 py-0.5 rounded shadow-[1px_1px_0px_#1c293c] whitespace-nowrap text-foreground">
           Thêm từ
         </span>
-      </div>
+      </div> : null}
 
       {/* Secondary item 3: AI Tutor (Left: translate-x-[85px] on mobile, [106px] on desktop) */}
       <div 
@@ -112,6 +114,9 @@ export function MascotRadialFab() {
 
       {/* Main Mascot Button (Trigger) */}
       <button 
+        type="button"
+        aria-label={isOpen ? 'Đóng menu trợ lý' : 'Mở menu trợ lý'}
+        aria-expanded={isOpen}
         onClick={() => setIsOpen(!isOpen)}
         className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full border-[3px] border-border bg-white flex items-center justify-center shadow-[3px_3px_0px_#1c293c] hover:shadow-[5px_5px_0px_#1c293c] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#1c293c] transition-all neo-wobble-hover z-20 group"
       >
@@ -133,10 +138,12 @@ export function MascotRadialFab() {
       />
 
       {/* Add Vocabulary Modal Component */}
-      <AddVocabularyModal 
-        isOpen={isAddWordOpen} 
-        onClose={() => setIsAddWordOpen(false)} 
-      />
+      {isAdmin ? (
+        <AddVocabularyModal
+          isOpen={isAddWordOpen}
+          onClose={() => setIsAddWordOpen(false)}
+        />
+      ) : null}
     </div>
   )
 }
