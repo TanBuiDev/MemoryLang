@@ -514,6 +514,65 @@ export function VocabularyListPage() {
     setFilters({ ...filters, statuses })
   }
 
+  function renderVocabularyCard(item: VocabularyItem) {
+    const reviewDate = item.next_review_at ? new Date(item.next_review_at) : null
+    const reviewLabel = reviewDate
+      ? reviewDate <= new Date()
+        ? t('vocabulary.reviewDue')
+        : t('vocabulary.reviewScheduled', { date: reviewDate.toLocaleDateString() })
+      : null
+
+    return (
+      <Card key={item.id} className={cn('neo-card p-4 sm:p-5 bg-white border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] rounded-2xl hover:translate-x-0.5 hover:translate-y-0.5 transition-all grid gap-3 md:grid-cols-[auto_1fr_auto] md:items-center border-l-6', statusBorderClasses[item.status])}>
+        {selectMode ? (
+          <input
+            type="checkbox"
+            checked={selectedIds.has(item.id)}
+            onChange={() => toggleSelect(item.id)}
+            aria-label={t('vocabulary.selectWord', { word: item.source_text })}
+            className="h-5 w-5 accent-slate-900 cursor-pointer"
+          />
+        ) : null}
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link to={`/app/vocabulary/${item.id}`} state={{ vocabularyIds }} className="text-xl font-black text-slate-900 hover:text-purple-700 no-underline transition-colors">{item.source_text}</Link>
+            {item.flagged ? <Flag aria-label={t('vocabulary.filterFlagged')} className="h-4 w-4 text-amber-500 fill-amber-400 shrink-0" /> : null}
+            <Badge className="bg-purple-100 text-purple-900 border border-slate-900 font-bold text-[11px]">{t(statusLabelKeys[item.status])}</Badge>
+            {item.part_of_speech
+              ? item.part_of_speech.split(', ').map((pos) => (
+                  <Badge key={pos} className="bg-slate-100 text-slate-800 border border-slate-900 font-bold text-[11px]">{pos.trim()}</Badge>
+                ))
+              : null}
+            <button
+              type="button"
+              className="p-1.5 bg-[#fdc800] text-slate-900 border-2 border-slate-900 rounded-lg shadow-[2px_2px_0px_0px_#000] hover:bg-amber-300 transition-colors font-black flex items-center justify-center cursor-pointer ml-1"
+              onClick={() => speak(item.source_text, { lang: item.source_language, audioUrl: item.audio_url, globalTermId: item.global_term_id })}
+              aria-label={`Phát âm ${item.source_text}`}
+              title="Phát âm"
+            >
+              <Volume2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {item.ipa && <p className="font-mono text-xs text-purple-700 font-bold">{item.ipa}</p>}
+          <div className="group relative">
+            <p className="font-semibold text-slate-600 text-xs sm:text-sm truncate">{item.meanings[0]?.text}</p>
+            {(item.meanings[0]?.text?.length ?? 0) > 50 ? (
+              <span className="absolute bottom-full left-0 mb-1 hidden group-hover:block border-2 border-slate-900 rounded-lg bg-amber-50 px-2 py-1 text-xs font-bold text-slate-900 whitespace-normal max-w-xs z-10 shadow-[2px_2px_0px_0px_#000] pointer-events-none">{item.meanings[0]?.text}</span>
+            ) : null}
+          </div>
+          {item.translation ? <p className="text-xs sm:text-sm text-emerald-700 font-black">{item.translation}</p> : null}
+          {reviewLabel ? <p className={cn('text-xs font-black', reviewDate && reviewDate <= new Date() ? 'text-rose-700' : 'text-slate-500')}>{reviewLabel}</p> : null}
+          <div className="mt-1 flex flex-wrap gap-1">{item.tags.map((tag) => <Badge key={tag} className="bg-slate-100 text-slate-700 border border-slate-900 font-bold text-[10px]">#{tag}</Badge>)}</div>
+        </div>
+        {profile?.is_admin && !selectMode ? (
+          <div className="flex gap-2 ml-auto">
+            <Button variant="ghost" onClick={() => requestDeleteSingle(item.id, item.source_text)} className="text-rose-600 hover:text-rose-800 text-xs font-black">{t('vocabulary.delete')}</Button>
+          </div>
+        ) : null}
+      </Card>
+    )
+  }
+
   const headerActions = selectMode ? (
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="ghost" onClick={exitSelectMode}>{t('actions.cancel')}</Button>
@@ -765,7 +824,12 @@ export function VocabularyListPage() {
           </Button>
         </Card>
       ) : null}
-      <div ref={containerRef} className="h-[calc(100vh-280px)] overflow-auto [scrollbar-gutter:stable] pr-2">
+      {columns === 1 ? (
+        <div data-testid="mobile-vocabulary-list" className="grid gap-3 pb-24">
+          {vocabulary.map(renderVocabularyCard)}
+        </div>
+      ) : (
+      <div ref={containerRef} data-testid="virtualized-vocabulary-list" className="h-[calc(100vh-280px)] overflow-auto [scrollbar-gutter:stable] pr-2">
         <div style={{ height: virtualizer.getTotalSize(), position: 'relative', width: '100%' }}>
           {virtualizer.getVirtualItems().map((virtualRow) => {
             const start = virtualRow.index * columns
@@ -784,62 +848,13 @@ export function VocabularyListPage() {
                 }}
                 className="grid gap-3 grid-cols-1 md:grid-cols-2 pb-3"
               >
-                {rowItems.map((item) => (
-                  <Card key={item.id} className={cn('neo-card p-4 sm:p-5 bg-white border-3 border-slate-900 shadow-[4px_4px_0px_0px_#000] rounded-2xl hover:translate-x-0.5 hover:translate-y-0.5 transition-all grid gap-3 md:grid-cols-[auto_1fr_auto] md:items-center border-l-6', statusBorderClasses[item.status])}>
-                    {selectMode ? (
-                      <input
-                        key="check"
-                        type="checkbox"
-                        checked={selectedIds.has(item.id)}
-                        onChange={() => toggleSelect(item.id)}
-                        aria-label={t('vocabulary.selectWord', { word: item.source_text })}
-                        className="h-5 w-5 accent-slate-900 cursor-pointer"
-                      />
-                    ) : null}
-                    <div key="body" className="min-w-0 space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Link to={`/app/vocabulary/${item.id}`} state={{ vocabularyIds }} className="text-xl font-black text-slate-900 hover:text-purple-700 no-underline transition-colors">{item.source_text}</Link>
-                        {item.flagged ? <Flag className="h-4 w-4 text-amber-500 fill-amber-400 shrink-0" /> : null}
-                        <Badge className="bg-purple-100 text-purple-900 border border-slate-900 font-bold text-[11px]">{t(statusLabelKeys[item.status])}</Badge>
-                        {item.part_of_speech
-                          ? item.part_of_speech.split(', ').map((pos) => (
-                              <Badge key={pos} className="bg-slate-100 text-slate-800 border border-slate-900 font-bold text-[11px]">{pos.trim()}</Badge>
-                            ))
-                          : null}
-                        <button
-                          type="button"
-                          className="p-1.5 bg-[#fdc800] text-slate-900 border-2 border-slate-900 rounded-lg shadow-[2px_2px_0px_0px_#000] hover:bg-amber-300 transition-colors font-black flex items-center justify-center cursor-pointer ml-1"
-                          onClick={() => speak(item.source_text, { lang: item.source_language, audioUrl: item.audio_url, globalTermId: item.global_term_id })}
-                          aria-label={`Phát âm ${item.source_text}`}
-                          title="Phát âm"
-                        >
-                          <Volume2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      {item.ipa && <p className="font-mono text-xs text-purple-700 font-bold">{item.ipa}</p>}
-                      <div className="group relative">
-                        <p className="font-semibold text-slate-600 text-xs sm:text-sm truncate">{item.meanings[0]?.text}</p>
-                        {(item.meanings[0]?.text?.length ?? 0) > 50 ? (
-                          <span className="absolute bottom-full left-0 mb-1 hidden group-hover:block border-2 border-slate-900 rounded-lg bg-amber-50 px-2 py-1 text-xs font-bold text-slate-900 whitespace-normal max-w-xs z-10 shadow-[2px_2px_0px_0px_#000] pointer-events-none">{item.meanings[0]?.text}</span>
-                        ) : null}
-                      </div>
-                      {item.translation ? <p className="text-xs sm:text-sm text-emerald-700 font-black">{item.translation}</p> : null}
-                      <div className="mt-1 flex flex-wrap gap-1">{item.tags.map((tag) => <Badge key={tag} className="bg-slate-100 text-slate-700 border border-slate-900 font-bold text-[10px]">#{tag}</Badge>)}</div>
-                    </div>
-                    <div key="actions" className="flex gap-2 ml-auto">
-                      {selectMode ? null : (
-                        <>
-                          {profile?.is_admin && <Button variant="ghost" onClick={() => requestDeleteSingle(item.id, item.source_text)} className="text-rose-600 hover:text-rose-800 text-xs font-black">{t('vocabulary.delete')}</Button>}
-                        </>
-                      )}
-                    </div>
-                  </Card>
-                ))}
+                {rowItems.map(renderVocabularyCard)}
               </div>
             )
           })}
         </div>
       </div>
+      )}
       <ConfirmModal
         open={lessonModalOpen}
         title={t('vocabulary.createLessonsTitle')}

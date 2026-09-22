@@ -285,4 +285,18 @@ describe('VocabularyListPage learner flows', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Không thể tải dữ liệu bộ lọc')
   })
+
+  it('dùng cuộn của trang trên màn hình di động thay vì vùng cuộn lồng nhau', async () => {
+    const previousWidth = window.innerWidth
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 })
+    vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary.slice(0, 2))
+
+    try {
+      renderPage()
+      expect(await screen.findByTestId('mobile-vocabulary-list')).toBeInTheDocument()
+      expect(screen.queryByTestId('virtualized-vocabulary-list')).not.toBeInTheDocument()
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth })
+    }
+  })
 })
