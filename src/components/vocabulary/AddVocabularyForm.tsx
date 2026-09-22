@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
-import { Input, Label, Select, Textarea } from '@/components/ui/input'
+import { Input, Label, Textarea } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { TranslationChips, cleanTranslationValue } from '@/components/ui/translation-chips'
 import { vocabularyFormSchema, type VocabularyFormValues } from '@/features/vocabulary/vocabulary.schema'
 import { useI18n } from '@/i18n'
@@ -133,7 +134,9 @@ export function AddVocabularyForm({ onSuccess }: AddVocabularyFormProps) {
     }
 
     try {
-      const enriched = await enrichVocabulary(trimmed, 'en', 'vi')
+      const sourceLanguage = profile?.current_target_language ?? 'en'
+      const nativeLanguage = profile?.native_language ?? 'vi'
+      const enriched = await enrichVocabulary(trimmed, sourceLanguage, nativeLanguage)
       setItemType(enriched.itemType)
       setIpa(enriched.ipa ?? '')
       setPartOfSpeech(enriched.partOfSpeech ?? '')
@@ -207,6 +210,14 @@ export function AddVocabularyForm({ onSuccess }: AddVocabularyFormProps) {
 
   const isDuplicate = duplicateId !== null
   const isEnrichDisabled = !text.trim() || isEnriching || isDuplicate
+  const itemTypeOptions = [
+    { value: 'word', label: t('vocabulary.word') },
+    { value: 'phrase', label: t('vocabulary.phrase') },
+    { value: 'idiom', label: t('vocabulary.idiom') },
+    { value: 'sentence', label: t('vocabulary.sentence') },
+  ]
+  const sourceLanguage = profile?.current_target_language ?? 'en'
+  const nativeLanguage = profile?.native_language ?? 'vi'
 
   return (
     <form className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]" onSubmit={submit}>
@@ -214,8 +225,9 @@ export function AddVocabularyForm({ onSuccess }: AddVocabularyFormProps) {
         <CardTitle>{t('vocabulary.input')}</CardTitle>
         <div className="mt-4 grid gap-4">
           <div>
-            <Label>{t('vocabulary.sourceTextPrompt')}</Label>
+            <Label htmlFor="vocabulary-source-text">{t('vocabulary.sourceTextPrompt')}</Label>
             <Input
+              id="vocabulary-source-text"
               value={text}
               onChange={(event) => {
                 setText(event.target.value)
@@ -233,7 +245,15 @@ export function AddVocabularyForm({ onSuccess }: AddVocabularyFormProps) {
               </div>
             ) : null}
           </div>
-          <div><Label>{t('vocabulary.itemType')}</Label><Select value={itemType} onChange={(event) => setItemType(event.target.value as VocabularyItemType)}><option value="word">{t('vocabulary.word')}</option><option value="phrase">{t('vocabulary.phrase')}</option><option value="idiom">{t('vocabulary.idiom')}</option><option value="sentence">{t('vocabulary.sentence')}</option></Select></div>
+          <div>
+            <Label htmlFor="vocabulary-item-type">{t('vocabulary.itemType')}</Label>
+            <Select
+              id="vocabulary-item-type"
+              value={itemType}
+              onChange={(value) => setItemType(value as VocabularyItemType)}
+              options={itemTypeOptions}
+            />
+          </div>
           <Button type="button" variant="secondary" disabled={isEnrichDisabled} onClick={() => void runEnrichment()}>
             {isEnriching ? '...' : t('vocabulary.enrich')}
           </Button>
@@ -276,7 +296,7 @@ export function AddVocabularyForm({ onSuccess }: AddVocabularyFormProps) {
                   </div>
                   <div>
                     <Input
-                      placeholder="Câu ví dụ (English)"
+                      placeholder={`Câu ví dụ (${sourceLanguage.toUpperCase()})`}
                       value={ex.sentence}
                       onChange={(e) => {
                         const val = e.target.value
@@ -287,7 +307,7 @@ export function AddVocabularyForm({ onSuccess }: AddVocabularyFormProps) {
                   </div>
                   <div>
                     <Input
-                      placeholder="Dịch nghĩa câu ví dụ (Vietnamese)"
+                      placeholder={`Dịch nghĩa câu ví dụ (${nativeLanguage.toUpperCase()})`}
                       value={ex.translation || ''}
                       onChange={(e) => {
                         const val = e.target.value
