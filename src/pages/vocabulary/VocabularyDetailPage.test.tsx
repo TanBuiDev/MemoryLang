@@ -7,7 +7,8 @@ import { VocabularyDetailPage } from '@/pages/vocabulary/VocabularyDetailPage'
 import { relationshipService } from '@/services/supabase/relationship.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { speak } from '@/utils/audio'
+import { speak, stopSpeaking } from '@/utils/audio'
+import type { VocabularyCardResponse } from '@/types/vocabulary.types'
 
 // Mock các module bên ngoài và service để phục vụ kiểm thử
 vi.mock('@/services/supabase/client', () => ({ isSupabaseConfigured: true, supabase: {} }))
@@ -42,7 +43,7 @@ vi.mock('@/services/local/studyLocalDb', () => ({
     enqueueMutation: vi.fn(),
   },
 }))
-vi.mock('@/utils/audio', () => ({ speak: vi.fn() }))
+vi.mock('@/utils/audio', () => ({ speak: vi.fn(), stopSpeaking: vi.fn() }))
 
 vi.mock('@/i18n', () => ({
   useI18n: () => ({
@@ -96,15 +97,27 @@ function renderPage(initialEntry = '/app/vocabulary/entry-1', state: any = null)
   )
 }
 
+function createEmptyRelationships() {
+  return {
+    synonym: [],
+    antonym: [],
+    noun: [],
+    verb: [],
+    adjective: [],
+    adverb: [],
+  }
+}
+
 describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
   const mockTerms = [
-    { id: 'entry-1', source_text: 'one', item_type: 'word', meanings: [], examples: [], tags: [] },
-    { id: 'entry-2', source_text: 'two', item_type: 'word', meanings: [], examples: [], tags: [] },
-    { id: 'entry-3', source_text: 'three', item_type: 'word', meanings: [], examples: [], tags: [] },
+    { id: 'entry-1', source_text: 'one', source_language: 'en', item_type: 'word', meanings: [], examples: [], tags: [] },
+    { id: 'entry-2', source_text: 'two', source_language: 'en', item_type: 'word', meanings: [], examples: [], tags: [] },
+    { id: 'entry-3', source_text: 'three', source_language: 'en', item_type: 'word', meanings: [], examples: [], tags: [] },
   ]
 
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.removeItem('memorylang_vocab_auto_play')
     useAuthStore.setState({
       user: { id: 'user-1' } as never,
       profile: { is_admin: true } as never,
@@ -211,7 +224,47 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     // Nhấn Alt + P
     fireEvent.keyDown(window, { key: 'p', altKey: true })
 
-    expect(speakMock).toHaveBeenCalledWith('one', expect.any(Object))
+    expect(speakMock).toHaveBeenCalledWith('one', expect.objectContaining({ lang: 'en' }))
+  })
+
+  it('không tự phát dữ liệu placeholder cũ khi chuyển nhanh sang từ mới', async () => {
+    const user = userEvent.setup()
+    let resolveEntry2!: (value: any) => void
+    const entry2Response = new Promise<VocabularyCardResponse>((resolve) => {
+      resolveEntry2 = resolve
+    })
+    vi.mocked(relationshipService.getCard).mockImplementation(async (entryId) => {
+      if (entryId === 'entry-2') return entry2Response
+      const entry = mockTerms.find((term) => term.id === entryId) ?? mockTerms[0]
+      return { entry: entry as any, relationships: createEmptyRelationships() }
+    })
+    localStorage.setItem('memorylang_vocab_auto_play', 'true')
+
+    const state = { vocabularyIds: ['entry-1', 'entry-2', 'entry-3'] }
+    renderPage('/app/vocabulary/entry-1', state)
+    expect(await screen.findByText('one')).toBeInTheDocument()
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 450))
+    })
+    vi.mocked(speak).mockClear()
+    vi.mocked(stopSpeaking).mockClear()
+
+    await user.click(screen.getByTitle('Thẻ tiếp theo'))
+    expect(stopSpeaking).toHaveBeenCalled()
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 450))
+    })
+    expect(speak).not.toHaveBeenCalled()
+
+    resolveEntry2({ entry: mockTerms[1] as any, relationships: createEmptyRelationships() })
+    expect(await screen.findByText('two')).toBeInTheDocument()
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 450))
+    })
+
+    expect(speak).toHaveBeenCalledTimes(1)
+    expect(speak).toHaveBeenCalledWith('two', expect.any(Object))
+    localStorage.removeItem('memorylang_vocab_auto_play')
   })
 
   it('gắn cờ từ vựng khi nhấn Alt + F', async () => {

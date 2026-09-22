@@ -885,7 +885,7 @@ export function FlashcardStudyPage() {
     let viTimer: number | undefined
 
     const timer = window.setTimeout(() => {
-      const spoke = speak(item.source_text, {
+      const playback = speak(item.source_text, {
         audioUrl: item.audio_url,
         globalTermId: item.global_term_id,
         onEnd: () => {
@@ -899,7 +899,17 @@ export function FlashcardStudyPage() {
           }
         },
       })
-      if (!spoke) speechPendingRef.current = false
+      if (!playback) {
+        speechPendingRef.current = false
+      } else {
+        void playback
+          .then((spoke) => {
+            if (!spoke) speechPendingRef.current = false
+          })
+          .catch(() => {
+            speechPendingRef.current = false
+          })
+      }
     }, AUTO_AUDIO_DELAY_MS)
 
     return () => {

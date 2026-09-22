@@ -701,6 +701,28 @@ describe('FlashcardStudyPage', () => {
     }
   })
 
+  it('tiếp tục tự chuyển thẻ khi phát audio thất bại', async () => {
+    const { speak } = await import('@/utils/audio')
+    vi.mocked(speak).mockResolvedValueOnce(false)
+    useStudyStore.setState({ mode: 'two_side' })
+    await renderPage([baseItem, makeItem('transfer', 'transfer', 'chuyển')])
+    fireEvent.click(await screen.findByRole('button', { name: 'Bật tự động' }))
+    const autoButton = screen.getByRole('dialog', { name: 'Giây/thẻ' }).querySelector('button[aria-label="Bật tự động"]') as HTMLButtonElement
+
+    vi.useFakeTimers()
+    try {
+      fireEvent.click(autoButton)
+      act(() => vi.advanceTimersByTime(600))
+      await act(async () => Promise.resolve())
+      act(() => vi.advanceTimersByTime(6000))
+
+      expect(screen.getAllByText('transfer')[0]).toBeInTheDocument()
+    } finally {
+      vi.runOnlyPendingTimers()
+      vi.useRealTimers()
+    }
+  })
+
   it('pauses automatic advance for remember confirmation and defaults to forgot', async () => {
     const { studyLocalDb } = await import('@/services/local/studyLocalDb')
     useStudyStore.setState({ requireRememberConfirmation: true, rememberConfirmationSeconds: 2 })

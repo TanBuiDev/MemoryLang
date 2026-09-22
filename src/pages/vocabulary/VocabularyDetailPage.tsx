@@ -30,7 +30,7 @@ import { RelatedTermsSection } from '@/components/vocabulary/RelatedTermsSection
 import { relationshipDisplayOrder, relationshipLabelKeys } from '@/components/vocabulary/relationshipDisplay'
 import type { ExampleSentence, Meaning, RelationType, VocabularyItem } from '@/types/vocabulary.types'
 import { useAudioPreload } from '@/hooks/useAudioPreload'
-import { speak } from '@/utils/audio'
+import { speak, stopSpeaking } from '@/utils/audio'
 import { filterActiveVocabulary } from '@/utils/vocabulary'
 
 const imageRatioCache = new Map<string, number>()
@@ -221,6 +221,11 @@ export function VocabularyDetailPage() {
   const lastAutoPlayedIdRef = useRef<string | null>(null)
   const autoPlayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  useEffect(() => {
+    stopSpeaking()
+    return () => stopSpeaking()
+  }, [id])
+
   // Reset toàn bộ state ở cấp độ trang khi ID từ vựng thay đổi (khi chuyển đổi giữa các từ)
   useEffect(() => {
     if (searchTimeoutRef.current) {
@@ -382,18 +387,19 @@ export function VocabularyDetailPage() {
 
   useEffect(() => {
     if (!autoPlayEnabled || !item) return
+    if (shouldUseRemoteData && vocabularyCardQuery.isPlaceholderData) return
     if (id === lastAutoPlayedIdRef.current) return
     lastAutoPlayedIdRef.current = id ?? null
 
     if (autoPlayTimeoutRef.current) clearTimeout(autoPlayTimeoutRef.current)
     autoPlayTimeoutRef.current = setTimeout(() => {
-      speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })
+      speak(item.source_text, { lang: item.source_language, audioUrl: item.audio_url, globalTermId: item.global_term_id })
     }, 400)
 
     return () => {
       if (autoPlayTimeoutRef.current) clearTimeout(autoPlayTimeoutRef.current)
     }
-  }, [id, autoPlayEnabled, item])
+  }, [id, autoPlayEnabled, item, shouldUseRemoteData, vocabularyCardQuery.isPlaceholderData])
 
   const [pageInputValue, setPageInputValue] = useState('')
   const [pageInputError, setPageInputError] = useState(false)
@@ -592,7 +598,7 @@ export function VocabularyDetailPage() {
       else if ((e.altKey && e.key.toLowerCase() === 'p') || (e.ctrlKey && e.key === ' ')) {
         if (item) {
           e.preventDefault()
-          speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })
+          speak(item.source_text, { lang: item.source_language, audioUrl: item.audio_url, globalTermId: item.global_term_id })
         }
       }
       // Alt + A: Bật/tắt tự động phát âm thanh
@@ -1275,7 +1281,7 @@ export function VocabularyDetailPage() {
             <Button
               variant="secondary"
               className="border-2 border-border shadow-[2px_2px_0_var(--border)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
-              onClick={() => speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })}
+              onClick={() => speak(item.source_text, { lang: item.source_language, audioUrl: item.audio_url, globalTermId: item.global_term_id })}
               title={t('actions.playAudio')}
             >
               <Volume2 className="h-4 w-4" />
