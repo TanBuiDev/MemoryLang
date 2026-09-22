@@ -1004,7 +1004,7 @@ export function VocabularyDetailPage() {
     return <Navigate to="/app/vocabulary" replace />
   }
 
-  if (shouldUseRemoteData && vocabularyCardQuery.isLoading) {
+  if (shouldUseRemoteData && (vocabularyCardQuery.isLoading || vocabularyCardQuery.isPlaceholderData)) {
     return <Card className="font-black">{t('vocabulary.loading')}</Card>
   }
 

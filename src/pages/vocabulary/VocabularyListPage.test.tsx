@@ -8,6 +8,7 @@ import { VocabularyListPage } from '@/pages/vocabulary/VocabularyListPage'
 import { deckService } from '@/services/supabase/deck.service'
 import { vocabularyService } from '@/services/supabase/vocabulary.service'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { speak } from '@/utils/audio'
 
 vi.mock('@tanstack/react-virtual', () => ({
   useVirtualizer: ({ count }: { count: number }) => ({
@@ -167,6 +168,20 @@ describe('VocabularyListPage learner flows', () => {
     vi.mocked(deckService.list).mockResolvedValue([])
     vi.mocked(deckService.getDeckedTermIds).mockResolvedValue(new Set())
     vi.mocked(deckService.listTerms).mockResolvedValue([])
+  })
+
+  it('phát đúng ngôn ngữ của từ đang hiển thị', async () => {
+    const user = userEvent.setup()
+    vi.mocked(vocabularyService.list).mockResolvedValue([{
+      ...demoVocabulary[0],
+      source_text: 'bonjour',
+      source_language: 'fr',
+    }])
+
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Phát âm bonjour' }))
+
+    expect(speak).toHaveBeenCalledWith('bonjour', expect.objectContaining({ lang: 'fr' }))
   })
 
   it('lọc từ chưa có bộ thẻ bằng global_term_id thay vì user term id', async () => {

@@ -267,6 +267,25 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     localStorage.removeItem('memorylang_vocab_auto_play')
   })
 
+  it('không cho phát hoặc thao tác trên từ cũ trong lúc từ mới đang tải', async () => {
+    const user = userEvent.setup()
+    const entry2Response = new Promise<VocabularyCardResponse>(() => {})
+    vi.mocked(relationshipService.getCard).mockImplementation(async (entryId) => {
+      if (entryId === 'entry-2') return entry2Response
+      return { entry: mockTerms[0] as any, relationships: createEmptyRelationships() }
+    })
+
+    renderPage('/app/vocabulary/entry-1', { vocabularyIds: ['entry-1', 'entry-2'] })
+    expect(await screen.findByText('one')).toBeInTheDocument()
+
+    await user.click(screen.getByTitle('Thẻ tiếp theo'))
+
+    expect(screen.getByText('vocabulary.loading')).toBeInTheDocument()
+    expect(screen.queryByText('one')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('actions.playAudio')).not.toBeInTheDocument()
+    expect(speak).not.toHaveBeenCalled()
+  })
+
   it('gắn cờ từ vựng khi nhấn Alt + F', async () => {
     const flagMock = vi.mocked(vocabularyService.flagTerm).mockResolvedValue(undefined)
     renderPage('/app/vocabulary/entry-1')

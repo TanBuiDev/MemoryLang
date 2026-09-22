@@ -739,7 +739,8 @@ export function VocabularyListPage() {
                         <button
                           type="button"
                           className="p-1.5 bg-[#fdc800] text-slate-900 border-2 border-slate-900 rounded-lg shadow-[2px_2px_0px_0px_#000] hover:bg-amber-300 transition-colors font-black flex items-center justify-center cursor-pointer ml-1"
-                          onClick={() => speak(item.source_text, { audioUrl: item.audio_url, globalTermId: item.global_term_id })}
+                          onClick={() => speak(item.source_text, { lang: item.source_language, audioUrl: item.audio_url, globalTermId: item.global_term_id })}
+                          aria-label={`Phát âm ${item.source_text}`}
                           title="Phát âm"
                         >
                           <Volume2 className="h-3.5 w-3.5" />
