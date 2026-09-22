@@ -70,6 +70,9 @@ vi.mock('@/i18n', () => ({
         'vocabulary.positionInputError': 'Nhập số nguyên từ 1 đến {total}.',
         'vocabulary.positionPickerLabel': 'Chọn vị trí từ vựng',
         'vocabulary.positionPickerOption': 'Chuyển đến từ số {position}',
+        'vocabulary.imageZoom': 'Phóng to ảnh {word}',
+        'vocabulary.imageZoomDialog': 'Ảnh minh họa phóng to của {word}',
+        'vocabulary.closeImageZoom': 'Nhấn Escape hoặc click ra ngoài để đóng',
       }
       let template = map[key] || key
       if (params) {
@@ -586,5 +589,20 @@ describe('VocabularyDetailPage Navigation Buttons & Hotkeys', () => {
     expect(deleteMock).toHaveBeenCalledWith('entry-1')
     // Sẽ quay về trang danh sách
     expect(await screen.findByText('Trang danh sách từ vựng')).toBeInTheDocument()
+  })
+
+  it('cho phép mở ảnh phóng to bằng bàn phím và đóng bằng Escape', async () => {
+    const user = userEvent.setup()
+    vi.mocked(relationshipService.getCard).mockResolvedValue({
+      entry: { ...mockTerms[0], image_url: 'https://example.com/one.jpg' } as any,
+      relationships: createEmptyRelationships(),
+    })
+    renderPage('/app/vocabulary/entry-1')
+
+    await user.click(await screen.findByRole('button', { name: 'Phóng to ảnh one' }))
+    expect(screen.getByRole('dialog', { name: 'Ảnh minh họa phóng to của one' })).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Ảnh minh họa phóng to của one' })).not.toBeInTheDocument()
   })
 })

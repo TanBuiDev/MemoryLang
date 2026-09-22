@@ -235,7 +235,6 @@ export function VocabularyDetailPage() {
       clearTimeout(pressTimerRef.current)
       pressTimerRef.current = null
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset of all page-level UI state on route change
     setImageSearchQuery('')
     setImageSearchResults([])
     setImageSearchLoading(false)
@@ -297,7 +296,6 @@ export function VocabularyDetailPage() {
       .map((m) => {
         const txt = m.text?.trim()
         const trans = m.translation ? cleanTranslationValue(m.translation) : undefined
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { examples, ...rest } = m
         return {
           ...rest,
@@ -425,12 +423,12 @@ export function VocabularyDetailPage() {
     return position >= 1 && position <= vocabularyIds.length ? position : null
   })
 
-  const updatePagePickerValue = (step: number) => {
+  const updatePagePickerValue = useCallback((step: number) => {
     const nextPosition = Math.min(Math.max(pagePickerValue + step, 1), vocabularyIds.length)
     setPageInputValue(String(nextPosition))
     setPageInputError(false)
     setIsPagePickerOpen(true)
-  }
+  }, [pagePickerValue, vocabularyIds.length])
 
   useEffect(() => {
     const positionControl = pagePositionControlRef.current
@@ -444,7 +442,7 @@ export function VocabularyDetailPage() {
 
     positionControl.addEventListener('wheel', handleWheel, { passive: false })
     return () => positionControl.removeEventListener('wheel', handleWheel)
-  }, [item, pagePickerValue, vocabularyIds.length])
+  }, [item, updatePagePickerValue])
 
   const navigateToPage = (pageNum: number) => {
     const targetId = vocabularyIds[pageNum - 1]
@@ -1863,7 +1861,9 @@ export function VocabularyDetailPage() {
                 <span className="text-xs font-bold text-muted-foreground mt-2">{t('vocabulary.uploading')}</span>
               </div>
             ) : item.image_url ? (
-              <div
+              <button
+                type="button"
+                aria-label={t('vocabulary.imageZoom', { word: item.source_text })}
                 onClick={() => setIsZoomed(true)}
                 style={imageFit === 'fit' && naturalRatio ? { aspectRatio: `${naturalRatio}` } : undefined}
                 className={cn(
@@ -1894,7 +1894,7 @@ export function VocabularyDetailPage() {
                       : "w-full h-full object-cover"
                   )}
                 />
-              </div>
+              </button>
             ) : (
               <div
                 onClick={() => isAdmin && fileInputRef.current?.click()}
@@ -2083,6 +2083,9 @@ export function VocabularyDetailPage() {
 
       {isZoomed && item.image_url && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('vocabulary.imageZoomDialog', { word: item.source_text })}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm cursor-zoom-out animate-in fade-in duration-200"
           onClick={() => setIsZoomed(false)}
         >
@@ -2093,7 +2096,7 @@ export function VocabularyDetailPage() {
               className="max-w-full max-h-[80vh] object-contain rounded-md"
             />
             <div className="absolute bottom-4 right-4 bg-card border-2 border-border px-2.5 py-1 text-xs font-black shadow-[2px_2px_0_rgba(0,0,0,1)] rounded">
-              Click anywhere to close
+              {t('vocabulary.closeImageZoom')}
             </div>
           </div>
         </div>
