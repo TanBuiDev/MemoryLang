@@ -322,6 +322,26 @@ export default function MissionGamePage() {
     }
   }, [deckId, loaded, missionIndex, saveAttempt, storedMeta, studySessionId, user])
 
+  useEffect(() => {
+    if (!user || !deckId || !loaded || !attempt || attempt.status !== 'completed' || !result) return
+
+    if (storedMeta.progressSynced) {
+      void gameMissionLocalDb.clearAttempt(user.id, deckId, loaded.fingerprint, missionIndex)
+      return
+    }
+
+    void syncCompletion(attempt, result)
+  }, [
+    attempt,
+    deckId,
+    loaded,
+    missionIndex,
+    result,
+    storedMeta.progressSynced,
+    syncCompletion,
+    user,
+  ])
+
   const finishMission = async (state: MissionAttemptState) => {
     if (!loaded) return
     const completedState = { ...state, status: 'completed' as const, updatedAt: new Date().toISOString() }
@@ -435,6 +455,11 @@ export default function MissionGamePage() {
           <div className="neo-card p-4 text-center"><div className="text-2xl font-black">{result.accuracy}%</div><div className="text-xs font-bold text-muted-foreground">Chính xác</div></div>
           <div className="neo-card p-4 text-center"><div className="text-2xl font-black">{result.firstTryAccuracy}%</div><div className="text-xs font-bold text-muted-foreground">Lần đầu</div></div>
         </div>
+        {!storedMeta.progressSynced && !error ? (
+          <div className="neo-card bg-amber-50 p-4 font-bold text-amber-950">
+            Đang đồng bộ kết quả, lịch ôn và tiến trình Mission...
+          </div>
+        ) : null}
         {error ? (
           <div className="neo-card space-y-3 bg-rose-50 p-4">
             <p className="font-bold text-rose-900">Kết quả đang chờ đồng bộ: {error}</p>
@@ -444,14 +469,14 @@ export default function MissionGamePage() {
           </div>
         ) : null}
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Button variant="ghost" className="flex-1" onClick={() => navigate('/app/games/mission/' + deckId)}>
+          <Button variant="ghost" className="flex-1" disabled={syncing || !storedMeta.progressSynced} onClick={() => navigate('/app/games/mission/' + deckId)}>
             Về lộ trình
           </Button>
-          <Button variant="secondary" className="flex-1" disabled={syncing} onClick={() => void restartMission()}>
+          <Button variant="secondary" className="flex-1" disabled={syncing || !storedMeta.progressSynced} onClick={() => void restartMission()}>
             <RotateCcw className="h-4 w-4" /> Chơi lại
           </Button>
           {missionIndex + 1 < loaded.missionCount ? (
-            <Button className="flex-1" disabled={Boolean(error)} onClick={() => navigate('/app/games/mission/' + deckId + '/' + (missionIndex + 1))}>
+            <Button className="flex-1" disabled={Boolean(error) || syncing || !storedMeta.progressSynced} onClick={() => navigate('/app/games/mission/' + deckId + '/' + (missionIndex + 1))}>
               Mission tiếp theo
             </Button>
           ) : null}
