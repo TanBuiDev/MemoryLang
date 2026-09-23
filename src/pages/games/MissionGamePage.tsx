@@ -9,7 +9,7 @@ import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import { gameMissionService } from '@/services/supabase/gameMission.service'
 import { studyService } from '@/services/supabase/study.service'
 import { gameMissionLocalDb, gameMissionAttemptKey, type StoredGameMissionAttempt } from '@/services/local/gameMissionLocalDb'
-import { buildMissionTermGroups, createCurriculumFingerprint } from '@/features/games/mission/curriculum'
+import { buildMissionTermGroups, createCurriculumContentVersion, createCurriculumFingerprint } from '@/features/games/mission/curriculum'
 import { calculateMissionScore, createMissionDefinition, evaluateMissionReadiness } from '@/features/games/mission/missionEngine'
 import { normalizeMissionAnswer } from '@/features/games/mission/generators'
 import { buildMissionReviewActions } from '@/features/games/mission/missionSrsAdapter'
@@ -119,6 +119,7 @@ export default function MissionGamePage() {
           orderedTermIds: terms.map((term) => term.globalTermId),
           termsPerMission,
           scriptKey,
+          contentVersion: createCurriculumContentVersion(terms),
         })
         const groups = buildMissionTermGroups(terms, termsPerMission)
         const missionTerms = groups[missionIndex]
