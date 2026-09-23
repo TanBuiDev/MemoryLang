@@ -257,7 +257,7 @@ The Games module now includes a shared-curriculum Mission flow. Mission content 
 
 Mission curriculum fingerprints include ordered term IDs, a learning-content signature (source text, translation, item type and example sentences), terms-per-mission, script version, and generator version, so content/order changes do not silently reuse old progress. The deterministic engine lives under `src/features/games/mission/`; it generates Matching/Listening/Context/Recall/Spelling/Boss questions from existing `global_terms` data and does not call AI at learner runtime. Missing/ambiguous source data is skipped with readiness diagnostics rather than guessed.
 
-Active attempts persist in the dedicated Dexie `memorylang-game` database. Completion checkpoints SRS sync, `study_sessions` completion (`mode = 'game_mission'`), and mission progress separately so retrying a partial sync does not apply SRS twice. `missionSrsAdapter` aggregates all graded exposures to one action per global term per mission: incorrect → `dont_know`, hint/retry → `difficult`, strong first-try recall → `know`; Mission never auto-marks a word `memorized`.
+Active attempts persist in the dedicated Dexie `memorylang-game` database. The local snapshot includes unfinished input, retry count, and Matching selections, and always writes the newest attempt state over restored metadata. Completion checkpoints SRS sync, `study_sessions` completion (`mode = 'game_mission'`), and mission progress separately. These checkpoints prevent reapplying completed phases after a retry, but a network failure after a server write and before its local checkpoint is not yet idempotent. `missionSrsAdapter` aggregates all graded exposures to one action per global term per mission: incorrect → `dont_know`, hint/retry → `difficult`, strong first-try recall → `know`; Mission never auto-marks a word `memorized`.
 
 Admins configure Mission from `/app/admin/games` with visual controls for game tier, per-deck enablement, access tier, and terms per mission. “All vocabulary” remains a dynamic source for legacy games and is intentionally not a Mission curriculum source.
 
@@ -321,7 +321,7 @@ See `AGENTS.md` for commit workflow. Conventional commits: `feat:`, `fix:`, `doc
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **MemoryLang** (8413 symbols, 14129 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **MemoryLang** (9989 symbols, 16309 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
