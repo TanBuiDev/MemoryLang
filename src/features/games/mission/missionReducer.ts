@@ -7,6 +7,16 @@ export type MissionAttemptAction =
   | { type: 'setDraft'; draft: NonNullable<MissionAttemptState['draft']>; at: string }
   | { type: 'complete'; at: string }
 
+export function shouldAutoSyncMission(
+  completed: boolean,
+  hasResult: boolean,
+  progressSynced: boolean,
+  initialSaveInFlight: boolean,
+  hasError = false,
+) {
+  return completed && hasResult && !progressSynced && !initialSaveInFlight && !hasError
+}
+
 export function missionAttemptReducer(
   state: MissionAttemptState | null,
   action: MissionAttemptAction,

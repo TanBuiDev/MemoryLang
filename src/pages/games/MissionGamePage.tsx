@@ -13,7 +13,7 @@ import { buildMissionTermGroups, createCurriculumContentVersion, createCurriculu
 import { calculateMissionScore, createMissionDefinition, evaluateMissionReadiness } from '@/features/games/mission/missionEngine'
 import { normalizeMissionAnswer } from '@/features/games/mission/generators'
 import { getMissionScript } from '@/features/games/mission/scriptRegistry'
-import { missionAttemptReducer, type MissionAttemptAction } from '@/features/games/mission/missionReducer'
+import { missionAttemptReducer, shouldAutoSyncMission, type MissionAttemptAction } from '@/features/games/mission/missionReducer'
 import { getDeckGameConfig } from '@/features/games/mission/gameConfig'
 import { MissionLearnStage } from '@/features/games/mission/components/MissionLearnStage'
 import { MissionMatchingStage } from '@/features/games/mission/components/MissionMatchingStage'
@@ -74,6 +74,7 @@ export default function MissionGamePage() {
   const [matchingReviewed, setMatchingReviewed] = useState(false)
   const [exitOpen, setExitOpen] = useState(false)
   const syncingRef = useRef(false)
+  const finishingRef = useRef(false)
   const attemptRef = useRef<MissionAttemptState | null>(null)
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
 
@@ -427,15 +428,17 @@ export default function MissionGamePage() {
   }, [deckId, loaded, missionIndex, studySessionId, user])
 
   useEffect(() => {
-    if (!user || !deckId || !loaded || !attempt || attempt.status !== 'completed' || !result) return
+    if (!user || !deckId || !loaded || !attempt || !result) return
     if (storedMeta.progressSynced) {
       void gameMissionLocalDb.clearAttempt(user.id, deckId, loaded.fingerprint, missionIndex)
       return
     }
+    if (!shouldAutoSyncMission(attempt.status === 'completed', Boolean(result), Boolean(storedMeta.progressSynced), finishingRef.current, Boolean(error))) return
     void syncCompletion(attempt, result)
   }, [
     attempt,
     deckId,
+    error,
     loaded,
     missionIndex,
     result,
@@ -445,17 +448,22 @@ export default function MissionGamePage() {
   ])
 
   const finishMission = async (state: MissionAttemptState) => {
-    if (!loaded) return
-    const completedState = missionAttemptReducer(state, {
-      type: 'complete',
-      at: new Date().toISOString(),
-    })
-    if (!completedState) return
-    const stats = calculateMissionScore(loaded.definition, completedState.answers)
-    dispatchAttempt({ type: 'complete', at: completedState.updatedAt })
-    setResult(stats)
-    await saveAttempt(completedState, studySessionId, { pendingResult: stats })
-    await syncCompletion(completedState, stats)
+    if (!loaded || finishingRef.current) return
+    finishingRef.current = true
+    try {
+      const completedState = missionAttemptReducer(state, {
+        type: 'complete',
+        at: new Date().toISOString(),
+      })
+      if (!completedState) return
+      const stats = calculateMissionScore(loaded.definition, completedState.answers)
+      dispatchAttempt({ type: 'complete', at: completedState.updatedAt })
+      setResult(stats)
+      await saveAttempt(completedState, studySessionId, { pendingResult: stats })
+      await syncCompletion(completedState, stats)
+    } finally {
+      finishingRef.current = false
+    }
   }
 
   const nextQuestion = async () => {

@@ -4,7 +4,7 @@ import { findExactCloze, generateQuestion, normalizeMissionAnswer } from './gene
 import { calculateMissionScore, createMissionDefinition, evaluateMissionReadiness } from './missionEngine'
 import { buildMissionReviewActions } from './missionSrsAdapter'
 import { parseGameHubConfig } from './gameConfig'
-import { missionAttemptReducer } from './missionReducer'
+import { missionAttemptReducer, shouldAutoSyncMission } from './missionReducer'
 import { getMissionScript } from './scriptRegistry'
 import type { GameTerm, MissionDefinition } from './mission.types'
 
@@ -280,5 +280,11 @@ describe('mission attempt reducer', () => {
     expect(draft?.draft).toEqual({ answerValue: 'reno', attemptNumber: 2, matchingSelections: { q1: 'cải tạo' } })
     const advanced = missionAttemptReducer(draft, { type: 'transition', stageIndex: 1, questionIndex: 0, at: '2026-09-24T00:02:00.000Z' })
     expect(advanced?.draft).toBeUndefined()
+  })
+
+  it('does not auto-sync while initial completion is still saving', () => {
+    expect(shouldAutoSyncMission(true, true, false, true)).toBe(false)
+    expect(shouldAutoSyncMission(true, true, false, false)).toBe(true)
+    expect(shouldAutoSyncMission(true, true, false, false, true)).toBe(false)
   })
 })
