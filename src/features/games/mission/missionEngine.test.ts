@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createCurriculumFingerprint, splitIntoMissions } from './curriculum'
+import { createCurriculumContentVersion, createCurriculumFingerprint, splitIntoMissions } from './curriculum'
 import { findExactCloze, normalizeMissionAnswer } from './generators'
 import { calculateMissionScore } from './missionEngine'
 import { buildMissionReviewActions } from './missionSrsAdapter'
@@ -33,6 +33,12 @@ describe('mission curriculum', () => {
     const a = createCurriculumFingerprint({ deckId: 'd', orderedTermIds: ['a', 'b'], termsPerMission: 10, scriptKey: 'standard' })
     const b = createCurriculumFingerprint({ deckId: 'd', orderedTermIds: ['b', 'a'], termsPerMission: 10, scriptKey: 'standard' })
     expect(a).not.toBe(b)
+  })
+
+  it('changes content version when learning-relevant shared content changes', () => {
+    const before = createCurriculumContentVersion([term()])
+    const after = createCurriculumContentVersion([term({ translation: 'tân trang' })])
+    expect(before).not.toBe(after)
   })
 })
 
