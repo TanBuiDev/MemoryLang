@@ -26,36 +26,12 @@ import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Select } from '@/components/ui/select'
 import { cn } from '@/utils/cn'
-
-interface GameAccessConfig {
-  accessTier: 'free' | 'pro'
-}
-
-interface AllowedDeckConfig {
-  deckId: string
-  allowed: boolean
-  accessTier: 'free' | 'pro'
-}
-
-interface GameHubConfig {
-  games: {
-    matching: GameAccessConfig
-    speed: GameAccessConfig
-    puzzle: GameAccessConfig
-    listening: GameAccessConfig
-  }
-  allowedDecks: AllowedDeckConfig[]
-}
-
-const DEFAULT_CONFIG: GameHubConfig = {
-  games: {
-    matching: { accessTier: 'free' },
-    speed: { accessTier: 'pro' },
-    puzzle: { accessTier: 'pro' },
-    listening: { accessTier: 'pro' },
-  },
-  allowedDecks: [{ deckId: 'all', allowed: true, accessTier: 'free' }],
-}
+import {
+  DEFAULT_GAME_HUB_CONFIG,
+  getDeckGameConfig,
+  parseGameHubConfig,
+  type GameHubConfig,
+} from '@/features/games/mission/gameConfig'
 
 export default function GameHubPage() {
   const navigate = useNavigate()
@@ -66,7 +42,7 @@ export default function GameHubPage() {
   const [decks, setDecks] = useState<Deck[]>([])
   const [allTermsCount, setAllTermsCount] = useState<number>(0)
   const [loading, setLoading] = useState(true)
-  const [hubConfig, setHubConfig] = useState<GameHubConfig>(DEFAULT_CONFIG)
+  const [hubConfig, setHubConfig] = useState<GameHubConfig>(DEFAULT_GAME_HUB_CONFIG)
 
   // UI state
   const [isConfigOpen, setIsConfigOpen] = useState(false)
@@ -76,6 +52,7 @@ export default function GameHubPage() {
 
   // Config form states
   const [selectedSource, setSelectedSource] = useState<string>('all') // 'all' or deckId
+  const [missionDeckId, setMissionDeckId] = useState<string>('')
   const [questionCountType, setQuestionCountType] = useState<string>('10') // '5', '10', '20', 'custom'
   const [customQuestionCount, setCustomQuestionCount] = useState<number>(25)
   const [repeatWrong, setRepeatWrong] = useState(true)
@@ -118,16 +95,7 @@ export default function GameHubPage() {
         setDecks(updatedDecks)
         setAllTermsCount(termsList.length)
 
-        if (settingData?.data?.value) {
-          const parsed = settingData.data.value as GameHubConfig
-          setHubConfig({
-            games: {
-              ...DEFAULT_CONFIG.games,
-              ...parsed.games,
-            },
-            allowedDecks: parsed.allowedDecks || DEFAULT_CONFIG.allowedDecks,
-          })
-        }
+        setHubConfig(parseGameHubConfig(settingData?.data?.value))
       } catch (err) {
         console.error('Failed to load Game Hub data:', err)
       } finally {
@@ -206,11 +174,7 @@ export default function GameHubPage() {
     }
   }
 
-  // Helper check deck config in loaded hubConfig
-  const getDeckConfig = (deckId: string) => {
-    const found = hubConfig.allowedDecks.find((d) => d.deckId === deckId)
-    return found || { deckId, allowed: false, accessTier: 'free' as const }
-  }
+  const getDeckConfig = (deckId: string) => getDeckGameConfig(hubConfig, deckId)
 
   const games = [
     {
@@ -268,6 +232,17 @@ export default function GameHubPage() {
     })
 
   const isAllVocabularyAllowed = getDeckConfig('all').allowed
+
+  const missionDeckOptions = allowedDecksToShow
+    .filter((deck) => getDeckConfig(deck.id).missionEnabled === true)
+    .map((deck) => {
+      const deckConf = getDeckConfig(deck.id)
+      const suffix = !isPro && deckConf.accessTier === 'pro' ? ' 👑 Pro' : ''
+      return {
+        value: deck.id,
+        label: deckService.getDeckPath(deck.id, decks) + ' (' + String(deck.term_count ?? 0) + ' từ)' + suffix,
+      }
+    })
 
   const selectOptions = [
     ...(isAllVocabularyAllowed
@@ -329,6 +304,46 @@ export default function GameHubPage() {
           </div>
         </div>
       </div>
+
+      {/* Shared curriculum Mission */}
+      <section className="neo-card border-4 border-slate-900 bg-yellow-50 p-5 shadow-[6px_6px_0px_0px_#000] rounded-2xl">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-[#fdc800] px-3 py-1 text-xs font-black uppercase">
+              <BookOpen className="h-4 w-4" /> Học theo Mission
+            </div>
+            <h2 className="mt-3 text-2xl font-black text-slate-900">Lộ trình chung theo từng bộ từ</h2>
+            <p className="mt-1 text-sm font-bold text-slate-600">
+              Mỗi người học cùng một curriculum: làm quen, nghe, ngữ cảnh, gọi lại từ trí nhớ và Boss Battle.
+            </p>
+          </div>
+          <div className="flex w-full flex-col gap-3 lg:max-w-xl lg:flex-row">
+            <Select
+              value={missionDeckId}
+              onChange={(value) => {
+                const deckConf = getDeckConfig(value)
+                if ((deckConf.accessTier === 'pro' || hubConfig.games.mission.accessTier === 'pro') && !isPro) {
+                  triggerProPrompt('để học bộ từ này bằng Mission')
+                  return
+                }
+                setMissionDeckId(value)
+              }}
+              options={missionDeckOptions}
+              placeholder="Chọn bộ từ để học Mission..."
+              disabled={missionDeckOptions.length === 0}
+            />
+            <Button
+              className="shrink-0"
+              disabled={!missionDeckId}
+              onClick={() => {
+                if (missionDeckId) navigate('/app/games/mission/' + missionDeckId)
+              }}
+            >
+              <Play className="h-4 w-4 fill-current" /> Vào lộ trình
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {/* Grid of Games */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -439,13 +454,15 @@ export default function GameHubPage() {
                 <Rocket className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-300" />
                 <span>CẤU HÌNH TRÒ CHƠI NỐI TỪ</span>
               </h2>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                aria-label="Đóng cấu hình"
                 onClick={() => setIsConfigOpen(false)}
-                className="neo-button p-1.5 rounded-xl border-2 border-slate-900 bg-white/10 hover:bg-white/20 text-white transition-colors"
+                className="h-9 w-9 p-0 text-white hover:bg-white/20"
               >
                 <X className="w-5 h-5" />
-              </button>
+              </Button>
             </div>
 
             {/* Scrollable Modal Body */}

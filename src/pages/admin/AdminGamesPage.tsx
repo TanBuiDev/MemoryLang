@@ -1,33 +1,18 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '@/services/supabase/client'
+import { CheckSquare, Gamepad2, Save, Square, Swords } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Select } from '@/components/ui/select'
 import { adminService } from '@/services/supabase/admin.service'
 import { deckService } from '@/services/supabase/deck.service'
+import { supabase } from '@/services/supabase/client'
 import {
-  Gamepad2,
-  Save,
-  CheckSquare,
-  Square,
-} from 'lucide-react'
-
-interface GameAccessConfig {
-  accessTier: 'free' | 'pro'
-}
-
-interface AllowedDeckConfig {
-  deckId: string
-  allowed: boolean
-  accessTier: 'free' | 'pro'
-}
-
-interface GameHubConfig {
-  games: {
-    matching: GameAccessConfig
-    speed: GameAccessConfig
-    puzzle: GameAccessConfig
-    listening: GameAccessConfig
-  }
-  allowedDecks: AllowedDeckConfig[]
-}
+  DEFAULT_GAME_HUB_CONFIG,
+  getDeckGameConfig,
+  parseGameHubConfig,
+  type GameAccessTier,
+  type GameHubConfig,
+  type GameKey,
+} from '@/features/games/mission/gameConfig'
 
 interface SimpleDeckInfo {
   id: string
@@ -36,422 +21,332 @@ interface SimpleDeckInfo {
   term_count: number
 }
 
-const DEFAULT_CONFIG: GameHubConfig = {
-  games: {
-    matching: { accessTier: 'free' },
-    speed: { accessTier: 'pro' },
-    puzzle: { accessTier: 'pro' },
-    listening: { accessTier: 'pro' },
-  },
-  allowedDecks: [{ deckId: 'all', allowed: true, accessTier: 'free' }],
+const TERMS_PER_MISSION_OPTIONS = [5, 10, 15, 20].map((value) => ({
+  value: String(value),
+  label: String(value) + ' từ / Mission',
+}))
+
+const GAME_LABELS: Record<GameKey, string> = {
+  matching: 'Nối từ (Matching)',
+  mission: 'Học theo Mission',
+  speed: 'Tốc độ (Speed)',
+  puzzle: 'Xếp hình (Puzzle)',
+  listening: 'Nghe (Listening)',
 }
 
 export default function AdminGamesPage() {
-  // Configuration state
-  const [config, setConfig] = useState<GameHubConfig>(DEFAULT_CONFIG)
-  const [publicDecks, setPublicDecks] = useState<SimpleDeckInfo[]>([])
+  const [config, setConfig] = useState<GameHubConfig>(DEFAULT_GAME_HUB_CONFIG)
+  const [decks, setDecks] = useState<SimpleDeckInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
+    let cancelled = false
+
     async function loadData() {
+      setLoading(true)
       try {
-        setLoading(true)
-        // 1. Fetch public & admin private decks
-        const { data: decksData, error: decksError } = await supabase
-          .from('decks')
-          .select('*, deck_terms(count)')
-          .order('created_at', { ascending: false })
+        const [decksResult, settingResult] = await Promise.all([
+          supabase
+            .from('decks')
+            .select('id, name, parent_id, deck_terms(count)')
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'game_hub_config')
+            .maybeSingle(),
+        ])
 
-        if (decksError) throw decksError
+        if (decksResult.error) throw decksResult.error
+        if (settingResult.error) throw settingResult.error
 
-        // Calculate term count recursively including sub-decks
-        const rawDecks = decksData ?? []
-        const mapped = rawDecks.map((d: any) => ({
-          ...d,
-          directCount: d.deck_terms?.[0]?.count ?? 0,
+        const mapped = (decksResult.data ?? []).map((deck: any) => ({
+          id: deck.id,
+          name: deck.name,
+          parent_id: deck.parent_id,
+          term_count: deck.deck_terms?.[0]?.count ?? 0,
         }))
 
-        const getCount = (deckId: string): number => {
-          const current = mapped.find((d) => d.id === deckId)
-          if (!current) return 0
-          const direct = current.directCount
-          const children = mapped.filter((d) => d.parent_id === deckId)
-          const childrenSum = children.reduce((sum, child) => sum + getCount(child.id), 0)
-          return direct + childrenSum
-        }
-
-        const mappedDecks = mapped.map((d) => ({
-          id: d.id,
-          name: d.name,
-          parent_id: d.parent_id,
-          term_count: getCount(d.id),
-        }))
-
-        // Sort decks by their hierarchical path to group child decks under their parent decks
-        mappedDecks.sort((a, b) => {
-          const pathA = deckService.getDeckPath(a.id, mappedDecks)
-          const pathB = deckService.getDeckPath(b.id, mappedDecks)
+        mapped.sort((a, b) => {
+          const pathA = deckService.getDeckPath(a.id, mapped)
+          const pathB = deckService.getDeckPath(b.id, mapped)
           return pathA.localeCompare(pathB, 'vi', { sensitivity: 'base' })
         })
 
-        setPublicDecks(mappedDecks)
-
-        // 2. Fetch game hub config setting
-        const { data: settingData, error: settingError } = await supabase
-          .from('app_settings')
-          .select('*')
-          .eq('key', 'game_hub_config')
-          .maybeSingle()
-
-        if (settingError) throw settingError
-
-        if (settingData?.value) {
-          const parsed = settingData.value as GameHubConfig
-          // Deep merge with defaults to avoid missing keys
-          setConfig({
-            games: {
-              ...DEFAULT_CONFIG.games,
-              ...parsed.games,
-            },
-            allowedDecks: parsed.allowedDecks || DEFAULT_CONFIG.allowedDecks,
-          })
+        if (!cancelled) {
+          setDecks(mapped)
+          setConfig(parseGameHubConfig(settingResult.data?.value))
         }
-      } catch (err: any) {
-        console.error('Failed to load admin game config:', err)
-        setMessage({ type: 'error', text: 'Không thể tải dữ liệu cấu hình: ' + err.message })
+      } catch (cause) {
+        if (!cancelled) {
+          const detail = cause instanceof Error ? cause.message : 'Lỗi không xác định'
+          setMessage({ type: 'error', text: 'Không thể tải cấu hình: ' + detail })
+        }
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
+
     void loadData()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const handleGameTierChange = (gameKey: 'matching' | 'speed' | 'puzzle' | 'listening', tier: 'free' | 'pro') => {
-    setConfig((prev) => ({
-      ...prev,
+  const setGameTier = (gameKey: GameKey, accessTier: GameAccessTier) => {
+    setConfig((previous) => ({
+      ...previous,
       games: {
-        ...prev.games,
-        [gameKey]: { accessTier: tier },
+        ...previous.games,
+        [gameKey]: { accessTier },
       },
     }))
   }
 
-  const handleDeckAllowedToggle = (deckId: string) => {
-    setConfig((prev) => {
-      const idx = prev.allowedDecks.findIndex((d) => d.deckId === deckId)
-      let newDecks = [...prev.allowedDecks]
-
-      if (idx > -1) {
-        newDecks[idx] = { ...newDecks[idx], allowed: !newDecks[idx].allowed }
-      } else {
-        newDecks.push({ deckId, allowed: true, accessTier: 'free' })
-      }
-
-      return { ...prev, allowedDecks: newDecks }
+  const updateDeck = (
+    deckId: string,
+    update: Partial<ReturnType<typeof getDeckGameConfig>>,
+  ) => {
+    setConfig((previous) => {
+      const current = getDeckGameConfig(previous, deckId)
+      const next = { ...current, ...update }
+      const rest = previous.allowedDecks.filter((item) => item.deckId !== deckId)
+      return { ...previous, allowedDecks: [...rest, next] }
     })
   }
 
-  const handleDeckTierChange = (deckId: string, tier: 'free' | 'pro') => {
-    setConfig((prev) => {
-      const idx = prev.allowedDecks.findIndex((d) => d.deckId === deckId)
-      let newDecks = [...prev.allowedDecks]
-
-      if (idx > -1) {
-        newDecks[idx] = { ...newDecks[idx], accessTier: tier }
-      } else {
-        newDecks.push({ deckId, allowed: true, accessTier: tier })
-      }
-
-      return { ...prev, allowedDecks: newDecks }
-    })
-  }
-
-  const handleSaveConfig = async () => {
+  const saveConfig = async () => {
+    setSaving(true)
+    setMessage(null)
     try {
-      setSaving(true)
-      setMessage(null)
-
-      // Save to app_settings table
       await adminService.updateSetting(
         'game_hub_config',
         config,
-        'Cấu hình phân quyền Game Hub và các bộ từ vựng cho phép chơi game'
+        'Cấu hình quyền truy cập Game Hub, Mission và các bộ từ được phép sử dụng',
       )
-
-      // Log the admin action
       await adminService.logAction(
         'update_game_hub_config',
         'app_setting',
         'game_hub_config',
-        config
+        config,
       )
-
-      setMessage({ type: 'success', text: 'Đã lưu cấu hình phân quyền trò chơi thành công!' })
-      
-      // Auto-hide success message after 4 seconds
-      setTimeout(() => {
-        setMessage(null)
-      }, 4000)
-    } catch (err: any) {
-      console.error('Failed to save config:', err)
-      setMessage({ type: 'error', text: 'Lưu thất bại: ' + err.message })
+      setMessage({ type: 'success', text: 'Đã lưu cấu hình Game Hub và Mission.' })
+    } catch (cause) {
+      const detail = cause instanceof Error ? cause.message : 'Lỗi không xác định'
+      setMessage({ type: 'error', text: 'Lưu thất bại: ' + detail })
     } finally {
       setSaving(false)
     }
   }
 
-  // Helper check deck stats in config
-  const getDeckConfig = (deckId: string) => {
-    const found = config.allowedDecks.find((d) => d.deckId === deckId)
-    return found || { deckId, allowed: false, accessTier: 'free' as const }
-  }
-
-  const getGameLabel = (key: string) => {
-    switch (key) {
-      case 'matching':
-        return 'Nối từ (Matching)'
-      case 'speed':
-        return 'Tốc độ (Speed)'
-      case 'puzzle':
-        return 'Xếp hình (Puzzle)'
-      case 'listening':
-        return 'Nghe (Listening)'
-      default:
-        return key
-    }
-  }
-
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         <p className="text-sm font-bold text-muted-foreground">Đang tải cấu hình trò chơi...</p>
       </div>
     )
   }
 
+  const allConfig = getDeckGameConfig(config, 'all')
+
   return (
-    <div className="space-y-6 w-full">
-      {/* Header */}
-      <div className="neo-card p-6 bg-[#432dd7] text-white border-4 border-[#1c293c] shadow-[6px_6px_0px_0px_#1c293c] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="w-full space-y-6">
+      <section className="neo-card flex flex-col gap-4 bg-[#432dd7] p-6 text-white sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-[#fdc800] rounded-full border-2 border-white flex items-center justify-center text-navy shrink-0">
-            <Gamepad2 className="w-7 h-7 text-[#1c293c]" />
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-white bg-[#fdc800]">
+            <Gamepad2 className="h-7 w-7 text-[#1c293c]" />
           </div>
           <div>
             <h1 className="text-2xl font-black">QUẢN LÝ TRÒ CHƠI</h1>
-            <p className="text-xs font-bold text-[#e0e7ff] uppercase tracking-wide">
-              Cấu hình quyền truy cập và hạn chế các bộ thẻ trong Game Hub
+            <p className="text-xs font-bold uppercase tracking-wide text-indigo-100">
+              Game access, shared curriculum Mission và quyền truy cập theo deck
             </p>
           </div>
         </div>
-
-        <button
-          onClick={handleSaveConfig}
-          disabled={saving}
-          className="neo-button bg-yellow-400 hover:bg-yellow-300 text-navy font-black text-sm px-6 py-2.5 flex items-center gap-1.5 border-2 border-[#1c293c] shadow-[3px_3px_0px_0px_#1c293c] active:neo-button-active"
-        >
+        <Button onClick={() => void saveConfig()} disabled={saving}>
           <Save size={16} />
           {saving ? 'Đang lưu...' : 'Lưu cấu hình'}
-        </button>
-      </div>
+        </Button>
+      </section>
 
-      {/* Message feedback */}
-      {message && (
+      {message ? (
         <div
-          className={`p-4 border-4 rounded-md font-bold text-sm shadow-[4px_4px_0px_0px_#1c293c] transition-all duration-300 ${
-            message.type === 'success'
-              ? 'bg-[#dcfce7] border-[#166534] text-[#166534]'
-              : 'bg-[#fee2e2] border-[#991b1b] text-[#991b1b]'
-          }`}
+          role="status"
+          className={
+            'neo-card p-4 text-sm font-bold ' +
+            (message.type === 'success'
+              ? 'bg-emerald-50 text-emerald-900'
+              : 'bg-rose-50 text-rose-900')
+          }
         >
           {message.text}
         </div>
-      )}
+      ) : null}
 
-      {/* Configurations List */}
-      <div className="space-y-6">
-        {/* Game tiers config card */}
-        <div className="neo-card p-6 bg-background border-4 border-[#1c293c] shadow-[6px_6px_0px_0px_#1c293c] space-y-4">
-          <h2 className="text-lg font-black flex items-center gap-2 border-b-2 border-dashed border-[#1c293c]/20 pb-3">
-            <Gamepad2 className="w-5 h-5 text-primary" />
-            1. Cấu hình Quyền truy cập Trò chơi
+      <section className="neo-card space-y-4 p-6">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-black">
+            <Gamepad2 className="h-5 w-5 text-primary" />
+            1. Quyền truy cập theo trò chơi
           </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {(Object.keys(config.games) as Array<keyof typeof config.games>).map((gameKey) => {
-              const gameTier = config.games[gameKey].accessTier
-              return (
-                <div
-                  key={gameKey}
-                  className="p-4 border-2 border-[#1c293c] rounded-md bg-muted/20 flex flex-col justify-between gap-3 h-full"
-                >
-                  <span className="font-black text-sm block">{getGameLabel(gameKey)}</span>
-
-                  <div className="flex border-2 border-[#1c293c] rounded-md overflow-hidden w-full shrink-0">
-                    <button
-                      onClick={() => handleGameTierChange(gameKey, 'free')}
-                      className={`flex-1 py-1.5 text-xs font-black transition-colors text-center border-r-2 border-[#1c293c] ${
-                        gameTier === 'free'
-                          ? 'bg-[#dcfce7] text-[#166534]'
-                          : 'bg-background hover:bg-muted'
-                      }`}
-                    >
-                      Free
-                    </button>
-                    <button
-                      onClick={() => handleGameTierChange(gameKey, 'pro')}
-                      className={`flex-1 py-1.5 text-xs font-black transition-colors text-center ${
-                        gameTier === 'pro'
-                          ? 'bg-amber-100 text-amber-900'
-                          : 'bg-background hover:bg-muted'
-                      }`}
-                    >
-                      Pro 👑
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Decks config card */}
-        <div className="neo-card p-6 bg-background border-4 border-[#1c293c] shadow-[6px_6px_0px_0px_#1c293c] space-y-4">
-          <h2 className="text-lg font-black flex items-center gap-2 border-b-2 border-dashed border-[#1c293c]/20 pb-3">
-            <CheckSquare className="w-5 h-5 text-primary" />
-            2. Danh sách Bộ từ vựng cho phép chơi game
-          </h2>
-          <p className="text-xs text-muted-foreground font-semibold leading-relaxed mb-2">
-            Tích chọn để hiển thị bộ từ vựng tương ứng trên màn hình chọn trước khi bắt đầu chơi. Điều chỉnh bộ từ vựng chỉ Pro mới được phép sử dụng.
+          <p className="mt-1 text-xs font-semibold text-muted-foreground">
+            Mission dùng curriculum chung; Free/Pro chỉ quyết định quyền truy cập, không đổi nội dung theo từng người.
           </p>
+        </div>
 
-          <div className="space-y-4">
-            {/* Special row for "Tất cả từ vựng của bạn" - Full width at top */}
-            {(() => {
-              const allDeckConfig = getDeckConfig('all')
-              return (
-                <div className="p-4 border-2 border-[#1c293c] rounded-md bg-yellow-50/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div
-                    className="flex items-center gap-3 cursor-pointer select-none"
-                    onClick={() => handleDeckAllowedToggle('all')}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {(Object.keys(config.games) as GameKey[]).map((gameKey) => {
+            const tier = config.games[gameKey].accessTier
+            return (
+              <article key={gameKey} className="rounded-lg border-2 border-border bg-muted/20 p-4">
+                <p className="mb-3 text-sm font-black">{GAME_LABELS[gameKey]}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant={tier === 'free' ? 'primary' : 'ghost'}
+                    onClick={() => setGameTier(gameKey, 'free')}
+                    className="px-2"
                   >
-                    {allDeckConfig.allowed ? (
-                      <CheckSquare className="w-5 h-5 text-primary shrink-0" />
-                    ) : (
-                      <Square className="w-5 h-5 text-muted-foreground shrink-0" />
-                    )}
-                    <div>
-                      <span className="font-black text-sm block">Tất cả từ vựng của bạn</span>
-                      <span className="text-[10px] text-muted-foreground font-bold">
-                        (Dữ liệu cá nhân động của từng user)
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex border-2 border-[#1c293c] rounded-md overflow-hidden shrink-0">
-                    <button
-                      onClick={() => handleDeckTierChange('all', 'free')}
-                      disabled={!allDeckConfig.allowed}
-                      className={`px-3 py-1 text-xs font-black transition-colors ${
-                        !allDeckConfig.allowed
-                          ? 'opacity-40 cursor-not-allowed bg-muted text-muted-foreground border-r-2 border-[#1c293c]'
-                          : allDeckConfig.accessTier === 'free'
-                          ? 'bg-[#dcfce7] text-[#166534] border-r-2 border-[#1c293c]'
-                          : 'bg-background hover:bg-muted border-r-2 border-[#1c293c]'
-                      }`}
-                    >
-                      Free
-                    </button>
-                    <button
-                      onClick={() => handleDeckTierChange('all', 'pro')}
-                      disabled={!allDeckConfig.allowed}
-                      className={`px-3 py-1 text-xs font-black transition-colors ${
-                        !allDeckConfig.allowed
-                          ? 'opacity-40 cursor-not-allowed bg-muted text-muted-foreground'
-                          : allDeckConfig.accessTier === 'pro'
-                          ? 'bg-amber-100 text-amber-900'
-                          : 'bg-background hover:bg-muted'
-                      }`}
-                    >
-                      Pro 👑
-                    </button>
-                  </div>
+                    Free
+                  </Button>
+                  <Button
+                    variant={tier === 'pro' ? 'secondary' : 'ghost'}
+                    onClick={() => setGameTier(gameKey, 'pro')}
+                    className="px-2"
+                  >
+                    Pro
+                  </Button>
                 </div>
-              )
-            })()}
+              </article>
+            )
+          })}
+        </div>
+      </section>
 
-            {/* Public Decks List - Grid layout for 2-4 columns on larger screens */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {publicDecks.map((deck) => {
-                const deckConfig = getDeckConfig(deck.id)
-                return (
-                  <div
-                    key={deck.id}
-                    className="p-4 border-2 border-[#1c293c] rounded-md bg-muted/20 flex flex-col justify-between gap-3 h-full"
-                  >
-                    <div
-                      className="flex items-start gap-3 cursor-pointer select-none"
-                      onClick={() => handleDeckAllowedToggle(deck.id)}
-                    >
-                      {deckConfig.allowed ? (
-                        <CheckSquare className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                      ) : (
-                        <Square className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
-                      )}
-                      <div>
-                        <span className="font-black text-sm block line-clamp-2" title={deckService.getDeckPath(deck.id, publicDecks)}>
-                          {deckService.getDeckPath(deck.id, publicDecks)}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground font-bold">
-                          Số lượng: {deck.term_count} từ
-                        </span>
-                      </div>
-                    </div>
+      <section className="neo-card space-y-4 p-6">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-black">
+            <CheckSquare className="h-5 w-5 text-primary" />
+            2. Dữ liệu cá nhân động cho game cũ
+          </h2>
+          <p className="mt-1 text-xs font-semibold text-muted-foreground">
+            “Tất cả từ vựng của bạn” vẫn dành cho các game luyện tập cũ; Mission không dùng nguồn động này.
+          </p>
+        </div>
 
-                    <div className="flex border-2 border-[#1c293c] rounded-md overflow-hidden w-full shrink-0">
-                      <button
-                        onClick={() => handleDeckTierChange(deck.id, 'free')}
-                        disabled={!deckConfig.allowed}
-                        className={`flex-1 py-1.5 text-xs font-black transition-colors text-center border-r-2 border-[#1c293c] ${
-                          !deckConfig.allowed
-                            ? 'opacity-40 cursor-not-allowed bg-muted text-muted-foreground'
-                            : deckConfig.accessTier === 'free'
-                            ? 'bg-[#dcfce7] text-[#166534]'
-                            : 'bg-background hover:bg-muted'
-                        }`}
-                      >
-                        Free
-                      </button>
-                      <button
-                        onClick={() => handleDeckTierChange(deck.id, 'pro')}
-                        disabled={!deckConfig.allowed}
-                        className={`flex-1 py-1.5 text-xs font-black transition-colors text-center ${
-                          !deckConfig.allowed
-                            ? 'opacity-40 cursor-not-allowed bg-muted text-muted-foreground'
-                            : deckConfig.accessTier === 'pro'
-                            ? 'bg-amber-100 text-amber-900'
-                            : 'bg-background hover:bg-muted'
-                        }`}
-                      >
-                        Pro 👑
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {publicDecks.length === 0 && (
-              <div className="text-center py-6 text-xs text-muted-foreground font-bold">
-                Không tìm thấy bộ thẻ công khai (public) nào để cấu hình.
-              </div>
-            )}
+        <div className="flex flex-col gap-3 rounded-lg border-2 border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+          <Button
+            variant={allConfig.allowed ? 'primary' : 'ghost'}
+            onClick={() => updateDeck('all', { allowed: !allConfig.allowed, missionEnabled: false })}
+          >
+            {allConfig.allowed ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+            {allConfig.allowed ? 'Đang cho phép' : 'Đang tắt'}
+          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant={allConfig.accessTier === 'free' ? 'primary' : 'ghost'}
+              disabled={!allConfig.allowed}
+              onClick={() => updateDeck('all', { accessTier: 'free', missionEnabled: false })}
+            >
+              Free
+            </Button>
+            <Button
+              variant={allConfig.accessTier === 'pro' ? 'secondary' : 'ghost'}
+              disabled={!allConfig.allowed}
+              onClick={() => updateDeck('all', { accessTier: 'pro', missionEnabled: false })}
+            >
+              Pro
+            </Button>
           </div>
         </div>
-      </div>
+      </section>
+
+      <section className="neo-card space-y-4 p-6">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-black">
+            <Swords className="h-5 w-5 text-primary" />
+            3. Playable Decks và Mission
+          </h2>
+          <p className="mt-1 text-xs font-semibold text-muted-foreground">
+            Mission chỉ dùng từ trực tiếp trong từng deck. Deck cần tối thiểu 5 từ trực tiếp để bật Mission.
+          </p>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          {decks.map((deck) => {
+            const deckConfig = getDeckGameConfig(config, deck.id)
+            const canMission = deck.term_count >= 5
+            return (
+              <article key={deck.id} className="space-y-4 rounded-xl border-2 border-border bg-muted/20 p-4">
+                <div>
+                  <p className="line-clamp-2 text-sm font-black" title={deckService.getDeckPath(deck.id, decks)}>
+                    {deckService.getDeckPath(deck.id, decks)}
+                  </p>
+                  <p className="mt-1 text-xs font-bold text-muted-foreground">
+                    {deck.term_count} từ trực tiếp
+                    {!canMission ? ' · cần ít nhất 5 từ để bật Mission' : ''}
+                  </p>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <Button
+                    variant={deckConfig.allowed ? 'primary' : 'ghost'}
+                    onClick={() => updateDeck(deck.id, { allowed: !deckConfig.allowed })}
+                  >
+                    {deckConfig.allowed ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+                    Game Hub
+                  </Button>
+                  <Button
+                    variant={deckConfig.accessTier === 'free' ? 'primary' : 'ghost'}
+                    disabled={!deckConfig.allowed}
+                    onClick={() => updateDeck(deck.id, { accessTier: 'free' })}
+                  >
+                    Free
+                  </Button>
+                  <Button
+                    variant={deckConfig.accessTier === 'pro' ? 'secondary' : 'ghost'}
+                    disabled={!deckConfig.allowed}
+                    onClick={() => updateDeck(deck.id, { accessTier: 'pro' })}
+                  >
+                    Pro
+                  </Button>
+                </div>
+
+                <div className="border-t-2 border-dashed border-border pt-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <Button
+                      variant={deckConfig.missionEnabled ? 'secondary' : 'ghost'}
+                      disabled={!deckConfig.allowed || !canMission}
+                      onClick={() => updateDeck(deck.id, { missionEnabled: !deckConfig.missionEnabled })}
+                      className="shrink-0"
+                    >
+                      <Swords className="h-4 w-4" />
+                      {deckConfig.missionEnabled ? 'Mission đang bật' : 'Bật Mission'}
+                    </Button>
+                    <Select
+                      value={String(deckConfig.termsPerMission ?? 10)}
+                      onChange={(value) => updateDeck(deck.id, { termsPerMission: Number(value) })}
+                      options={TERMS_PER_MISSION_OPTIONS}
+                      disabled={!deckConfig.missionEnabled}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-muted-foreground">
+                    Script: Standard · Learn → Matching → Listening → Context → Recall → Boss
+                  </p>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+
+        {decks.length === 0 ? (
+          <p className="py-6 text-center text-sm font-bold text-muted-foreground">
+            Chưa có deck nào để cấu hình.
+          </p>
+        ) : null}
+      </section>
     </div>
   )
 }

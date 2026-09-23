@@ -63,6 +63,8 @@ const ChatPage = lazyWithChunkRecovery(() => import('@/pages/chat/ChatPage').the
 const AdminGrammarLessonEditPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminGrammarLessonEditPage'))
 const GameHubPage = lazyWithChunkRecovery(() => import('@/pages/games/GameHubPage'))
 const MatchingGamePage = lazyWithChunkRecovery(() => import('@/pages/games/MatchingGamePage'))
+const MissionDeckPage = lazyWithChunkRecovery(() => import('@/pages/games/MissionDeckPage'))
+const MissionGamePage = lazyWithChunkRecovery(() => import('@/pages/games/MissionGamePage'))
 const AdminGamesPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminGamesPage'))
 const AdminSoundsPage = lazyWithChunkRecovery(() => import('@/pages/admin/AdminSoundsPage'))
 const ReadingHubPage = lazyWithChunkRecovery(() => import('@/pages/reading/ReadingHubPage'))
@@ -252,6 +254,22 @@ export const router = createBrowserRouter([
                     element: (
                       <React.Suspense fallback={<AppLoading />}>
                         <MatchingGamePage />
+                      </React.Suspense>
+                    ),
+                  },
+                  {
+                    path: 'games/mission/:deckId',
+                    element: (
+                      <React.Suspense fallback={<AppLoading />}>
+                        <MissionDeckPage />
+                      </React.Suspense>
+                    ),
+                  },
+                  {
+                    path: 'games/mission/:deckId/:missionIndex',
+                    element: (
+                      <React.Suspense fallback={<AppLoading />}>
+                        <MissionGamePage />
                       </React.Suspense>
                     ),
                   },
