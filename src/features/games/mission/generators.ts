@@ -67,6 +67,10 @@ export function generateQuestion(
   const acceptedAnswers = [target.sourceText]
   if (type === 'matching' || type === 'listening_choice') {
     if (!target.translation) return { question: null, diagnostic: { code: 'MISSING_TRANSLATION', targetTermId: target.globalTermId, blocking: false, message: 'Từ chưa có bản dịch để tạo câu hỏi lựa chọn.' } }
+    if (type === 'listening_choice' && !target.audioUrl?.trim()) return { question: null, diagnostic: { code: 'MISSING_AUDIO', targetTermId: target.globalTermId, blocking: false, message: 'Từ chưa có audio lưu sẵn.' } }
+    if (pool.some((term) => term.globalTermId !== target.globalTermId && term.translation && normalizeMissionAnswer(term.translation) === normalizeMissionAnswer(target.translation ?? ''))) {
+      return { question: null, diagnostic: { code: 'DUPLICATE_TRANSLATION', targetTermId: target.globalTermId, blocking: false, message: 'Bản dịch trùng với từ khác trong mission.' } }
+    }
     const options = optionsFor(target, pool, 4, seed + ':' + type + ':' + target.globalTermId)
     if (!options) return { question: null, diagnostic: { code: 'INSUFFICIENT_DISTRACTORS', targetTermId: target.globalTermId, blocking: false, message: 'Không đủ đáp án nhiễu duy nhất.' } }
     return { question: {
@@ -97,6 +101,8 @@ export function generateQuestion(
     if (!cloze) return { question: null, diagnostic: { code: 'NO_EXACT_EXAMPLE_MATCH', targetTermId: target.globalTermId, blocking: false, message: 'Không có ví dụ chứa chính xác dạng từ mục tiêu.' } }
     return { question: { id: questionId(type, target.globalTermId, String(cloze.index)), type, targetTermId: target.globalTermId, prompt: cloze.prompt, acceptedAnswers, hint: hintFor(target), sourceExampleIndex: cloze.index } }
   }
+  if (!target.translation?.trim() && !target.audioUrl?.trim()) return { question: null, diagnostic: { code: 'MISSING_TRANSLATION', targetTermId: target.globalTermId, blocking: false, message: 'Không có bản dịch hoặc audio để gợi ý chính tả.' } }
+  if (target.sourceText.trim().split(/\s+/).length > 6) return { question: null, diagnostic: { code: 'SOURCE_TOO_LONG', targetTermId: target.globalTermId, blocking: false, message: 'Nội dung quá dài cho bài chính tả.' } }
   return { question: {
     id: questionId('spelling', target.globalTermId),
     type: 'spelling',

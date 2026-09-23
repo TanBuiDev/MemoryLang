@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createCurriculumContentVersion, createCurriculumFingerprint, splitIntoMissions } from './curriculum'
-import { findExactCloze, normalizeMissionAnswer } from './generators'
-import { calculateMissionScore, evaluateMissionReadiness } from './missionEngine'
+import { findExactCloze, generateQuestion, normalizeMissionAnswer } from './generators'
+import { calculateMissionScore, createMissionDefinition, evaluateMissionReadiness } from './missionEngine'
 import { buildMissionReviewActions } from './missionSrsAdapter'
 import { parseGameHubConfig } from './gameConfig'
 import { missionAttemptReducer } from './missionReducer'
@@ -51,6 +51,46 @@ describe('question helpers', () => {
   it('creates cloze only for an exact surface form', () => {
     expect(findExactCloze(term())?.prompt).toBe('They plan to ______ the office.')
     expect(findExactCloze(term({ examples: [{ sentence: 'They renovated the office.' }] }))).toBeNull()
+  })
+  it('skips listening questions without stored audio and unprompted spelling', () => {
+    const silent = term({ audioUrl: null, translation: null })
+    const translatedSilent = term({ audioUrl: null })
+    const distractors = Array.from({ length: 4 }, (_, index) => term({ globalTermId: 'other-' + index, translation: 'nghĩa ' + index }))
+    expect(generateQuestion('listening_choice', translatedSilent, [translatedSilent, ...distractors], 'seed').question).toBeNull()
+    expect(generateQuestion('listening_typing', silent, [silent], 'seed').question).toBeNull()
+    expect(generateQuestion('spelling', silent, [silent], 'seed').question).toBeNull()
+  })
+  it('skips a matching target whose translation is shared by another term', () => {
+    const duplicate = term({ globalTermId: 'duplicate', sourceText: 'refurbish' })
+    const distractors = Array.from({ length: 3 }, (_, index) => term({ globalTermId: 'other-' + index, translation: 'nghĩa ' + index }))
+    expect(generateQuestion('matching', term(), [term(), duplicate, ...distractors], 'seed').question).toBeNull()
+  })
+})
+
+describe('shared mission definitions', () => {
+  const terms = Array.from({ length: 10 }, (_, index) => term({
+    globalTermId: 'term-' + index,
+    orderIndex: index,
+    sourceText: 'word-' + index,
+    normalizedText: 'word-' + index,
+    translation: 'nghĩa ' + index,
+    examples: [{ sentence: 'This is word-' + index + '.' }],
+  }))
+
+  it('gives different users the same target terms and question structure', () => {
+    const input = { deckId: 'deck-1', curriculumFingerprint: 'fp', missionIndex: 0, terms }
+    const userA = createMissionDefinition(input).definition
+    const userB = createMissionDefinition(input).definition
+    expect(userA).toEqual(userB)
+    expect(userA.targetTermIds).toEqual(terms.map((item) => item.globalTermId))
+  })
+
+  it('keeps every matching translation unique', () => {
+    const duplicated = terms.map((item, index) => index === 9 ? { ...item, translation: 'nghĩa 0' } : item)
+    const { definition } = createMissionDefinition({ deckId: 'deck-1', curriculumFingerprint: 'fp', missionIndex: 0, terms: duplicated })
+    const matching = definition.stages.find((stage) => stage.type === 'matching')
+    const normalized = matching?.questions.map((question) => normalizeMissionAnswer(question.acceptedAnswers[0])) ?? []
+    expect(new Set(normalized).size).toBe(normalized.length)
   })
 })
 
