@@ -102,6 +102,8 @@ export interface MissionAttemptState {
   draft?: {
     answerValue?: string
     attemptNumber?: number
+    hintLevel?: number
+    contextTranslationShown?: boolean
     matchingSelections?: Record<string, string>
     matchingReviewed?: boolean
   }

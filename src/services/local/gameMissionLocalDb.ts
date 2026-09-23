@@ -33,6 +33,8 @@ const missionAttemptStateSchema = z.object({
   draft: z.object({
     answerValue: z.string().optional(),
     attemptNumber: z.number().int().min(1).max(2).optional(),
+    hintLevel: z.number().int().min(0).max(2).optional(),
+    contextTranslationShown: z.boolean().optional(),
     matchingSelections: z.record(z.string(), z.string()).optional(),
     matchingReviewed: z.boolean().optional(),
   }).optional(),

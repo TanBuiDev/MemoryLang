@@ -1,4 +1,4 @@
-import { CheckCircle2, Headphones, Lightbulb, Swords, XCircle } from 'lucide-react'
+import { CheckCircle2, Headphones, Languages, Lightbulb, Swords, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { MissionStageType, QuestionDefinition } from '../mission.types'
@@ -16,12 +16,16 @@ interface MissionQuestionStageProps {
   total: number
   answerValue: string
   hintLevel: number
+  contextTranslation: string | null
+  contextTranslationShown: boolean
   feedback: MissionQuestionFeedback | null
   isLastQuestion: boolean
   onAnswerChange: (value: string) => void
   onSubmit: () => void
   onNext: () => void
   onPlayAudio: () => void
+  onHint: () => void
+  onShowTranslation: () => void
 }
 
 export function MissionQuestionStage({
@@ -31,12 +35,16 @@ export function MissionQuestionStage({
   total,
   answerValue,
   hintLevel,
+  contextTranslation,
+  contextTranslationShown,
   feedback,
   isLastQuestion,
   onAnswerChange,
   onSubmit,
   onNext,
   onPlayAudio,
+  onHint,
+  onShowTranslation,
 }: MissionQuestionStageProps) {
   return (
     <div className="neo-card space-y-5 p-6 sm:p-8">
@@ -58,12 +66,30 @@ export function MissionQuestionStage({
 
       <h1 className="text-2xl font-black leading-relaxed">{question.prompt}</h1>
 
+      {!feedback?.finalized && question.type === 'listening_typing' && (hintLevel === 0 || hintLevel === 1 && Boolean(question.hint?.ipa)) ? (
+        <Button variant="ghost" onClick={onHint}>
+          <Lightbulb className="h-4 w-4" /> {hintLevel === 0 ? 'Gợi ý' : 'Gợi ý thêm'}
+        </Button>
+      ) : null}
+
+      {contextTranslation && question.type === 'context_cloze' ? (
+        contextTranslationShown ? (
+          <div className="rounded-xl border-2 border-amber-600 bg-amber-50 p-3 text-sm font-bold text-amber-950">
+            <Languages className="mr-2 inline h-4 w-4" /> {contextTranslation}
+          </div>
+        ) : !feedback?.finalized ? (
+          <Button variant="ghost" onClick={onShowTranslation}>
+            <Languages className="h-4 w-4" /> Xem nghĩa câu
+          </Button>
+        ) : null
+      ) : null}
+
       {hintLevel > 0 ? (
         <div className="rounded-xl border-2 border-amber-600 bg-amber-50 p-3 text-sm font-bold text-amber-950">
           <Lightbulb className="mr-2 inline h-4 w-4" />
           Gợi ý: bắt đầu bằng “{question.hint?.firstLetter || '?'}”,{' '}
           {question.hint?.wordCount || 1} từ
-          {question.hint?.ipa ? ' · ' + question.hint.ipa : ''}
+          {hintLevel > 1 && question.hint?.ipa ? ' · ' + question.hint.ipa : ''}
         </div>
       ) : null}
 

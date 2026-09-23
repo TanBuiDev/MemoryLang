@@ -261,6 +261,8 @@ Mission audio reuses the shared `speak`/`stopSpeaking` pipeline. Learn terms aut
 
 Active attempts persist in the dedicated Dexie `memorylang-game` database. The local snapshot includes unfinished input, retry count, and Matching selections, and always writes the newest attempt state over restored metadata. Initial completion sync and restore-time auto-retry are mutually exclusive; a failed sync waits for the explicit Retry action. Completion checkpoints SRS sync, `study_sessions` completion (`mode = 'game_mission'`), and mission progress separately. These checkpoints prevent reapplying completed phases after a retry, but a network failure after a server write and before its local checkpoint is not yet idempotent. `missionSrsAdapter` aggregates all graded exposures to one action per global term per mission: incorrect → `dont_know`, hint/retry → `difficult`, strong first-try recall → `know`; Mission never auto-marks a word `memorized`.
 
+The Mission draft also persists on-demand hint level and whether the learner revealed the existing translation of a context example. A correct answer after either help receives partial credit and is not marked first-try-correct; context translation is read only from the exact persisted example used by the cloze question.
+
 Admins configure Mission from `/app/admin/games` with visual controls for game tier, per-deck enablement, access tier, and terms per mission. “All vocabulary” remains a dynamic source for legacy games and is intentionally not a Mission curriculum source.
 
 ## Current State / MVP Status

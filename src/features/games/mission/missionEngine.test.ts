@@ -6,7 +6,7 @@ import { buildMissionReviewActions } from './missionSrsAdapter'
 import { parseGameHubConfig } from './gameConfig'
 import { missionAttemptReducer, shouldAutoSyncMission } from './missionReducer'
 import { getMissionScript } from './scriptRegistry'
-import { selectMatchingTranslation } from './missionInteraction'
+import { getMissionContextTranslation, scoreMissionAnswer, selectMatchingTranslation } from './missionInteraction'
 import type { GameTerm, MissionDefinition } from './mission.types'
 
 const term = (overrides: Partial<GameTerm> = {}): GameTerm => ({
@@ -135,6 +135,7 @@ describe('mission SRS adapter', () => {
   it('maps retry to difficult and any final failure to dont_know', () => {
     const snapshot = new Map([['term-1', { globalTermId: 'term-1', correctCount: 2, wrongCount: 0, repetition: 2, intervalDays: 6, easeFactor: 2.5 }]])
     expect(buildMissionReviewActions([answer({ attempts: 2, firstTryCorrect: false })], snapshot)[0].action).toBe('difficult')
+    expect(buildMissionReviewActions([answer({ hintLevel: 1, firstTryCorrect: false, score: 50 })], snapshot)[0].action).toBe('difficult')
     expect(buildMissionReviewActions([answer({ isCorrect: false, firstTryCorrect: false, score: 0 })], snapshot)[0].action).toBe('dont_know')
   })
 
@@ -298,5 +299,22 @@ describe('mission interactions', () => {
     })
     expect(selectMatchingTranslation({ a: 'nghĩa A' }, 'a', '')).toEqual({})
     expect(selectMatchingTranslation({ a: 'nghĩa A' }, 'b', 'nghĩa A')).toEqual({ b: 'nghĩa A' })
+  })
+
+  it('caps a hinted first-try answer at partial credit', () => {
+    expect(scoreMissionAnswer(true, 1, 0)).toBe(100)
+    expect(scoreMissionAnswer(true, 1, 1)).toBe(50)
+    expect(scoreMissionAnswer(true, 2, 0)).toBe(50)
+    expect(scoreMissionAnswer(false, 1, 0)).toBe(0)
+  })
+
+  it('shows only the existing translation of the exact cloze example', () => {
+    const target = term({ examples: [
+      { sentence: 'They plan to renovate the office.', translation: 'Họ dự định cải tạo văn phòng.' },
+      { sentence: 'We renovate homes.', translation: 'Chúng tôi cải tạo nhà.' },
+    ] })
+    expect(getMissionContextTranslation({ targetTermId: target.globalTermId, sourceExampleIndex: 1 }, [target])).toBe('Chúng tôi cải tạo nhà.')
+    expect(getMissionContextTranslation({ targetTermId: target.globalTermId, sourceExampleIndex: 3 }, [target])).toBeNull()
+    expect(getMissionContextTranslation({ targetTermId: target.globalTermId, sourceExampleIndex: 0 }, [term({ examples: [{ sentence: 'They plan to renovate the office.' }] })])).toBeNull()
   })
 })
