@@ -26,41 +26,12 @@ import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Select } from '@/components/ui/select'
 import { cn } from '@/utils/cn'
-
-interface GameAccessConfig {
-  accessTier: 'free' | 'pro'
-}
-
-interface AllowedDeckConfig {
-  deckId: string
-  allowed: boolean
-  accessTier: 'free' | 'pro'
-  missionEnabled?: boolean
-  termsPerMission?: number
-  scriptKey?: string
-}
-
-interface GameHubConfig {
-  games: {
-    matching: GameAccessConfig
-    mission: GameAccessConfig
-    speed: GameAccessConfig
-    puzzle: GameAccessConfig
-    listening: GameAccessConfig
-  }
-  allowedDecks: AllowedDeckConfig[]
-}
-
-const DEFAULT_CONFIG: GameHubConfig = {
-  games: {
-    matching: { accessTier: 'free' },
-    mission: { accessTier: 'free' },
-    speed: { accessTier: 'pro' },
-    puzzle: { accessTier: 'pro' },
-    listening: { accessTier: 'pro' },
-  },
-  allowedDecks: [{ deckId: 'all', allowed: true, accessTier: 'free' }],
-}
+import {
+  DEFAULT_GAME_HUB_CONFIG,
+  getDeckGameConfig,
+  parseGameHubConfig,
+  type GameHubConfig,
+} from '@/features/games/mission/gameConfig'
 
 export default function GameHubPage() {
   const navigate = useNavigate()
@@ -71,7 +42,7 @@ export default function GameHubPage() {
   const [decks, setDecks] = useState<Deck[]>([])
   const [allTermsCount, setAllTermsCount] = useState<number>(0)
   const [loading, setLoading] = useState(true)
-  const [hubConfig, setHubConfig] = useState<GameHubConfig>(DEFAULT_CONFIG)
+  const [hubConfig, setHubConfig] = useState<GameHubConfig>(DEFAULT_GAME_HUB_CONFIG)
 
   // UI state
   const [isConfigOpen, setIsConfigOpen] = useState(false)
@@ -124,16 +95,7 @@ export default function GameHubPage() {
         setDecks(updatedDecks)
         setAllTermsCount(termsList.length)
 
-        if (settingData?.data?.value) {
-          const parsed = settingData.data.value as GameHubConfig
-          setHubConfig({
-            games: {
-              ...DEFAULT_CONFIG.games,
-              ...parsed.games,
-            },
-            allowedDecks: parsed.allowedDecks || DEFAULT_CONFIG.allowedDecks,
-          })
-        }
+        setHubConfig(parseGameHubConfig(settingData?.data?.value))
       } catch (err) {
         console.error('Failed to load Game Hub data:', err)
       } finally {
@@ -212,11 +174,7 @@ export default function GameHubPage() {
     }
   }
 
-  // Helper check deck config in loaded hubConfig
-  const getDeckConfig = (deckId: string) => {
-    const found = hubConfig.allowedDecks.find((d) => d.deckId === deckId)
-    return found || { deckId, allowed: false, accessTier: 'free' as const }
-  }
+  const getDeckConfig = (deckId: string) => getDeckGameConfig(hubConfig, deckId)
 
   const games = [
     {
@@ -276,7 +234,7 @@ export default function GameHubPage() {
   const isAllVocabularyAllowed = getDeckConfig('all').allowed
 
   const missionDeckOptions = allowedDecksToShow
-    .filter((deck) => getDeckConfig(deck.id).missionEnabled !== false)
+    .filter((deck) => getDeckConfig(deck.id).missionEnabled === true)
     .map((deck) => {
       const deckConf = getDeckConfig(deck.id)
       const suffix = !isPro && deckConf.accessTier === 'pro' ? ' 👑 Pro' : ''
