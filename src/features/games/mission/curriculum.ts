@@ -54,8 +54,11 @@ export function createCurriculumContentVersion(terms: GameTerm[]) {
   const content = terms.map((term) => ({
     id: term.globalTermId,
     sourceText: term.sourceText,
+    sourceLanguage: term.sourceLanguage,
     translation: term.translation,
     itemType: term.itemType,
+    ipa: term.ipa,
+    audioUrl: term.audioUrl,
     examples: term.examples.map((example) => example.sentence),
   }))
   return 'c1-' + stableHash(JSON.stringify(content))

@@ -41,6 +41,7 @@ describe('mission curriculum', () => {
     const before = createCurriculumContentVersion([term()])
     const after = createCurriculumContentVersion([term({ translation: 'tân trang' })])
     expect(before).not.toBe(after)
+    expect(createCurriculumContentVersion([term({ audioUrl: 'https://example.com/new-audio.mp3' })])).not.toBe(before)
   })
 })
 
