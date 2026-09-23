@@ -35,6 +35,7 @@ export function createCurriculumFingerprint(input: {
   scriptVersion?: number
   generatorVersion?: number
   overrideVersion?: string
+  contentVersion?: string
 }) {
   const canonical = JSON.stringify({
     deckId: input.deckId,
@@ -44,8 +45,20 @@ export function createCurriculumFingerprint(input: {
     scriptVersion: input.scriptVersion ?? STANDARD_SCRIPT_VERSION,
     generatorVersion: input.generatorVersion ?? GENERATOR_VERSION,
     overrideVersion: input.overrideVersion ?? 'none',
+    contentVersion: input.contentVersion ?? 'content-v1',
   })
   return 'v1-' + stableHash(canonical)
+}
+
+export function createCurriculumContentVersion(terms: GameTerm[]) {
+  const content = terms.map((term) => ({
+    id: term.globalTermId,
+    sourceText: term.sourceText,
+    translation: term.translation,
+    itemType: term.itemType,
+    examples: term.examples.map((example) => example.sentence),
+  }))
+  return 'c1-' + stableHash(JSON.stringify(content))
 }
 
 export function buildMissionTermGroups(terms: GameTerm[], termsPerMission: number) {
