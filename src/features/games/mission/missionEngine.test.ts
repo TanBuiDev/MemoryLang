@@ -327,6 +327,10 @@ describe('mission answer review', () => {
       scriptKey: 'standard', scriptVersion: 1, generatorVersion: 1, targetTermIds: ['term-1'],
       stages: [
         { type: 'learn', required: true, targetTermIds: ['term-1'], questions: [] },
+        { type: 'matching', required: true, targetTermIds: ['term-1'], questions: [{
+          id: 'match-1', type: 'matching', targetTermId: 'term-1', prompt: 'supplier',
+          acceptedAnswers: ['nhà cung cấp'],
+        }] },
         { type: 'listening_typing', required: true, targetTermIds: ['term-1'], questions: [{
           id: 'q1', type: 'listening_typing', targetTermId: 'term-1', prompt: 'Nghe và nhập từ hoặc cụm từ',
           acceptedAnswers: ['supplier'], audioText: 'supplier', audioUrl: 'supplier.mp3',
@@ -337,9 +341,14 @@ describe('mission answer review', () => {
       questionId: 'q1', targetTermId: 'term-1', type: 'listening_typing',
       attempts: 2, hintLevel: 1, isCorrect: true, firstTryCorrect: false,
       score: 50, answeredAt: 'now', firstSubmittedAnswer: 'supply', submittedAnswer: 'supplier',
+    }, {
+      questionId: 'match-1', targetTermId: 'term-1', type: 'matching',
+      attempts: 1, hintLevel: 0, isCorrect: false, firstTryCorrect: false,
+      score: 0, answeredAt: 'now', submittedAnswer: 'đối thủ',
     }])
-    expect(review).toHaveLength(1)
-    expect(review[0]).toMatchObject({
+    expect(review).toHaveLength(2)
+    expect(review[0]).toMatchObject({ stageType: 'matching', answer: { submittedAnswer: 'đối thủ' } })
+    expect(review[1]).toMatchObject({
       stageType: 'listening_typing',
       answer: { firstSubmittedAnswer: 'supply', submittedAnswer: 'supplier', score: 50 },
       question: { acceptedAnswers: ['supplier'] },
