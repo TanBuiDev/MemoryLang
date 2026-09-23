@@ -23,6 +23,8 @@ import { MissionLearnStage } from '@/features/games/mission/components/MissionLe
 import { MissionMatchingStage } from '@/features/games/mission/components/MissionMatchingStage'
 import { MissionQuestionStage, type MissionQuestionFeedback } from '@/features/games/mission/components/MissionQuestionStage'
 import { MissionResultView } from '@/features/games/mission/components/MissionResultView'
+import { MissionReviewView } from '@/features/games/mission/components/MissionReviewView'
+import { buildMissionReviewItems } from '@/features/games/mission/missionReview'
 import type { AnswerRecord, GameTerm, MissionAttemptState, MissionDefinition, QuestionDefinition } from '@/features/games/mission/mission.types'
 import type { Deck } from '@/types/deck.types'
 import { speak, stopSpeaking } from '@/utils/audio'
@@ -77,10 +79,12 @@ export default function MissionGamePage() {
   const [attemptNumber, setAttemptNumber] = useState(1)
   const [hintLevel, setHintLevel] = useState(0)
   const [contextTranslationShown, setContextTranslationShown] = useState(false)
+  const [firstSubmittedAnswer, setFirstSubmittedAnswer] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<MissionQuestionFeedback | null>(null)
   const [matchingSelections, setMatchingSelections] = useState<Record<string, string>>({})
   const [matchingReviewed, setMatchingReviewed] = useState(false)
   const [exitOpen, setExitOpen] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
   const syncingRef = useRef(false)
   const finishingRef = useRef(false)
   const attemptRef = useRef<MissionAttemptState | null>(null)
@@ -208,6 +212,7 @@ export default function MissionGamePage() {
           setAttemptNumber(stored.state.draft?.attemptNumber ?? 1)
           setHintLevel(stored.state.draft?.hintLevel ?? ((stored.state.draft?.attemptNumber ?? 1) > 1 ? 1 : 0))
           setContextTranslationShown(stored.state.draft?.contextTranslationShown ?? false)
+          setFirstSubmittedAnswer(stored.state.draft?.firstSubmittedAnswer ?? null)
           setMatchingSelections(stored.state.draft?.matchingSelections ?? {})
           setMatchingReviewed(stored.state.draft?.matchingReviewed ?? false)
           const restoredStage = definition.stages[stored.state.stageIndex]
@@ -322,6 +327,7 @@ export default function MissionGamePage() {
     setAttemptNumber(1)
     setHintLevel(0)
     setContextTranslationShown(false)
+    setFirstSubmittedAnswer(null)
     setFeedback(null)
     setMatchingSelections({})
     setMatchingReviewed(false)
@@ -365,6 +371,7 @@ export default function MissionGamePage() {
         firstTryCorrect: correct,
         score: correct ? 100 : 0,
         answeredAt: now,
+        submittedAnswer: selected,
       }
     })
 
@@ -409,7 +416,8 @@ export default function MissionGamePage() {
       setHintLevel(nextHintLevel)
       setFeedback({ correct: false, finalized: false, text: 'Chưa đúng. Dùng gợi ý và thử lại một lần nữa.' })
       setAnswerValue('')
-      persistDraft({ answerValue: '', attemptNumber: 2, hintLevel: nextHintLevel, contextTranslationShown })
+      setFirstSubmittedAnswer(answerValue)
+      persistDraft({ answerValue: '', attemptNumber: 2, hintLevel: nextHintLevel, contextTranslationShown, firstSubmittedAnswer: answerValue })
       return
     }
 
@@ -424,6 +432,8 @@ export default function MissionGamePage() {
       firstTryCorrect: correct && attemptNumber === 1 && effectiveHintLevel === 0,
       score: scoreMissionAnswer(correct, attemptNumber, effectiveHintLevel),
       answeredAt: new Date().toISOString(),
+      submittedAnswer: answerValue,
+      firstSubmittedAnswer: firstSubmittedAnswer ?? undefined,
     }
     const answerAt = new Date().toISOString()
     const next = missionAttemptReducer(attempt, {
@@ -603,6 +613,8 @@ export default function MissionGamePage() {
       setAttemptNumber(1)
       setHintLevel(0)
       setContextTranslationShown(false)
+      setFirstSubmittedAnswer(null)
+      setReviewOpen(false)
       setFeedback(null)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Không thể bắt đầu lượt chơi lại.')
@@ -628,6 +640,25 @@ export default function MissionGamePage() {
   }
 
   if (result) {
+    if (reviewOpen) {
+      return <MissionReviewView
+        items={buildMissionReviewItems(loaded.definition, attempt.answers)}
+        onBack={() => {
+          audioRef.current?.transition()
+          setReviewOpen(false)
+        }}
+        onPlayAudio={(questionId) => {
+          const question = loaded.definition.stages.flatMap((stage) => stage.questions).find((item) => item.id === questionId)
+          if (!question?.audioText) return
+          const target = loaded.missionTerms.find((item) => item.globalTermId === question.targetTermId)
+          void speak(question.audioText, {
+            audioUrl: question.audioUrl,
+            globalTermId: question.targetTermId,
+            lang: target?.sourceLanguage,
+          })
+        }}
+      />
+    }
     return (
       <MissionResultView
         missionNumber={missionIndex + 1}
@@ -638,6 +669,7 @@ export default function MissionGamePage() {
         hasNextMission={missionIndex + 1 < loaded.missionCount}
         onRetrySync={() => void syncCompletion(attempt, result)}
         onBack={() => navigate('/app/games/mission/' + deckId)}
+        onReview={() => setReviewOpen(true)}
         onReplay={() => void restartMission()}
         onNext={() => navigate('/app/games/mission/' + deckId + '/' + (missionIndex + 1))}
       />
@@ -711,16 +743,16 @@ export default function MissionGamePage() {
           }
           onAnswerChange={(value) => {
             setAnswerValue(value)
-            persistDraft({ answerValue: value, attemptNumber, hintLevel, contextTranslationShown })
+            persistDraft({ answerValue: value, attemptNumber, hintLevel, contextTranslationShown, firstSubmittedAnswer: firstSubmittedAnswer ?? undefined })
           }}
           onHint={() => {
             const nextHintLevel = Math.min(2, hintLevel + 1)
             setHintLevel(nextHintLevel)
-            persistDraft({ answerValue, attemptNumber, hintLevel: nextHintLevel, contextTranslationShown })
+            persistDraft({ answerValue, attemptNumber, hintLevel: nextHintLevel, contextTranslationShown, firstSubmittedAnswer: firstSubmittedAnswer ?? undefined })
           }}
           onShowTranslation={() => {
             setContextTranslationShown(true)
-            persistDraft({ answerValue, attemptNumber, hintLevel, contextTranslationShown: true })
+            persistDraft({ answerValue, attemptNumber, hintLevel, contextTranslationShown: true, firstSubmittedAnswer: firstSubmittedAnswer ?? undefined })
           }}
           onSubmit={() => void submitAnswer()}
           onNext={() => void nextQuestion()}

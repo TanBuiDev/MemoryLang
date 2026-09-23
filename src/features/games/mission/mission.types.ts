@@ -90,6 +90,8 @@ export interface AnswerRecord {
   firstTryCorrect: boolean
   score: number
   answeredAt: string
+  submittedAnswer?: string
+  firstSubmittedAnswer?: string
 }
 
 export interface MissionAttemptState {
@@ -104,6 +106,7 @@ export interface MissionAttemptState {
     attemptNumber?: number
     hintLevel?: number
     contextTranslationShown?: boolean
+    firstSubmittedAnswer?: string
     matchingSelections?: Record<string, string>
     matchingReviewed?: boolean
   }

@@ -6,6 +6,7 @@ import { buildMissionReviewActions } from './missionSrsAdapter'
 import { parseGameHubConfig } from './gameConfig'
 import { missionAttemptReducer, shouldAutoSyncMission } from './missionReducer'
 import { getMissionScript } from './scriptRegistry'
+import { buildMissionReviewItems } from './missionReview'
 import { getMissionContextTranslation, scoreMissionAnswer, selectMatchingTranslation } from './missionInteraction'
 import type { GameTerm, MissionDefinition } from './mission.types'
 
@@ -316,5 +317,32 @@ describe('mission interactions', () => {
     expect(getMissionContextTranslation({ targetTermId: target.globalTermId, sourceExampleIndex: 1 }, [target])).toBe('Chúng tôi cải tạo nhà.')
     expect(getMissionContextTranslation({ targetTermId: target.globalTermId, sourceExampleIndex: 3 }, [target])).toBeNull()
     expect(getMissionContextTranslation({ targetTermId: target.globalTermId, sourceExampleIndex: 0 }, [term({ examples: [{ sentence: 'They plan to renovate the office.' }] })])).toBeNull()
+  })
+})
+
+describe('mission answer review', () => {
+  it('keeps curriculum order and includes the learner submission and correction', () => {
+    const definition: MissionDefinition = {
+      deckId: 'deck', curriculumFingerprint: 'fp', missionIndex: 0,
+      scriptKey: 'standard', scriptVersion: 1, generatorVersion: 1, targetTermIds: ['term-1'],
+      stages: [
+        { type: 'learn', required: true, targetTermIds: ['term-1'], questions: [] },
+        { type: 'listening_typing', required: true, targetTermIds: ['term-1'], questions: [{
+          id: 'q1', type: 'listening_typing', targetTermId: 'term-1', prompt: 'Nghe và nhập từ hoặc cụm từ',
+          acceptedAnswers: ['supplier'], audioText: 'supplier', audioUrl: 'supplier.mp3',
+        }] },
+      ],
+    }
+    const review = buildMissionReviewItems(definition, [{
+      questionId: 'q1', targetTermId: 'term-1', type: 'listening_typing',
+      attempts: 2, hintLevel: 1, isCorrect: true, firstTryCorrect: false,
+      score: 50, answeredAt: 'now', firstSubmittedAnswer: 'supply', submittedAnswer: 'supplier',
+    }])
+    expect(review).toHaveLength(1)
+    expect(review[0]).toMatchObject({
+      stageType: 'listening_typing',
+      answer: { firstSubmittedAnswer: 'supply', submittedAnswer: 'supplier', score: 50 },
+      question: { acceptedAnswers: ['supplier'] },
+    })
   })
 })

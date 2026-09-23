@@ -21,6 +21,8 @@ const answerRecordSchema = z.object({
   firstTryCorrect: z.boolean(),
   score: z.number().min(0).max(100),
   answeredAt: z.string().min(1),
+  submittedAnswer: z.string().optional(),
+  firstSubmittedAnswer: z.string().optional(),
 })
 
 const missionAttemptStateSchema = z.object({
@@ -35,6 +37,7 @@ const missionAttemptStateSchema = z.object({
     attemptNumber: z.number().int().min(1).max(2).optional(),
     hintLevel: z.number().int().min(0).max(2).optional(),
     contextTranslationShown: z.boolean().optional(),
+    firstSubmittedAnswer: z.string().optional(),
     matchingSelections: z.record(z.string(), z.string()).optional(),
     matchingReviewed: z.boolean().optional(),
   }).optional(),

@@ -1,4 +1,4 @@
-import { CheckCircle2, RotateCcw } from 'lucide-react'
+import { CheckCircle2, ListChecks, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface MissionResultViewProps {
@@ -14,6 +14,7 @@ interface MissionResultViewProps {
   hasNextMission: boolean
   onRetrySync: () => void
   onBack: () => void
+  onReview: () => void
   onReplay: () => void
   onNext: () => void
 }
@@ -27,6 +28,7 @@ export function MissionResultView({
   hasNextMission,
   onRetrySync,
   onBack,
+  onReview,
   onReplay,
   onNext,
 }: MissionResultViewProps) {
@@ -69,6 +71,10 @@ export function MissionResultView({
           </Button>
         </div>
       ) : null}
+
+      <Button variant="ghost" className="w-full" onClick={onReview}>
+        <ListChecks className="h-4 w-4" /> Xem lại bài làm
+      </Button>
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button
