@@ -57,7 +57,7 @@ export function parseGameHubConfig(value: unknown): GameHubConfig {
       deckId: item.deckId,
       allowed: item.allowed,
       accessTier: item.accessTier,
-      missionEnabled: item.missionEnabled ?? item.allowed,
+      missionEnabled: item.missionEnabled ?? false,
       termsPerMission: item.termsPerMission ?? 10,
       scriptKey: item.scriptKey ?? 'standard',
     })) ?? DEFAULT_GAME_HUB_CONFIG.allowedDecks,
