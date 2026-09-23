@@ -9,6 +9,7 @@ import { gameMissionService } from '@/services/supabase/gameMission.service'
 import { gameMissionLocalDb } from '@/services/local/gameMissionLocalDb'
 import { buildMissionTermGroups, createCurriculumContentVersion, createCurriculumFingerprint } from '@/features/games/mission/curriculum'
 import { evaluateMissionReadiness } from '@/features/games/mission/missionEngine'
+import { getMissionScript } from '@/features/games/mission/scriptRegistry'
 import { getDeckGameConfig, type GameHubConfig } from '@/features/games/mission/gameConfig'
 import type { Deck } from '@/types/deck.types'
 import type { GameTerm, MissionProgress } from '@/features/games/mission/mission.types'
@@ -53,11 +54,13 @@ export default function MissionDeckPage() {
         }
         const termsPerMission = deckConfig.termsPerMission ?? 10
         const scriptKey = deckConfig.scriptKey ?? 'standard'
+        const script = getMissionScript(scriptKey)
         const fingerprint = createCurriculumFingerprint({
           deckId,
           orderedTermIds: terms.map((term) => term.globalTermId),
           termsPerMission,
           scriptKey,
+          scriptVersion: script.version,
           contentVersion: createCurriculumContentVersion(terms),
         })
         const groups = buildMissionTermGroups(terms, termsPerMission)
