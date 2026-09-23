@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createCurriculumFingerprint, splitIntoMissions } from './curriculum'
 import { findExactCloze, normalizeMissionAnswer } from './generators'
 import { calculateMissionScore } from './missionEngine'
+import { buildMissionReviewActions } from './missionSrsAdapter'
 import type { GameTerm, MissionDefinition } from './mission.types'
 
 const term = (overrides: Partial<GameTerm> = {}): GameTerm => ({
@@ -52,5 +53,45 @@ describe('mission score', () => {
       accuracy: 100,
       firstTryAccuracy: 0,
     })
+  })
+})
+
+
+describe('mission SRS adapter', () => {
+  const answer = (overrides: Record<string, unknown> = {}) => ({
+    questionId: 'q',
+    targetTermId: 'term-1',
+    type: 'meaning_recall' as const,
+    attempts: 1,
+    hintLevel: 0,
+    isCorrect: true,
+    firstTryCorrect: true,
+    score: 100,
+    answeredAt: '2026-09-24T00:00:00.000Z',
+    ...overrides,
+  })
+
+  it('maps strong first-try recall to know', () => {
+    const actions = buildMissionReviewActions(
+      [answer()],
+      new Map([['term-1', { globalTermId: 'term-1', correctCount: 0, wrongCount: 0, repetition: 0, intervalDays: 0, easeFactor: 2.5 }]]),
+      new Date('2026-09-24T00:00:00.000Z'),
+    )
+    expect(actions).toHaveLength(1)
+    expect(actions[0].action).toBe('know')
+  })
+
+  it('maps retry to difficult and any final failure to dont_know', () => {
+    const snapshot = new Map([['term-1', { globalTermId: 'term-1', correctCount: 2, wrongCount: 0, repetition: 2, intervalDays: 6, easeFactor: 2.5 }]])
+    expect(buildMissionReviewActions([answer({ attempts: 2, firstTryCorrect: false })], snapshot)[0].action).toBe('difficult')
+    expect(buildMissionReviewActions([answer({ isCorrect: false, firstTryCorrect: false, score: 0 })], snapshot)[0].action).toBe('dont_know')
+  })
+
+  it('aggregates multiple questions into one action per term', () => {
+    const actions = buildMissionReviewActions(
+      [answer({ questionId: 'q1' }), answer({ questionId: 'q2', type: 'context_cloze' })],
+      new Map(),
+    )
+    expect(actions).toHaveLength(1)
   })
 })
