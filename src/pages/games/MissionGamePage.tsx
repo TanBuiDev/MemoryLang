@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import { buildMissionTermGroups, createCurriculumContentVersion, createCurriculu
 import { calculateMissionScore, createMissionDefinition, evaluateMissionReadiness } from '@/features/games/mission/missionEngine'
 import { normalizeMissionAnswer } from '@/features/games/mission/generators'
 import { getMissionScript } from '@/features/games/mission/scriptRegistry'
+import { missionAttemptReducer, type MissionAttemptAction } from '@/features/games/mission/missionReducer'
 import { getDeckGameConfig } from '@/features/games/mission/gameConfig'
 import { MissionLearnStage } from '@/features/games/mission/components/MissionLearnStage'
 import { MissionMatchingStage } from '@/features/games/mission/components/MissionMatchingStage'
@@ -58,7 +59,7 @@ export default function MissionGamePage() {
   const missionIndex = Number(missionIndexParam)
 
   const [loaded, setLoaded] = useState<LoadedMission | null>(null)
-  const [attempt, setAttempt] = useState<MissionAttemptState | null>(null)
+  const [attempt, dispatchAttempt] = useReducer(missionAttemptReducer, null)
   const [studySessionId, setStudySessionId] = useState<string | null>(null)
   const [storedMeta, setStoredMeta] = useState<Partial<StoredGameMissionAttempt>>({})
   const [loading, setLoading] = useState(true)
@@ -95,6 +96,15 @@ export default function MissionGamePage() {
     setStoredMeta((previous) => ({ ...previous, ...patch }))
     await gameMissionLocalDb.saveAttempt(record)
   }, [deckId, loaded, missionIndex, storedMeta, user])
+
+  const persistAttemptAction = useCallback(async (action: MissionAttemptAction) => {
+    if (!attempt) return null
+    const next = missionAttemptReducer(attempt, action)
+    if (!next) return null
+    dispatchAttempt(action)
+    await saveAttempt(next, studySessionId)
+    return next
+  }, [attempt, saveAttempt, studySessionId])
 
   useEffect(() => {
     let cancelled = false
@@ -145,7 +155,7 @@ export default function MissionGamePage() {
         if (cancelled) return
         setLoaded(nextLoaded)
         if (stored) {
-          setAttempt(stored.state)
+          dispatchAttempt({ type: 'restore', state: stored.state })
           setStudySessionId(stored.studySessionId)
           setStoredMeta(stored)
           if (stored.state.status === 'completed' && stored.pendingResult) {
@@ -166,7 +176,7 @@ export default function MissionGamePage() {
             updatedAt: now,
             status: 'in_progress',
           }
-          setAttempt(initial)
+          dispatchAttempt({ type: 'restore', state: initial })
           setStudySessionId(session.id)
           const record: StoredGameMissionAttempt = {
             key: gameMissionAttemptKey(user.id, deckId, fingerprint, missionIndex),
@@ -234,8 +244,12 @@ export default function MissionGamePage() {
   }, [attempt, loaded])
 
   const persistTransition = async (next: MissionAttemptState) => {
-    setAttempt(next)
-    await saveAttempt(next, studySessionId)
+    await persistAttemptAction({
+      type: 'transition',
+      stageIndex: next.stageIndex,
+      questionIndex: next.questionIndex,
+      at: next.updatedAt,
+    })
   }
 
   const nextLearn = async () => {
@@ -258,7 +272,6 @@ export default function MissionGamePage() {
     if (currentStage.questions.some((question) => !matchingSelections[question.id])) return
 
     const now = new Date().toISOString()
-    const stageQuestionIds = new Set(currentStage.questions.map((question) => question.id))
     const records: AnswerRecord[] = currentStage.questions.map((question) => {
       const selected = matchingSelections[question.id] ?? ''
       const correct = normalizeMissionAnswer(selected) === normalizeMissionAnswer(question.acceptedAnswers[0] ?? '')
@@ -275,15 +288,13 @@ export default function MissionGamePage() {
       }
     })
 
-    const next = {
-      ...attempt,
-      answers: [
-        ...attempt.answers.filter((item) => !stageQuestionIds.has(item.questionId)),
-        ...records,
-      ],
-      updatedAt: now,
-    }
-    setAttempt(next)
+    const next = missionAttemptReducer(attempt, {
+      type: 'recordAnswers',
+      answers: records,
+      at: now,
+    })
+    if (!next) return
+    dispatchAttempt({ type: 'recordAnswers', answers: records, at: now })
     setMatchingReviewed(true)
     await saveAttempt(next, studySessionId)
   }
@@ -324,12 +335,18 @@ export default function MissionGamePage() {
       score: correct ? (attemptNumber === 1 ? 100 : 50) : 0,
       answeredAt: new Date().toISOString(),
     }
-    const next = {
-      ...attempt,
-      answers: [...attempt.answers.filter((item) => item.questionId !== record.questionId), record],
-      updatedAt: new Date().toISOString(),
-    }
-    setAttempt(next)
+    const answerAt = new Date().toISOString()
+    const next = missionAttemptReducer(attempt, {
+      type: 'recordAnswers',
+      answers: [{ ...record, answeredAt: answerAt }],
+      at: answerAt,
+    })
+    if (!next) return
+    dispatchAttempt({
+      type: 'recordAnswers',
+      answers: [{ ...record, answeredAt: answerAt }],
+      at: answerAt,
+    })
     await saveAttempt(next, studySessionId)
     setFeedback({
       correct,
@@ -392,9 +409,13 @@ export default function MissionGamePage() {
 
   const finishMission = async (state: MissionAttemptState) => {
     if (!loaded) return
-    const completedState = { ...state, status: 'completed' as const, updatedAt: new Date().toISOString() }
+    const completedState = missionAttemptReducer(state, {
+      type: 'complete',
+      at: new Date().toISOString(),
+    })
+    if (!completedState) return
     const stats = calculateMissionScore(loaded.definition, completedState.answers)
-    setAttempt(completedState)
+    dispatchAttempt({ type: 'complete', at: completedState.updatedAt })
     setResult(stats)
     await saveAttempt(completedState, studySessionId, { pendingResult: stats })
     await syncCompletion(completedState, stats)
@@ -461,7 +482,7 @@ export default function MissionGamePage() {
       })
       setStoredMeta({})
       setStudySessionId(session.id)
-      setAttempt(initial)
+      dispatchAttempt({ type: 'restore', state: initial })
       setResult(null)
       setAnswerValue('')
       setAttemptNumber(1)
