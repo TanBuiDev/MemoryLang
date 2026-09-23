@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { demoVocabulary } from '@/features/demo/demoData'
 import { VocabularyListPage } from '@/pages/vocabulary/VocabularyListPage'
@@ -53,6 +53,19 @@ function renderPage(initialEntry = '/app/vocabulary') {
   return render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <MemoryRouter initialEntries={[initialEntry]}><VocabularyListPage /></MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
+function renderPageWithNavigation(initialEntry = '/app/vocabulary') {
+  return render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <Routes>
+          <Route path="/app/vocabulary" element={<VocabularyListPage />} />
+          <Route path="/app/vocabulary/:id" element={<Link to="/app/vocabulary">Trở về danh sách</Link>} />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }
@@ -168,6 +181,7 @@ describe('VocabularyListPage bulk lessons', () => {
 describe('VocabularyListPage learner flows', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    sessionStorage.clear()
     useAuthStore.setState({
       user: { id: 'user-1' } as never,
       profile: { current_target_language: 'en', native_language: 'vi' } as never,
@@ -287,6 +301,44 @@ describe('VocabularyListPage learner flows', () => {
 
     expect(screen.getByRole('link', { name: 'break the ice' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'apple' })).not.toBeInTheDocument()
+  })
+
+  it('giữ bộ lọc khi mở từ rồi quay về danh sách qua liên kết không có query string', async () => {
+    const user = userEvent.setup()
+    vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary)
+    renderPageWithNavigation()
+
+    await user.click(await screen.findByRole('button', { name: 'Từ khó' }))
+    expect(screen.queryByRole('link', { name: 'apple' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'break the ice' }))
+    await user.click(screen.getByRole('link', { name: 'Trở về danh sách' }))
+
+    expect(await screen.findByRole('link', { name: 'break the ice' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'apple' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Từ khó' })).toHaveClass('bg-secondary')
+  })
+
+  it('giữ nội dung tìm kiếm khi quay về danh sách', async () => {
+    const user = userEvent.setup()
+    vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary)
+    renderPageWithNavigation()
+
+    await user.type(await screen.findByRole('searchbox', { name: 'Tìm từ vựng' }), 'apple')
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'break the ice' })).not.toBeInTheDocument())
+    await user.click(screen.getByRole('link', { name: 'apple' }))
+    await user.click(screen.getByRole('link', { name: 'Trở về danh sách' }))
+
+    expect(await screen.findByRole('searchbox', { name: 'Tìm từ vựng' })).toHaveValue('apple')
+    expect(screen.queryByRole('link', { name: 'break the ice' })).not.toBeInTheDocument()
+  })
+
+  it('ưu tiên bộ lọc được chỉ định trong URL thay vì trạng thái đã lưu', async () => {
+    sessionStorage.setItem('vocabulary-list-search:user-1', 'statuses=difficult')
+    vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary)
+    renderPage('/app/vocabulary?statuses=learning')
+
+    expect(await screen.findByRole('link', { name: 'apple' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'break the ice' })).not.toBeInTheDocument()
   })
 
   it('hiển thị đầy đủ bộ lọc gắn cờ đang hoạt động', async () => {

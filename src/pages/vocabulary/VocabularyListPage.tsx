@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Volume2, Flag, SlidersHorizontal, ChevronDown, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { cn } from '@/utils/cn'
 import { PageHeader } from '@/components/common/PageHeader'
 import { AddVocabularyModal } from '@/components/vocabulary/AddVocabularyModal'
@@ -132,6 +132,7 @@ export function VocabularyListPage() {
   const user = useAuthStore((state) => state.user)
   const profile = useAuthStore((state) => state.profile)
   const queryClient = useQueryClient()
+  const location = useLocation()
   const shouldUseRemoteData = isSupabaseConfigured && Boolean(user)
   const vocabularyQuery = useQuery({
     queryKey: ['vocabulary', user?.id],
@@ -144,7 +145,20 @@ export function VocabularyListPage() {
     queryFn: () => deckService.list(user!.id),
     enabled: shouldUseRemoteData,
   })
-  const [searchParams, setSearchParams] = useSearchParams()
+  const searchStorageKey = `vocabulary-list-search:${user?.id ?? 'demo'}`
+  const savedSearch = sessionStorage.getItem(searchStorageKey)
+  const [searchParams, setSearchParams] = useSearchParams(savedSearch ?? '')
+  const shouldRestoreSearchRef = useRef(!location.search && Boolean(savedSearch))
+
+  useEffect(() => {
+    if (!shouldRestoreSearchRef.current) return
+    shouldRestoreSearchRef.current = false
+    setSearchParams(searchParams, { replace: true })
+  }, [searchParams, setSearchParams])
+
+  useEffect(() => {
+    sessionStorage.setItem(searchStorageKey, searchParams.toString())
+  }, [searchParams, searchStorageKey])
   const [cachedVocabulary, setCachedVocabulary] = useState<VocabularyItem[]>([])
   const [filterOpen, setFilterOpen] = useState(false)
   const [isSortOpen, setIsSortOpen] = useState(false)
