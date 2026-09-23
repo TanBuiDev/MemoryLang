@@ -83,7 +83,7 @@ export function createMissionDefinition(input: { deckId: string; curriculumFinge
     missionIndex: input.missionIndex,
     targetTermIds: input.terms.map((term) => term.globalTermId),
     scriptKey,
-    scriptVersion: STANDARD_SCRIPT_VERSION,
+    scriptVersion: script.version,
     generatorVersion: GENERATOR_VERSION,
     stages,
   }
