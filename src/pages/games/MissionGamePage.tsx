@@ -10,10 +10,10 @@ import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import { gameMissionService } from '@/services/supabase/gameMission.service'
 import { studyService } from '@/services/supabase/study.service'
 import { gameMissionLocalDb, gameMissionAttemptKey, type StoredGameMissionAttempt } from '@/services/local/gameMissionLocalDb'
+import { gameMissionSyncService } from '@/services/local/gameMissionSync.service'
 import { buildMissionTermGroups, createCurriculumContentVersion, createCurriculumFingerprint } from '@/features/games/mission/curriculum'
 import { calculateMissionScore, createMissionDefinition, evaluateMissionReadiness } from '@/features/games/mission/missionEngine'
 import { normalizeMissionAnswer } from '@/features/games/mission/generators'
-import { buildMissionReviewActions } from '@/features/games/mission/missionSrsAdapter'
 import { getDeckGameConfig } from '@/features/games/mission/gameConfig'
 import type { AnswerRecord, GameTerm, MissionAttemptState, MissionDefinition, QuestionDefinition } from '@/features/games/mission/mission.types'
 import type { Deck } from '@/types/deck.types'
@@ -339,76 +339,33 @@ export default function MissionGamePage() {
     setSyncing(true)
     setError(null)
     try {
-      let meta = storedMeta
-      if (!meta.srsSynced) {
-        const snapshots = await gameMissionService.getReviewSnapshots(user.id, loaded.missionTerms.map((term) => term.globalTermId))
-        const actions = buildMissionReviewActions(state.answers, snapshots)
-        const correctCount = state.answers.filter((item) => item.isCorrect).length
-        const difficultCount = state.answers.filter((item) => item.hintLevel > 0 || !item.isCorrect).length
-        await studyService.flushStudyChanges({
-          actions,
-          viewedTermIds: loaded.missionTerms.map((term) => term.globalTermId),
-          sessionId: studySessionId,
-          sessionPatch: studySessionId ? {
-            total_cards: state.answers.length,
-            viewed_cards: state.answers.length,
-            remembered_count: correctCount,
-            difficult_count: difficultCount,
-          } : null,
-        })
-        meta = { ...meta, srsSynced: true }
-        await saveAttempt(state, studySessionId, { pendingResult: stats, srsSynced: true })
-      }
-      if (studySessionId && !meta.studySessionEnded) {
-        await studyService.endSession(studySessionId, {
-          total_cards: state.answers.length,
-          viewed_cards: state.answers.length,
-          remembered_count: state.answers.filter((item) => item.isCorrect).length,
-          difficult_count: state.answers.filter((item) => item.hintLevel > 0 || !item.isCorrect).length,
-        })
-        meta = { ...meta, studySessionEnded: true }
-        await saveAttempt(state, studySessionId, { pendingResult: stats, srsSynced: true, studySessionEnded: true })
-      }
-      if (!meta.progressSynced) {
-        await gameMissionService.completeMission(deckId, loaded.fingerprint, missionIndex, stats.score, stats.accuracy)
-        await saveAttempt(state, studySessionId, {
-          pendingResult: stats,
-          srsSynced: true,
-          studySessionEnded: true,
-          progressSynced: true,
-        })
-      }
-      await gameMissionLocalDb.clearAttempt(user.id, deckId, loaded.fingerprint, missionIndex)
-      setStoredMeta({ srsSynced: true, studySessionEnded: true, progressSynced: true })
+      const synced = await gameMissionSyncService.syncCompletion({
+        userId: user.id,
+        deckId,
+        curriculumFingerprint: loaded.fingerprint,
+        missionIndex,
+        studySessionId,
+        state,
+        stats,
+        missionTermIds: loaded.missionTerms.map((term) => term.globalTermId),
+      })
+      setStoredMeta(synced)
       setResult(stats)
     } catch (cause) {
+      const pending = await gameMissionLocalDb.getAttempt(
+        user.id,
+        deckId,
+        loaded.fingerprint,
+        missionIndex,
+      )
+      setStoredMeta(pending ?? {})
       setResult(stats)
       setError(cause instanceof Error ? cause.message : 'Không thể đồng bộ kết quả. Hãy thử lại.')
     } finally {
       syncingRef.current = false
       setSyncing(false)
     }
-  }, [deckId, loaded, missionIndex, saveAttempt, storedMeta, studySessionId, user])
-
-  useEffect(() => {
-    if (!user || !deckId || !loaded || !attempt || attempt.status !== 'completed' || !result) return
-
-    if (storedMeta.progressSynced) {
-      void gameMissionLocalDb.clearAttempt(user.id, deckId, loaded.fingerprint, missionIndex)
-      return
-    }
-
-    void syncCompletion(attempt, result)
-  }, [
-    attempt,
-    deckId,
-    loaded,
-    missionIndex,
-    result,
-    storedMeta.progressSynced,
-    syncCompletion,
-    user,
-  ])
+  }, [deckId, loaded, missionIndex, studySessionId, user])
 
   const finishMission = async (state: MissionAttemptState) => {
     if (!loaded) return
