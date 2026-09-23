@@ -7,7 +7,7 @@ on:
       - 'src/features/games/mission/**'
       - 'src/pages/games/Mission*.tsx'
       - 'src/services/supabase/gameMission.service.ts'
-      - 'src/services/local/gameMissionLocalDb.ts'
+      - 'src/services/local/gameMission*.ts'
       - 'src/pages/games/GameHubPage.tsx'
       - 'src/pages/admin/AdminGamesPage.tsx'
       - 'src/app/routes.tsx'
