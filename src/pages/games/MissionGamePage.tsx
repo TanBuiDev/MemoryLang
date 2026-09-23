@@ -361,6 +361,51 @@ export default function MissionGamePage() {
     }
   }
 
+  const restartMission = async () => {
+    if (!user || !deckId || !loaded) return
+    setSyncing(true)
+    setError(null)
+    try {
+      await gameMissionLocalDb.clearAttempt(user.id, deckId, loaded.fingerprint, missionIndex)
+      const totalQuestions = loaded.definition.stages.reduce((sum, stage) => sum + stage.questions.length, 0)
+      const session = await studyService.createSession(user.id, 'game_mission', deckId, totalQuestions)
+      const now = new Date().toISOString()
+      const initial: MissionAttemptState = {
+        deckId,
+        curriculumFingerprint: loaded.fingerprint,
+        missionIndex,
+        stageIndex: 0,
+        questionIndex: 0,
+        answers: [],
+        startedAt: now,
+        updatedAt: now,
+        status: 'in_progress',
+      }
+      await gameMissionLocalDb.saveAttempt({
+        key: gameMissionAttemptKey(user.id, deckId, loaded.fingerprint, missionIndex),
+        userId: user.id,
+        deckId,
+        curriculumFingerprint: loaded.fingerprint,
+        missionIndex,
+        studySessionId: session.id,
+        state: initial,
+        updatedAt: now,
+      })
+      setStoredMeta({})
+      setStudySessionId(session.id)
+      setAttempt(initial)
+      setResult(null)
+      setAnswerValue('')
+      setAttemptNumber(1)
+      setHintLevel(0)
+      setFeedback(null)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Không thể bắt đầu lượt chơi lại.')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   if (loading) return <div className="flex min-h-[50vh] items-center justify-center font-black">Đang tải Mission...</div>
 
   if (!loaded || !attempt || error && !result) {
@@ -402,7 +447,7 @@ export default function MissionGamePage() {
           <Button variant="ghost" className="flex-1" onClick={() => navigate('/app/games/mission/' + deckId)}>
             Về lộ trình
           </Button>
-          <Button variant="secondary" className="flex-1" onClick={() => navigate('/app/games/mission/' + deckId + '/' + missionIndex, { replace: true })}>
+          <Button variant="secondary" className="flex-1" disabled={syncing} onClick={() => void restartMission()}>
             <RotateCcw className="h-4 w-4" /> Chơi lại
           </Button>
           {missionIndex + 1 < loaded.missionCount ? (
