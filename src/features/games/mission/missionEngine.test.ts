@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createCurriculumContentVersion, createCurriculumFingerprint, splitIntoMissions } from './curriculum'
 import { findExactCloze, normalizeMissionAnswer } from './generators'
-import { calculateMissionScore } from './missionEngine'
+import { calculateMissionScore, evaluateMissionReadiness } from './missionEngine'
 import { buildMissionReviewActions } from './missionSrsAdapter'
 import { parseGameHubConfig } from './gameConfig'
 import type { GameTerm, MissionDefinition } from './mission.types'
@@ -131,5 +131,21 @@ describe('mission game configuration', () => {
       termsPerMission: 15,
       scriptKey: 'standard',
     })
+  })
+})
+
+
+describe('mission readiness', () => {
+  it('blocks a mission whose translations are too ambiguous for required stages', () => {
+    const terms = Array.from({ length: 5 }, (_, index) => term({
+      globalTermId: 'term-' + index,
+      orderIndex: index,
+      sourceText: 'word-' + index,
+      normalizedText: 'word-' + index,
+      translation: 'trùng nghĩa',
+    }))
+    const readiness = evaluateMissionReadiness(terms)
+    expect(readiness.playable).toBe(false)
+    expect(readiness.blocking.some((issue) => issue.code === 'DUPLICATE_TRANSLATION')).toBe(true)
   })
 })
