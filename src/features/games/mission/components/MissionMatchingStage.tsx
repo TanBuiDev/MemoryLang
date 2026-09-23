@@ -37,6 +37,11 @@ export function MissionMatchingStage({
       <div className="space-y-3">
         {questions.map((question) => {
           const selected = selections[question.id] ?? ''
+          const availableOptions = options.filter((option) =>
+            option.value === selected || !Object.entries(selections).some(
+              ([questionId, value]) => questionId !== question.id && value === option.value,
+            ),
+          )
           const correct =
             normalizeMissionAnswer(selected) ===
             normalizeMissionAnswer(question.acceptedAnswers[0] ?? '')
@@ -60,7 +65,7 @@ export function MissionMatchingStage({
                   onChange={(value) => {
                     if (!reviewed) onSelect(question.id, value)
                   }}
-                  options={options}
+                  options={availableOptions}
                   placeholder="Chọn nghĩa..."
                   disabled={reviewed}
                 />
