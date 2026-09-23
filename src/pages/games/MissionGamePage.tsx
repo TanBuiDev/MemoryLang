@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import { gameMissionService } from '@/services/supabase/gameMission.service'
 import { studyService } from '@/services/supabase/study.service'
-import { gameMissionLocalDb, gameMissionAttemptKey, type StoredGameMissionAttempt } from '@/services/local/gameMissionLocalDb'
+import { buildStoredGameMissionAttempt, gameMissionLocalDb, gameMissionAttemptKey, type StoredGameMissionAttempt } from '@/services/local/gameMissionLocalDb'
 import { gameMissionSyncService } from '@/services/local/gameMissionSync.service'
 import { buildMissionTermGroups, createCurriculumContentVersion, createCurriculumFingerprint } from '@/features/games/mission/curriculum'
 import { calculateMissionScore, createMissionDefinition, evaluateMissionReadiness } from '@/features/games/mission/missionEngine'
@@ -74,6 +74,8 @@ export default function MissionGamePage() {
   const [matchingReviewed, setMatchingReviewed] = useState(false)
   const [exitOpen, setExitOpen] = useState(false)
   const syncingRef = useRef(false)
+  const attemptRef = useRef<MissionAttemptState | null>(null)
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
 
   const saveAttempt = useCallback(async (
     nextState: MissionAttemptState,
@@ -81,7 +83,9 @@ export default function MissionGamePage() {
     patch: Partial<StoredGameMissionAttempt> = {},
   ) => {
     if (!user || !deckId || !loaded) return
-    const record: StoredGameMissionAttempt = {
+    const record = buildStoredGameMissionAttempt({
+      ...storedMeta,
+      ...patch,
       key: gameMissionAttemptKey(user.id, deckId, loaded.fingerprint, missionIndex),
       userId: user.id,
       deckId,
@@ -90,21 +94,31 @@ export default function MissionGamePage() {
       studySessionId: nextSessionId,
       state: nextState,
       updatedAt: new Date().toISOString(),
-      ...storedMeta,
-      ...patch,
-    }
+    }, nextState, new Date().toISOString())
     setStoredMeta((previous) => ({ ...previous, ...patch }))
-    await gameMissionLocalDb.saveAttempt(record)
+    saveQueueRef.current = saveQueueRef.current.catch(() => undefined).then(() => gameMissionLocalDb.saveAttempt(record))
+    await saveQueueRef.current
   }, [deckId, loaded, missionIndex, storedMeta, user])
 
   const persistAttemptAction = useCallback(async (action: MissionAttemptAction) => {
-    if (!attempt) return null
-    const next = missionAttemptReducer(attempt, action)
+    const next = missionAttemptReducer(attemptRef.current, action)
     if (!next) return null
+    attemptRef.current = next
     dispatchAttempt(action)
     await saveAttempt(next, studySessionId)
     return next
-  }, [attempt, saveAttempt, studySessionId])
+  }, [saveAttempt, studySessionId])
+
+  const persistDraft = useCallback((draft: NonNullable<MissionAttemptState['draft']>) => {
+    const current = attemptRef.current
+    if (!current) return
+    const action: MissionAttemptAction = { type: 'setDraft', draft, at: new Date().toISOString() }
+    const next = missionAttemptReducer(current, action)
+    if (!next) return
+    attemptRef.current = next
+    dispatchAttempt(action)
+    void saveAttempt(next, studySessionId).catch(() => setError('Không thể lưu câu trả lời đang nhập.'))
+  }, [saveAttempt, studySessionId])
 
   useEffect(() => {
     let cancelled = false
@@ -155,9 +169,27 @@ export default function MissionGamePage() {
         if (cancelled) return
         setLoaded(nextLoaded)
         if (stored) {
+          attemptRef.current = stored.state
           dispatchAttempt({ type: 'restore', state: stored.state })
           setStudySessionId(stored.studySessionId)
           setStoredMeta(stored)
+          setAnswerValue(stored.state.draft?.answerValue ?? '')
+          setAttemptNumber(stored.state.draft?.attemptNumber ?? 1)
+          setHintLevel((stored.state.draft?.attemptNumber ?? 1) > 1 ? 1 : 0)
+          setMatchingSelections(stored.state.draft?.matchingSelections ?? {})
+          setMatchingReviewed(stored.state.draft?.matchingReviewed ?? false)
+          const restoredStage = definition.stages[stored.state.stageIndex]
+          const restoredQuestion = restoredStage?.questions[stored.state.questionIndex]
+          const priorAnswer = stored.state.answers.find((item) => item.questionId === restoredQuestion?.id)
+          setFeedback(priorAnswer ? {
+            correct: priorAnswer.isCorrect,
+            finalized: true,
+            text: priorAnswer.isCorrect ? 'Đã trả lời đúng.' : 'Chưa chính xác. Hãy xem đáp án và tiếp tục.',
+          } : (stored.state.draft?.attemptNumber ?? 1) > 1 ? {
+            correct: false,
+            finalized: false,
+            text: 'Chưa đúng. Dùng gợi ý và thử lại một lần nữa.',
+          } : null)
           if (stored.state.status === 'completed' && stored.pendingResult) {
             setResult(stored.pendingResult)
           }
@@ -176,6 +208,7 @@ export default function MissionGamePage() {
             updatedAt: now,
             status: 'in_progress',
           }
+          attemptRef.current = initial
           dispatchAttempt({ type: 'restore', state: initial })
           setStudySessionId(session.id)
           const record: StoredGameMissionAttempt = {
@@ -210,23 +243,15 @@ export default function MissionGamePage() {
     : null
 
   useEffect(() => {
-    setAnswerValue('')
-    setAttemptNumber(1)
-    setHintLevel(0)
-    setFeedback(null)
     if (currentQuestion?.audioText) {
+      const target = loaded?.missionTerms.find((item) => item.globalTermId === currentQuestion.targetTermId)
       void speak(currentQuestion.audioText, {
         audioUrl: currentQuestion.audioUrl,
         globalTermId: currentQuestion.targetTermId,
+        lang: target?.sourceLanguage,
       })
     }
-  }, [currentQuestion?.id])
-
-  useEffect(() => {
-    if (currentStage?.type !== 'matching') return
-    setMatchingSelections({})
-    setMatchingReviewed(false)
-  }, [attempt?.stageIndex, currentStage?.type])
+  }, [currentQuestion?.id, currentQuestion?.audioText, currentQuestion?.audioUrl, currentQuestion?.targetTermId, loaded])
 
   const matchingOptions = useMemo(() => {
     if (currentStage?.type !== 'matching') return []
@@ -244,6 +269,12 @@ export default function MissionGamePage() {
   }, [attempt, loaded])
 
   const persistTransition = async (next: MissionAttemptState) => {
+    setAnswerValue('')
+    setAttemptNumber(1)
+    setHintLevel(0)
+    setFeedback(null)
+    setMatchingSelections({})
+    setMatchingReviewed(false)
     await persistAttemptAction({
       type: 'transition',
       stageIndex: next.stageIndex,
@@ -294,9 +325,13 @@ export default function MissionGamePage() {
       at: now,
     })
     if (!next) return
+    const reviewed = missionAttemptReducer(next, { type: 'setDraft', draft: { matchingSelections, matchingReviewed: true }, at: now })
+    if (!reviewed) return
+    attemptRef.current = reviewed
     dispatchAttempt({ type: 'recordAnswers', answers: records, at: now })
+    dispatchAttempt({ type: 'setDraft', draft: { matchingSelections, matchingReviewed: true }, at: now })
     setMatchingReviewed(true)
-    await saveAttempt(next, studySessionId)
+    await saveAttempt(reviewed, studySessionId)
   }
 
   const continueAfterMatching = async () => {
@@ -321,6 +356,7 @@ export default function MissionGamePage() {
       setHintLevel(1)
       setFeedback({ correct: false, finalized: false, text: 'Chưa đúng. Dùng gợi ý và thử lại một lần nữa.' })
       setAnswerValue('')
+      persistDraft({ answerValue: '', attemptNumber: 2 })
       return
     }
 
@@ -342,6 +378,7 @@ export default function MissionGamePage() {
       at: answerAt,
     })
     if (!next) return
+    attemptRef.current = next
     dispatchAttempt({
       type: 'recordAnswers',
       answers: [{ ...record, answeredAt: answerAt }],
@@ -480,6 +517,7 @@ export default function MissionGamePage() {
         state: initial,
         updatedAt: now,
       })
+      attemptRef.current = initial
       setStoredMeta({})
       setStudySessionId(session.id)
       dispatchAttempt({ type: 'restore', state: initial })
@@ -557,7 +595,9 @@ export default function MissionGamePage() {
           reviewed={matchingReviewed}
           options={matchingOptions}
           onSelect={(questionId, value) => {
-            setMatchingSelections((previous) => ({ ...previous, [questionId]: value }))
+            const selections = { ...matchingSelections, [questionId]: value }
+            setMatchingSelections(selections)
+            persistDraft({ matchingSelections: selections })
           }}
           onCheck={() => void checkMatching()}
           onContinue={() => void continueAfterMatching()}
@@ -575,7 +615,10 @@ export default function MissionGamePage() {
             attempt.stageIndex + 1 >= loaded.definition.stages.length
             && attempt.questionIndex + 1 >= (currentStage?.questions.length ?? 0)
           }
-          onAnswerChange={setAnswerValue}
+          onAnswerChange={(value) => {
+            setAnswerValue(value)
+            persistDraft({ answerValue: value, attemptNumber })
+          }}
           onSubmit={() => void submitAnswer()}
           onNext={() => void nextQuestion()}
           onPlayAudio={playCurrentAudio}

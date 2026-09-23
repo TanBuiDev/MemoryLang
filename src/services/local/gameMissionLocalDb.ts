@@ -30,6 +30,12 @@ const missionAttemptStateSchema = z.object({
   stageIndex: z.number().int().min(0),
   questionIndex: z.number().int().min(0),
   answers: z.array(answerRecordSchema),
+  draft: z.object({
+    answerValue: z.string().optional(),
+    attemptNumber: z.number().int().min(1).max(2).optional(),
+    matchingSelections: z.record(z.string(), z.string()).optional(),
+    matchingReviewed: z.boolean().optional(),
+  }).optional(),
   startedAt: z.string().min(1),
   updatedAt: z.string().min(1),
   status: z.enum(['in_progress', 'completed']),
@@ -69,6 +75,14 @@ export interface StoredGameMissionAttempt {
   studySessionEnded?: boolean
   progressSynced?: boolean
   updatedAt: string
+}
+
+export function buildStoredGameMissionAttempt(
+  record: StoredGameMissionAttempt,
+  state: MissionAttemptState,
+  updatedAt: string,
+): StoredGameMissionAttempt {
+  return { ...record, state, updatedAt }
 }
 
 class GameMissionDatabase extends Dexie {

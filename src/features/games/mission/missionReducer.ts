@@ -4,6 +4,7 @@ export type MissionAttemptAction =
   | { type: 'restore'; state: MissionAttemptState }
   | { type: 'transition'; stageIndex: number; questionIndex: number; at: string }
   | { type: 'recordAnswers'; answers: AnswerRecord[]; at: string }
+  | { type: 'setDraft'; draft: NonNullable<MissionAttemptState['draft']>; at: string }
   | { type: 'complete'; at: string }
 
 export function missionAttemptReducer(
@@ -19,6 +20,7 @@ export function missionAttemptReducer(
       ...state,
       stageIndex: action.stageIndex,
       questionIndex: action.questionIndex,
+      draft: undefined,
       updatedAt: action.at,
     }
   }
@@ -33,6 +35,10 @@ export function missionAttemptReducer(
       ],
       updatedAt: action.at,
     }
+  }
+
+  if (action.type === 'setDraft') {
+    return { ...state, draft: action.draft, updatedAt: action.at }
   }
 
   return {

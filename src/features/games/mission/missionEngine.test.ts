@@ -269,4 +269,15 @@ describe('mission attempt reducer', () => {
     expect(completed?.status).toBe('completed')
     expect(completed?.answers).toEqual([])
   })
+
+  it('persists unfinished input, retry state and matching choices, then clears them on transition', () => {
+    const draft = missionAttemptReducer(initial, {
+      type: 'setDraft',
+      draft: { answerValue: 'reno', attemptNumber: 2, matchingSelections: { q1: 'cải tạo' } },
+      at: '2026-09-24T00:01:00.000Z',
+    })
+    expect(draft?.draft).toEqual({ answerValue: 'reno', attemptNumber: 2, matchingSelections: { q1: 'cải tạo' } })
+    const advanced = missionAttemptReducer(draft, { type: 'transition', stageIndex: 1, questionIndex: 0, at: '2026-09-24T00:02:00.000Z' })
+    expect(advanced?.draft).toBeUndefined()
+  })
 })

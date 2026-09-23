@@ -99,6 +99,12 @@ export interface MissionAttemptState {
   stageIndex: number
   questionIndex: number
   answers: AnswerRecord[]
+  draft?: {
+    answerValue?: string
+    attemptNumber?: number
+    matchingSelections?: Record<string, string>
+    matchingReviewed?: boolean
+  }
   startedAt: string
   updatedAt: string
   status: 'in_progress' | 'completed'
