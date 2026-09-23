@@ -22,6 +22,7 @@ interface LoadedDeck {
   config: GameHubConfig
   termsPerMission: number
   scriptKey: string
+  activeMissionIndexes: number[]
 }
 
 export default function MissionDeckPage() {
@@ -61,7 +62,23 @@ export default function MissionDeckPage() {
         const groups = buildMissionTermGroups(terms, termsPerMission)
         const progress = await gameMissionService.listProgress(user.id, deckId, fingerprint)
         await gameMissionLocalDb.clearStaleAttempts(user.id, deckId, fingerprint)
-        if (!cancelled) setLoaded({ deck, terms, groups, fingerprint, progress, config, termsPerMission, scriptKey })
+        const activeAttempts = await Promise.all(
+          groups.map((_, index) => gameMissionLocalDb.getAttempt(user.id, deckId, fingerprint, index)),
+        )
+        const activeMissionIndexes = activeAttempts
+          .map((attempt, index) => attempt?.state.status === 'in_progress' ? index : -1)
+          .filter((index) => index >= 0)
+        if (!cancelled) setLoaded({
+          deck,
+          terms,
+          groups,
+          fingerprint,
+          progress,
+          config,
+          termsPerMission,
+          scriptKey,
+          activeMissionIndexes,
+        })
       } catch (cause) {
         if (!cancelled) setError(cause instanceof Error ? cause.message : 'Không thể tải lộ trình Mission.')
       } finally {
@@ -166,6 +183,7 @@ export default function MissionDeckPage() {
         {loaded.groups.map((group, index) => {
           const progress = loaded.progress.find((item) => item.mission_index === index)
           const done = completed.has(index)
+          const inProgress = !done && loaded.activeMissionIndexes.includes(index)
           const unlocked = index === 0 || completed.has(index - 1)
           return (
             <article key={index} className="neo-card flex min-h-52 flex-col justify-between p-5">
@@ -191,7 +209,7 @@ export default function MissionDeckPage() {
                 onClick={() => navigate('/app/games/mission/' + deckId + '/' + index)}
               >
                 {done ? <RotateCcw className="h-4 w-4" /> : unlocked ? <Play className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                {done ? 'Chơi lại' : unlocked ? 'Bắt đầu' : 'Chưa mở'}
+                {done ? 'Chơi lại' : inProgress ? 'Tiếp tục' : unlocked ? 'Bắt đầu' : 'Chưa mở'}
               </Button>
             </article>
           )
