@@ -1,14 +1,7 @@
-import { GENERATOR_VERSION, STANDARD_SCRIPT_VERSION, seededShuffle } from './curriculum'
+import { GENERATOR_VERSION, seededShuffle } from './curriculum'
+import { getMissionScript } from './scriptRegistry'
 import { findExactCloze, generateQuestion, normalizeMissionAnswer } from './generators'
 import type { GameTerm, MissionDefinition, MissionDiagnostic, MissionQuestionType, MissionReadiness, MissionStageDefinition } from './mission.types'
-
-const STANDARD_STAGES: Array<{ type: MissionQuestionType; count: number; required: boolean }> = [
-  { type: 'matching', count: 5, required: true },
-  { type: 'listening_choice', count: 3, required: false },
-  { type: 'listening_typing', count: 2, required: false },
-  { type: 'context_cloze', count: 5, required: false },
-  { type: 'meaning_recall', count: 5, required: true },
-]
 
 function buildQuestionStage(type: MissionQuestionType, count: number, required: boolean, terms: GameTerm[], seed: string) {
   const questions = []
@@ -25,12 +18,12 @@ function buildQuestionStage(type: MissionQuestionType, count: number, required: 
   }
 }
 
-function buildBossStage(terms: GameTerm[], seed: string) {
+function buildBossStage(terms: GameTerm[], seed: string, questionCount: number) {
   const preferred: MissionQuestionType[] = ['meaning_recall', 'listening_typing', 'context_cloze', 'spelling', 'matching']
   const questions = []
   const diagnostics: MissionDiagnostic[] = []
   const shuffledTerms = seededShuffle(terms, seed + ':boss')
-  for (let index = 0; index < shuffledTerms.length && questions.length < 5; index += 1) {
+  for (let index = 0; index < shuffledTerms.length && questions.length < questionCount; index += 1) {
     const term = shuffledTerms[index]
     const start = index % preferred.length
     for (let offset = 0; offset < preferred.length; offset += 1) {
@@ -67,6 +60,7 @@ export function evaluateMissionReadiness(terms: GameTerm[]): MissionReadiness {
 
 export function createMissionDefinition(input: { deckId: string; curriculumFingerprint: string; missionIndex: number; terms: GameTerm[]; scriptKey?: string }) {
   const scriptKey = input.scriptKey ?? 'standard'
+  const script = getMissionScript(scriptKey)
   const seed = input.curriculumFingerprint + ':' + input.missionIndex
   const diagnostics: MissionDiagnostic[] = []
   const stages: MissionStageDefinition[] = [{
@@ -75,12 +69,12 @@ export function createMissionDefinition(input: { deckId: string; curriculumFinge
     questions: [],
     required: true,
   }]
-  for (const config of STANDARD_STAGES) {
-    const result = buildQuestionStage(config.type, config.count, config.required, input.terms, seed)
+  for (const config of script.stages) {
+    const result = buildQuestionStage(config.type, config.questionCount, config.required, input.terms, seed)
     diagnostics.push(...result.diagnostics)
     if (result.stage.questions.length > 0) stages.push(result.stage)
   }
-  const boss = buildBossStage(input.terms, seed)
+  const boss = buildBossStage(input.terms, seed, script.bossQuestionCount)
   diagnostics.push(...boss.diagnostics)
   stages.push(boss.stage)
   const definition: MissionDefinition = {
