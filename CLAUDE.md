@@ -249,6 +249,18 @@ Usable logo exports live in `src/assets/brand/` and are rendered through `BrandL
 Authenticated app shell includes a `nav.home` link back to `/` so users can reach the public homepage without typing the URL. Homepage top navigation uses in-page anchors for features, workflow, and preview plus auth/demo entry points.
 The authenticated `nav.study` sidebar link resumes an active stored flashcard session from normal app pages, but on `/app/study/result/:sessionId` it links to `/app/study` so finishing a legacy/result session and clicking `Học` starts from the study setup screen instead of reopening the completed session.
 
+### Shared-curriculum Mission Game
+
+The Games module now includes a shared-curriculum Mission flow. Mission content is determined only by the selected deck's direct ordered terms and shared game configuration; per-user SRS/progress never changes which terms belong to a mission. The learner route is `/app/games/mission/:deckId` for the mission map and `/app/games/mission/:deckId/:missionIndex` for an active mission, both behind `games_module` and lazy-loaded with `lazyWithChunkRecovery()`.
+
+`deck_terms.order_index` is the curriculum ordering contract. New deck-term inserts receive the next index through `assign_deck_term_order_index`; Mission does not use the recursive `deckService.listTerms()` ordering. `game_mission_progress` stores per-user completion/best/latest scores keyed by `(user_id, deck_id, curriculum_fingerprint, mission_index)` with own-row RLS. `complete_game_mission` is a `SECURITY INVOKER` RPC with explicit authenticated execution and no anonymous access. Migration `20260923184731_add_shared_curriculum_missions.sql` added this foundation and extended `game_hub_config` with the Mission game plus visual per-deck Mission defaults.
+
+Mission curriculum fingerprints include ordered term IDs, terms-per-mission, script version, and generator version, so content/order changes do not silently reuse old progress. The deterministic engine lives under `src/features/games/mission/`; it generates Matching/Listening/Context/Recall/Spelling/Boss questions from existing `global_terms` data and does not call AI at learner runtime. Missing/ambiguous source data is skipped with readiness diagnostics rather than guessed.
+
+Active attempts persist in the dedicated Dexie `memorylang-game` database. Completion checkpoints SRS sync, `study_sessions` completion (`mode = 'game_mission'`), and mission progress separately so retrying a partial sync does not apply SRS twice. `missionSrsAdapter` aggregates all graded exposures to one action per global term per mission: incorrect → `dont_know`, hint/retry → `difficult`, strong first-try recall → `know`; Mission never auto-marks a word `memorized`.
+
+Admins configure Mission from `/app/admin/games` with visual controls for game tier, per-deck enablement, access tier, and terms per mission. “All vocabulary” remains a dynamic source for legacy games and is intentionally not a Mission curriculum source.
+
 ## Current State / MVP Status
 - **MVP 1 (current):** Core vocab CRUD, deck CRUD/membership management, randomized lesson-deck creation from selected vocabulary, all-vocabulary or deck-scoped flashcard study (two-side/one-side) with numeric/all card limits and completed-lesson quiz handoff, all-vocabulary or deck-scoped translation-input quiz with numeric/all question limits and score-only results, review sessions from due/difficult SRS items, dashboard stats, i18n (vi/en)
 - **MVP 2 (placeholder):** Custom flashcard templates, template builder
