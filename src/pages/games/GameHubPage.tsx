@@ -29,15 +29,15 @@ import { cn } from '@/utils/cn'
 
 interface GameAccessConfig {
   accessTier: 'free' | 'pro'
-  missionEnabled?: boolean
-  termsPerMission?: number
-  scriptKey?: string
 }
 
 interface AllowedDeckConfig {
   deckId: string
   allowed: boolean
   accessTier: 'free' | 'pro'
+  missionEnabled?: boolean
+  termsPerMission?: number
+  scriptKey?: string
 }
 
 interface GameHubConfig {
