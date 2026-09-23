@@ -3,6 +3,7 @@ import { createCurriculumFingerprint, splitIntoMissions } from './curriculum'
 import { findExactCloze, normalizeMissionAnswer } from './generators'
 import { calculateMissionScore } from './missionEngine'
 import { buildMissionReviewActions } from './missionSrsAdapter'
+import { parseGameHubConfig } from './gameConfig'
 import type { GameTerm, MissionDefinition } from './mission.types'
 
 const term = (overrides: Partial<GameTerm> = {}): GameTerm => ({
@@ -93,5 +94,36 @@ describe('mission SRS adapter', () => {
       new Map(),
     )
     expect(actions).toHaveLength(1)
+  })
+})
+
+
+describe('mission game configuration', () => {
+  it('does not auto-enable Mission for a legacy allowed deck', () => {
+    const parsed = parseGameHubConfig({
+      games: { matching: { accessTier: 'free' } },
+      allowedDecks: [{ deckId: 'deck-1', allowed: true, accessTier: 'free' }],
+    })
+    expect(parsed.allowedDecks[0].missionEnabled).toBe(false)
+  })
+
+  it('preserves explicit Mission settings', () => {
+    const parsed = parseGameHubConfig({
+      games: { mission: { accessTier: 'pro' } },
+      allowedDecks: [{
+        deckId: 'deck-1',
+        allowed: true,
+        accessTier: 'pro',
+        missionEnabled: true,
+        termsPerMission: 15,
+        scriptKey: 'standard',
+      }],
+    })
+    expect(parsed.games.mission.accessTier).toBe('pro')
+    expect(parsed.allowedDecks[0]).toMatchObject({
+      missionEnabled: true,
+      termsPerMission: 15,
+      scriptKey: 'standard',
+    })
   })
 })
