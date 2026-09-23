@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Headphones, Lightbulb, RotateCcw, Swords, Volume2, XCircle } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
@@ -15,6 +13,10 @@ import { buildMissionTermGroups, createCurriculumContentVersion, createCurriculu
 import { calculateMissionScore, createMissionDefinition, evaluateMissionReadiness } from '@/features/games/mission/missionEngine'
 import { normalizeMissionAnswer } from '@/features/games/mission/generators'
 import { getDeckGameConfig } from '@/features/games/mission/gameConfig'
+import { MissionLearnStage } from '@/features/games/mission/components/MissionLearnStage'
+import { MissionMatchingStage } from '@/features/games/mission/components/MissionMatchingStage'
+import { MissionQuestionStage, type MissionQuestionFeedback } from '@/features/games/mission/components/MissionQuestionStage'
+import { MissionResultView } from '@/features/games/mission/components/MissionResultView'
 import type { AnswerRecord, GameTerm, MissionAttemptState, MissionDefinition, QuestionDefinition } from '@/features/games/mission/mission.types'
 import type { Deck } from '@/types/deck.types'
 import { speak, stopSpeaking } from '@/utils/audio'
@@ -65,7 +67,7 @@ export default function MissionGamePage() {
   const [answerValue, setAnswerValue] = useState('')
   const [attemptNumber, setAttemptNumber] = useState(1)
   const [hintLevel, setHintLevel] = useState(0)
-  const [feedback, setFeedback] = useState<{ correct: boolean; finalized: boolean; text: string } | null>(null)
+  const [feedback, setFeedback] = useState<MissionQuestionFeedback | null>(null)
   const [matchingSelections, setMatchingSelections] = useState<Record<string, string>>({})
   const [matchingReviewed, setMatchingReviewed] = useState(false)
   const [exitOpen, setExitOpen] = useState(false)
@@ -367,6 +369,24 @@ export default function MissionGamePage() {
     }
   }, [deckId, loaded, missionIndex, studySessionId, user])
 
+  useEffect(() => {
+    if (!user || !deckId || !loaded || !attempt || attempt.status !== 'completed' || !result) return
+    if (storedMeta.progressSynced) {
+      void gameMissionLocalDb.clearAttempt(user.id, deckId, loaded.fingerprint, missionIndex)
+      return
+    }
+    void syncCompletion(attempt, result)
+  }, [
+    attempt,
+    deckId,
+    loaded,
+    missionIndex,
+    result,
+    storedMeta.progressSynced,
+    syncCompletion,
+    user,
+  ])
+
   const finishMission = async (state: MissionAttemptState) => {
     if (!loaded) return
     const completedState = { ...state, status: 'completed' as const, updatedAt: new Date().toISOString() }
@@ -469,44 +489,18 @@ export default function MissionGamePage() {
 
   if (result) {
     return (
-      <div className="mx-auto max-w-2xl space-y-5 px-4 py-8">
-        <div className="neo-card bg-primary p-8 text-center">
-          <CheckCircle2 className="mx-auto h-14 w-14" />
-          <h1 className="mt-3 text-3xl font-black">Mission hoàn thành!</h1>
-          <p className="mt-2 font-bold">Bạn đã đi hết vòng học chung của Mission {missionIndex + 1}.</p>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="neo-card p-4 text-center"><div className="text-2xl font-black">{result.score}</div><div className="text-xs font-bold text-muted-foreground">Điểm</div></div>
-          <div className="neo-card p-4 text-center"><div className="text-2xl font-black">{result.accuracy}%</div><div className="text-xs font-bold text-muted-foreground">Chính xác</div></div>
-          <div className="neo-card p-4 text-center"><div className="text-2xl font-black">{result.firstTryAccuracy}%</div><div className="text-xs font-bold text-muted-foreground">Lần đầu</div></div>
-        </div>
-        {!storedMeta.progressSynced && !error ? (
-          <div className="neo-card bg-amber-50 p-4 font-bold text-amber-950">
-            Đang đồng bộ kết quả, lịch ôn và tiến trình Mission...
-          </div>
-        ) : null}
-        {error ? (
-          <div className="neo-card space-y-3 bg-rose-50 p-4">
-            <p className="font-bold text-rose-900">Kết quả đang chờ đồng bộ: {error}</p>
-            <Button disabled={syncing} onClick={() => void syncCompletion(attempt, result)}>
-              {syncing ? 'Đang đồng bộ...' : 'Thử đồng bộ lại'}
-            </Button>
-          </div>
-        ) : null}
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button variant="ghost" className="flex-1" disabled={syncing || !storedMeta.progressSynced} onClick={() => navigate('/app/games/mission/' + deckId)}>
-            Về lộ trình
-          </Button>
-          <Button variant="secondary" className="flex-1" disabled={syncing || !storedMeta.progressSynced} onClick={() => void restartMission()}>
-            <RotateCcw className="h-4 w-4" /> Chơi lại
-          </Button>
-          {missionIndex + 1 < loaded.missionCount ? (
-            <Button className="flex-1" disabled={Boolean(error) || syncing || !storedMeta.progressSynced} onClick={() => navigate('/app/games/mission/' + deckId + '/' + (missionIndex + 1))}>
-              Mission tiếp theo
-            </Button>
-          ) : null}
-        </div>
-      </div>
+      <MissionResultView
+        missionNumber={missionIndex + 1}
+        result={result}
+        syncing={syncing}
+        synced={Boolean(storedMeta.progressSynced)}
+        error={error}
+        hasNextMission={missionIndex + 1 < loaded.missionCount}
+        onRetrySync={() => void syncCompletion(attempt, result)}
+        onBack={() => navigate('/app/games/mission/' + deckId)}
+        onReplay={() => void restartMission()}
+        onNext={() => navigate('/app/games/mission/' + deckId + '/' + (missionIndex + 1))}
+      />
     )
   }
 
@@ -525,181 +519,61 @@ export default function MissionGamePage() {
       </div>
 
       {currentStage?.type === 'learn' && currentLearnTerm ? (
-        <div className="neo-card space-y-6 p-6 sm:p-8">
-          <div className="text-center">
-            <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">
-              Từ {attempt.questionIndex + 1}/{loaded.missionTerms.length}
-            </p>
-            <h1 className="mt-2 text-4xl font-black">{currentLearnTerm.sourceText}</h1>
-            {currentLearnTerm.ipa ? <p className="mt-2 font-mono text-sm font-bold text-muted-foreground">{currentLearnTerm.ipa}</p> : null}
-            <Button variant="secondary" className="mt-4" onClick={playCurrentAudio}>
-              <Volume2 className="h-4 w-4" /> Nghe phát âm
-            </Button>
-          </div>
-          <div className="rounded-xl border-2 border-border bg-muted/30 p-4">
-            <p className="text-2xl font-black">{currentLearnTerm.translation || 'Chưa có bản dịch'}</p>
-            {currentLearnTerm.examples[0]?.sentence ? (
-              <div className="mt-4 border-t-2 border-dashed border-border pt-3">
-                <p className="font-bold">{currentLearnTerm.examples[0].sentence}</p>
-                {currentLearnTerm.examples[0].translation ? <p className="mt-1 text-sm font-semibold text-muted-foreground">{currentLearnTerm.examples[0].translation}</p> : null}
-              </div>
-            ) : null}
-          </div>
-          <Button className="w-full" onClick={() => void nextLearn()}>
-            {attempt.questionIndex + 1 < loaded.missionTerms.length ? 'Từ tiếp theo' : 'Bắt đầu thử thách'}
-          </Button>
-        </div>
+        <MissionLearnStage
+          term={currentLearnTerm}
+          index={attempt.questionIndex}
+          total={loaded.missionTerms.length}
+          onPlayAudio={playCurrentAudio}
+          onNext={() => void nextLearn()}
+        />
       ) : currentStage?.type === 'matching' ? (
-        <div className="neo-card space-y-5 p-6 sm:p-8">
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Matching</p>
-            <h1 className="mt-1 text-2xl font-black">Ghép mỗi từ với nghĩa đúng</h1>
-            <p className="mt-1 text-sm font-semibold text-muted-foreground">
-              Hoàn thành tất cả cặp rồi kiểm tra cùng một lúc.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {currentStage.questions.map((question) => {
-              const selected = matchingSelections[question.id] ?? ''
-              const correct = normalizeMissionAnswer(selected) === normalizeMissionAnswer(question.acceptedAnswers[0] ?? '')
-              return (
-                <div
-                  key={question.id}
-                  className={
-                    'rounded-xl border-2 p-3 ' +
-                    (matchingReviewed
-                      ? correct
-                        ? 'border-emerald-700 bg-emerald-50'
-                        : 'border-rose-700 bg-rose-50'
-                      : 'border-border bg-muted/20')
-                  }
-                >
-                  <div className="grid gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] sm:items-center">
-                    <p className="text-lg font-black">{question.prompt}</p>
-                    <Select
-                      value={selected}
-                      onChange={(value) => {
-                        if (matchingReviewed) return
-                        setMatchingSelections((previous) => ({ ...previous, [question.id]: value }))
-                      }}
-                      options={matchingOptions}
-                      placeholder="Chọn nghĩa..."
-                      disabled={matchingReviewed}
-                    />
-                  </div>
-                  {matchingReviewed && !correct ? (
-                    <p className="mt-2 text-xs font-bold text-rose-900">
-                      Đáp án đúng: {question.acceptedAnswers[0]}
-                    </p>
-                  ) : null}
-                </div>
-              )
-            })}
-          </div>
-
-          {matchingReviewed ? (
-            <Button className="w-full" onClick={() => void continueAfterMatching()}>
-              Tiếp tục
-            </Button>
-          ) : (
-            <Button
-              className="w-full"
-              disabled={currentStage.questions.some((question) => !matchingSelections[question.id])}
-              onClick={() => void checkMatching()}
-            >
-              Kiểm tra tất cả cặp
-            </Button>
-          )}
-        </div>
+        <MissionMatchingStage
+          questions={currentStage.questions}
+          selections={matchingSelections}
+          reviewed={matchingReviewed}
+          options={matchingOptions}
+          onSelect={(questionId, value) => {
+            setMatchingSelections((previous) => ({ ...previous, [questionId]: value }))
+          }}
+          onCheck={() => void checkMatching()}
+          onContinue={() => void continueAfterMatching()}
+        />
       ) : currentQuestion ? (
-        <div className="neo-card space-y-5 p-6 sm:p-8">
-          {currentStage?.type === 'boss' ? (
-            <div className="flex items-center gap-2 font-black text-rose-700"><Swords className="h-5 w-5" /> BOSS BATTLE</div>
-          ) : null}
-          <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">
-            Câu {attempt.questionIndex + 1}/{currentStage?.questions.length ?? 0}
-          </p>
-          {currentQuestion.audioText ? (
-            <Button variant="secondary" onClick={playCurrentAudio}>
-              <Headphones className="h-4 w-4" /> Phát lại audio
-            </Button>
-          ) : null}
-          <h1 className="text-2xl font-black leading-relaxed">{currentQuestion.prompt}</h1>
-
-          {hintLevel > 0 ? (
-            <div className="rounded-xl border-2 border-amber-600 bg-amber-50 p-3 text-sm font-bold text-amber-950">
-              <Lightbulb className="mr-2 inline h-4 w-4" />
-              Gợi ý: bắt đầu bằng “{currentQuestion.hint?.firstLetter || '?'}”, {currentQuestion.hint?.wordCount || 1} từ
-              {currentQuestion.hint?.ipa ? ' · ' + currentQuestion.hint.ipa : ''}
-            </div>
-          ) : null}
-
-          {currentQuestion.options ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {currentQuestion.options.map((option) => (
-                <Button
-                  key={option.id}
-                  variant={answerValue === option.label ? 'secondary' : 'ghost'}
-                  className="min-h-14 whitespace-normal text-left"
-                  onClick={() => !feedback?.finalized && setAnswerValue(option.label)}
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-          ) : (
-            <Input
-              autoFocus
-              value={answerValue}
-              onChange={(event) => setAnswerValue(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  if (feedback?.finalized) void nextQuestion()
-                  else void submitAnswer()
-                }
-              }}
-              disabled={feedback?.finalized}
-              placeholder="Nhập câu trả lời..."
-              className="text-lg"
-            />
-          )}
-
-          {feedback ? (
-            <div className={'rounded-xl border-2 p-4 font-bold ' + (feedback.correct ? 'border-emerald-700 bg-emerald-50 text-emerald-900' : 'border-rose-700 bg-rose-50 text-rose-900')}>
-              {feedback.correct ? <CheckCircle2 className="mr-2 inline h-5 w-5" /> : <XCircle className="mr-2 inline h-5 w-5" />}
-              {feedback.text}
-              {feedback.finalized && !feedback.correct ? (
-                <div className="mt-2 text-sm">Đáp án: <strong>{currentQuestion.acceptedAnswers[0]}</strong></div>
-              ) : null}
-            </div>
-          ) : null}
-
-          <div className="flex gap-3">
-            {!feedback?.finalized ? (
-              <Button className="flex-1" disabled={!answerValue.trim()} onClick={() => void submitAnswer()}>
-                Kiểm tra
-              </Button>
-            ) : (
-              <Button className="flex-1" onClick={() => void nextQuestion()}>
-                {attempt.stageIndex + 1 >= loaded.definition.stages.length && attempt.questionIndex + 1 >= (currentStage?.questions.length ?? 0)
-                  ? 'Hoàn thành Mission'
-                  : 'Tiếp tục'}
-              </Button>
-            )}
-          </div>
-        </div>
+        <MissionQuestionStage
+          stageType={currentStage?.type ?? currentQuestion.type}
+          question={currentQuestion}
+          index={attempt.questionIndex}
+          total={currentStage?.questions.length ?? 0}
+          answerValue={answerValue}
+          hintLevel={hintLevel}
+          feedback={feedback}
+          isLastQuestion={
+            attempt.stageIndex + 1 >= loaded.definition.stages.length
+            && attempt.questionIndex + 1 >= (currentStage?.questions.length ?? 0)
+          }
+          onAnswerChange={setAnswerValue}
+          onSubmit={() => void submitAnswer()}
+          onNext={() => void nextQuestion()}
+          onPlayAudio={playCurrentAudio}
+        />
       ) : (
         <div className="neo-card p-6">
           <p className="font-bold">Stage hiện tại không có câu hỏi hợp lệ.</p>
           <Button className="mt-4" onClick={() => {
             if (!attempt || !loaded) return
             if (attempt.stageIndex + 1 < loaded.definition.stages.length) {
-              void persistTransition({ ...attempt, stageIndex: attempt.stageIndex + 1, questionIndex: 0, updatedAt: new Date().toISOString() })
+              void persistTransition({
+                ...attempt,
+                stageIndex: attempt.stageIndex + 1,
+                questionIndex: 0,
+                updatedAt: new Date().toISOString(),
+              })
             } else {
               void finishMission(attempt)
             }
-          }}>Bỏ qua stage</Button>
+          }}>
+            Bỏ qua stage
+          </Button>
         </div>
       )}
 
