@@ -4,6 +4,8 @@ import { findExactCloze, normalizeMissionAnswer } from './generators'
 import { calculateMissionScore, evaluateMissionReadiness } from './missionEngine'
 import { buildMissionReviewActions } from './missionSrsAdapter'
 import { parseGameHubConfig } from './gameConfig'
+import { missionAttemptReducer } from './missionReducer'
+import { getMissionScript } from './scriptRegistry'
 import type { GameTerm, MissionDefinition } from './mission.types'
 
 const term = (overrides: Partial<GameTerm> = {}): GameTerm => ({
@@ -147,5 +149,84 @@ describe('mission readiness', () => {
     const readiness = evaluateMissionReadiness(terms)
     expect(readiness.playable).toBe(false)
     expect(readiness.blocking.some((issue) => issue.code === 'DUPLICATE_TRANSLATION')).toBe(true)
+  })
+})
+
+
+describe('mission script registry', () => {
+  it('returns the reusable standard script and its version', () => {
+    const script = getMissionScript('standard')
+    expect(script.version).toBe(1)
+    expect(script.stages.map((stage) => stage.type)).toEqual([
+      'matching',
+      'listening_choice',
+      'listening_typing',
+      'context_cloze',
+      'meaning_recall',
+    ])
+  })
+
+  it('falls back safely for an unknown script key', () => {
+    expect(getMissionScript('missing-script').key).toBe('standard')
+  })
+})
+
+describe('mission attempt reducer', () => {
+  const initial = {
+    deckId: 'deck-1',
+    curriculumFingerprint: 'fp',
+    missionIndex: 0,
+    stageIndex: 0,
+    questionIndex: 0,
+    answers: [],
+    startedAt: '2026-09-24T00:00:00.000Z',
+    updatedAt: '2026-09-24T00:00:00.000Z',
+    status: 'in_progress' as const,
+  }
+
+  it('transitions stage and question deterministically', () => {
+    const next = missionAttemptReducer(initial, {
+      type: 'transition',
+      stageIndex: 2,
+      questionIndex: 1,
+      at: '2026-09-24T00:01:00.000Z',
+    })
+    expect(next).toMatchObject({ stageIndex: 2, questionIndex: 1 })
+    expect(initial).toMatchObject({ stageIndex: 0, questionIndex: 0 })
+  })
+
+  it('replaces an existing answer by question id instead of duplicating it', () => {
+    const answer = {
+      questionId: 'q1',
+      targetTermId: 'term-1',
+      type: 'meaning_recall' as const,
+      attempts: 1,
+      hintLevel: 0,
+      isCorrect: true,
+      firstTryCorrect: true,
+      score: 100,
+      answeredAt: '2026-09-24T00:01:00.000Z',
+    }
+    const once = missionAttemptReducer(initial, {
+      type: 'recordAnswers',
+      answers: [answer],
+      at: answer.answeredAt,
+    })
+    const twice = missionAttemptReducer(once, {
+      type: 'recordAnswers',
+      answers: [{ ...answer, score: 50, attempts: 2, firstTryCorrect: false }],
+      at: '2026-09-24T00:02:00.000Z',
+    })
+    expect(twice?.answers).toHaveLength(1)
+    expect(twice?.answers[0].score).toBe(50)
+  })
+
+  it('marks the attempt completed without changing its answers', () => {
+    const completed = missionAttemptReducer(initial, {
+      type: 'complete',
+      at: '2026-09-24T00:03:00.000Z',
+    })
+    expect(completed?.status).toBe('completed')
+    expect(completed?.answers).toEqual([])
   })
 })
