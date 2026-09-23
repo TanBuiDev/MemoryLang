@@ -12,6 +12,7 @@ import { gameMissionSyncService } from '@/services/local/gameMissionSync.service
 import { buildMissionTermGroups, createCurriculumContentVersion, createCurriculumFingerprint } from '@/features/games/mission/curriculum'
 import { calculateMissionScore, createMissionDefinition, evaluateMissionReadiness } from '@/features/games/mission/missionEngine'
 import { normalizeMissionAnswer } from '@/features/games/mission/generators'
+import { getMissionScript } from '@/features/games/mission/scriptRegistry'
 import { getDeckGameConfig } from '@/features/games/mission/gameConfig'
 import { MissionLearnStage } from '@/features/games/mission/components/MissionLearnStage'
 import { MissionMatchingStage } from '@/features/games/mission/components/MissionMatchingStage'
@@ -119,11 +120,13 @@ export default function MissionGamePage() {
         }
         const termsPerMission = deckConfig.termsPerMission ?? 10
         const scriptKey = deckConfig.scriptKey ?? 'standard'
+        const script = getMissionScript(scriptKey)
         const fingerprint = createCurriculumFingerprint({
           deckId,
           orderedTermIds: terms.map((term) => term.globalTermId),
           termsPerMission,
           scriptKey,
+          scriptVersion: script.version,
           contentVersion: createCurriculumContentVersion(terms),
         })
         const groups = buildMissionTermGroups(terms, termsPerMission)
