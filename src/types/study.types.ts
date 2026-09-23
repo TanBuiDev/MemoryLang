@@ -6,6 +6,7 @@ export type StudyMode =
   | 'meaning_first'
   | 'ipa_first'
   | 'example_first'
+  | 'game_mission'
 
 export type SessionLimit = number | 'all'
 
