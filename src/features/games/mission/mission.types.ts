@@ -49,6 +49,19 @@ export interface QuestionDefinition {
   sourceExampleIndex?: number
 }
 
+export interface MissionScriptStage {
+  type: MissionQuestionType
+  questionCount: number
+  required: boolean
+}
+
+export interface MissionScript {
+  key: string
+  version: number
+  stages: MissionScriptStage[]
+  bossQuestionCount: number
+}
+
 export interface MissionStageDefinition {
   type: MissionStageType
   targetTermIds: string[]
