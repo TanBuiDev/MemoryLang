@@ -3,7 +3,6 @@ import { X, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
 import { useI18n } from '@/i18n'
-import { Select } from '@/components/ui/select'
 import type { VocabularyItemType, VocabularyStatus } from '@/types/vocabulary.types'
 
 const STATUS_OPTIONS: VocabularyStatus[] = ['new', 'learning', 'familiar', 'memorized', 'difficult', 'need_review']
@@ -30,6 +29,7 @@ interface FilterState {
   statuses: Set<VocabularyStatus>
   itemTypes: Set<VocabularyItemType>
   flagged: boolean
+  due: boolean
   noDeck: boolean
   deckId: string | null
 }
@@ -39,10 +39,10 @@ interface FilterModalProps {
   onClose: () => void
   filters: FilterState
   onChange: (filters: FilterState) => void
-  decks: Array<{ id: string; name: string }>
+  getPreviewCount?: (filters: FilterState) => number | null
 }
 
-export function FilterModal({ open, onClose, filters, onChange, decks }: FilterModalProps) {
+export function FilterModal({ open, onClose, filters, onChange, getPreviewCount }: FilterModalProps) {
   const { t } = useI18n()
   const sheetRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
@@ -128,15 +128,17 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
     setDraftFilters({ ...draftFilters, itemTypes: next })
   }
 
-  const hasActiveFilters = draftFilters.statuses.size > 0 || draftFilters.itemTypes.size > 0 || draftFilters.flagged || draftFilters.noDeck || draftFilters.deckId !== null
+  const hasActiveFilters = draftFilters.statuses.size > 0 || draftFilters.itemTypes.size > 0 || draftFilters.flagged
+  const previewCount = getPreviewCount?.(draftFilters)
 
   const resetFilters = () => {
     setDraftFilters({
       statuses: new Set(),
       itemTypes: new Set(),
       flagged: false,
-      noDeck: false,
-      deckId: null,
+      due: draftFilters.due,
+      noDeck: draftFilters.noDeck,
+      deckId: draftFilters.deckId,
     })
   }
 
@@ -155,28 +157,29 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
             <SlidersHorizontal className="h-5 w-5 text-primary" />
             <h2 id={titleId} className="text-lg font-black">{t('vocabulary.filter')}</h2>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={onClose}
-            aria-label="Đóng bộ lọc"
-            className="flex h-8 w-8 items-center justify-center rounded-md border-2 border-border bg-card hover:bg-muted shadow-[2px_2px_0_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_var(--border)]"
+            aria-label={t('vocabulary.closeFilters')}
+            className="h-10 w-10 px-0"
           >
-            <X className="h-4 w-4" />
-          </button>
+            <X aria-hidden="true" className="h-4 w-4" />
+          </Button>
         </div>
 
-        <div className="max-h-[65vh] overflow-y-auto px-5 py-4 space-y-5">
+        <div className="max-h-[65vh] space-y-5 overflow-y-auto overscroll-contain px-5 py-4">
           {/* Status section */}
           <fieldset>
             <legend className="text-xs uppercase font-black text-muted-foreground mb-2.5">
               {t('vocabulary.status')}
             </legend>
-            <div className="space-y-1.5">
+            <div className="grid gap-2 sm:grid-cols-2">
               {STATUS_OPTIONS.map((status) => (
                 <label
                   key={status}
                   className={cn(
-                    'flex items-center gap-2.5 rounded-md border-2 border-border px-3 py-2 cursor-pointer transition-all',
+                    'flex min-h-11 cursor-pointer items-center gap-2.5 rounded-md border-2 border-border px-3 py-2 transition-colors',
                     draftFilters.statuses.has(status)
                       ? 'bg-primary/10 border-primary'
                       : 'bg-card hover:bg-muted'
@@ -188,7 +191,7 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
                     onChange={() => toggleStatus(status)}
                     className="h-4 w-4 accent-primary rounded"
                   />
-                  <span className="text-sm font-bold">{t(statusLabelKeys[status])}</span>
+                  <span className="text-sm font-bold">{status === 'need_review' ? t('vocabulary.statusNeedReviewFilter') : t(statusLabelKeys[status])}</span>
                 </label>
               ))}
             </div>
@@ -199,12 +202,12 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
             <legend className="text-xs uppercase font-black text-muted-foreground mb-2.5">
               {t('vocabulary.itemType')}
             </legend>
-            <div className="space-y-1.5">
+            <div className="grid grid-cols-2 gap-2">
               {ITEM_TYPE_OPTIONS.map((type) => (
                 <label
                   key={type}
                   className={cn(
-                    'flex items-center gap-2.5 rounded-md border-2 border-border px-3 py-2 cursor-pointer transition-all',
+                    'flex min-h-11 cursor-pointer items-center gap-2.5 rounded-md border-2 border-border px-3 py-2 transition-colors',
                     draftFilters.itemTypes.has(type)
                       ? 'bg-primary/10 border-primary'
                       : 'bg-card hover:bg-muted'
@@ -222,15 +225,15 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
             </div>
           </fieldset>
 
-          {/* Flagged & No Deck section */}
+          {/* Other learner conditions */}
           <fieldset>
             <legend className="text-xs uppercase font-black text-muted-foreground mb-2.5">
-              Khác
+              {t('vocabulary.otherFilters')}
             </legend>
             <div className="space-y-1.5">
               <label
                 className={cn(
-                  'flex items-center gap-2.5 rounded-md border-2 border-border px-3 py-2 cursor-pointer transition-all',
+                  'flex min-h-11 cursor-pointer items-center gap-2.5 rounded-md border-2 border-border px-3 py-2 transition-colors',
                   draftFilters.flagged ? 'bg-primary/10 border-primary' : 'bg-card hover:bg-muted'
                 )}
               >
@@ -242,40 +245,8 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
                 />
                 <span className="text-sm font-bold">{t('vocabulary.filterFlagged')}</span>
               </label>
-              <label
-                className={cn(
-                  'flex items-center gap-2.5 rounded-md border-2 border-border px-3 py-2 cursor-pointer transition-all',
-                  draftFilters.noDeck ? 'bg-primary/10 border-primary' : 'bg-card hover:bg-muted'
-                )}
-              >
-                <input
-                  type="checkbox"
-                  checked={draftFilters.noDeck}
-                  onChange={() => setDraftFilters({ ...draftFilters, noDeck: !draftFilters.noDeck, deckId: null })}
-                  className="h-4 w-4 accent-primary rounded"
-                />
-                <span className="text-sm font-bold">{t('vocabulary.filterNoDeck')}</span>
-              </label>
             </div>
           </fieldset>
-
-          {/* Deck filter */}
-          {decks.length > 0 && (
-            <fieldset>
-              <legend className="text-xs uppercase font-black text-muted-foreground mb-2.5">
-                {t('decks.title')}
-              </legend>
-              <Select
-                value={draftFilters.deckId ?? ''}
-                onChange={(val) => setDraftFilters({ ...draftFilters, deckId: val || null, noDeck: false })}
-                options={[
-                  { value: '', label: t('vocabulary.allDecks') },
-                  ...decks.map((deck) => ({ value: deck.id, label: deck.name }))
-                ]}
-                placeholder={t('vocabulary.allDecks')}
-              />
-            </fieldset>
-          )}
         </div>
 
         {/* Bottom actions */}
@@ -293,7 +264,9 @@ export function FilterModal({ open, onClose, filters, onChange, decks }: FilterM
               onClose()
             }}
           >
-            {t('vocabulary.apply')}
+            {previewCount == null
+              ? t('vocabulary.applyFilters')
+              : t('vocabulary.viewWords', { count: previewCount })}
           </Button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Volume2, Flag, SlidersHorizontal, ChevronDown, Loader2 } from 'lucide-react'
+import { Volume2, Flag, SlidersHorizontal, ChevronDown, Loader2, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { cn } from '@/utils/cn'
@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { AddVocabularyModal } from '@/components/vocabulary/AddVocabularyModal'
 import { AddVocabularyModal as QuickAddVocabularyModal } from '@/components/layout/AddVocabularyModal'
 import { FilterModal } from '@/components/vocabulary/FilterModal'
+import { DeckFilterPicker } from '@/components/vocabulary/DeckFilterPicker'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -84,6 +85,7 @@ function parseFilterParams(params: URLSearchParams): {
   statuses: Set<VocabularyStatus>
   itemTypes: Set<VocabularyItemType>
   flagged: boolean
+  due: boolean
   noDeck: boolean
   deckId: string | null
 } {
@@ -101,6 +103,7 @@ function parseFilterParams(params: URLSearchParams): {
     statuses,
     itemTypes,
     flagged: params.get('flagged') === '1',
+    due: params.get('due') === '1',
     noDeck: params.get('noDeck') === '1',
     deckId: params.get('deckId') || null,
   }
@@ -110,6 +113,7 @@ function filterParamsToSearchParams(filters: {
   statuses: Set<VocabularyStatus>
   itemTypes: Set<VocabularyItemType>
   flagged: boolean
+  due: boolean
   noDeck: boolean
   deckId: string | null
 }, prev: URLSearchParams): URLSearchParams {
@@ -120,6 +124,8 @@ function filterParamsToSearchParams(filters: {
   else next.delete('itemTypes')
   if (filters.flagged) next.set('flagged', '1')
   else next.delete('flagged')
+  if (filters.due) next.set('due', '1')
+  else next.delete('due')
   if (filters.noDeck) next.set('noDeck', '1')
   else next.delete('noDeck')
   if (filters.deckId) next.set('deckId', filters.deckId)
@@ -184,7 +190,7 @@ export function VocabularyListPage() {
   const filters = useMemo(() => parseFilterParams(searchParams), [searchParams])
 
   const setFilters = useCallback(
-    (next: { statuses: Set<VocabularyStatus>; itemTypes: Set<VocabularyItemType>; flagged: boolean; noDeck: boolean; deckId: string | null }) => {
+    (next: { statuses: Set<VocabularyStatus>; itemTypes: Set<VocabularyItemType>; flagged: boolean; due: boolean; noDeck: boolean; deckId: string | null }) => {
       setSearchParams((prev) => filterParamsToSearchParams(next, prev))
     },
     [setSearchParams]
@@ -256,6 +262,10 @@ export function VocabularyListPage() {
     }
     if (filters.flagged) {
       filtered = filtered.filter((item) => item.flagged)
+    }
+    if (filters.due) {
+      const now = Date.now()
+      filtered = filtered.filter((item) => item.next_review_at && new Date(item.next_review_at).getTime() <= now)
     }
     if (filters.noDeck) {
       filtered = deckedTermIdsQuery.data
@@ -567,18 +577,36 @@ export function VocabularyListPage() {
     proposalMutation.mutate(term)
   }
 
-  const hasActiveFilters = filters.statuses.size > 0 || filters.itemTypes.size > 0 || filters.flagged || filters.noDeck || filters.deckId !== null
+  const activeFilterCount = filters.statuses.size + filters.itemTypes.size + Number(filters.flagged) + Number(filters.due) + Number(filters.noDeck || filters.deckId !== null)
+  const hasActiveFilters = activeFilterCount > 0
   const dueCount = rawVocabulary.filter((item) => item.next_review_at && new Date(item.next_review_at) <= new Date()).length
+  const hiddenSearchMatches = Boolean(debouncedSearch.trim()) && hasActiveFilters && rawVocabulary.some((item) => matchesVocabularySearch(item, debouncedSearch))
+
+  const clearFilters = () => setFilters({ statuses: new Set(), itemTypes: new Set(), flagged: false, due: false, noDeck: false, deckId: null })
 
   function toggleQuickStatus(status: VocabularyStatus) {
     const statuses = new Set(filters.statuses)
-    if (statuses.size === 1 && statuses.has(status)) statuses.clear()
-    else {
-      statuses.clear()
-      statuses.add(status)
-    }
+    if (statuses.has(status)) statuses.delete(status)
+    else statuses.add(status)
     setFilters({ ...filters, statuses })
   }
+
+  const activeFilterChips = [
+    ...Array.from(filters.statuses).map((status) => ({
+      key: `status-${status}`,
+      label: status === 'need_review' ? t('vocabulary.statusNeedReviewFilter') : t(statusLabelKeys[status]),
+      remove: () => setFilters({ ...filters, statuses: new Set([...filters.statuses].filter((value) => value !== status)) }),
+    })),
+    ...Array.from(filters.itemTypes).map((type) => ({
+      key: `type-${type}`,
+      label: t({ word: 'vocabulary.word', phrase: 'vocabulary.phrase', idiom: 'vocabulary.idiom', sentence: 'vocabulary.sentence' }[type]),
+      remove: () => setFilters({ ...filters, itemTypes: new Set([...filters.itemTypes].filter((value) => value !== type)) }),
+    })),
+    ...(filters.due ? [{ key: 'due', label: t('vocabulary.reviewDue'), remove: () => setFilters({ ...filters, due: false }) }] : []),
+    ...(filters.flagged ? [{ key: 'flagged', label: t('vocabulary.filterFlagged'), remove: () => setFilters({ ...filters, flagged: false }) }] : []),
+    ...(filters.noDeck ? [{ key: 'no-deck', label: t('vocabulary.filterNoDeck'), remove: () => setFilters({ ...filters, noDeck: false }) }] : []),
+    ...(filters.deckId ? [{ key: 'deck', label: deckService.getDeckPath(filters.deckId, decksQuery.data ?? []) || t('vocabulary.unknownDeck'), remove: () => setFilters({ ...filters, deckId: null }) }] : []),
+  ]
 
   function renderVocabularyCard(item: VocabularyItem) {
     const reviewDate = item.next_review_at ? new Date(item.next_review_at) : null
@@ -663,17 +691,6 @@ export function VocabularyListPage() {
           <Link to="/app/review">{t('vocabulary.reviewNow', { count: dueCount })}</Link>
         </Button>
       ) : null}
-      <Button
-        variant={hasActiveFilters ? 'secondary' : 'ghost'}
-        onClick={() => setFilterOpen(true)}
-        title={t('vocabulary.filter')}
-        className={cn(
-          hasActiveFilters ? 'text-secondary-foreground' : 'text-foreground'
-        )}
-      >
-        <SlidersHorizontal className={cn("h-4 w-4", hasActiveFilters ? "text-secondary-foreground" : "text-foreground")} />
-        {hasActiveFilters && <span className="ml-1.5 text-xs font-black">●</span>}
-      </Button>
       <Button variant="ghost" disabled={!shouldUseRemoteData} onClick={enterSelectMode}>{t('vocabulary.select')}</Button>
       {profile?.is_admin && (
         <Button onClick={() => setAddModalOpen(true)}>{t('vocabulary.add')}</Button>
@@ -709,8 +726,8 @@ export function VocabularyListPage() {
         </div>
       ) : null}
       <div className="mb-4 flex flex-col gap-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="flex-1 flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <Input
               type="search"
               aria-label={t('vocabulary.search')}
@@ -733,14 +750,32 @@ export function VocabularyListPage() {
               </div>
             )}
           </div>
-          <div className="w-full sm:w-48 relative" ref={sortDropdownRef}>
-            <button
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <DeckFilterPicker
+            decks={(decksQuery.data ?? []).map((deck) => ({ id: deck.id, name: deck.name, parentId: deck.parent_id }))}
+            deckId={filters.deckId}
+            noDeck={filters.noDeck}
+            onChange={({ deckId, noDeck }) => setFilters({ ...filters, deckId, noDeck })}
+          />
+          <Button
+            type="button"
+            variant={hasActiveFilters ? 'secondary' : 'ghost'}
+            onClick={() => setFilterOpen(true)}
+            className="flex-1 sm:flex-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
+            {t('vocabulary.filter')}{hasActiveFilters ? ` (${activeFilterCount})` : ''}
+          </Button>
+          <div className="relative min-w-0 flex-1 sm:w-48 sm:flex-none" ref={sortDropdownRef}>
+            <Button
               type="button"
+              variant="ghost"
               aria-label={t('vocabulary.sortLabel')}
               aria-haspopup="listbox"
               aria-expanded={isSortOpen}
               onClick={() => setIsSortOpen(!isSortOpen)}
-              className="flex items-center justify-between w-full min-h-10 rounded-[var(--radius)] border-2 border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-[2px_2px_0_var(--border)] outline-none transition hover:translate-x-[0.5px] hover:translate-y-[0.5px] hover:shadow-[1px_1px_0_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_var(--border)]"
+              className="w-full justify-between px-3 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <span>
                 {sortOrder === 'newest' && t('vocabulary.sortNewest')}
@@ -750,7 +785,7 @@ export function VocabularyListPage() {
                 {sortOrder === 'wrong' && t('vocabulary.sortWrong')}
               </span>
               <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isSortOpen && "rotate-180")} />
-            </button>
+            </Button>
             {isSortOpen && (
               <div role="listbox" aria-label={t('vocabulary.sortLabel')} className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-card border-2 border-border shadow-[3px_3px_0_var(--border)] rounded-[var(--radius)] overflow-hidden py-1 divide-y divide-border animate-in fade-in duration-100">
                 {[
@@ -760,9 +795,10 @@ export function VocabularyListPage() {
                   { value: 'next_review', label: t('vocabulary.sortReview') },
                   { value: 'wrong', label: t('vocabulary.sortWrong') },
                 ].map((opt) => (
-                  <button
+                  <Button
                     key={opt.value}
                     type="button"
+                    variant="ghost"
                     role="option"
                     aria-selected={sortOrder === opt.value}
                     onClick={() => {
@@ -770,63 +806,48 @@ export function VocabularyListPage() {
                       setIsSortOpen(false)
                     }}
                     className={cn(
-                      "w-full text-left px-3 py-2 text-xs font-bold transition-colors cursor-pointer",
+                      "w-full justify-start rounded-none border-0 px-3 py-2 text-left text-xs shadow-none focus-visible:outline-2 focus-visible:outline-primary",
                       sortOrder === opt.value
                         ? "bg-primary text-primary-foreground"
                         : "text-foreground hover:bg-muted"
                     )}
                   >
                     {opt.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
           </div>
         </div>
-        <div className="flex overflow-x-auto pb-1.5 -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap md:overflow-x-visible gap-1.5 scrollbar-none shrink-0 max-w-full">
+        <div className="flex flex-wrap gap-2">
           <Button
             type="button"
-            variant={filters.statuses.size === 1 && filters.statuses.has('need_review') ? 'secondary' : 'ghost'}
-            onClick={() => toggleQuickStatus('need_review')}
-            className="shrink-0 text-xs"
+            variant={filters.due ? 'secondary' : 'ghost'}
+            onClick={() => setFilters({ ...filters, due: !filters.due })}
+            className="text-xs"
           >
-            {t('vocabulary.statusNeedReview')}
+            {t('vocabulary.reviewDue')}
           </Button>
           <Button
             type="button"
-            variant={filters.statuses.size === 1 && filters.statuses.has('difficult') ? 'secondary' : 'ghost'}
+            variant={filters.statuses.has('difficult') ? 'secondary' : 'ghost'}
             onClick={() => toggleQuickStatus('difficult')}
-            className="shrink-0 text-xs"
+            className="text-xs"
           >
             {t('vocabulary.statusDifficult')}
           </Button>
-          <Button
-            type="button"
-            variant={filters.flagged ? 'secondary' : 'ghost'}
-            onClick={() => setFilters({ ...filters, flagged: !filters.flagged })}
-            className="shrink-0 text-xs"
-          >
-            {t('vocabulary.filterFlagged')}
-          </Button>
-          {hasActiveFilters && (
-            <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
-              <span className="whitespace-nowrap">
-                {[
-                  ...Array.from(filters.statuses).map((s) => t(statusLabelKeys[s])),
-                  ...Array.from(filters.itemTypes).map((it) => t({
-                    word: 'vocabulary.word',
-                    phrase: 'vocabulary.phrase',
-                    idiom: 'vocabulary.idiom',
-                    sentence: 'vocabulary.sentence',
-                  }[it])),
-                  filters.flagged ? t('vocabulary.filterFlagged') : null,
-                  filters.noDeck ? t('vocabulary.filterNoDeck') : null,
-                  filters.deckId ? deckService.getDeckPath(filters.deckId, decksQuery.data ?? []) : null,
-                ].filter(Boolean).join(' · ')}
-              </span>
-            </div>
-          )}
         </div>
+        {hasActiveFilters && (
+          <div className="flex flex-wrap items-center gap-2" aria-label={t('vocabulary.activeFilters')}>
+            <span className="text-xs font-black text-muted-foreground">{t('vocabulary.activeFilters')}:</span>
+            {activeFilterChips.map((chip) => (
+              <Button key={chip.key} type="button" variant="ghost" aria-label={t('vocabulary.removeFilter', { name: chip.label })} onClick={chip.remove} className="min-h-8 max-w-full gap-1 px-2 py-1 text-xs focus-visible:outline-2 focus-visible:outline-primary">
+                <span className="truncate">{chip.label}</span><X aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+              </Button>
+            ))}
+            <Button type="button" variant="ghost" onClick={clearFilters} className="min-h-8 px-2 py-1 text-xs underline">{t('vocabulary.clearAllFilters')}</Button>
+          </div>
+        )}
       </div>
       {vocabularyQuery.isLoading && vocabulary.length === 0 ? (
         <div className="p-4 bg-white border-3 border-slate-900 shadow-[3px_3px_0px_0px_#000] rounded-2xl flex items-center justify-center gap-2 mb-4 font-black text-slate-900 text-sm">
@@ -849,27 +870,37 @@ export function VocabularyListPage() {
       ) : null}
       {!vocabularyQuery.isLoading && !vocabularyQuery.isError && vocabulary.length === 0 && debouncedSearch.trim() ? (
         <Card className="text-center">
-          <p className="text-xl font-black">{t('vocabulary.notFoundTitle', { term: debouncedSearch.trim() })}</p>
-          <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.notFoundDescription')}</p>
-          <div className="mt-4 flex flex-col items-center gap-2">
-            {profile?.is_admin ? (
-              <>
-                <Button onClick={openQuickAdd}>{t('vocabulary.notFoundAdd')}</Button>
-                <span className="text-xs text-muted-foreground font-semibold">{t('vocabulary.notFoundPressEnter')}</span>
-              </>
-            ) : user ? (
-              <>
-                <Button onClick={submitProposal} disabled={proposalMutation.isPending}>
-                  {proposalMutation.isPending
-                    ? t('vocabulary.proposalSending')
-                    : t('vocabulary.proposalSubmit')}
-                </Button>
-                <span className="max-w-md text-xs text-muted-foreground font-semibold">
-                  {t('vocabulary.proposalHint')}
-                </span>
-              </>
-            ) : null}
-          </div>
+          {hiddenSearchMatches ? (
+            <>
+              <p className="text-xl font-black">{t('vocabulary.filteredSearchTitle')}</p>
+              <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.filteredSearchDescription')}</p>
+              <Button className="mt-4" variant="ghost" onClick={clearFilters}>{t('vocabulary.clearFilters')}</Button>
+            </>
+          ) : (
+            <>
+              <p className="text-xl font-black">{t('vocabulary.notFoundTitle', { term: debouncedSearch.trim() })}</p>
+              <p className="mt-2 text-sm font-semibold text-muted-foreground">{t('vocabulary.notFoundDescription')}</p>
+              <div className="mt-4 flex flex-col items-center gap-2">
+                {profile?.is_admin ? (
+                  <>
+                    <Button onClick={openQuickAdd}>{t('vocabulary.notFoundAdd')}</Button>
+                    <span className="text-xs text-muted-foreground font-semibold">{t('vocabulary.notFoundPressEnter')}</span>
+                  </>
+                ) : user ? (
+                  <>
+                    <Button onClick={submitProposal} disabled={proposalMutation.isPending}>
+                      {proposalMutation.isPending
+                        ? t('vocabulary.proposalSending')
+                        : t('vocabulary.proposalSubmit')}
+                    </Button>
+                    <span className="max-w-md text-xs text-muted-foreground font-semibold">
+                      {t('vocabulary.proposalHint')}
+                    </span>
+                  </>
+                ) : null}
+              </div>
+            </>
+          )}
         </Card>
       ) : null}
       {deckedTermIdsQuery.isError || deckTermIdsQuery.isError || decksQuery.isError ? (
@@ -895,7 +926,7 @@ export function VocabularyListPage() {
           <Button
             className="mt-4"
             variant="ghost"
-            onClick={() => setFilters({ statuses: new Set(), itemTypes: new Set(), flagged: false, noDeck: false, deckId: null })}
+            onClick={clearFilters}
           >
             {t('vocabulary.clearFilters')}
           </Button>
@@ -976,7 +1007,20 @@ export function VocabularyListPage() {
         onClose={() => setFilterOpen(false)}
         filters={filters}
         onChange={setFilters}
-        decks={(decksQuery.data ?? []).map((d) => ({ id: d.id, name: deckService.getDeckPath(d.id, decksQuery.data ?? []) }))}
+        getPreviewCount={(draft) => {
+          if ((draft.noDeck && !deckedTermIdsQuery.data) || (draft.deckId && !deckTermIdsQuery.data)) return null
+          const now = Date.now()
+          return rawVocabulary.filter((item) => {
+            const termId = item.global_term_id ?? item.id
+            return (draft.statuses.size === 0 || draft.statuses.has(item.status))
+              && (draft.itemTypes.size === 0 || draft.itemTypes.has(item.item_type))
+              && (!draft.flagged || item.flagged)
+              && (!draft.due || Boolean(item.next_review_at && new Date(item.next_review_at).getTime() <= now))
+              && (!draft.noDeck || !deckedTermIdsQuery.data?.has(termId))
+              && (!draft.deckId || Boolean(deckTermIdsQuery.data?.has(termId)))
+              && (!debouncedSearch.trim() || matchesVocabularySearch(item, debouncedSearch))
+          }).length
+        }}
       />
       {profile?.is_admin && <AddVocabularyModal open={addModalOpen} onClose={() => setAddModalOpen(false)} />}
       <QuickAddVocabularyModal

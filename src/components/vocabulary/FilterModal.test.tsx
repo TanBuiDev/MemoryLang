@@ -7,6 +7,7 @@ const emptyFilters = {
   statuses: new Set<never>(),
   itemTypes: new Set<never>(),
   flagged: false,
+  due: false,
   noDeck: false,
   deckId: null,
 }
@@ -17,12 +18,12 @@ describe('FilterModal', () => {
     const onChange = vi.fn()
     const onClose = vi.fn()
 
-    render(<FilterModal open filters={emptyFilters} onChange={onChange} onClose={onClose} decks={[]} />)
+    render(<FilterModal open filters={emptyFilters} onChange={onChange} onClose={onClose} />)
 
     await user.click(screen.getByRole('checkbox', { name: 'Từ khó' }))
     expect(onChange).not.toHaveBeenCalled()
 
-    await user.click(screen.getByRole('button', { name: 'Áp dụng' }))
+    await user.click(screen.getByRole('button', { name: 'Áp dụng bộ lọc' }))
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
       statuses: new Set(['difficult']),
     }))
@@ -34,7 +35,7 @@ describe('FilterModal', () => {
     const onChange = vi.fn()
     const onClose = vi.fn()
 
-    render(<FilterModal open filters={emptyFilters} onChange={onChange} onClose={onClose} decks={[]} />)
+    render(<FilterModal open filters={emptyFilters} onChange={onChange} onClose={onClose} />)
     await user.click(screen.getByRole('checkbox', { name: 'Đã gắn cờ' }))
     await user.keyboard('{Escape}')
 
@@ -42,32 +43,38 @@ describe('FilterModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('không cho kết hợp Chưa có bộ thẻ với một bộ thẻ cụ thể', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
+  it('để lựa chọn bộ thẻ ở thanh lọc chính và làm rõ trạng thái cần ôn', () => {
+    render(<FilterModal open filters={emptyFilters} onChange={vi.fn()} onClose={vi.fn()} />)
 
-    render(
-      <FilterModal
-        open
-        filters={emptyFilters}
-        onChange={onChange}
-        onClose={vi.fn()}
-        decks={[{ id: 'deck-a', name: 'Bộ A' }]}
-      />,
-    )
-
-    await user.click(screen.getByRole('checkbox', { name: 'Chưa có bộ thẻ' }))
-    await user.click(screen.getByRole('button', { name: 'Tất cả bộ thẻ' }))
-    await user.click(screen.getAllByText('Bộ A').at(-1)!)
-    await user.click(screen.getByRole('button', { name: 'Áp dụng' }))
-
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ noDeck: false, deckId: 'deck-a' }))
+    expect(screen.queryByRole('checkbox', { name: 'Chưa có bộ thẻ' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tất cả bộ thẻ' })).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Trạng thái: cần ôn' })).toBeInTheDocument()
   })
 
   it('có ngữ nghĩa dialog và nút đóng có tên truy cập', () => {
-    render(<FilterModal open filters={emptyFilters} onChange={vi.fn()} onClose={vi.fn()} decks={[]} />)
+    render(<FilterModal open filters={emptyFilters} onChange={vi.fn()} onClose={vi.fn()} />)
 
     expect(screen.getByRole('dialog', { name: 'Bộ lọc' })).toHaveAttribute('aria-modal', 'true')
     expect(screen.getByRole('button', { name: 'Đóng bộ lọc' })).toBeInTheDocument()
+  })
+
+  it('đặt lại điều kiện nâng cao mà không xóa bộ thẻ và lịch ôn đã chọn ở ngoài', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<FilterModal open filters={{ ...emptyFilters, deckId: 'deck-a', due: true, flagged: true }} onChange={onChange} onClose={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'Đặt lại' }))
+    await user.click(screen.getByRole('button', { name: 'Áp dụng bộ lọc' }))
+
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ deckId: 'deck-a', due: true, flagged: false }))
+  })
+
+  it('cho biết số từ sẽ hiển thị trước khi áp dụng', async () => {
+    const user = userEvent.setup()
+    render(<FilterModal open filters={emptyFilters} onChange={vi.fn()} onClose={vi.fn()} getPreviewCount={(draft) => draft.statuses.has('difficult') ? 1 : 3} />)
+
+    expect(screen.getByRole('button', { name: 'Xem 3 từ' })).toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: 'Từ khó' }))
+    expect(screen.getByRole('button', { name: 'Xem 1 từ' })).toBeInTheDocument()
   })
 })

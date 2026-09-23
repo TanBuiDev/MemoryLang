@@ -303,6 +303,72 @@ describe('VocabularyListPage learner flows', () => {
     expect(screen.queryByRole('link', { name: 'apple' })).not.toBeInTheDocument()
   })
 
+  it('cho chọn bộ thẻ ở thanh lọc và bao gồm từ trong bộ thẻ con', async () => {
+    const user = userEvent.setup()
+    const terms = demoVocabulary.slice(0, 2).map((term, index) => ({
+      ...term,
+      global_term_id: `global-${index + 1}`,
+    }))
+    vi.mocked(vocabularyService.list).mockResolvedValue(terms)
+    vi.mocked(deckService.list).mockResolvedValue([
+      { id: 'parent', name: 'Bài học', parent_id: null },
+      { id: 'child', name: 'Bài 1', parent_id: 'parent' },
+    ] as never)
+    vi.mocked(deckService.collectDescendantIds).mockReturnValue(['child'])
+    vi.mocked(deckService.listTerms).mockImplementation(async (deckId) => deckId === 'child' ? [terms[0]] : [])
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: /Bộ thẻ: Tất cả bộ thẻ/ }))
+    await user.click(screen.getByRole('button', { name: 'Bài học' }))
+
+    expect(await screen.findByRole('link', { name: 'apple' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'break the ice' })).not.toBeInTheDocument())
+  })
+
+  it('hiển thị từng điều kiện và gỡ một điều kiện mà vẫn giữ các điều kiện khác', async () => {
+    const user = userEvent.setup()
+    vi.mocked(vocabularyService.list).mockResolvedValue([{ ...demoVocabulary[1], flagged: true }])
+    renderPage('/app/vocabulary?statuses=difficult&flagged=1')
+
+    expect(await screen.findByRole('button', { name: 'Bộ lọc (2)' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Bỏ điều kiện Từ khó' }))
+    expect(screen.getByRole('button', { name: 'Bộ lọc (1)' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Bỏ điều kiện Đã gắn cờ' })).toBeInTheDocument()
+  })
+
+  it('lọc Đến hạn ôn theo ngày ôn thay vì trạng thái từ', async () => {
+    const user = userEvent.setup()
+    vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary)
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Đến hạn ôn' }))
+    expect(screen.getByRole('link', { name: 'apple' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'break the ice' })).not.toBeInTheDocument()
+  })
+
+  it('không đề xuất từ nếu từ chỉ bị các điều kiện lọc che khuất', async () => {
+    const user = userEvent.setup()
+    vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary)
+    renderPage('/app/vocabulary?statuses=difficult')
+
+    await user.type(await screen.findByRole('searchbox', { name: 'Tìm từ vựng' }), 'apple')
+    expect(await screen.findByText('Có từ phù hợp tìm kiếm nhưng đang bị bộ lọc ẩn.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Đề xuất từ này' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Xóa bộ lọc' }))
+    expect(await screen.findByRole('link', { name: 'apple' })).toBeInTheDocument()
+  })
+
+  it('cho xem trước số từ phù hợp khi đổi điều kiện trong hộp lọc', async () => {
+    const user = userEvent.setup()
+    vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary)
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Bộ lọc' }))
+    expect(screen.getByRole('button', { name: 'Xem 3 từ' })).toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: 'Từ khó' }))
+    expect(screen.getByRole('button', { name: 'Xem 1 từ' })).toBeInTheDocument()
+  })
+
   it('giữ bộ lọc khi mở từ rồi quay về danh sách qua liên kết không có query string', async () => {
     const user = userEvent.setup()
     vi.mocked(vocabularyService.list).mockResolvedValue(demoVocabulary)
@@ -345,7 +411,7 @@ describe('VocabularyListPage learner flows', () => {
     vi.mocked(vocabularyService.list).mockResolvedValue([{ ...demoVocabulary[0], flagged: true }])
     renderPage('/app/vocabulary?flagged=1')
 
-    expect((await screen.findAllByText('Đã gắn cờ')).length).toBeGreaterThanOrEqual(2)
+    expect(await screen.findByRole('button', { name: 'Bỏ điều kiện Đã gắn cờ' })).toBeInTheDocument()
   })
 
   it('cung cấp ngữ nghĩa truy cập cho menu sắp xếp', async () => {
@@ -355,6 +421,7 @@ describe('VocabularyListPage learner flows', () => {
 
     const trigger = await screen.findByRole('button', { name: 'Sắp xếp từ vựng' })
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(trigger).toHaveClass('focus-visible:outline-2')
     await user.click(trigger)
 
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
