@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
+import { useSoundStore } from '@/stores/useSoundStore'
+import { supabase } from '@/services/supabase/client'
 import { gameMissionService } from '@/services/supabase/gameMission.service'
 import { studyService } from '@/services/supabase/study.service'
 import { buildStoredGameMissionAttempt, gameMissionLocalDb, gameMissionAttemptKey, type StoredGameMissionAttempt } from '@/services/local/gameMissionLocalDb'
@@ -16,6 +18,7 @@ import { getMissionScript } from '@/features/games/mission/scriptRegistry'
 import { missionAttemptReducer, shouldAutoSyncMission, type MissionAttemptAction } from '@/features/games/mission/missionReducer'
 import { getDeckGameConfig } from '@/features/games/mission/gameConfig'
 import { selectMatchingTranslation } from '@/features/games/mission/missionInteraction'
+import { createMissionAudioCoordinator, parseMissionSoundConfig } from '@/features/games/mission/missionAudio'
 import { MissionLearnStage } from '@/features/games/mission/components/MissionLearnStage'
 import { MissionMatchingStage } from '@/features/games/mission/components/MissionMatchingStage'
 import { MissionQuestionStage, type MissionQuestionFeedback } from '@/features/games/mission/components/MissionQuestionStage'
@@ -23,6 +26,7 @@ import { MissionResultView } from '@/features/games/mission/components/MissionRe
 import type { AnswerRecord, GameTerm, MissionAttemptState, MissionDefinition, QuestionDefinition } from '@/features/games/mission/mission.types'
 import type { Deck } from '@/types/deck.types'
 import { speak, stopSpeaking } from '@/utils/audio'
+import { soundEffects } from '@/utils/soundEffects'
 
 interface LoadedMission {
   deck: Deck
@@ -57,6 +61,8 @@ export default function MissionGamePage() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const isPro = useSubscriptionStore((state) => state.isPro)
+  const sfxEnabled = useSoundStore((state) => state.sfxEnabled)
+  const toggleSfx = useSoundStore((state) => state.toggleSfx)
   const missionIndex = Number(missionIndexParam)
 
   const [loaded, setLoaded] = useState<LoadedMission | null>(null)
@@ -78,6 +84,28 @@ export default function MissionGamePage() {
   const finishingRef = useRef(false)
   const attemptRef = useRef<MissionAttemptState | null>(null)
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const audioRef = useRef<ReturnType<typeof createMissionAudioCoordinator> | null>(null)
+  if (!audioRef.current) {
+    audioRef.current = createMissionAudioCoordinator(speak, stopSpeaking, (effect) => soundEffects.play(effect))
+  }
+
+  useEffect(() => soundEffects.initMobileUnlock(), [])
+
+  useEffect(() => {
+    let cancelled = false
+    void supabase.from('app_settings').select('value').eq('key', 'sfx_config').maybeSingle().then(({ data }) => {
+      if (cancelled || !data?.value) return
+      const config = parseMissionSoundConfig(data?.value)
+      useSoundStore.getState().setEngineMode(config.mode)
+      useSoundStore.getState().setCustomSoundUrls(config.urls)
+      if (config.mode === 'custom_files') {
+        for (const [name, url] of Object.entries(config.urls)) {
+          void soundEffects.preloadAudioBuffer(name, url)
+        }
+      }
+    })
+    return () => { cancelled = true }
+  }, [])
 
   const saveAttempt = useCallback(async (
     nextState: MissionAttemptState,
@@ -234,7 +262,7 @@ export default function MissionGamePage() {
     void load()
     return () => {
       cancelled = true
-      stopSpeaking()
+      audioRef.current?.transition()
     }
   }, [deckId, isPro, missionIndex, user])
 
@@ -243,6 +271,19 @@ export default function MissionGamePage() {
   const currentLearnTerm = currentStage?.type === 'learn' && loaded
     ? loaded.missionTerms[attempt?.questionIndex ?? 0]
     : null
+
+  useEffect(() => {
+    if (!currentLearnTerm || !attempt || result) return
+    audioRef.current?.playLearn(
+      attempt.startedAt + ':learn:' + attempt.questionIndex,
+      currentLearnTerm.sourceText,
+      {
+        audioUrl: currentLearnTerm.audioUrl,
+        globalTermId: currentLearnTerm.globalTermId,
+        lang: currentLearnTerm.sourceLanguage,
+      },
+    )
+  }, [attempt?.startedAt, attempt?.questionIndex, currentLearnTerm, result])
 
   useEffect(() => {
     if (currentQuestion?.audioText) {
@@ -271,6 +312,7 @@ export default function MissionGamePage() {
   }, [attempt, loaded])
 
   const persistTransition = async (next: MissionAttemptState) => {
+    audioRef.current?.transition()
     setAnswerValue('')
     setAttemptNumber(1)
     setHintLevel(0)
@@ -287,7 +329,6 @@ export default function MissionGamePage() {
 
   const nextLearn = async () => {
     if (!attempt || !currentStage || !loaded) return
-    stopSpeaking()
     if (attempt.questionIndex + 1 < loaded.missionTerms.length) {
       await persistTransition({ ...attempt, questionIndex: attempt.questionIndex + 1, updatedAt: new Date().toISOString() })
       return
@@ -333,6 +374,8 @@ export default function MissionGamePage() {
     dispatchAttempt({ type: 'recordAnswers', answers: records, at: now })
     dispatchAttempt({ type: 'setDraft', draft: { matchingSelections, matchingReviewed: true }, at: now })
     setMatchingReviewed(true)
+    if (records.every((record) => record.isCorrect)) audioRef.current?.correct(attempt.startedAt + ':matching')
+    else audioRef.current?.wrong()
     await saveAttempt(reviewed, studySessionId)
   }
 
@@ -354,6 +397,7 @@ export default function MissionGamePage() {
     if (!attempt || !currentQuestion || feedback?.finalized || !answerValue.trim()) return
     const correct = gradeQuestion(currentQuestion, answerValue)
     if (!correct && attemptNumber < 2) {
+      audioRef.current?.wrong()
       setAttemptNumber(2)
       setHintLevel(1)
       setFeedback({ correct: false, finalized: false, text: 'Chưa đúng. Dùng gợi ý và thử lại một lần nữa.' })
@@ -392,6 +436,20 @@ export default function MissionGamePage() {
       finalized: true,
       text: correct ? (attemptNumber === 1 ? 'Chính xác ngay lần đầu!' : 'Đúng sau khi gọi lại lần nữa.') : 'Chưa chính xác. Hãy xem đáp án và tiếp tục.',
     })
+    if (correct) {
+      const target = loaded?.missionTerms.find((item) => item.globalTermId === currentQuestion.targetTermId)
+      audioRef.current?.correct(
+        attempt.startedAt + ':' + currentQuestion.id,
+        currentQuestion.type === 'listening_typing' ? currentQuestion.audioText : undefined,
+        currentQuestion.type === 'listening_typing' ? {
+          audioUrl: currentQuestion.audioUrl,
+          globalTermId: currentQuestion.targetTermId,
+          lang: target?.sourceLanguage,
+        } : undefined,
+      )
+    } else {
+      audioRef.current?.wrong()
+    }
   }
 
   const syncCompletion = useCallback(async (state: MissionAttemptState, stats: MissionResult) => {
@@ -460,6 +518,7 @@ export default function MissionGamePage() {
       const stats = calculateMissionScore(loaded.definition, completedState.answers)
       dispatchAttempt({ type: 'complete', at: completedState.updatedAt })
       setResult(stats)
+      audioRef.current?.complete()
       await saveAttempt(completedState, studySessionId, { pendingResult: stats })
       await syncCompletion(completedState, stats)
     } finally {
@@ -481,6 +540,7 @@ export default function MissionGamePage() {
   }
 
   const playCurrentAudio = () => {
+    audioRef.current?.cancelPendingReplay()
     const term = currentLearnTerm
     if (term) {
       void speak(term.sourceText, { audioUrl: term.audioUrl, globalTermId: term.globalTermId, lang: term.sourceLanguage })
@@ -578,10 +638,24 @@ export default function MissionGamePage() {
   return (
     <div className="mx-auto max-w-3xl space-y-5 px-4 py-5">
       <div className="flex items-center justify-between gap-3">
-        <Button variant="ghost" onClick={() => setExitOpen(true)}><ArrowLeft className="h-4 w-4" /> Thoát</Button>
-        <div className="text-right">
-          <div className="text-xs font-black uppercase text-muted-foreground">Mission {missionIndex + 1}</div>
-          <div className="text-sm font-black">{currentStage ? stageLabel(currentStage.type) : ''}</div>
+        <Button variant="ghost" className="h-11 w-11 p-0" aria-label="Thoát Mission" title="Thoát Mission" onClick={() => setExitOpen(true)}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            className="h-11 w-11 p-0"
+            aria-label={sfxEnabled ? 'Tắt hiệu ứng âm thanh' : 'Bật hiệu ứng âm thanh'}
+            title={sfxEnabled ? 'Tắt hiệu ứng âm thanh' : 'Bật hiệu ứng âm thanh'}
+            aria-pressed={sfxEnabled}
+            onClick={toggleSfx}
+          >
+            {sfxEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+          </Button>
+          <div className="text-right">
+            <div className="text-xs font-black uppercase text-muted-foreground">Mission {missionIndex + 1}</div>
+            <div className="text-sm font-black">{currentStage ? stageLabel(currentStage.type) : ''}</div>
+          </div>
         </div>
       </div>
 

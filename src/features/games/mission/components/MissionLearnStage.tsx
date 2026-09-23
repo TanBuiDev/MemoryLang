@@ -27,8 +27,8 @@ export function MissionLearnStage({
         {term.ipa ? (
           <p className="mt-2 font-mono text-sm font-bold text-muted-foreground">{term.ipa}</p>
         ) : null}
-        <Button variant="secondary" className="mt-4" onClick={onPlayAudio}>
-          <Volume2 className="h-4 w-4" /> Nghe phát âm
+        <Button variant="secondary" className="mt-4 h-11 w-11 p-0" aria-label="Nghe lại phát âm" title="Nghe lại phát âm" onClick={onPlayAudio}>
+          <Volume2 className="h-5 w-5" />
         </Button>
       </div>
 

@@ -51,8 +51,8 @@ export function MissionQuestionStage({
       </p>
 
       {question.audioText ? (
-        <Button variant="secondary" onClick={onPlayAudio}>
-          <Headphones className="h-4 w-4" /> Phát lại audio
+        <Button variant="secondary" className="h-11 w-11 p-0" aria-label="Phát lại audio" title="Phát lại audio" onClick={onPlayAudio}>
+          <Headphones className="h-5 w-5" />
         </Button>
       ) : null}
 
