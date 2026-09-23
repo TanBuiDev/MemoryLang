@@ -454,13 +454,15 @@ export default function GameHubPage() {
                 <Rocket className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-300" />
                 <span>CẤU HÌNH TRÒ CHƠI NỐI TỪ</span>
               </h2>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                aria-label="Đóng cấu hình"
                 onClick={() => setIsConfigOpen(false)}
-                className="neo-button p-1.5 rounded-xl border-2 border-slate-900 bg-white/10 hover:bg-white/20 text-white transition-colors"
+                className="h-9 w-9 p-0 text-white hover:bg-white/20"
               >
                 <X className="w-5 h-5" />
-              </button>
+              </Button>
             </div>
 
             {/* Scrollable Modal Body */}
