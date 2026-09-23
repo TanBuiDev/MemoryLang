@@ -9,6 +9,10 @@ export interface StoredGameMissionAttempt {
   missionIndex: number
   studySessionId: string | null
   state: MissionAttemptState
+  pendingResult?: { score: number; accuracy: number; firstTryAccuracy: number }
+  srsSynced?: boolean
+  studySessionEnded?: boolean
+  progressSynced?: boolean
   updatedAt: string
 }
 
