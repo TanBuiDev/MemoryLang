@@ -1,5 +1,5 @@
 import { GENERATOR_VERSION, STANDARD_SCRIPT_VERSION, seededShuffle } from './curriculum'
-import { findExactCloze, generateQuestion } from './generators'
+import { findExactCloze, generateQuestion, normalizeMissionAnswer } from './generators'
 import type { GameTerm, MissionDefinition, MissionDiagnostic, MissionQuestionType, MissionReadiness, MissionStageDefinition } from './mission.types'
 
 const STANDARD_STAGES: Array<{ type: MissionQuestionType; count: number; required: boolean }> = [
@@ -51,10 +51,15 @@ export function evaluateMissionReadiness(terms: GameTerm[]): MissionReadiness {
   const blocking: MissionDiagnostic[] = []
   const warnings: MissionDiagnostic[] = []
   if (totalTerms < 5) blocking.push({ code: 'INSUFFICIENT_TERMS', blocking: true, message: 'Mission cần tối thiểu 5 từ hợp lệ.' })
-  const withTranslation = terms.filter((term) => Boolean(term.translation?.trim())).length
+  const translatedTerms = terms.filter((term) => Boolean(term.translation?.trim()))
+  const withTranslation = translatedTerms.length
+  const uniqueTranslations = new Set(
+    translatedTerms.map((term) => normalizeMissionAnswer(term.translation ?? '')),
+  ).size
   const withAudio = terms.filter((term) => Boolean(term.audioUrl?.trim())).length
   const withExactCloze = terms.filter((term) => Boolean(findExactCloze(term))).length
   if (withTranslation < Math.min(5, totalTerms)) blocking.push({ code: 'MISSING_TRANSLATION', blocking: true, message: 'Không đủ từ có bản dịch để tạo stage bắt buộc.' })
+  if (uniqueTranslations < Math.min(5, totalTerms)) blocking.push({ code: 'DUPLICATE_TRANSLATION', blocking: true, message: 'Không đủ bản dịch duy nhất để tạo Matching và Recall an toàn.' })
   if (withAudio < Math.min(3, totalTerms)) warnings.push({ code: 'MISSING_AUDIO', blocking: false, message: 'Coverage audio thấp; Listening Stage sẽ tự giảm câu hỏi.' })
   if (withExactCloze < Math.min(3, totalTerms)) warnings.push({ code: 'NO_EXACT_EXAMPLE_MATCH', blocking: false, message: 'Coverage cloze thấp; Context Stage có thể được rút gọn.' })
   return { playable: blocking.length === 0, blocking, warnings, coverage: { totalTerms, withTranslation, withAudio, withExactCloze } }
