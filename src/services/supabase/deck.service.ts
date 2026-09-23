@@ -91,11 +91,20 @@ export const deckService = {
   async list(userId: string): Promise<Deck[]> {
     const { data, error } = await supabase
       .from('decks')
-      .select('*, deck_terms(count)')
+      .select('*')
       .or(`user_id.eq.${userId},visibility.eq.public`)
       .order('created_at', { ascending: false })
     if (error) throw error
-    return (data ?? []).map((deck) => ({ ...deck, term_count: deck.deck_terms?.[0]?.count ?? 0 })) as Deck[]
+    if (!data?.length) return []
+
+    const { data: counts, error: countsError } = await supabase
+      .from('active_deck_term_counts')
+      .select('deck_id, term_count')
+      .in('deck_id', data.map((deck) => deck.id))
+    if (countsError) throw countsError
+
+    const countByDeckId = new Map((counts ?? []).map((row) => [row.deck_id, row.term_count]))
+    return data.map((deck) => ({ ...deck, term_count: countByDeckId.get(deck.id) ?? 0 })) as Deck[]
   },
   async get(id: string): Promise<Deck | null> {
     const { data, error } = await supabase.from('decks').select('*').eq('id', id).maybeSingle()
@@ -115,7 +124,7 @@ export const deckService = {
     const { data, error } = await supabase
       .from('deck_terms')
       .select(`
-        global_terms!fk_deck_terms_global_term (
+        global_terms!fk_deck_terms_global_term!inner (
           id,
           source_text,
           normalized_text,
@@ -134,6 +143,7 @@ export const deckService = {
         )
       `)
       .in('deck_id', deckIds)
+      .is('global_terms.deleted_at', null)
       .order('created_at', { ascending: true })
 
     if (error) throw error

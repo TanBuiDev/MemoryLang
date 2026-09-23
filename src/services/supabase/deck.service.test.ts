@@ -42,6 +42,49 @@ function createdDeck(id: string, name: string) {
   } as const
 }
 
+describe('deckService visible terms', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('counts only non-deleted terms in deck summaries', async () => {
+    const deckSelect = vi.fn().mockReturnValue({
+      or: vi.fn().mockReturnValue({
+        order: vi.fn().mockResolvedValue({ data: [createdDeck('deck-1', 'TEST 01')], error: null }),
+      }),
+    })
+    const countIds = vi.fn().mockResolvedValue({ data: [{ deck_id: 'deck-1', term_count: 79 }], error: null })
+    const countSelect = vi.fn().mockReturnValue({ in: countIds })
+    from.mockImplementation((table) => table === 'decks'
+      ? { select: deckSelect }
+      : { select: countSelect })
+
+    const decks = await deckService.list('user-1')
+
+    expect(deckSelect).toHaveBeenCalledWith('*')
+    expect(from).toHaveBeenCalledWith('active_deck_term_counts')
+    expect(countSelect).toHaveBeenCalledWith('deck_id, term_count')
+    expect(countIds).toHaveBeenCalledWith('deck_id', ['deck-1'])
+    expect(decks[0]?.term_count).toBe(79)
+  })
+
+  it('excludes deleted global terms from the studyable deck list', async () => {
+    const activeFilter = vi.fn()
+    const order = vi.fn().mockResolvedValue({ data: [], error: null })
+    const inDecks = vi.fn().mockReturnValue({ is: activeFilter, order })
+    activeFilter.mockReturnValue({ order })
+    const deckTermsSelect = vi.fn().mockReturnValue({ in: inDecks })
+    from.mockImplementation((table) => table === 'decks'
+      ? { select: vi.fn().mockResolvedValue({ data: [{ id: 'deck-1', parent_id: null }], error: null }) }
+      : { select: deckTermsSelect })
+
+    await deckService.listTerms('deck-1')
+
+    expect(deckTermsSelect).toHaveBeenCalledWith(expect.stringContaining('global_terms!fk_deck_terms_global_term!inner'))
+    expect(activeFilter).toHaveBeenCalledWith('global_terms.deleted_at', null)
+  })
+})
+
 describe('deckService.createLessonBatch', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
