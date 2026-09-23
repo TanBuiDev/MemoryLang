@@ -29,6 +29,9 @@ import { cn } from '@/utils/cn'
 
 interface GameAccessConfig {
   accessTier: 'free' | 'pro'
+  missionEnabled?: boolean
+  termsPerMission?: number
+  scriptKey?: string
 }
 
 interface AllowedDeckConfig {
@@ -40,6 +43,7 @@ interface AllowedDeckConfig {
 interface GameHubConfig {
   games: {
     matching: GameAccessConfig
+    mission: GameAccessConfig
     speed: GameAccessConfig
     puzzle: GameAccessConfig
     listening: GameAccessConfig
@@ -50,6 +54,7 @@ interface GameHubConfig {
 const DEFAULT_CONFIG: GameHubConfig = {
   games: {
     matching: { accessTier: 'free' },
+    mission: { accessTier: 'free' },
     speed: { accessTier: 'pro' },
     puzzle: { accessTier: 'pro' },
     listening: { accessTier: 'pro' },
@@ -76,6 +81,7 @@ export default function GameHubPage() {
 
   // Config form states
   const [selectedSource, setSelectedSource] = useState<string>('all') // 'all' or deckId
+  const [missionDeckId, setMissionDeckId] = useState<string>('')
   const [questionCountType, setQuestionCountType] = useState<string>('10') // '5', '10', '20', 'custom'
   const [customQuestionCount, setCustomQuestionCount] = useState<number>(25)
   const [repeatWrong, setRepeatWrong] = useState(true)
@@ -269,6 +275,17 @@ export default function GameHubPage() {
 
   const isAllVocabularyAllowed = getDeckConfig('all').allowed
 
+  const missionDeckOptions = allowedDecksToShow
+    .filter((deck) => getDeckConfig(deck.id).missionEnabled !== false)
+    .map((deck) => {
+      const deckConf = getDeckConfig(deck.id)
+      const suffix = !isPro && deckConf.accessTier === 'pro' ? ' 👑 Pro' : ''
+      return {
+        value: deck.id,
+        label: deckService.getDeckPath(deck.id, decks) + ' (' + String(deck.term_count ?? 0) + ' từ)' + suffix,
+      }
+    })
+
   const selectOptions = [
     ...(isAllVocabularyAllowed
       ? [
@@ -329,6 +346,46 @@ export default function GameHubPage() {
           </div>
         </div>
       </div>
+
+      {/* Shared curriculum Mission */}
+      <section className="neo-card border-4 border-slate-900 bg-yellow-50 p-5 shadow-[6px_6px_0px_0px_#000] rounded-2xl">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-[#fdc800] px-3 py-1 text-xs font-black uppercase">
+              <BookOpen className="h-4 w-4" /> Học theo Mission
+            </div>
+            <h2 className="mt-3 text-2xl font-black text-slate-900">Lộ trình chung theo từng bộ từ</h2>
+            <p className="mt-1 text-sm font-bold text-slate-600">
+              Mỗi người học cùng một curriculum: làm quen, nghe, ngữ cảnh, gọi lại từ trí nhớ và Boss Battle.
+            </p>
+          </div>
+          <div className="flex w-full flex-col gap-3 lg:max-w-xl lg:flex-row">
+            <Select
+              value={missionDeckId}
+              onChange={(value) => {
+                const deckConf = getDeckConfig(value)
+                if ((deckConf.accessTier === 'pro' || hubConfig.games.mission.accessTier === 'pro') && !isPro) {
+                  triggerProPrompt('để học bộ từ này bằng Mission')
+                  return
+                }
+                setMissionDeckId(value)
+              }}
+              options={missionDeckOptions}
+              placeholder="Chọn bộ từ để học Mission..."
+              disabled={missionDeckOptions.length === 0}
+            />
+            <Button
+              className="shrink-0"
+              disabled={!missionDeckId}
+              onClick={() => {
+                if (missionDeckId) navigate('/app/games/mission/' + missionDeckId)
+              }}
+            >
+              <Play className="h-4 w-4 fill-current" /> Vào lộ trình
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {/* Grid of Games */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
