@@ -293,7 +293,7 @@ export default function MissionGamePage() {
         lang: currentLearnTerm.sourceLanguage,
       },
     )
-  }, [attempt?.startedAt, attempt?.questionIndex, currentLearnTerm, result])
+  }, [attempt, currentLearnTerm, result])
 
   useEffect(() => {
     if (currentQuestion?.audioText) {
@@ -576,6 +576,7 @@ export default function MissionGamePage() {
 
   const restartMission = async () => {
     if (!user || !deckId || !loaded) return
+    audioRef.current?.transition()
     setSyncing(true)
     setError(null)
     try {
