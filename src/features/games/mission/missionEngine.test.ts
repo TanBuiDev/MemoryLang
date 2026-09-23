@@ -6,6 +6,7 @@ import { buildMissionReviewActions } from './missionSrsAdapter'
 import { parseGameHubConfig } from './gameConfig'
 import { missionAttemptReducer, shouldAutoSyncMission } from './missionReducer'
 import { getMissionScript } from './scriptRegistry'
+import { selectMatchingTranslation } from './missionInteraction'
 import type { GameTerm, MissionDefinition } from './mission.types'
 
 const term = (overrides: Partial<GameTerm> = {}): GameTerm => ({
@@ -286,5 +287,16 @@ describe('mission attempt reducer', () => {
     expect(shouldAutoSyncMission(true, true, false, true)).toBe(false)
     expect(shouldAutoSyncMission(true, true, false, false)).toBe(true)
     expect(shouldAutoSyncMission(true, true, false, false, true)).toBe(false)
+  })
+})
+
+describe('mission interactions', () => {
+  it('swaps occupied Matching translations without losing either selection', () => {
+    expect(selectMatchingTranslation({ a: 'nghĩa A', b: 'nghĩa B' }, 'a', 'nghĩa B')).toEqual({
+      a: 'nghĩa B',
+      b: 'nghĩa A',
+    })
+    expect(selectMatchingTranslation({ a: 'nghĩa A' }, 'a', '')).toEqual({})
+    expect(selectMatchingTranslation({ a: 'nghĩa A' }, 'b', 'nghĩa A')).toEqual({ b: 'nghĩa A' })
   })
 })

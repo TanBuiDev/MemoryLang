@@ -37,11 +37,6 @@ export function MissionMatchingStage({
       <div className="space-y-3">
         {questions.map((question) => {
           const selected = selections[question.id] ?? ''
-          const availableOptions = options.filter((option) =>
-            option.value === selected || !Object.entries(selections).some(
-              ([questionId, value]) => questionId !== question.id && value === option.value,
-            ),
-          )
           const correct =
             normalizeMissionAnswer(selected) ===
             normalizeMissionAnswer(question.acceptedAnswers[0] ?? '')
@@ -65,7 +60,7 @@ export function MissionMatchingStage({
                   onChange={(value) => {
                     if (!reviewed) onSelect(question.id, value)
                   }}
-                  options={availableOptions}
+                  options={selected ? [{ value: '', label: 'Bỏ chọn' }, ...options] : options}
                   placeholder="Chọn nghĩa..."
                   disabled={reviewed}
                 />
@@ -80,6 +75,12 @@ export function MissionMatchingStage({
           )
         })}
       </div>
+
+      {!reviewed ? (
+        <p className="text-xs font-semibold text-muted-foreground">
+          Bạn có thể đổi hoặc hoán đổi các nghĩa trước khi kiểm tra.
+        </p>
+      ) : null}
 
       {reviewed ? (
         <Button className="w-full" onClick={onContinue}>

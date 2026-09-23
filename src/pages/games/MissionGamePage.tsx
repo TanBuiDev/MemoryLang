@@ -15,6 +15,7 @@ import { normalizeMissionAnswer } from '@/features/games/mission/generators'
 import { getMissionScript } from '@/features/games/mission/scriptRegistry'
 import { missionAttemptReducer, shouldAutoSyncMission, type MissionAttemptAction } from '@/features/games/mission/missionReducer'
 import { getDeckGameConfig } from '@/features/games/mission/gameConfig'
+import { selectMatchingTranslation } from '@/features/games/mission/missionInteraction'
 import { MissionLearnStage } from '@/features/games/mission/components/MissionLearnStage'
 import { MissionMatchingStage } from '@/features/games/mission/components/MissionMatchingStage'
 import { MissionQuestionStage, type MissionQuestionFeedback } from '@/features/games/mission/components/MissionQuestionStage'
@@ -603,7 +604,7 @@ export default function MissionGamePage() {
           reviewed={matchingReviewed}
           options={matchingOptions}
           onSelect={(questionId, value) => {
-            const selections = { ...matchingSelections, [questionId]: value }
+            const selections = selectMatchingTranslation(matchingSelections, questionId, value)
             setMatchingSelections(selections)
             persistDraft({ matchingSelections: selections })
           }}
