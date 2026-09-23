@@ -13,7 +13,7 @@ const options = [
 ]
 
 describe('Mission Matching Stage', () => {
-  it('does not offer a translation already assigned to another pair', () => {
+  it('offers occupied translations for swapping and lets the learner clear a selection before grading', () => {
     const { container } = render(
       <MissionMatchingStage
         questions={questions}
@@ -27,6 +27,7 @@ describe('Mission Matching Stage', () => {
     )
     const selectors = container.querySelectorAll('select')
     expect(Array.from(selectors[0].options).map((option) => option.value)).toContain('nghĩa một')
-    expect(Array.from(selectors[1].options).map((option) => option.value)).not.toContain('nghĩa một')
+    expect(Array.from(selectors[0].options).map((option) => option.value)).toContain('')
+    expect(Array.from(selectors[1].options).map((option) => option.value)).toContain('nghĩa một')
   })
 })
