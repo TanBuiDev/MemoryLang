@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, Headphones, Lightbulb, RotateCcw, Swords, Volume2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
@@ -65,6 +66,8 @@ export default function MissionGamePage() {
   const [attemptNumber, setAttemptNumber] = useState(1)
   const [hintLevel, setHintLevel] = useState(0)
   const [feedback, setFeedback] = useState<{ correct: boolean; finalized: boolean; text: string } | null>(null)
+  const [matchingSelections, setMatchingSelections] = useState<Record<string, string>>({})
+  const [matchingReviewed, setMatchingReviewed] = useState(false)
   const [exitOpen, setExitOpen] = useState(false)
   const syncingRef = useRef(false)
 
@@ -204,6 +207,21 @@ export default function MissionGamePage() {
     }
   }, [currentQuestion?.id])
 
+  useEffect(() => {
+    if (currentStage?.type !== 'matching') return
+    setMatchingSelections({})
+    setMatchingReviewed(false)
+  }, [attempt?.stageIndex, currentStage?.type])
+
+  const matchingOptions = useMemo(() => {
+    if (currentStage?.type !== 'matching') return []
+    return [...currentStage.questions]
+      .map((question) => question.acceptedAnswers[0])
+      .filter(Boolean)
+      .reverse()
+      .map((answer) => ({ value: answer, label: answer }))
+  }, [currentStage])
+
   const progressPercent = useMemo(() => {
     if (!loaded || !attempt) return 0
     const total = loaded.definition.stages.length
@@ -228,6 +246,55 @@ export default function MissionGamePage() {
   const gradeQuestion = (question: QuestionDefinition, submitted: string) => {
     const normalized = normalizeMissionAnswer(submitted)
     return question.acceptedAnswers.some((answer) => normalizeMissionAnswer(answer) === normalized)
+  }
+
+  const checkMatching = async () => {
+    if (!attempt || currentStage?.type !== 'matching' || matchingReviewed) return
+    if (currentStage.questions.some((question) => !matchingSelections[question.id])) return
+
+    const now = new Date().toISOString()
+    const stageQuestionIds = new Set(currentStage.questions.map((question) => question.id))
+    const records: AnswerRecord[] = currentStage.questions.map((question) => {
+      const selected = matchingSelections[question.id] ?? ''
+      const correct = normalizeMissionAnswer(selected) === normalizeMissionAnswer(question.acceptedAnswers[0] ?? '')
+      return {
+        questionId: question.id,
+        targetTermId: question.targetTermId,
+        type: question.type,
+        attempts: 1,
+        hintLevel: 0,
+        isCorrect: correct,
+        firstTryCorrect: correct,
+        score: correct ? 100 : 0,
+        answeredAt: now,
+      }
+    })
+
+    const next = {
+      ...attempt,
+      answers: [
+        ...attempt.answers.filter((item) => !stageQuestionIds.has(item.questionId)),
+        ...records,
+      ],
+      updatedAt: now,
+    }
+    setAttempt(next)
+    setMatchingReviewed(true)
+    await saveAttempt(next, studySessionId)
+  }
+
+  const continueAfterMatching = async () => {
+    if (!attempt || !loaded || currentStage?.type !== 'matching' || !matchingReviewed) return
+    if (attempt.stageIndex + 1 < loaded.definition.stages.length) {
+      await persistTransition({
+        ...attempt,
+        stageIndex: attempt.stageIndex + 1,
+        questionIndex: 0,
+        updatedAt: new Date().toISOString(),
+      })
+      return
+    }
+    await finishMission(attempt)
   }
 
   const submitAnswer = async () => {
@@ -524,6 +591,69 @@ export default function MissionGamePage() {
           <Button className="w-full" onClick={() => void nextLearn()}>
             {attempt.questionIndex + 1 < loaded.missionTerms.length ? 'Từ tiếp theo' : 'Bắt đầu thử thách'}
           </Button>
+        </div>
+      ) : currentStage?.type === 'matching' ? (
+        <div className="neo-card space-y-5 p-6 sm:p-8">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Matching</p>
+            <h1 className="mt-1 text-2xl font-black">Ghép mỗi từ với nghĩa đúng</h1>
+            <p className="mt-1 text-sm font-semibold text-muted-foreground">
+              Hoàn thành tất cả cặp rồi kiểm tra cùng một lúc.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {currentStage.questions.map((question) => {
+              const selected = matchingSelections[question.id] ?? ''
+              const correct = normalizeMissionAnswer(selected) === normalizeMissionAnswer(question.acceptedAnswers[0] ?? '')
+              return (
+                <div
+                  key={question.id}
+                  className={
+                    'rounded-xl border-2 p-3 ' +
+                    (matchingReviewed
+                      ? correct
+                        ? 'border-emerald-700 bg-emerald-50'
+                        : 'border-rose-700 bg-rose-50'
+                      : 'border-border bg-muted/20')
+                  }
+                >
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] sm:items-center">
+                    <p className="text-lg font-black">{question.prompt}</p>
+                    <Select
+                      value={selected}
+                      onChange={(value) => {
+                        if (matchingReviewed) return
+                        setMatchingSelections((previous) => ({ ...previous, [question.id]: value }))
+                      }}
+                      options={matchingOptions}
+                      placeholder="Chọn nghĩa..."
+                      disabled={matchingReviewed}
+                    />
+                  </div>
+                  {matchingReviewed && !correct ? (
+                    <p className="mt-2 text-xs font-bold text-rose-900">
+                      Đáp án đúng: {question.acceptedAnswers[0]}
+                    </p>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+
+          {matchingReviewed ? (
+            <Button className="w-full" onClick={() => void continueAfterMatching()}>
+              Tiếp tục
+            </Button>
+          ) : (
+            <Button
+              className="w-full"
+              disabled={currentStage.questions.some((question) => !matchingSelections[question.id])}
+              onClick={() => void checkMatching()}
+            >
+              Kiểm tra tất cả cặp
+            </Button>
+          )}
         </div>
       ) : currentQuestion ? (
         <div className="neo-card space-y-5 p-6 sm:p-8">
