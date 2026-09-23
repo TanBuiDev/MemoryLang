@@ -41,7 +41,7 @@ function optionsFor(target: GameTerm, terms: GameTerm[], count: number, seed: st
 }
 
 function escapeRegExp(value: string) {
-  return value.replace(/[|\\{}()[\]^$+*?.-]/g, '\\$&')
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 export function findExactCloze(term: GameTerm) {
