@@ -1,5 +1,60 @@
 import Dexie, { type Table } from 'dexie'
+import { z } from 'zod'
 import type { MissionAttemptState } from '@/features/games/mission/mission.types'
+
+const questionTypeSchema = z.enum([
+  'matching',
+  'listening_choice',
+  'listening_typing',
+  'context_cloze',
+  'meaning_recall',
+  'spelling',
+])
+
+const answerRecordSchema = z.object({
+  questionId: z.string().min(1),
+  targetTermId: z.string().min(1),
+  type: questionTypeSchema,
+  attempts: z.number().int().min(1),
+  hintLevel: z.number().int().min(0),
+  isCorrect: z.boolean(),
+  firstTryCorrect: z.boolean(),
+  score: z.number().min(0).max(100),
+  answeredAt: z.string().min(1),
+})
+
+const missionAttemptStateSchema = z.object({
+  deckId: z.string().min(1),
+  curriculumFingerprint: z.string().min(1),
+  missionIndex: z.number().int().min(0),
+  stageIndex: z.number().int().min(0),
+  questionIndex: z.number().int().min(0),
+  answers: z.array(answerRecordSchema),
+  startedAt: z.string().min(1),
+  updatedAt: z.string().min(1),
+  status: z.enum(['in_progress', 'completed']),
+})
+
+const missionResultSchema = z.object({
+  score: z.number().min(0).max(100),
+  accuracy: z.number().min(0).max(100),
+  firstTryAccuracy: z.number().min(0).max(100),
+})
+
+const storedAttemptSchema = z.object({
+  key: z.string().min(1),
+  userId: z.string().min(1),
+  deckId: z.string().min(1),
+  curriculumFingerprint: z.string().min(1),
+  missionIndex: z.number().int().min(0),
+  studySessionId: z.string().nullable(),
+  state: missionAttemptStateSchema,
+  pendingResult: missionResultSchema.optional(),
+  srsSynced: z.boolean().optional(),
+  studySessionEnded: z.boolean().optional(),
+  progressSynced: z.boolean().optional(),
+  updatedAt: z.string().min(1),
+})
 
 export interface StoredGameMissionAttempt {
   key: string
@@ -40,11 +95,22 @@ export function gameMissionAttemptKey(
 
 export const gameMissionLocalDb = {
   async saveAttempt(record: StoredGameMissionAttempt) {
-    await db.activeAttempts.put(record)
+    const validated = storedAttemptSchema.parse(record) as StoredGameMissionAttempt
+    await db.activeAttempts.put(validated)
   },
 
   async getAttempt(userId: string, deckId: string, curriculumFingerprint: string, missionIndex: number) {
-    return await db.activeAttempts.get(gameMissionAttemptKey(userId, deckId, curriculumFingerprint, missionIndex)) ?? null
+    const key = gameMissionAttemptKey(userId, deckId, curriculumFingerprint, missionIndex)
+    const raw = await db.activeAttempts.get(key)
+    if (!raw) return null
+
+    const parsed = storedAttemptSchema.safeParse(raw)
+    if (!parsed.success) {
+      await db.activeAttempts.delete(key)
+      return null
+    }
+
+    return parsed.data as StoredGameMissionAttempt
   },
 
   async clearAttempt(userId: string, deckId: string, curriculumFingerprint: string, missionIndex: number) {
