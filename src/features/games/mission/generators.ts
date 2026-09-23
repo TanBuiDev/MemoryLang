@@ -47,7 +47,7 @@ function escapeRegExp(value: string) {
 export function findExactCloze(term: GameTerm) {
   const target = term.sourceText.trim()
   if (!target) return null
-  const pattern = new RegExp('(^|[^\\\\p{L}\\\\p{N}])(' + escapeRegExp(target) + ')(?=$|[^\\\\p{L}\\\\p{N}])', 'iu')
+  const pattern = new RegExp('(^|[^\\p{L}\\p{N}])(' + escapeRegExp(target) + ')(?=$|[^\\p{L}\\p{N}])', 'iu')
   for (let index = 0; index < term.examples.length; index += 1) {
     const sentence = term.examples[index]?.sentence?.trim()
     if (!sentence) continue
