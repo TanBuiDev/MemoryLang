@@ -293,10 +293,9 @@ describe('mission attempt reducer', () => {
 })
 
 describe('mission interactions', () => {
-  it('swaps occupied Matching translations without losing either selection', () => {
+  it('moves an occupied Matching translation and clears its previous row', () => {
     expect(selectMatchingTranslation({ a: 'nghĩa A', b: 'nghĩa B' }, 'a', 'nghĩa B')).toEqual({
       a: 'nghĩa B',
-      b: 'nghĩa A',
     })
     expect(selectMatchingTranslation({ a: 'nghĩa A' }, 'a', '')).toEqual({})
     expect(selectMatchingTranslation({ a: 'nghĩa A' }, 'b', 'nghĩa A')).toEqual({ b: 'nghĩa A' })

@@ -1,5 +1,6 @@
+import { useState } from 'react'
+import { Check, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Select } from '@/components/ui/select'
 import { normalizeMissionAnswer } from '../generators'
 import type { QuestionDefinition } from '../mission.types'
 
@@ -22,6 +23,7 @@ export function MissionMatchingStage({
   onCheck,
   onContinue,
 }: MissionMatchingStageProps) {
+  const [openQuestionId, setOpenQuestionId] = useState<string | null>(null)
   return (
     <div className="neo-card space-y-5 p-6 sm:p-8">
       <div>
@@ -55,15 +57,42 @@ export function MissionMatchingStage({
             >
               <div className="grid gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] sm:items-center">
                 <p className="text-lg font-black">{question.prompt}</p>
-                <Select
-                  value={selected}
-                  onChange={(value) => {
-                    if (!reviewed) onSelect(question.id, value)
-                  }}
-                  options={selected ? [{ value: '', label: 'Bỏ chọn' }, ...options] : options}
-                  placeholder="Chọn nghĩa..."
-                  disabled={reviewed}
-                />
+                <div className="relative" onKeyDown={(event) => {
+                  if (event.key === 'Escape') setOpenQuestionId(null)
+                }}>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between text-left"
+                    aria-label={'Chọn nghĩa của ' + question.prompt}
+                    aria-expanded={openQuestionId === question.id}
+                    disabled={reviewed}
+                    onClick={() => setOpenQuestionId(openQuestionId === question.id ? null : question.id)}
+                  >
+                    <span>{selected || 'Chọn nghĩa...'}</span><ChevronDown className="h-4 w-4 shrink-0" />
+                  </Button>
+                  {openQuestionId === question.id && !reviewed ? (
+                    <div className="absolute left-0 right-0 top-full z-30 max-h-60 overflow-y-auto rounded-b-lg border-2 border-border bg-card shadow-[3px_3px_0px_#1c293c]">
+                      {selected ? <Button variant="ghost" className="w-full justify-start rounded-none" onClick={() => { onSelect(question.id, ''); setOpenQuestionId(null) }}>Bỏ chọn</Button> : null}
+                      {options.map((option) => {
+                        const owner = questions.find((item) => item.id !== question.id && selections[item.id] === option.value)
+                        const label = option.label + (owner ? ' · Đã chọn cho ' + owner.prompt : '')
+                        return <Button
+                          key={option.value}
+                          variant="ghost"
+                          className={'w-full justify-between rounded-none border-t border-border text-left ' + (owner ? 'bg-amber-100' : '')}
+                          aria-label={label}
+                          onClick={() => { onSelect(question.id, option.value); setOpenQuestionId(null) }}
+                          onKeyDown={(event) => {
+                            if (event.key !== 'Enter') return
+                            event.preventDefault()
+                            onSelect(question.id, option.value)
+                            setOpenQuestionId(null)
+                          }}
+                        ><span>{label}</span>{selected === option.value ? <Check className="h-4 w-4" /> : null}</Button>
+                      })}
+                    </div>
+                  ) : null}
+                </div>
               </div>
 
               {reviewed && !correct ? (
@@ -78,7 +107,7 @@ export function MissionMatchingStage({
 
       {!reviewed ? (
         <p className="text-xs font-semibold text-muted-foreground">
-          Bạn có thể đổi hoặc hoán đổi các nghĩa trước khi kiểm tra.
+          Chọn lại một nghĩa sẽ trả hàng cũ về trạng thái chưa chọn.
         </p>
       ) : null}
 
