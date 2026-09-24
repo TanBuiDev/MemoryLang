@@ -28,6 +28,11 @@ export function calculateMissionProgress(
   return Math.min(100, Math.round(((learned + graded) / total) * 100))
 }
 
+export function getSkippedMissionTerms(terms: GameTerm[], answers: AnswerRecord[]): GameTerm[] {
+  const skippedIds = new Set(answers.filter((answer) => answer.skipped).map((answer) => answer.targetTermId))
+  return terms.filter((term) => skippedIds.has(term.globalTermId))
+}
+
 export function createSkippedMissionAnswer(
   question: { id: string; targetTermId: string; type: MissionQuestionType },
   attempts: number,

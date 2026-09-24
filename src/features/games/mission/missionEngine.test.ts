@@ -7,7 +7,7 @@ import { parseGameHubConfig } from './gameConfig'
 import { missionAttemptReducer, shouldAutoSyncMission } from './missionReducer'
 import { getMissionScript } from './scriptRegistry'
 import { buildMissionReviewItems } from './missionReview'
-import { calculateMissionProgress, createSkippedMissionAnswer, formatMissionPartOfSpeech, getMissionContextTranslation, getMissionRetryFeedback, scoreMissionAnswer, selectMatchingTranslation } from './missionInteraction'
+import { calculateMissionProgress, createSkippedMissionAnswer, formatMissionPartOfSpeech, getMissionContextTranslation, getMissionRetryFeedback, getSkippedMissionTerms, scoreMissionAnswer, selectMatchingTranslation } from './missionInteraction'
 import type { GameTerm, MissionDefinition } from './mission.types'
 
 const term = (overrides: Partial<GameTerm> = {}): GameTerm => ({
@@ -293,6 +293,15 @@ describe('mission attempt reducer', () => {
 })
 
 describe('mission interactions', () => {
+  it('returns each skipped term once in curriculum order for ungraded review', () => {
+    const terms = [term({ globalTermId: 'a' }), term({ globalTermId: 'b' })]
+    const skipped = [
+      createSkippedMissionAnswer({ id: 'q-b-1', targetTermId: 'b', type: 'spelling' }, 1, '', 'now'),
+      createSkippedMissionAnswer({ id: 'q-b-2', targetTermId: 'b', type: 'meaning_recall' }, 1, '', 'now'),
+      createSkippedMissionAnswer({ id: 'q-a', targetTermId: 'a', type: 'meaning_recall' }, 1, '', 'now'),
+    ]
+    expect(getSkippedMissionTerms(terms, skipped).map((item) => item.globalTermId)).toEqual(['a', 'b'])
+  })
   it('keeps progress below 100 percent until the Boss is completed', () => {
     const definition: MissionDefinition = {
       deckId: 'deck', curriculumFingerprint: 'fingerprint', missionIndex: 0,

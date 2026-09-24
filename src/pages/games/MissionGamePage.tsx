@@ -17,7 +17,7 @@ import { normalizeMissionAnswer } from '@/features/games/mission/generators'
 import { getMissionScript } from '@/features/games/mission/scriptRegistry'
 import { missionAttemptReducer, shouldAutoSyncMission, type MissionAttemptAction } from '@/features/games/mission/missionReducer'
 import { getDeckGameConfig } from '@/features/games/mission/gameConfig'
-import { calculateMissionProgress, createSkippedMissionAnswer, getMissionContextTranslation, getMissionRetryFeedback, scoreMissionAnswer, selectMatchingTranslation } from '@/features/games/mission/missionInteraction'
+import { calculateMissionProgress, createSkippedMissionAnswer, getMissionContextTranslation, getMissionRetryFeedback, getSkippedMissionTerms, scoreMissionAnswer, selectMatchingTranslation } from '@/features/games/mission/missionInteraction'
 import { createMissionAudioCoordinator, parseMissionSoundConfig } from '@/features/games/mission/missionAudio'
 import { MissionLearnStage } from '@/features/games/mission/components/MissionLearnStage'
 import { MissionMatchingStage } from '@/features/games/mission/components/MissionMatchingStage'
@@ -85,6 +85,7 @@ export default function MissionGamePage() {
   const [matchingReviewed, setMatchingReviewed] = useState(false)
   const [exitOpen, setExitOpen] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
+  const [relearnIndex, setRelearnIndex] = useState<number | null>(null)
   const syncingRef = useRef(false)
   const finishingRef = useRef(false)
   const attemptRef = useRef<MissionAttemptState | null>(null)
@@ -314,6 +315,21 @@ export default function MissionGamePage() {
       .reverse()
       .map((answer) => ({ value: answer, label: answer }))
   }, [currentStage])
+
+  const skippedTerms = useMemo(() => loaded && attempt
+    ? getSkippedMissionTerms(loaded.missionTerms, attempt.answers)
+    : [], [loaded, attempt])
+
+  useEffect(() => {
+    if (relearnIndex === null || !result) return
+    const term = skippedTerms[relearnIndex]
+    if (!term) return
+    audioRef.current?.playLearn(
+      attempt?.startedAt + ':relearn:' + relearnIndex,
+      term.sourceText,
+      { audioUrl: term.audioUrl, globalTermId: term.globalTermId, lang: term.sourceLanguage },
+    )
+  }, [relearnIndex, result, skippedTerms, attempt?.startedAt])
 
   const progressPercent = useMemo(() => {
     if (!loaded || !attempt) return 0
@@ -632,6 +648,7 @@ export default function MissionGamePage() {
       setContextTranslationShown(false)
       setFirstSubmittedAnswer(null)
       setReviewOpen(false)
+      setRelearnIndex(null)
       setFeedback(null)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Không thể bắt đầu lượt chơi lại.')
@@ -657,6 +674,24 @@ export default function MissionGamePage() {
   }
 
   if (result) {
+    if (relearnIndex !== null && skippedTerms[relearnIndex]) {
+      const term = skippedTerms[relearnIndex]
+      return <div className="mx-auto max-w-3xl space-y-5 px-4 py-5">
+        <Button variant="ghost" onClick={() => { audioRef.current?.transition(); setRelearnIndex(null) }}><ArrowLeft className="h-4 w-4" /> Về kết quả</Button>
+        <p className="text-sm font-bold text-muted-foreground">Ôn lại từ đã bỏ qua · Không thay đổi điểm hoặc lịch ôn</p>
+        <MissionLearnStage
+          term={term}
+          index={relearnIndex}
+          total={skippedTerms.length}
+          reviewMode
+          onPlayAudio={() => void speak(term.sourceText, { audioUrl: term.audioUrl, globalTermId: term.globalTermId, lang: term.sourceLanguage })}
+          onNext={() => {
+            audioRef.current?.transition()
+            setRelearnIndex(relearnIndex + 1 < skippedTerms.length ? relearnIndex + 1 : null)
+          }}
+        />
+      </div>
+    }
     if (reviewOpen) {
       return <MissionReviewView
         items={buildMissionReviewItems(loaded.definition, attempt.answers)}
@@ -687,6 +722,8 @@ export default function MissionGamePage() {
         onRetrySync={() => void syncCompletion(attempt, result)}
         onBack={() => navigate('/app/games/mission/' + deckId)}
         onReview={() => setReviewOpen(true)}
+        skippedCount={skippedTerms.length}
+        onRelearn={() => setRelearnIndex(0)}
         onReplay={() => void restartMission()}
         onNext={() => navigate('/app/games/mission/' + deckId + '/' + (missionIndex + 1))}
       />

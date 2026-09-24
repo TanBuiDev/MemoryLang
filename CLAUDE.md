@@ -269,6 +269,8 @@ The Mission Learn and Matching stages display available part-of-speech labels be
 
 The Mission result includes an immediate read-only review. Each answer record stores the final submitted text and, after a retry, the first submitted text; Matching records store the selected translation. The review maps these records to deterministic question definitions in curriculum order and can replay listening audio. The current completed attempt is still cleared from local storage after successful progress sync, so this review is available in the active result view, not as cross-device history.
 
+If an attempt contains skipped terms, the result offers an ungraded “Ôn lại từ đã bỏ qua” sequence in curriculum order. It reuses Learn cards and pronunciation, never rewrites the recorded score or SRS action, and is available only while the immediate result remains open.
+
 Admins configure Mission from `/app/admin/games` with visual controls for game tier, per-deck enablement, access tier, and terms per mission. “All vocabulary” remains a dynamic source for legacy games and is intentionally not a Mission curriculum source.
 
 ## Current State / MVP Status

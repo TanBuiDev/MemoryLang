@@ -1,4 +1,4 @@
-import { CheckCircle2, ListChecks, RotateCcw } from 'lucide-react'
+import { CheckCircle2, ListChecks, RotateCcw, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface MissionResultViewProps {
@@ -15,6 +15,8 @@ interface MissionResultViewProps {
   onRetrySync: () => void
   onBack: () => void
   onReview: () => void
+  skippedCount?: number
+  onRelearn?: () => void
   onReplay: () => void
   onNext: () => void
 }
@@ -29,6 +31,8 @@ export function MissionResultView({
   onRetrySync,
   onBack,
   onReview,
+  skippedCount = 0,
+  onRelearn,
   onReplay,
   onNext,
 }: MissionResultViewProps) {
@@ -75,6 +79,12 @@ export function MissionResultView({
       <Button variant="ghost" className="w-full" onClick={onReview}>
         <ListChecks className="h-4 w-4" /> Xem lại bài làm
       </Button>
+
+      {skippedCount > 0 && onRelearn ? (
+        <Button variant="secondary" className="w-full" onClick={onRelearn}>
+          <BookOpen className="h-4 w-4" /> Ôn lại {skippedCount} từ đã bỏ qua
+        </Button>
+      ) : null}
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button

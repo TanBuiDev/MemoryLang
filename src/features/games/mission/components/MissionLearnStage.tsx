@@ -9,6 +9,7 @@ interface MissionLearnStageProps {
   total: number
   onPlayAudio: () => void
   onNext: () => void
+  reviewMode?: boolean
 }
 
 export function MissionLearnStage({
@@ -17,6 +18,7 @@ export function MissionLearnStage({
   total,
   onPlayAudio,
   onNext,
+  reviewMode = false,
 }: MissionLearnStageProps) {
   return (
     <div className="neo-card space-y-6 p-6 sm:p-8">
@@ -49,7 +51,7 @@ export function MissionLearnStage({
       </div>
 
       <Button className="w-full" onClick={onNext}>
-        {index + 1 < total ? 'Từ tiếp theo' : 'Bắt đầu thử thách'}
+        {index + 1 < total ? 'Từ tiếp theo' : reviewMode ? 'Về kết quả' : 'Bắt đầu thử thách'}
       </Button>
     </div>
   )
