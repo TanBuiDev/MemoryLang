@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MissionQuestionStage } from './MissionQuestionStage'
 import type { QuestionDefinition } from '../mission.types'
 
@@ -18,9 +18,30 @@ const actions = {
   onPlayAudio: vi.fn(),
   onHint: vi.fn(),
   onShowTranslation: vi.fn(),
+  onSkip: vi.fn(),
 }
 
 describe('Mission question hints', () => {
+  beforeEach(() => vi.clearAllMocks())
+  it('offers hint and skip on recall and cloze without requiring a wrong guess', () => {
+    render(<MissionQuestionStage
+      {...actions}
+      stageType="context_cloze"
+      question={{ ...question, hint: { firstLetter: 's', wordCount: 1 } }}
+      index={0}
+      total={1}
+      answerValue=""
+      hintLevel={0}
+      contextTranslation={null}
+      contextTranslationShown={false}
+      feedback={null}
+      isLastQuestion={false}
+    />)
+    fireEvent.click(screen.getByRole('button', { name: 'Gợi ý' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Chưa nhớ từ này' }))
+    expect(actions.onHint).toHaveBeenCalledOnce()
+    expect(actions.onSkip).toHaveBeenCalledOnce()
+  })
   it('focuses Continue after grading so Enter advances without returning to the input', () => {
     const onNext = vi.fn()
     render(<MissionQuestionStage

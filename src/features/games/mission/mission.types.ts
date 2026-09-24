@@ -92,6 +92,7 @@ export interface AnswerRecord {
   answeredAt: string
   submittedAnswer?: string
   firstSubmittedAnswer?: string
+  skipped?: boolean
 }
 
 export interface MissionAttemptState {

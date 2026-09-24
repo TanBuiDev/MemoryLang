@@ -59,8 +59,8 @@ export function MissionReviewView({ items, onBack, onPlayAudio }: MissionReviewV
             ) : null}
           </div>
           <p className={'text-sm font-black ' + (answer.isCorrect ? 'text-emerald-800' : 'text-rose-800')}>
-            {answer.isCorrect
-              ? answer.firstTryCorrect ? 'Đúng ngay lần đầu' : 'Đúng sau gợi ý hoặc thử lại'
+            {answer.skipped ? 'Đã bỏ qua' : answer.isCorrect
+              ? answer.firstTryCorrect ? 'Đúng ngay lần đầu' : answer.attempts > 1 ? 'Đúng ở lần thử thứ hai' : 'Đúng sau gợi ý'
               : 'Chưa đúng'} · {answer.score} điểm
           </p>
           {answer.firstSubmittedAnswer ? (
@@ -71,7 +71,7 @@ export function MissionReviewView({ items, onBack, onPlayAudio }: MissionReviewV
           ) : null}
           <div className="text-sm">
             <span className="font-bold text-muted-foreground">Bạn đã trả lời: </span>
-            <span className="font-semibold">{answer.submittedAnswer || 'Chưa lưu câu trả lời của lượt cũ'}</span>
+            <span className="font-semibold">{answer.submittedAnswer || (answer.skipped ? 'Chưa trả lời' : 'Chưa lưu câu trả lời của lượt cũ')}</span>
           </div>
           <div className="rounded-lg border-2 border-border bg-muted/30 p-3 text-sm">
             <span className="font-bold text-muted-foreground">Đáp án đúng: </span>

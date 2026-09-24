@@ -24,7 +24,7 @@ describe('Mission answer review', () => {
     />)
     expect(screen.getByText('supply')).toBeInTheDocument()
     expect(screen.getAllByText('supplier').length).toBeGreaterThan(0)
-    expect(screen.getByText(/Đúng sau/)).toBeInTheDocument()
+    expect(screen.getByText(/Đúng ở lần thử thứ hai/)).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Nghe lại đáp án câu 1' }))
     expect(onPlayAudio).toHaveBeenCalledWith('q1')

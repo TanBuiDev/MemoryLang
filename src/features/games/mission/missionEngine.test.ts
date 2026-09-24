@@ -7,7 +7,7 @@ import { parseGameHubConfig } from './gameConfig'
 import { missionAttemptReducer, shouldAutoSyncMission } from './missionReducer'
 import { getMissionScript } from './scriptRegistry'
 import { buildMissionReviewItems } from './missionReview'
-import { getMissionContextTranslation, scoreMissionAnswer, selectMatchingTranslation } from './missionInteraction'
+import { createSkippedMissionAnswer, getMissionContextTranslation, getMissionRetryFeedback, scoreMissionAnswer, selectMatchingTranslation } from './missionInteraction'
 import type { GameTerm, MissionDefinition } from './mission.types'
 
 const term = (overrides: Partial<GameTerm> = {}): GameTerm => ({
@@ -293,6 +293,16 @@ describe('mission attempt reducer', () => {
 })
 
 describe('mission interactions', () => {
+  it('records a skipped question as incorrect with zero points', () => {
+    const record = createSkippedMissionAnswer({ id: 'q1', targetTermId: 'term-1', type: 'meaning_recall' }, 1, '', 'now')
+    expect(record).toMatchObject({ questionId: 'q1', skipped: true, isCorrect: false, firstTryCorrect: false, score: 0 })
+    expect(buildMissionReviewActions([record], new Map())[0].action).toBe('dont_know')
+  })
+
+  it('points to an internal near-miss instead of repeating a first-letter hint', () => {
+    expect(getMissionRetryFeedback('suspicios', 'suspicious')).toMatch(/gần đúng.*vị trí/i)
+    expect(getMissionRetryFeedback('different', 'suspicious')).not.toMatch(/gần đúng/i)
+  })
   it('moves an occupied Matching translation and clears its previous row', () => {
     expect(selectMatchingTranslation({ a: 'nghĩa A', b: 'nghĩa B' }, 'a', 'nghĩa B')).toEqual({
       a: 'nghĩa B',

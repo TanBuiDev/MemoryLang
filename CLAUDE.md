@@ -263,6 +263,8 @@ Active attempts persist in the dedicated Dexie `memorylang-game` database. The l
 
 The Mission draft also persists on-demand hint level and whether the learner revealed the existing translation of a context example. A correct answer after either help receives partial credit and is not marked first-try-correct; context translation is read only from the exact persisted example used by the cloze question.
 
+Typed Mission questions now offer hints before a wrong guess and a “Chưa nhớ từ này” skip action. Skipping records an incorrect, zero-point answer (and a `dont_know` SRS signal), while near-miss spelling feedback points to the approximate error position instead of repeating only the first letter. Correct-answer feedback distinguishes first try, retry, and hint use.
+
 The Mission result includes an immediate read-only review. Each answer record stores the final submitted text and, after a retry, the first submitted text; Matching records store the selected translation. The review maps these records to deterministic question definitions in curriculum order and can replay listening audio. The current completed attempt is still cleared from local storage after successful progress sync, so this review is available in the active result view, not as cross-device history.
 
 Admins configure Mission from `/app/admin/games` with visual controls for game tier, per-deck enablement, access tier, and terms per mission. “All vocabulary” remains a dynamic source for legacy games and is intentionally not a Mission curriculum source.

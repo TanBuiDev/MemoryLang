@@ -26,6 +26,7 @@ interface MissionQuestionStageProps {
   onPlayAudio: () => void
   onHint: () => void
   onShowTranslation: () => void
+  onSkip: () => void
 }
 
 export function MissionQuestionStage({
@@ -45,6 +46,7 @@ export function MissionQuestionStage({
   onPlayAudio,
   onHint,
   onShowTranslation,
+  onSkip,
 }: MissionQuestionStageProps) {
   return (
     <div className="neo-card space-y-5 p-6 sm:p-8">
@@ -66,7 +68,7 @@ export function MissionQuestionStage({
 
       <h1 className="text-2xl font-black leading-relaxed">{question.prompt}</h1>
 
-      {!feedback?.finalized && question.type === 'listening_typing' && (hintLevel === 0 || hintLevel === 1 && Boolean(question.hint?.ipa)) ? (
+      {!feedback?.finalized && !question.options && question.hint && hintLevel < 2 ? (
         <Button variant="ghost" onClick={onHint}>
           <Lightbulb className="h-4 w-4" /> {hintLevel === 0 ? 'Gợi ý' : 'Gợi ý thêm'}
         </Button>
@@ -90,6 +92,7 @@ export function MissionQuestionStage({
           Gợi ý: bắt đầu bằng “{question.hint?.firstLetter || '?'}”,{' '}
           {question.hint?.wordCount || 1} từ
           {hintLevel > 1 && question.hint?.ipa ? ' · ' + question.hint.ipa : ''}
+          {hintLevel > 1 ? ' · ' + question.acceptedAnswers[0].split(/\s+/).map((word) => word.length <= 2 ? word[0] + '·' : word[0] + '·'.repeat(word.length - 2) + word[word.length - 1]).join(' ') : ''}
         </div>
       ) : null}
 
@@ -148,9 +151,10 @@ export function MissionQuestionStage({
       ) : null}
 
       {!feedback?.finalized ? (
-        <Button className="w-full" disabled={!answerValue.trim()} onClick={onSubmit}>
-          Kiểm tra
-        </Button>
+        <div className="space-y-3">
+          <Button className="w-full" disabled={!answerValue.trim()} onClick={onSubmit}>Kiểm tra</Button>
+          {!question.options ? <Button variant="ghost" className="w-full" onClick={onSkip}>Chưa nhớ từ này</Button> : null}
+        </div>
       ) : (
         <Button className="w-full" autoFocus onClick={onNext} onKeyDown={(event) => {
           if (event.key === 'Enter' && !event.repeat) {

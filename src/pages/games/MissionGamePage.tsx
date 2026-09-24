@@ -17,7 +17,7 @@ import { normalizeMissionAnswer } from '@/features/games/mission/generators'
 import { getMissionScript } from '@/features/games/mission/scriptRegistry'
 import { missionAttemptReducer, shouldAutoSyncMission, type MissionAttemptAction } from '@/features/games/mission/missionReducer'
 import { getDeckGameConfig } from '@/features/games/mission/gameConfig'
-import { getMissionContextTranslation, scoreMissionAnswer, selectMatchingTranslation } from '@/features/games/mission/missionInteraction'
+import { createSkippedMissionAnswer, getMissionContextTranslation, getMissionRetryFeedback, scoreMissionAnswer, selectMatchingTranslation } from '@/features/games/mission/missionInteraction'
 import { createMissionAudioCoordinator, parseMissionSoundConfig } from '@/features/games/mission/missionAudio'
 import { MissionLearnStage } from '@/features/games/mission/components/MissionLearnStage'
 import { MissionMatchingStage } from '@/features/games/mission/components/MissionMatchingStage'
@@ -221,11 +221,11 @@ export default function MissionGamePage() {
           setFeedback(priorAnswer ? {
             correct: priorAnswer.isCorrect,
             finalized: true,
-            text: priorAnswer.isCorrect ? 'Đã trả lời đúng.' : 'Chưa chính xác. Hãy xem đáp án và tiếp tục.',
+            text: priorAnswer.skipped ? 'Không sao, hãy xem đáp án và nghe lại từ này.' : priorAnswer.isCorrect ? 'Đã trả lời đúng.' : 'Chưa đúng. Hãy xem đáp án rồi tiếp tục.',
           } : (stored.state.draft?.attemptNumber ?? 1) > 1 ? {
             correct: false,
             finalized: false,
-            text: 'Chưa đúng. Dùng gợi ý và thử lại một lần nữa.',
+            text: 'Chưa đúng. Bạn có thể xem gợi ý rồi thử thêm một lần.',
           } : null)
           if (stored.state.status === 'completed' && stored.pendingResult) {
             setResult(stored.pendingResult)
@@ -414,7 +414,7 @@ export default function MissionGamePage() {
       const nextHintLevel = Math.max(hintLevel, 1)
       setAttemptNumber(2)
       setHintLevel(nextHintLevel)
-      setFeedback({ correct: false, finalized: false, text: 'Chưa đúng. Dùng gợi ý và thử lại một lần nữa.' })
+      setFeedback({ correct: false, finalized: false, text: getMissionRetryFeedback(answerValue, currentQuestion.acceptedAnswers[0] ?? '') })
       setAnswerValue('')
       setFirstSubmittedAnswer(answerValue)
       persistDraft({ answerValue: '', attemptNumber: 2, hintLevel: nextHintLevel, contextTranslationShown, firstSubmittedAnswer: answerValue })
@@ -452,7 +452,7 @@ export default function MissionGamePage() {
     setFeedback({
       correct,
       finalized: true,
-      text: correct ? (attemptNumber === 1 && effectiveHintLevel === 0 ? 'Chính xác ngay lần đầu!' : 'Đúng sau khi dùng gợi ý hoặc thử lại!') : 'Chưa chính xác. Hãy xem đáp án và tiếp tục.',
+      text: correct ? (attemptNumber === 1 && effectiveHintLevel === 0 ? 'Chính xác ngay lần đầu!' : attemptNumber > 1 ? 'Đúng rồi ở lần thử thứ hai!' : 'Đúng rồi! Bạn đã dùng gợi ý.') : 'Chưa đúng. Hãy xem đáp án rồi tiếp tục.',
     })
     if (correct) {
       const target = loaded?.missionTerms.find((item) => item.globalTermId === currentQuestion.targetTermId)
@@ -542,6 +542,23 @@ export default function MissionGamePage() {
     } finally {
       finishingRef.current = false
     }
+  }
+
+  const skipAnswer = async () => {
+    if (!attempt || !currentQuestion || feedback?.finalized || currentQuestion.options) return
+    const answeredAt = new Date().toISOString()
+    const record = {
+      ...createSkippedMissionAnswer(currentQuestion, attemptNumber, answerValue, answeredAt),
+      firstSubmittedAnswer: firstSubmittedAnswer ?? undefined,
+    }
+    const next = missionAttemptReducer(attempt, { type: 'recordAnswers', answers: [record], at: answeredAt })
+    if (!next) return
+    attemptRef.current = next
+    dispatchAttempt({ type: 'recordAnswers', answers: [record], at: answeredAt })
+    await saveAttempt(next, studySessionId)
+    setFeedback({ correct: false, finalized: true, text: 'Không sao, hãy xem đáp án và nghe lại từ này.' })
+    const target = loaded?.missionTerms.find((item) => item.globalTermId === currentQuestion.targetTermId)
+    if (target) void speak(target.sourceText, { audioUrl: target.audioUrl, globalTermId: target.globalTermId, lang: target.sourceLanguage })
   }
 
   const nextQuestion = async () => {
@@ -756,6 +773,7 @@ export default function MissionGamePage() {
             persistDraft({ answerValue, attemptNumber, hintLevel, contextTranslationShown: true, firstSubmittedAnswer: firstSubmittedAnswer ?? undefined })
           }}
           onSubmit={() => void submitAnswer()}
+          onSkip={() => void skipAnswer()}
           onNext={() => void nextQuestion()}
           onPlayAudio={playCurrentAudio}
         />
