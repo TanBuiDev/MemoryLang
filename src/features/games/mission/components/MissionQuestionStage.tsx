@@ -52,7 +52,7 @@ export function MissionQuestionStage({
     <div className="neo-card space-y-5 p-6 sm:p-8">
       {stageType === 'boss' ? (
         <div className="flex items-center gap-2 font-black text-rose-700">
-          <Swords className="h-5 w-5" /> BOSS BATTLE
+          <Swords className="h-5 w-5" /> THỬ THÁCH CUỐI
         </div>
       ) : null}
 

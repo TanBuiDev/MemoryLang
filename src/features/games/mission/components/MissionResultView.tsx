@@ -42,7 +42,7 @@ export function MissionResultView({
         <CheckCircle2 className="mx-auto h-14 w-14" />
         <h1 className="mt-3 text-3xl font-black">Mission hoàn thành!</h1>
         <p className="mt-2 font-bold">
-          Bạn đã đi hết vòng học chung của Mission {missionNumber}.
+          Bạn đã hoàn thành Mission {missionNumber}.
         </p>
       </div>
 

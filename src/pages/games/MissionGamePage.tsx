@@ -52,9 +52,9 @@ function stageLabel(type: MissionDefinition['stages'][number]['type']) {
     case 'listening_choice': return 'Nghe chọn nghĩa'
     case 'listening_typing': return 'Nghe và viết'
     case 'context_cloze': return 'Ngữ cảnh'
-    case 'meaning_recall': return 'Gọi lại từ trí nhớ'
+    case 'meaning_recall': return 'Nhớ từ'
     case 'spelling': return 'Chính tả'
-    case 'boss': return 'Boss Battle'
+    case 'boss': return 'Thử thách cuối'
   }
 }
 

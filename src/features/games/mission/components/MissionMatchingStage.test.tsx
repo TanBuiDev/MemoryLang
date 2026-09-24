@@ -64,5 +64,6 @@ describe('Mission Matching selection', () => {
     fireEvent.keyDown(second, { key: 'Escape' })
     expect(trigger).toHaveFocus()
     expect(screen.queryByRole('button', { name: 'nhà cung cấp' })).not.toBeInTheDocument()
+    expect(screen.getByText('Ghép từ')).toBeInTheDocument()
   })
 })

@@ -22,6 +22,7 @@ describe('Mission result actions', () => {
     />)
     fireEvent.click(screen.getByRole('button', { name: /Ôn lại 2 từ đã bỏ qua/ }))
     expect(onRelearn).toHaveBeenCalledOnce()
+    expect(screen.getByText('Bạn đã hoàn thành Mission 1.')).toBeInTheDocument()
   })
   it('offers a read-only review beside replay', () => {
     const onReview = vi.fn()

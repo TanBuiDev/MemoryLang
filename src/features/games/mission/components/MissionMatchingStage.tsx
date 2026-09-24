@@ -42,7 +42,7 @@ export function MissionMatchingStage({
     <div ref={cardRef} className="neo-card space-y-5 p-6 sm:p-8">
       <div>
         <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">
-          Matching
+          Ghép từ
         </p>
         <h1 className="mt-1 text-2xl font-black">Ghép mỗi từ với nghĩa đúng</h1>
         <p className="mt-1 text-sm font-semibold text-muted-foreground">

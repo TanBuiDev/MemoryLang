@@ -15,9 +15,9 @@ const stageNames: Record<MissionStageType, string> = {
   listening_choice: 'Nghe chọn nghĩa',
   listening_typing: 'Nghe và viết',
   context_cloze: 'Ngữ cảnh',
-  meaning_recall: 'Gọi lại từ',
+  meaning_recall: 'Nhớ từ',
   spelling: 'Chính tả',
-  boss: 'Boss Battle',
+  boss: 'Thử thách cuối',
 }
 
 export function MissionReviewView({ items, onBack, onPlayAudio }: MissionReviewViewProps) {
