@@ -152,7 +152,12 @@ export function MissionQuestionStage({
           Kiểm tra
         </Button>
       ) : (
-        <Button className="w-full" onClick={onNext}>
+        <Button className="w-full" autoFocus onClick={onNext} onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.repeat) {
+            event.preventDefault()
+            onNext()
+          }
+        }}>
           {isLastQuestion ? 'Hoàn thành Mission' : 'Tiếp tục'}
         </Button>
       )}

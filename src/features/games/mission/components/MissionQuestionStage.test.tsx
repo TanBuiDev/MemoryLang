@@ -21,6 +21,27 @@ const actions = {
 }
 
 describe('Mission question hints', () => {
+  it('focuses Continue after grading so Enter advances without returning to the input', () => {
+    const onNext = vi.fn()
+    render(<MissionQuestionStage
+      {...actions}
+      onNext={onNext}
+      stageType="context_cloze"
+      question={question}
+      index={0}
+      total={1}
+      answerValue="supplier"
+      hintLevel={0}
+      contextTranslation={null}
+      contextTranslationShown={false}
+      feedback={{ correct: true, finalized: true, text: 'Chính xác!' }}
+      isLastQuestion={false}
+    />)
+    const next = screen.getByRole('button', { name: 'Tiếp tục' })
+    expect(next).toHaveFocus()
+    fireEvent.keyDown(next, { key: 'Enter' })
+    expect(onNext).toHaveBeenCalledOnce()
+  })
   it('reveals the existing context translation only on request', () => {
     const props = {
       ...actions,

@@ -112,7 +112,12 @@ export function MissionMatchingStage({
       ) : null}
 
       {reviewed ? (
-        <Button className="w-full" onClick={onContinue}>
+        <Button className="w-full" autoFocus onClick={onContinue} onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.repeat) {
+            event.preventDefault()
+            onContinue()
+          }
+        }}>
           Tiếp tục
         </Button>
       ) : (

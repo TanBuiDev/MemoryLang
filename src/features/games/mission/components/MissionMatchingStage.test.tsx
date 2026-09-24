@@ -9,6 +9,22 @@ const questions: QuestionDefinition[] = [
 ]
 
 describe('Mission Matching selection', () => {
+  it('focuses Continue after checking and accepts Enter', () => {
+    const onContinue = vi.fn()
+    render(<MissionMatchingStage
+      questions={questions}
+      selections={{ a: 'nhà cung cấp', b: 'cạnh tranh' }}
+      reviewed
+      options={[]}
+      onSelect={vi.fn()}
+      onCheck={vi.fn()}
+      onContinue={onContinue}
+    />)
+    const next = screen.getByRole('button', { name: 'Tiếp tục' })
+    expect(next).toHaveFocus()
+    fireEvent.keyDown(next, { key: 'Enter' })
+    expect(onContinue).toHaveBeenCalledOnce()
+  })
   it('marks an occupied translation with its row and lets Enter move it', () => {
     const onSelect = vi.fn()
     render(<MissionMatchingStage
