@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { normalizeMissionAnswer } from '../generators'
+import { formatMissionPartOfSpeech } from '../missionInteraction'
 import type { QuestionDefinition } from '../mission.types'
 
 interface MissionMatchingStageProps {
@@ -9,6 +10,7 @@ interface MissionMatchingStageProps {
   selections: Record<string, string>
   reviewed: boolean
   options: Array<{ value: string; label: string }>
+  partOfSpeechByTermId?: Record<string, string | null>
   onSelect: (questionId: string, value: string) => void
   onCheck: () => void
   onContinue: () => void
@@ -19,6 +21,7 @@ export function MissionMatchingStage({
   selections,
   reviewed,
   options,
+  partOfSpeechByTermId = {},
   onSelect,
   onCheck,
   onContinue,
@@ -56,7 +59,10 @@ export function MissionMatchingStage({
               }
             >
               <div className="grid gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] sm:items-center">
-                <p className="text-lg font-black">{question.prompt}</p>
+                <div>
+                  <p className="text-lg font-black">{question.prompt}</p>
+                  {partOfSpeechByTermId[question.targetTermId] ? <p className="text-xs font-bold text-muted-foreground">{formatMissionPartOfSpeech(partOfSpeechByTermId[question.targetTermId])}</p> : null}
+                </div>
                 <div className="relative" onKeyDown={(event) => {
                   if (event.key === 'Escape') setOpenQuestionId(null)
                 }}>

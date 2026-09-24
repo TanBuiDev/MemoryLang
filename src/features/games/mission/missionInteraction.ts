@@ -1,5 +1,32 @@
 import { normalizeMissionAnswer } from './generators'
-import type { AnswerRecord, GameTerm, MissionQuestionType } from './mission.types'
+import type { AnswerRecord, GameTerm, MissionAttemptState, MissionDefinition, MissionQuestionType } from './mission.types'
+
+const partOfSpeechLabels: Record<string, string> = {
+  noun: 'n · danh từ',
+  verb: 'v · động từ',
+  adjective: 'adj · tính từ',
+  adverb: 'adv · trạng từ',
+}
+
+export function formatMissionPartOfSpeech(value: string | null): string {
+  return value?.split(',').map((part) => part.trim().toLowerCase()).filter(Boolean)
+    .map((part) => partOfSpeechLabels[part] ?? part).join(' / ') ?? ''
+}
+
+export function calculateMissionProgress(
+  definition: MissionDefinition,
+  attempt: Pick<MissionAttemptState, 'stageIndex' | 'questionIndex' | 'answers' | 'status'>,
+): number {
+  if (attempt.status === 'completed') return 100
+  const learnStageIndex = definition.stages.findIndex((stage) => stage.type === 'learn')
+  const learnTotal = learnStageIndex < 0 ? 0 : definition.stages[learnStageIndex].targetTermIds.length
+  const learned = learnStageIndex < 0 ? 0 : attempt.stageIndex > learnStageIndex ? learnTotal : attempt.stageIndex === learnStageIndex ? Math.min(attempt.questionIndex, learnTotal) : 0
+  const questionIds = new Set(definition.stages.flatMap((stage) => stage.questions.map((question) => question.id)))
+  const total = learnTotal + questionIds.size
+  if (total === 0) return 0
+  const graded = new Set(attempt.answers.filter((answer) => questionIds.has(answer.questionId)).map((answer) => answer.questionId)).size
+  return Math.min(100, Math.round(((learned + graded) / total) * 100))
+}
 
 export function createSkippedMissionAnswer(
   question: { id: string; targetTermId: string; type: MissionQuestionType },

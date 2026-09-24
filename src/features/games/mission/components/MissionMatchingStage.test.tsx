@@ -16,11 +16,13 @@ describe('Mission Matching selection', () => {
       selections={{ a: 'nhà cung cấp', b: 'cạnh tranh' }}
       reviewed
       options={[]}
+      partOfSpeechByTermId={{ a: 'noun', b: 'verb' }}
       onSelect={vi.fn()}
       onCheck={vi.fn()}
       onContinue={onContinue}
     />)
     const next = screen.getByRole('button', { name: 'Tiếp tục' })
+    expect(screen.getByText('n · danh từ')).toBeInTheDocument()
     expect(next).toHaveFocus()
     fireEvent.keyDown(next, { key: 'Enter' })
     expect(onContinue).toHaveBeenCalledOnce()

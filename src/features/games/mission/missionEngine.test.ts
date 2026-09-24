@@ -7,7 +7,7 @@ import { parseGameHubConfig } from './gameConfig'
 import { missionAttemptReducer, shouldAutoSyncMission } from './missionReducer'
 import { getMissionScript } from './scriptRegistry'
 import { buildMissionReviewItems } from './missionReview'
-import { createSkippedMissionAnswer, getMissionContextTranslation, getMissionRetryFeedback, scoreMissionAnswer, selectMatchingTranslation } from './missionInteraction'
+import { calculateMissionProgress, createSkippedMissionAnswer, formatMissionPartOfSpeech, getMissionContextTranslation, getMissionRetryFeedback, scoreMissionAnswer, selectMatchingTranslation } from './missionInteraction'
 import type { GameTerm, MissionDefinition } from './mission.types'
 
 const term = (overrides: Partial<GameTerm> = {}): GameTerm => ({
@@ -293,6 +293,23 @@ describe('mission attempt reducer', () => {
 })
 
 describe('mission interactions', () => {
+  it('keeps progress below 100 percent until the Boss is completed', () => {
+    const definition: MissionDefinition = {
+      deckId: 'deck', curriculumFingerprint: 'fingerprint', missionIndex: 0,
+      targetTermIds: ['a'], scriptKey: 'standard', scriptVersion: 1, generatorVersion: 1,
+      stages: [
+        { type: 'learn', targetTermIds: ['a'], questions: [], required: true },
+        { type: 'boss', targetTermIds: ['a'], questions: [{ id: 'boss-1', type: 'meaning_recall', targetTermId: 'a', prompt: 'nghĩa', acceptedAnswers: ['word'] }], required: true },
+      ],
+    }
+    expect(calculateMissionProgress(definition, { stageIndex: 1, questionIndex: 0, answers: [], status: 'in_progress' })).toBe(50)
+    expect(calculateMissionProgress(definition, { stageIndex: 1, questionIndex: 0, answers: [createSkippedMissionAnswer({ id: 'boss-1', targetTermId: 'a', type: 'meaning_recall' }, 1, '', 'now')], status: 'in_progress' })).toBe(100)
+  })
+
+  it('labels common parts of speech for learners', () => {
+    expect(formatMissionPartOfSpeech('verb')).toBe('v · động từ')
+    expect(formatMissionPartOfSpeech('noun, adjective')).toBe('n · danh từ / adj · tính từ')
+  })
   it('records a skipped question as incorrect with zero points', () => {
     const record = createSkippedMissionAnswer({ id: 'q1', targetTermId: 'term-1', type: 'meaning_recall' }, 1, '', 'now')
     expect(record).toMatchObject({ questionId: 'q1', skipped: true, isCorrect: false, firstTryCorrect: false, score: 0 })

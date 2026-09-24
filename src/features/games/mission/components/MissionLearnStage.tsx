@@ -1,5 +1,6 @@
 import { Volume2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { formatMissionPartOfSpeech } from '../missionInteraction'
 import type { GameTerm } from '../mission.types'
 
 interface MissionLearnStageProps {
@@ -24,6 +25,7 @@ export function MissionLearnStage({
           Từ {index + 1}/{total}
         </p>
         <h1 className="mt-2 text-4xl font-black">{term.sourceText}</h1>
+        {term.partOfSpeech ? <p className="mt-1 text-sm font-bold text-muted-foreground">{formatMissionPartOfSpeech(term.partOfSpeech)}</p> : null}
         {term.ipa ? (
           <p className="mt-2 font-mono text-sm font-bold text-muted-foreground">{term.ipa}</p>
         ) : null}

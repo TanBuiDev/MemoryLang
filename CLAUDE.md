@@ -265,6 +265,8 @@ The Mission draft also persists on-demand hint level and whether the learner rev
 
 Typed Mission questions now offer hints before a wrong guess and a “Chưa nhớ từ này” skip action. Skipping records an incorrect, zero-point answer (and a `dont_know` SRS signal), while near-miss spelling feedback points to the approximate error position instead of repeating only the first letter. Correct-answer feedback distinguishes first try, retry, and hint use.
 
+The Mission Learn and Matching stages display available part-of-speech labels beside the source term. The in-mission progress bar counts completed Learn cards and graded questions, instead of marking a stage complete as soon as it opens.
+
 The Mission result includes an immediate read-only review. Each answer record stores the final submitted text and, after a retry, the first submitted text; Matching records store the selected translation. The review maps these records to deterministic question definitions in curriculum order and can replay listening audio. The current completed attempt is still cleared from local storage after successful progress sync, so this review is available in the active result view, not as cross-device history.
 
 Admins configure Mission from `/app/admin/games` with visual controls for game tier, per-deck enablement, access tier, and terms per mission. “All vocabulary” remains a dynamic source for legacy games and is intentionally not a Mission curriculum source.

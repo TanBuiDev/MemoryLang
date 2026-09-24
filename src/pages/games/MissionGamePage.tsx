@@ -17,7 +17,7 @@ import { normalizeMissionAnswer } from '@/features/games/mission/generators'
 import { getMissionScript } from '@/features/games/mission/scriptRegistry'
 import { missionAttemptReducer, shouldAutoSyncMission, type MissionAttemptAction } from '@/features/games/mission/missionReducer'
 import { getDeckGameConfig } from '@/features/games/mission/gameConfig'
-import { createSkippedMissionAnswer, getMissionContextTranslation, getMissionRetryFeedback, scoreMissionAnswer, selectMatchingTranslation } from '@/features/games/mission/missionInteraction'
+import { calculateMissionProgress, createSkippedMissionAnswer, getMissionContextTranslation, getMissionRetryFeedback, scoreMissionAnswer, selectMatchingTranslation } from '@/features/games/mission/missionInteraction'
 import { createMissionAudioCoordinator, parseMissionSoundConfig } from '@/features/games/mission/missionAudio'
 import { MissionLearnStage } from '@/features/games/mission/components/MissionLearnStage'
 import { MissionMatchingStage } from '@/features/games/mission/components/MissionMatchingStage'
@@ -317,8 +317,7 @@ export default function MissionGamePage() {
 
   const progressPercent = useMemo(() => {
     if (!loaded || !attempt) return 0
-    const total = loaded.definition.stages.length
-    return Math.round(((attempt.stageIndex + 1) / total) * 100)
+    return calculateMissionProgress(loaded.definition, attempt)
   }, [attempt, loaded])
 
   const persistTransition = async (next: MissionAttemptState) => {
@@ -718,7 +717,7 @@ export default function MissionGamePage() {
         </div>
       </div>
 
-      <div className="h-4 overflow-hidden rounded-full border-2 border-border bg-card">
+      <div role="progressbar" aria-label="Tiến độ Mission" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100} className="h-4 overflow-hidden rounded-full border-2 border-border bg-card">
         <div className="h-full bg-primary transition-all" style={{ width: String(progressPercent) + '%' }} />
       </div>
 
@@ -736,6 +735,7 @@ export default function MissionGamePage() {
           selections={matchingSelections}
           reviewed={matchingReviewed}
           options={matchingOptions}
+          partOfSpeechByTermId={Object.fromEntries(loaded.missionTerms.map((term) => [term.globalTermId, term.partOfSpeech]))}
           onSelect={(questionId, value) => {
             const selections = selectMatchingTranslation(matchingSelections, questionId, value)
             setMatchingSelections(selections)
