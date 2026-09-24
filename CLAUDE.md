@@ -267,6 +267,8 @@ Typed Mission questions now offer hints before a wrong guess and a “Chưa nh�
 
 The Mission Learn and Matching stages display available part-of-speech labels beside the source term. The in-mission progress bar counts completed Learn cards and graded questions, instead of marking a stage complete as soon as it opens.
 
+Matching choices are Mission-scoped rather than changing the shared Select control: occupied translations are labelled with their current source term, choosing one clears the old row (never swaps), and the menu supports focus, Arrow Up/Down, Enter, and Escape. Graded Matching and typed questions focus Continue so Enter can advance.
+
 The Mission result includes an immediate read-only review. Each answer record stores the final submitted text and, after a retry, the first submitted text; Matching records store the selected translation. The review maps these records to deterministic question definitions in curriculum order and can replay listening audio. The current completed attempt is still cleared from local storage after successful progress sync, so this review is available in the active result view, not as cross-device history.
 
 If an attempt contains skipped terms, the result offers an ungraded “Ôn lại từ đã bỏ qua” sequence in curriculum order. It reuses Learn cards and pronunciation, never rewrites the recorded score or SRS action, and is available only while the immediate result remains open.

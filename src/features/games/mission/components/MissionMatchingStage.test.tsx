@@ -43,4 +43,26 @@ describe('Mission Matching selection', () => {
     fireEvent.keyDown(occupied, { key: 'Enter' })
     expect(onSelect).toHaveBeenCalledWith('b', 'nhà cung cấp')
   })
+
+  it('lets keyboard users move through choices and close the menu with Escape', () => {
+    render(<MissionMatchingStage
+      questions={questions}
+      selections={{}}
+      reviewed={false}
+      options={[{ value: 'nhà cung cấp', label: 'nhà cung cấp' }, { value: 'cạnh tranh', label: 'cạnh tranh' }]}
+      onSelect={vi.fn()}
+      onCheck={vi.fn()}
+      onContinue={vi.fn()}
+    />)
+    const trigger = screen.getByRole('button', { name: /nghĩa của supplier/i })
+    fireEvent.click(trigger)
+    const first = screen.getByRole('button', { name: 'nhà cung cấp' })
+    const second = screen.getByRole('button', { name: 'cạnh tranh' })
+    expect(first).toHaveFocus()
+    fireEvent.keyDown(first, { key: 'ArrowDown' })
+    expect(second).toHaveFocus()
+    fireEvent.keyDown(second, { key: 'Escape' })
+    expect(trigger).toHaveFocus()
+    expect(screen.queryByRole('button', { name: 'nhà cung cấp' })).not.toBeInTheDocument()
+  })
 })

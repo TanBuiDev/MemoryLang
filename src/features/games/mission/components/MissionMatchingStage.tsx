@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { normalizeMissionAnswer } from '../generators'
@@ -27,8 +27,19 @@ export function MissionMatchingStage({
   onContinue,
 }: MissionMatchingStageProps) {
   const [openQuestionId, setOpenQuestionId] = useState<string | null>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!openQuestionId) return
+    cardRef.current?.querySelector<HTMLButtonElement>('[data-matching-option]')?.focus()
+    const closeOutside = (event: PointerEvent) => {
+      if (!cardRef.current?.contains(event.target as Node)) setOpenQuestionId(null)
+    }
+    document.addEventListener('pointerdown', closeOutside)
+    return () => document.removeEventListener('pointerdown', closeOutside)
+  }, [openQuestionId])
   return (
-    <div className="neo-card space-y-5 p-6 sm:p-8">
+    <div ref={cardRef} className="neo-card space-y-5 p-6 sm:p-8">
       <div>
         <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">
           Matching
@@ -64,7 +75,21 @@ export function MissionMatchingStage({
                   {partOfSpeechByTermId[question.targetTermId] ? <p className="text-xs font-bold text-muted-foreground">{formatMissionPartOfSpeech(partOfSpeechByTermId[question.targetTermId])}</p> : null}
                 </div>
                 <div className="relative" onKeyDown={(event) => {
-                  if (event.key === 'Escape') setOpenQuestionId(null)
+                  if (event.key === 'Escape') {
+                    event.preventDefault()
+                    setOpenQuestionId(null)
+                    event.currentTarget.querySelector<HTMLButtonElement>('[aria-expanded]')?.focus()
+                  }
+                  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    const choices = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[data-matching-option]')]
+                    if (choices.length === 0) return
+                    event.preventDefault()
+                    const index = choices.indexOf(document.activeElement as HTMLButtonElement)
+                    const step = event.key === 'ArrowDown' ? 1 : -1
+                    choices[(index + step + choices.length) % choices.length].focus()
+                  }
+                }} onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget)) setOpenQuestionId(null)
                 }}>
                   <Button
                     variant="ghost"
@@ -84,6 +109,7 @@ export function MissionMatchingStage({
                         const label = option.label + (owner ? ' · Đã chọn cho ' + owner.prompt : '')
                         return <Button
                           key={option.value}
+                          data-matching-option
                           variant="ghost"
                           className={'w-full justify-between rounded-none border-t border-border text-left ' + (owner ? 'bg-amber-100' : '')}
                           aria-label={label}
