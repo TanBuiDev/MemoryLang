@@ -4,6 +4,7 @@ export type MissionAttemptAction =
   | { type: 'restore'; state: MissionAttemptState }
   | { type: 'transition'; stageIndex: number; questionIndex: number; at: string }
   | { type: 'recordAnswers'; answers: AnswerRecord[]; at: string }
+  | { type: 'enqueueRetry'; questionId: string; at: string }
   | { type: 'setDraft'; draft: NonNullable<MissionAttemptState['draft']>; at: string }
   | { type: 'complete'; at: string }
 
@@ -26,11 +27,24 @@ export function missionAttemptReducer(
 
   if (action.type === 'transition') {
     if (action.stageIndex < 0 || action.questionIndex < 0) return state
+    const isNewStage = action.stageIndex !== state.stageIndex
     return {
       ...state,
       stageIndex: action.stageIndex,
       questionIndex: action.questionIndex,
+      retryQueue: isNewStage ? undefined : state.retryQueue,
       draft: undefined,
+      updatedAt: action.at,
+    }
+  }
+
+  if (action.type === 'enqueueRetry') {
+    const queue = state.retryQueue ?? []
+    const count = queue.filter((id) => id === action.questionId).length
+    if (count >= 3) return state
+    return {
+      ...state,
+      retryQueue: [...queue, action.questionId],
       updatedAt: action.at,
     }
   }

@@ -300,7 +300,19 @@ export default function MissionGamePage() {
   }, [deckId, isPro, missionIndex, user])
 
   const currentStage = loaded && attempt ? loaded.definition.stages[attempt.stageIndex] : null
-  const currentQuestion = currentStage && currentStage.type !== 'learn' ? currentStage.questions[attempt?.questionIndex ?? 0] : null
+  const stageQuestions = useMemo(() => {
+    if (!currentStage || currentStage.type === 'learn') return []
+    const base = currentStage.questions
+    const retryIds = attempt?.retryQueue ?? []
+    if (retryIds.length === 0) return base
+    const retryQuestions = retryIds
+      .map((id) => base.find((q) => q.id === id))
+      .filter((q): q is QuestionDefinition => Boolean(q))
+    return [...base, ...retryQuestions]
+  }, [currentStage, attempt?.retryQueue])
+
+  const currentQuestion = currentStage && currentStage.type !== 'learn' ? stageQuestions[attempt?.questionIndex ?? 0] : null
+  const isRetryQuestion = Boolean(currentStage && attempt && currentStage.type !== 'learn' && attempt.questionIndex >= currentStage.questions.length)
   const contextTranslation = currentQuestion?.type === 'context_cloze' && loaded
     ? getMissionContextTranslation(currentQuestion, loaded.missionTerms)
     : null
@@ -479,37 +491,67 @@ export default function MissionGamePage() {
     }
 
     const effectiveHintLevel = Math.max(hintLevel, contextTranslationShown ? 1 : 0)
+    const isRetryRound = isRetryQuestion
     const record: AnswerRecord = {
       questionId: currentQuestion.id,
       targetTermId: currentQuestion.targetTermId,
       type: currentQuestion.type,
-      attempts: attemptNumber,
+      attempts: isRetryRound ? attemptNumber + 1 : attemptNumber,
       hintLevel: effectiveHintLevel,
       isCorrect: correct,
-      firstTryCorrect: correct && attemptNumber === 1 && effectiveHintLevel === 0,
-      score: scoreMissionAnswer(correct, attemptNumber, effectiveHintLevel),
+      firstTryCorrect: correct && !isRetryRound && attemptNumber === 1 && effectiveHintLevel === 0,
+      score: scoreMissionAnswer(correct, isRetryRound ? 2 : attemptNumber, effectiveHintLevel),
       answeredAt: new Date().toISOString(),
       submittedAnswer: answerValue,
       firstSubmittedAnswer: firstSubmittedAnswer ?? undefined,
+      skipped: false,
     }
     const answerAt = new Date().toISOString()
-    const next = missionAttemptReducer(attempt, {
+    let next = missionAttemptReducer(attempt, {
       type: 'recordAnswers',
       answers: [{ ...record, answeredAt: answerAt }],
       at: answerAt,
     })
     if (!next) return
+
+    let willRetryAgain = false
+    if (!correct) {
+      const queue = attempt.retryQueue ?? []
+      const retryCount = queue.filter((id) => id === currentQuestion.id).length
+      if (retryCount < 3) {
+        willRetryAgain = true
+        next = missionAttemptReducer(next, { type: 'enqueueRetry', questionId: currentQuestion.id, at: answerAt }) ?? next
+      }
+    }
+
     attemptRef.current = next
     dispatchAttempt({
-      type: 'recordAnswers',
-      answers: [{ ...record, answeredAt: answerAt }],
-      at: answerAt,
+      type: 'restore',
+      state: next,
     })
     await saveAttempt(next, studySessionId)
+
+    let feedbackText = ''
+    if (correct) {
+      if (isRetryRound) {
+        feedbackText = 'Tuyệt vời! Bạn đã chinh phục lại thành công câu này!'
+      } else if (attemptNumber === 1 && effectiveHintLevel === 0) {
+        feedbackText = 'Chính xác ngay lần đầu!'
+      } else if (attemptNumber > 1) {
+        feedbackText = 'Đúng rồi ở lần thử thứ hai!'
+      } else {
+        feedbackText = 'Đúng rồi! Bạn đã dùng gợi ý.'
+      }
+    } else {
+      feedbackText = willRetryAgain
+        ? 'Chưa đúng. Hãy xem đáp án rồi thử lại ở cuối chặng nhé!'
+        : 'Chưa đúng. Hãy xem đáp án rồi tiếp tục.'
+    }
+
     setFeedback({
       correct,
       finalized: true,
-      text: correct ? (attemptNumber === 1 && effectiveHintLevel === 0 ? 'Chính xác ngay lần đầu!' : attemptNumber > 1 ? 'Đúng rồi ở lần thử thứ hai!' : 'Đúng rồi! Bạn đã dùng gợi ý.') : 'Chưa đúng. Hãy xem đáp án rồi tiếp tục.',
+      text: feedbackText,
     })
     if (correct) {
       const target = loaded?.missionTerms.find((item) => item.globalTermId === currentQuestion.targetTermId)
@@ -608,19 +650,32 @@ export default function MissionGamePage() {
       ...createSkippedMissionAnswer(currentQuestion, attemptNumber, answerValue, answeredAt),
       firstSubmittedAnswer: firstSubmittedAnswer ?? undefined,
     }
-    const next = missionAttemptReducer(attempt, { type: 'recordAnswers', answers: [record], at: answeredAt })
+    const queue = attempt.retryQueue ?? []
+    const retryCount = queue.filter((id) => id === currentQuestion.id).length
+    const willEnqueueRetry = retryCount < 3
+
+    let next = missionAttemptReducer(attempt, { type: 'recordAnswers', answers: [record], at: answeredAt })
     if (!next) return
+    if (willEnqueueRetry) {
+      next = missionAttemptReducer(next, { type: 'enqueueRetry', questionId: currentQuestion.id, at: answeredAt }) ?? next
+    }
     attemptRef.current = next
-    dispatchAttempt({ type: 'recordAnswers', answers: [record], at: answeredAt })
+    dispatchAttempt({ type: 'restore', state: next })
     await saveAttempt(next, studySessionId)
-    setFeedback({ correct: false, finalized: true, text: 'Không sao, hãy xem đáp án và nghe lại từ này.' })
+    setFeedback({
+      correct: false,
+      finalized: true,
+      text: willEnqueueRetry
+        ? 'Không sao! Hãy xem đáp án và nghe lại, bạn sẽ gặp lại câu này ở cuối chặng.'
+        : 'Không sao, hãy xem đáp án và nghe lại từ này.',
+    })
     const target = loaded?.missionTerms.find((item) => item.globalTermId === currentQuestion.targetTermId)
     if (target) void speak(target.sourceText, { audioUrl: target.audioUrl, globalTermId: target.globalTermId, lang: target.sourceLanguage })
   }
 
   const nextQuestion = async () => {
     if (!attempt || !currentStage || !loaded || !feedback?.finalized) return
-    if (attempt.questionIndex + 1 < currentStage.questions.length) {
+    if (attempt.questionIndex + 1 < stageQuestions.length) {
       await persistTransition({ ...attempt, questionIndex: attempt.questionIndex + 1, updatedAt: new Date().toISOString() })
       return
     }
@@ -875,11 +930,12 @@ export default function MissionGamePage() {
         />
       ) : currentQuestion ? (
         <MissionQuestionStage
-          key={currentQuestion.id}
+          key={`${currentQuestion.id}-${attempt.questionIndex}`}
           stageType={currentStage?.type ?? currentQuestion.type}
           question={currentQuestion}
           index={attempt.questionIndex}
-          total={currentStage?.questions.length ?? 0}
+          total={stageQuestions.length}
+          isRetry={isRetryQuestion}
           answerValue={answerValue}
           hintLevel={hintLevel}
           contextTranslation={contextTranslation}
@@ -889,7 +945,7 @@ export default function MissionGamePage() {
           bossHpPercent={bossHpPercent}
           isLastQuestion={
             attempt.stageIndex + 1 >= loaded.definition.stages.length
-            && attempt.questionIndex + 1 >= (currentStage?.questions.length ?? 0)
+            && attempt.questionIndex + 1 >= stageQuestions.length
           }
           onAnswerChange={(value) => {
             setAnswerValue(value)

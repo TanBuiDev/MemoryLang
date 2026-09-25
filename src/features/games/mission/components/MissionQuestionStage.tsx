@@ -10,6 +10,7 @@ import {
   Flame,
   ArrowRight,
   HelpCircle,
+  RotateCcw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,6 +33,7 @@ interface MissionQuestionStageProps {
   contextTranslationShown: boolean
   feedback: MissionQuestionFeedback | null
   isLastQuestion: boolean
+  isRetry?: boolean
   combo?: number
   bossHpPercent?: number
   onAnswerChange: (value: string) => void
@@ -54,6 +56,7 @@ export function MissionQuestionStage({
   contextTranslationShown,
   feedback,
   isLastQuestion,
+  isRetry,
   combo = 0,
   bossHpPercent,
   onAnswerChange,
@@ -118,9 +121,16 @@ export function MissionQuestionStage({
               <span>THỬ THÁCH CUỐI</span>
             </div>
           ) : (
-            <span className="text-xs font-black uppercase tracking-widest text-slate-500">
-              Câu {index + 1}/{total}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-widest text-slate-500">
+                Câu {index + 1}/{total}
+              </span>
+              {isRetry ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border-2 border-slate-900 bg-amber-300 text-slate-900 font-black text-[11px] uppercase tracking-wider shadow-[1.5px_1.5px_0px_#000]">
+                  <RotateCcw className="h-3 w-3" /> Thử lại
+                </span>
+              ) : null}
+            </div>
           )}
         </div>
 
