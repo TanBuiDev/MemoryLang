@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "boss": {
+    "id": "rune-beetle",
+    "states": {
+      "idle": "/game/boss-battle/art/boss/rune-beetle-idle.svg",
+      "hit": "/game/boss-battle/art/boss/rune-beetle-hit.svg",
+      "attack": "/game/boss-battle/art/boss/rune-beetle-attack.svg",
+      "defeated": "/game/boss-battle/art/boss/rune-beetle-defeated.svg",
+      "finisherHit": "/game/boss-battle/art/boss/rune-beetle-finisher-hit.svg"
+    }
+  },
+  "background": "/game/boss-battle/art/backgrounds/forest-arena.svg",
+  "effects": {
+    "slash": "/game/boss-battle/art/effects/slash.svg",
+    "impact": "/game/boss-battle/art/effects/impact.svg",
+    "finisherBurst": "/game/boss-battle/art/effects/finisher-burst.svg",
+    "spark": "/game/boss-battle/art/effects/spark.svg"
+  },
+  "ui": {
+    "skillReady": "/game/boss-battle/art/ui/skill-ready.svg",
+    "bossEmblem": "/game/boss-battle/art/ui/boss-emblem.svg"
+  },
+  "sfx": {
+    "correct": "/game/boss-battle/audio/sfx/correct.wav",
+    "wrong": "/game/boss-battle/audio/sfx/wrong.wav",
+    "playerAttack": "/game/boss-battle/audio/sfx/player-attack.wav",
+    "bossHit": "/game/boss-battle/audio/sfx/boss-hit.wav",
+    "bossAttack": "/game/boss-battle/audio/sfx/boss-attack.wav",
+    "playerHit": "/game/boss-battle/audio/sfx/player-hit.wav",
+    "skillCharge": "/game/boss-battle/audio/sfx/skill-charge.wav",
+    "finisher": "/game/boss-battle/audio/sfx/finisher.wav",
+    "victory": "/game/boss-battle/audio/sfx/victory.wav",
+    "defeat": "/game/boss-battle/audio/sfx/defeat.wav"
+  },
+  "bgm": {
+    "bossLoop": "/game/boss-battle/audio/bgm/boss-battle-loop.wav"
+  }
+}
