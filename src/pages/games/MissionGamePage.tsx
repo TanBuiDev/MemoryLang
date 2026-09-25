@@ -34,6 +34,7 @@ import { createMissionAudioCoordinator, parseMissionSoundConfig } from '@/featur
 import { MissionLearnStage } from '@/features/games/mission/components/MissionLearnStage'
 import { MissionMatchingStage } from '@/features/games/mission/components/MissionMatchingStage'
 import { MissionQuestionStage, type MissionQuestionFeedback } from '@/features/games/mission/components/MissionQuestionStage'
+import { MissionBossBattleStage } from '@/features/games/mission/components/MissionBossBattleStage'
 import { MissionResultView } from '@/features/games/mission/components/MissionResultView'
 import { MissionReviewView } from '@/features/games/mission/components/MissionReviewView'
 import { buildMissionReviewItems } from '@/features/games/mission/missionReview'
@@ -382,13 +383,6 @@ export default function MissionGamePage() {
     }
     return count
   }, [attempt?.answers])
-
-  const bossHpPercent = useMemo(() => {
-    if (currentStage?.type !== 'boss') return 100
-    const total = currentStage.questions.length || 1
-    const answered = attempt?.questionIndex ?? 0
-    return Math.max(0, 100 - (answered / total) * 100)
-  }, [currentStage, attempt?.questionIndex])
 
   const persistTransition = async (next: MissionAttemptState) => {
     audioRef.current?.transition()
@@ -928,10 +922,9 @@ export default function MissionGamePage() {
           onCheck={() => void checkMatching()}
           onContinue={() => void continueAfterMatching()}
         />
-      ) : currentQuestion ? (
-        <MissionQuestionStage
+      ) : currentStage?.type === 'boss' && currentQuestion ? (
+        <MissionBossBattleStage
           key={`${currentQuestion.id}-${attempt.questionIndex}`}
-          stageType={currentStage?.type ?? currentQuestion.type}
           question={currentQuestion}
           index={attempt.questionIndex}
           total={stageQuestions.length}
@@ -942,7 +935,6 @@ export default function MissionGamePage() {
           contextTranslationShown={contextTranslationShown}
           feedback={feedback}
           combo={currentCombo}
-          bossHpPercent={bossHpPercent}
           isLastQuestion={
             attempt.stageIndex + 1 >= loaded.definition.stages.length
             && attempt.questionIndex + 1 >= stageQuestions.length
@@ -964,6 +956,44 @@ export default function MissionGamePage() {
           onSkip={() => void skipAnswer()}
           onNext={() => void nextQuestion()}
           onPlayAudio={playCurrentAudio}
+          answers={attempt.answers}
+          bossQuestionIds={currentStage.questions.map((question) => question.id)}
+        />
+      ) : currentQuestion ? (
+        <MissionQuestionStage
+          key={`${currentQuestion.id}-${attempt.questionIndex}`}
+          question={currentQuestion}
+          index={attempt.questionIndex}
+          total={stageQuestions.length}
+          isRetry={isRetryQuestion}
+          answerValue={answerValue}
+          hintLevel={hintLevel}
+          contextTranslation={contextTranslation}
+          contextTranslationShown={contextTranslationShown}
+          feedback={feedback}
+          combo={currentCombo}
+          isLastQuestion={
+            attempt.stageIndex + 1 >= loaded.definition.stages.length
+            && attempt.questionIndex + 1 >= stageQuestions.length
+          }
+          onAnswerChange={(value) => {
+            setAnswerValue(value)
+            persistDraft({ answerValue: value, attemptNumber, hintLevel, contextTranslationShown, firstSubmittedAnswer: firstSubmittedAnswer ?? undefined })
+          }}
+          onHint={() => {
+            const nextHintLevel = Math.min(2, hintLevel + 1)
+            setHintLevel(nextHintLevel)
+            persistDraft({ answerValue, attemptNumber, hintLevel: nextHintLevel, contextTranslationShown, firstSubmittedAnswer: firstSubmittedAnswer ?? undefined })
+          }}
+          onShowTranslation={() => {
+            setContextTranslationShown(true)
+            persistDraft({ answerValue, attemptNumber, hintLevel, contextTranslationShown: true, firstSubmittedAnswer: firstSubmittedAnswer ?? undefined })
+          }}
+          onSubmit={() => void submitAnswer()}
+          onSkip={() => void skipAnswer()}
+          onNext={() => void nextQuestion()}
+          onPlayAudio={playCurrentAudio}
+          stageType={currentStage?.type ?? currentQuestion.type}
         />
       ) : (
         <div className="neo-card p-6">
