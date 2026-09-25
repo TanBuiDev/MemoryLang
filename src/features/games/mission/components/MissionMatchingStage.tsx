@@ -186,7 +186,7 @@ export function MissionMatchingStage({
                           (item) => item.id !== question.id && selections[item.id] === option.value
                         )
                         const isCurrent = selected === option.value
-                        const label = option.label + (owner ? ' · Đã chọn cho ' + owner.prompt : '')
+                        const label = option.label + (owner ? ' · ' + owner.prompt : '')
                         return (
                           <Button
                             key={option.value}
@@ -212,7 +212,12 @@ export function MissionMatchingStage({
                               setOpenQuestionId(null)
                             }}
                           >
-                            <span className="truncate">{label}</span>
+                            <span className="truncate">
+                              <span>{option.label}</span>
+                              {owner ? (
+                                <span className="font-semibold text-slate-500"> · {owner.prompt}</span>
+                              ) : null}
+                            </span>
                             {isCurrent ? <Check className="h-4 w-4 shrink-0 text-slate-900" /> : null}
                           </Button>
                         )
