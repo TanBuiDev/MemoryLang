@@ -15,3 +15,17 @@ Suggested mapping:
 - victory -> defeated state
 
 Created specifically for MemoryLang; no third-party visual/audio samples are embedded.
+
+
+## Integrated gameplay
+
+The pack is wired into the Mission Boss stage on this branch:
+
+- correct resolved answer -> player slash + boss HP damage
+- wrong attempt -> Rune Beetle counterattack + player HP damage
+- one boss hit remaining -> finisher gauge becomes ready
+- final correct hit -> skill-charge + finisher animation + victory SFX
+- combat animation temporarily locks answer/continue controls
+- battle state is derived from persisted Mission answers, so reload/resume keeps HP consistent
+
+The combat layer does not change vocabulary grading, retry rules, scoring, progress persistence, or SRS.
