@@ -296,9 +296,10 @@ export function MissionQuestionStage({
             autoFocus
             value={answerValue}
             onFocus={(event) => {
+              const target = event.currentTarget
               onTypingFocusChange?.(true)
               window.setTimeout(() => {
-                event.currentTarget.scrollIntoView({ block: 'center', behavior: 'smooth' })
+                target.scrollIntoView({ block: 'center', behavior: 'smooth' })
               }, 120)
             }}
             onBlur={() => onTypingFocusChange?.(false)}
