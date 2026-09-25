@@ -326,7 +326,11 @@ describe('mission interactions', () => {
   })
 
   it('points to an internal near-miss instead of repeating a first-letter hint', () => {
-    expect(getMissionRetryFeedback('suspicios', 'suspicious')).toMatch(/gần đúng.*vị trí/i)
+    expect(getMissionRetryFeedback('suspicios', 'suspicious')).toBe('Bạn gần đúng rồi! Hãy kiểm tra lại phần đuôi từ (từ có 10 chữ cái).')
+    expect(getMissionRetryFeedback('suspecous', 'suspicious')).toBe('Bạn gần đúng rồi! Hãy kiểm tra lại phần giữa từ (từ có 10 chữ cái).')
+    expect(getMissionRetryFeedback('supsicious', 'suspicious')).toBe('Bạn gần đúng rồi! Hãy kiểm tra lại phần đầu từ (từ có 10 chữ cái).')
+    expect(getMissionRetryFeedback('look fro', 'look for')).toBe('Bạn gần đúng rồi! Hãy kiểm tra lại phần giữa của từ thứ 2 (từ có 3 chữ cái).')
+    expect(getMissionRetryFeedback('take card', 'take care')).toBe('Bạn gần đúng rồi! Hãy kiểm tra lại phần đuôi của từ thứ 2 (từ có 4 chữ cái).')
     expect(getMissionRetryFeedback('different', 'suspicious')).not.toMatch(/gần đúng/i)
   })
   it('moves an occupied Matching translation and clears its previous row', () => {
