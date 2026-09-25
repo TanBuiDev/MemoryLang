@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   ChevronDown,
   Puzzle,
-  Sparkles,
   XCircle,
   ArrowRight,
   Layers,
@@ -238,14 +237,6 @@ export function MissionMatchingStage({
           )
         })}
       </div>
-
-      {/* Helpful Hint */}
-      {!reviewed ? (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 border-2 border-slate-900 text-xs font-bold text-slate-600">
-          <Sparkles className="h-4 w-4 text-amber-600 shrink-0" />
-          <span>Gợi ý: Bạn có thể chọn lại nghĩa bất cứ lúc nào trước khi bấm kiểm tra.</span>
-        </div>
-      ) : null}
 
       {/* Action Footer */}
       {reviewed ? (
