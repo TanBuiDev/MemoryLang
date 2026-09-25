@@ -25,6 +25,7 @@ import {
   Swords,
   ArrowRight,
   Flame,
+  Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -63,6 +64,9 @@ export default function GameHubPage() {
     attempt: StoredGameMissionAttempt
     deckName: string
   } | null>(null)
+  const [isHeroDismissed, setIsHeroDismissed] = useState(false)
+  const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false)
+  const [cancellingAttempt, setCancellingAttempt] = useState(false)
 
   // UI state
   const [isConfigOpen, setIsConfigOpen] = useState(false)
@@ -136,6 +140,25 @@ export default function GameHubPage() {
     }
     void loadData()
   }, [user])
+
+  const handleCancelRecentAttempt = async () => {
+    if (!user || !recentAttempt || cancellingAttempt) return
+    setCancellingAttempt(true)
+    try {
+      await gameMissionLocalDb.clearAttempt(
+        user.id,
+        recentAttempt.attempt.deckId,
+        recentAttempt.attempt.curriculumFingerprint,
+        recentAttempt.attempt.missionIndex,
+      )
+      setRecentAttempt(null)
+      setIsConfirmCancelOpen(false)
+    } catch (err) {
+      console.error('Failed to clear attempt:', err)
+    } finally {
+      setCancellingAttempt(false)
+    }
+  }
 
   const handleStartGame = () => {
     // 1. Get word count
@@ -338,9 +361,19 @@ export default function GameHubPage() {
       </div>
 
       {/* Quick Resume Hero Card */}
-      {recentAttempt && (
-        <section className="neo-card border-4 border-slate-900 bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 p-5 sm:p-6 shadow-[6px_6px_0px_0px_#000] rounded-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="space-y-2">
+      {recentAttempt && !isHeroDismissed && (
+        <section className="relative neo-card border-4 border-slate-900 bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 p-5 sm:p-6 shadow-[6px_6px_0px_0px_#000] rounded-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <button
+            type="button"
+            className="absolute top-3.5 right-3.5 p-1.5 text-slate-600 hover:text-slate-950 bg-white/80 hover:bg-white border-2 border-slate-900 rounded-lg shadow-[1.5px_1.5px_0px_#000] transition-colors cursor-pointer"
+            onClick={() => setIsHeroDismissed(true)}
+            title="Tạm ẩn thẻ này"
+            aria-label="Tạm ẩn thẻ này"
+          >
+            <X className="h-4 w-4" />
+          </button>
+
+          <div className="space-y-2 pr-8 md:pr-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400 border-2 border-slate-900 text-slate-900 font-black text-xs uppercase tracking-wider rounded-full shadow-[2px_2px_0px_#000]">
                 <Flame className="h-3.5 w-3.5 fill-slate-900" /> Đang Học Dở Dang
@@ -383,6 +416,15 @@ export default function GameHubPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+            <Button
+              variant="ghost"
+              className="font-bold border-2 border-slate-900 bg-white hover:bg-rose-50 hover:text-rose-700 shadow-[2px_2px_0px_#000] rounded-xl text-xs sm:text-sm h-11 flex items-center justify-center gap-1.5"
+              onClick={() => setIsConfirmCancelOpen(true)}
+              title="Hủy bỏ lượt học dở dang này"
+            >
+              <Trash2 className="h-4 w-4 text-rose-600" />
+              <span>Hủy lượt này</span>
+            </Button>
             <Button
               variant="ghost"
               className="font-bold border-2 border-slate-900 bg-white hover:bg-slate-100 shadow-[2px_2px_0px_#000] rounded-xl text-xs sm:text-sm h-11"
@@ -877,6 +919,19 @@ export default function GameHubPage() {
         }}
         onCancel={() => setIsProPromptOpen(false)}
         variant="primary"
+      />
+
+      {/* Confirm Cancel In-Progress Mission Modal */}
+      <ConfirmModal
+        open={isConfirmCancelOpen}
+        title="Hủy lượt học dở dang?"
+        description={`Bạn có chắc chắn muốn hủy lượt học dở dang của ${recentAttempt?.deckName} (Mission ${recentAttempt ? recentAttempt.attempt.missionIndex + 1 : 1})? Tiến trình này sẽ được xóa và bạn có thể bắt đầu lại từ đầu khi cần.`}
+        confirmLabel="Hủy lượt học"
+        cancelLabel="Tiếp tục học"
+        variant="danger"
+        confirmDisabled={cancellingAttempt}
+        onConfirm={handleCancelRecentAttempt}
+        onCancel={() => setIsConfirmCancelOpen(false)}
       />
     </div>
   )
