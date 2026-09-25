@@ -21,6 +21,9 @@ import {
   Crown,
   Play,
   Sparkles,
+  FileText,
+  Swords,
+  ArrowRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -306,18 +309,22 @@ export default function GameHubPage() {
       </div>
 
       {/* Shared curriculum Mission */}
-      <section className="neo-card border-4 border-slate-900 bg-yellow-50 p-5 shadow-[6px_6px_0px_0px_#000] rounded-2xl">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-[#fdc800] px-3 py-1 text-xs font-black uppercase">
-              <BookOpen className="h-4 w-4" /> Học theo Mission
+      <section className="neo-card border-4 border-slate-900 bg-yellow-50/70 p-6 sm:p-7 shadow-[6px_6px_0px_0px_#000] rounded-2xl space-y-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[#fdc800] px-3.5 py-1 text-xs font-black uppercase shadow-[2px_2px_0px_#000]">
+              <Sparkles className="h-3.5 w-3.5 text-slate-900" />
+              <span>Học theo Mission</span>
             </div>
-            <h2 className="mt-3 text-2xl font-black text-slate-900">Lộ trình chung theo từng bộ từ</h2>
-            <p className="mt-1 text-sm font-bold text-slate-600">
-              Mỗi người học cùng một curriculum: làm quen, nghe, ngữ cảnh, gọi lại từ trí nhớ và Boss Battle.
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              Lộ trình chung theo từng bộ từ
+            </h2>
+            <p className="text-xs sm:text-sm font-bold text-slate-600 leading-relaxed">
+              Mỗi người học cùng một curriculum chuẩn hóa: làm quen, nghe, ngữ cảnh, gọi lại từ trí nhớ và Boss Battle cuối bài.
             </p>
           </div>
-          <div className="flex w-full flex-col gap-3 lg:max-w-xl lg:flex-row">
+
+          <div className="flex w-full flex-col gap-3 lg:max-w-md shrink-0">
             <Select
               value={missionDeckId}
               onChange={(value) => {
@@ -329,18 +336,78 @@ export default function GameHubPage() {
                 setMissionDeckId(value)
               }}
               options={missionDeckOptions}
-              placeholder="Chọn bộ từ để học Mission..."
+              placeholder="Chọn bộ từ để vào Mission..."
               disabled={missionDeckOptions.length === 0}
             />
             <Button
-              className="shrink-0"
+              className="w-full py-3.5 text-sm font-black bg-[#fdc800] hover:bg-amber-300 text-slate-900 border-3 border-slate-900 shadow-[4px_4px_0px_#000] rounded-xl flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!missionDeckId}
               onClick={() => {
                 if (missionDeckId) navigate('/app/games/mission/' + missionDeckId)
               }}
             >
-              <Play className="h-4 w-4 fill-current" /> Vào lộ trình
+              <Play className="h-4 w-4 fill-slate-900" />
+              <span>Vào lộ trình Mission</span>
+              <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
+          </div>
+        </div>
+
+        {/* 5-Step Curriculum Flow Chips */}
+        <div className="pt-2 border-t-2 border-slate-200">
+          <p className="text-[11px] font-black uppercase text-slate-500 tracking-wider mb-2.5">
+            Quy trình 5 chặng thử thách trong mỗi Mission:
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+            <div className="flex items-center gap-2 p-2.5 bg-white border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_#000]">
+              <div className="p-1.5 bg-purple-100 rounded-lg border border-slate-900">
+                <BookOpen className="h-4 w-4 text-purple-700" />
+              </div>
+              <div className="truncate">
+                <span className="text-[10px] text-slate-500 block font-bold">Chặng 1</span>
+                <span className="text-xs font-black text-slate-900">Làm quen</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 p-2.5 bg-white border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_#000]">
+              <div className="p-1.5 bg-indigo-100 rounded-lg border border-slate-900">
+                <Puzzle className="h-4 w-4 text-indigo-700" />
+              </div>
+              <div className="truncate">
+                <span className="text-[10px] text-slate-500 block font-bold">Chặng 2</span>
+                <span className="text-xs font-black text-slate-900">Ghép cặp</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 p-2.5 bg-white border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_#000]">
+              <div className="p-1.5 bg-sky-100 rounded-lg border border-slate-900">
+                <Headphones className="h-4 w-4 text-sky-700" />
+              </div>
+              <div className="truncate">
+                <span className="text-[10px] text-slate-500 block font-bold">Chặng 3</span>
+                <span className="text-xs font-black text-slate-900">Phản xạ nghe</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 p-2.5 bg-white border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_#000]">
+              <div className="p-1.5 bg-amber-100 rounded-lg border border-slate-900">
+                <FileText className="h-4 w-4 text-amber-700" />
+              </div>
+              <div className="truncate">
+                <span className="text-[10px] text-slate-500 block font-bold">Chặng 4</span>
+                <span className="text-xs font-black text-slate-900">Ngữ cảnh</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 p-2.5 bg-rose-50 border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_#9f1239]">
+              <div className="p-1.5 bg-rose-200 rounded-lg border border-slate-900">
+                <Swords className="h-4 w-4 text-rose-700" />
+              </div>
+              <div className="truncate">
+                <span className="text-[10px] text-rose-600 block font-bold">Chặng 5</span>
+                <span className="text-xs font-black text-rose-950">Boss Battle</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>

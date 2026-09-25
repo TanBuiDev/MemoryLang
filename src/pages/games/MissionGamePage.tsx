@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Volume2, VolumeX } from 'lucide-react'
+import {
+  ArrowLeft,
+  Volume2,
+  VolumeX,
+  BookOpen,
+  Puzzle,
+  Headphones,
+  FileText,
+  Brain,
+  Sparkles,
+  Swords,
+  Check,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -55,6 +67,19 @@ function stageLabel(type: MissionDefinition['stages'][number]['type']) {
     case 'meaning_recall': return 'Nhớ từ'
     case 'spelling': return 'Chính tả'
     case 'boss': return 'Thử thách cuối'
+  }
+}
+
+function getStageIcon(type: MissionDefinition['stages'][number]['type']) {
+  switch (type) {
+    case 'learn': return BookOpen
+    case 'matching': return Puzzle
+    case 'listening_choice':
+    case 'listening_typing': return Headphones
+    case 'context_cloze': return FileText
+    case 'meaning_recall': return Brain
+    case 'spelling': return Sparkles
+    case 'boss': return Swords
   }
 }
 
@@ -335,6 +360,23 @@ export default function MissionGamePage() {
     if (!loaded || !attempt) return 0
     return calculateMissionProgress(loaded.definition, attempt)
   }, [attempt, loaded])
+
+  const currentCombo = useMemo(() => {
+    if (!attempt?.answers.length) return 0
+    let count = 0
+    for (let i = attempt.answers.length - 1; i >= 0; i--) {
+      if (attempt.answers[i].isCorrect) count++
+      else break
+    }
+    return count
+  }, [attempt?.answers])
+
+  const bossHpPercent = useMemo(() => {
+    if (currentStage?.type !== 'boss') return 100
+    const total = currentStage.questions.length || 1
+    const answered = attempt?.questionIndex ?? 0
+    return Math.max(0, 100 - (answered / total) * 100)
+  }, [currentStage, attempt?.questionIndex])
 
   const persistTransition = async (next: MissionAttemptState) => {
     audioRef.current?.transition()
@@ -726,6 +768,9 @@ export default function MissionGamePage() {
         onRelearn={() => setRelearnIndex(0)}
         onReplay={() => void restartMission()}
         onNext={() => navigate('/app/games/mission/' + deckId + '/' + (missionIndex + 1))}
+        missionTerms={loaded.missionTerms}
+        answers={attempt.answers}
+        onPlayAudio={(term) => void speak(term.sourceText, { audioUrl: term.audioUrl, globalTermId: term.globalTermId, lang: term.sourceLanguage })}
       />
     )
   }
@@ -753,6 +798,53 @@ export default function MissionGamePage() {
           </div>
         </div>
       </div>
+
+      {/* Stage Timeline Stepper */}
+      {loaded?.definition.stages && loaded.definition.stages.length > 1 ? (
+        <div className="flex items-center justify-between gap-1 sm:gap-2 px-1">
+          {loaded.definition.stages.map((stage, sIdx) => {
+            const Icon = getStageIcon(stage.type)
+            const isPassed = sIdx < (attempt?.stageIndex ?? 0)
+            const isCurrent = sIdx === (attempt?.stageIndex ?? 0)
+            const isBossStage = stage.type === 'boss'
+
+            return (
+              <div
+                key={sIdx}
+                className="flex-1 flex flex-col items-center group relative"
+                title={stageLabel(stage.type)}
+              >
+                <div
+                  className={
+                    'w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 border-slate-900 flex items-center justify-center transition-all ' +
+                    (isCurrent
+                      ? isBossStage
+                        ? 'bg-rose-500 text-white shadow-[3px_3px_0px_#9f1239] scale-105'
+                        : 'bg-[#fdc800] text-slate-900 shadow-[3px_3px_0px_#000] scale-105'
+                      : isPassed
+                        ? 'bg-emerald-400 text-slate-900 shadow-[2px_2px_0px_#000]'
+                        : 'bg-slate-100 text-slate-400 border-slate-300')
+                  }
+                >
+                  {isPassed ? (
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+                  ) : (
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  )}
+                </div>
+                <span
+                  className={
+                    'hidden sm:block text-[10px] font-black uppercase mt-1.5 truncate max-w-[70px] text-center ' +
+                    (isCurrent ? 'text-slate-900' : isPassed ? 'text-emerald-700' : 'text-slate-400')
+                  }
+                >
+                  {stageLabel(stage.type)}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
 
       <div role="progressbar" aria-label="Tiến độ Mission" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100} className="h-4 overflow-hidden rounded-full border-2 border-border bg-card">
         <div className="h-full bg-primary transition-all" style={{ width: String(progressPercent) + '%' }} />
@@ -792,6 +884,8 @@ export default function MissionGamePage() {
           contextTranslation={contextTranslation}
           contextTranslationShown={contextTranslationShown}
           feedback={feedback}
+          combo={currentCombo}
+          bossHpPercent={bossHpPercent}
           isLastQuestion={
             attempt.stageIndex + 1 >= loaded.definition.stages.length
             && attempt.questionIndex + 1 >= (currentStage?.questions.length ?? 0)
