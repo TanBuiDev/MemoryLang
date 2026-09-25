@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import {
   CheckCircle2,
   Headphones,
@@ -64,6 +65,32 @@ export function MissionQuestionStage({
   onSkip,
 }: MissionQuestionStageProps) {
   const isBoss = stageType === 'boss'
+  const continueContainerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Focus Continue button when answer is finalized, or re-focus input on new question
+  useEffect(() => {
+    if (feedback?.finalized) {
+      continueContainerRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
+    } else if (!question.options) {
+      inputRef.current?.focus()
+    }
+  }, [feedback?.finalized, question.id, question.options])
+
+  // Global Enter key listener when answer is finalized so Enter always advances
+  useEffect(() => {
+    if (!feedback?.finalized) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Enter' && !event.repeat) {
+        event.preventDefault()
+        onNext()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [feedback?.finalized, onNext])
 
   return (
     <div
@@ -222,13 +249,15 @@ export function MissionQuestionStage({
       ) : (
         <div className="space-y-2">
           <Input
+            ref={inputRef}
             autoFocus
             value={answerValue}
             onChange={(event) => onAnswerChange(event.target.value)}
             onKeyDown={(event) => {
               if (event.key !== 'Enter') return
+              event.preventDefault()
               if (feedback?.finalized) onNext()
-              else onSubmit()
+              else if (answerValue.trim()) onSubmit()
             }}
             disabled={feedback?.finalized}
             placeholder="Nhập câu trả lời..."
@@ -286,17 +315,11 @@ export function MissionQuestionStage({
           ) : null}
         </div>
       ) : (
-        <div className="pt-2">
+        <div ref={continueContainerRef} className="pt-2">
           <Button
             className="w-full py-4 text-base font-black bg-[#432dd7] hover:bg-indigo-700 text-white border-3 border-slate-900 shadow-[4px_4px_0px_#000] rounded-xl flex items-center justify-center gap-2 cursor-pointer"
             autoFocus
             onClick={onNext}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.repeat) {
-                event.preventDefault()
-                onNext()
-              }
-            }}
           >
             <span>{isLastQuestion ? 'Hoàn thành Mission' : 'Tiếp tục'}</span>
             <ArrowRight className="h-5 w-5" />

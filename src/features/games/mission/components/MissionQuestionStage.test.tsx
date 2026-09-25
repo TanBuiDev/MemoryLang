@@ -115,4 +115,40 @@ describe('Mission question hints', () => {
     view.rerender(<MissionQuestionStage {...props} hintLevel={2} />)
     expect(screen.getByText(/səˈplaɪər/)).toBeInTheDocument()
   })
+
+  it('advances on Enter key press after grading transitions from typing state', () => {
+    const onNext = vi.fn()
+    const props = {
+      ...actions,
+      onNext,
+      stageType: 'listening_typing' as const,
+      question: {
+        id: 'listen:term-1',
+        type: 'listening_typing' as const,
+        targetTermId: 'term-1',
+        prompt: 'Nghe và nhập từ hoặc cụm từ',
+        acceptedAnswers: ['approve'],
+      },
+      index: 0,
+      total: 1,
+      answerValue: 'approve',
+      hintLevel: 1,
+      contextTranslation: null,
+      contextTranslationShown: false,
+      feedback: null,
+      isLastQuestion: false,
+    }
+    const view = render(<MissionQuestionStage {...props} />)
+    // Simulate grading transition to finalized state
+    view.rerender(
+      <MissionQuestionStage
+        {...props}
+        feedback={{ correct: true, finalized: true, text: 'Đúng rồi! Bạn đã dùng gợi ý.' }}
+      />
+    )
+
+    // Press Enter anywhere on window
+    fireEvent.keyDown(window, { key: 'Enter' })
+    expect(onNext).toHaveBeenCalledOnce()
+  })
 })
