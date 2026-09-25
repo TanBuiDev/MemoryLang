@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createCurriculumContentVersion, createCurriculumFingerprint, splitIntoMissions } from './curriculum'
 import { findExactCloze, generateQuestion, normalizeMissionAnswer } from './generators'
 import { calculateMissionScore, createMissionDefinition, evaluateMissionReadiness } from './missionEngine'
+import { calculateBossBattleSnapshot } from './bossBattle'
 import { buildMissionReviewActions } from './missionSrsAdapter'
 import { parseGameHubConfig } from './gameConfig'
 import { missionAttemptReducer, shouldAutoSyncMission } from './missionReducer'
@@ -431,5 +432,55 @@ describe('mission answer review', () => {
       answer: { firstSubmittedAnswer: 'supply', submittedAnswer: 'supplier', score: 50 },
       question: { acceptedAnswers: ['supplier'] },
     })
+  })
+})
+
+
+describe('boss battle state', () => {
+  const bossAnswer = (questionId: string, overrides: Partial<AnswerRecord> = {}): AnswerRecord => ({
+    questionId,
+    targetTermId: questionId,
+    type: 'meaning_recall',
+    attempts: 1,
+    hintLevel: 0,
+    isCorrect: true,
+    firstTryCorrect: true,
+    score: 100,
+    answeredAt: 'now',
+    ...overrides,
+  })
+
+  it('damages the boss only on correct resolved answers', () => {
+    const snapshot = calculateBossBattleSnapshot(
+      ['boss-1', 'boss-2', 'boss-3'],
+      [bossAnswer('boss-1'), bossAnswer('boss-2', { isCorrect: false, firstTryCorrect: false, score: 0 })],
+    )
+    expect(snapshot).toMatchObject({
+      bossMaxHp: 3,
+      bossHp: 2,
+      correctHits: 1,
+      wrongHits: 1,
+      defeated: false,
+    })
+  })
+
+  it('charges the finisher when one boss hit remains', () => {
+    const snapshot = calculateBossBattleSnapshot(
+      ['boss-1', 'boss-2', 'boss-3'],
+      [bossAnswer('boss-1'), bossAnswer('boss-2', { attempts: 2, firstTryCorrect: false, score: 50 })],
+    )
+    expect(snapshot.bossHp).toBe(1)
+    expect(snapshot.skillReady).toBe(true)
+    expect(snapshot.skillPercent).toBe(100)
+    expect(snapshot.playerHp).toBe(4)
+  })
+
+  it('marks the boss defeated after the final correct hit', () => {
+    const snapshot = calculateBossBattleSnapshot(
+      ['boss-1', 'boss-2'],
+      [bossAnswer('boss-1'), bossAnswer('boss-2')],
+    )
+    expect(snapshot.bossHpPercent).toBe(0)
+    expect(snapshot.defeated).toBe(true)
   })
 })
