@@ -22,7 +22,7 @@ export interface MissionQuestionFeedback {
   text: string
 }
 
-interface MissionQuestionStageProps {
+export interface MissionQuestionStageProps {
   stageType: MissionStageType
   question: QuestionDefinition
   index: number
@@ -36,6 +36,8 @@ interface MissionQuestionStageProps {
   isRetry?: boolean
   combo?: number
   bossHpPercent?: number
+  showBossHud?: boolean
+  interactionLocked?: boolean
   onAnswerChange: (value: string) => void
   onSubmit: () => void
   onNext: () => void
@@ -59,6 +61,8 @@ export function MissionQuestionStage({
   isRetry,
   combo = 0,
   bossHpPercent,
+  showBossHud = true,
+  interactionLocked = false,
   onAnswerChange,
   onSubmit,
   onNext,
@@ -73,6 +77,7 @@ export function MissionQuestionStage({
 
   // Focus Continue button when answer is finalized, or re-focus input on new question
   useEffect(() => {
+    if (interactionLocked) return
     if (feedback?.finalized) {
       continueContainerRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
       const timer = setTimeout(() => {
@@ -86,11 +91,11 @@ export function MissionQuestionStage({
       }, 50)
       return () => clearTimeout(timer)
     }
-  }, [feedback?.finalized, question.id, question.options])
+  }, [feedback?.finalized, interactionLocked, question.id, question.options])
 
   // Global Enter key listener when answer is finalized so Enter always advances
   useEffect(() => {
-    if (!feedback?.finalized) return
+    if (!feedback?.finalized || interactionLocked) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Enter' && !event.repeat) {
@@ -101,7 +106,7 @@ export function MissionQuestionStage({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [feedback?.finalized, onNext])
+  }, [feedback?.finalized, interactionLocked, onNext])
 
   return (
     <div
@@ -144,7 +149,7 @@ export function MissionQuestionStage({
       </div>
 
       {/* Boss Health Bar (Only in Boss stage) */}
-      {isBoss && bossHpPercent !== undefined ? (
+      {isBoss && showBossHud && bossHpPercent !== undefined ? (
         <div className="p-3.5 rounded-xl border-2 border-rose-900 bg-rose-100/70 shadow-[2px_2px_0px_#9f1239] space-y-1.5">
           <div className="flex items-center justify-between text-xs font-black text-rose-950">
             <span className="flex items-center gap-1.5">
@@ -190,6 +195,7 @@ export function MissionQuestionStage({
           <Button
             variant="ghost"
             className="border-2 border-slate-900 bg-amber-50 hover:bg-amber-100 text-slate-900 font-black text-xs py-2 px-3.5 rounded-xl shadow-[2px_2px_0px_#000]"
+            disabled={interactionLocked}
             onClick={onHint}
           >
             <Lightbulb className="h-4 w-4 text-amber-600" />
@@ -201,6 +207,7 @@ export function MissionQuestionStage({
           <Button
             variant="ghost"
             className="border-2 border-slate-900 bg-sky-50 hover:bg-sky-100 text-slate-900 font-black text-xs py-2 px-3.5 rounded-xl shadow-[2px_2px_0px_#000]"
+            disabled={interactionLocked}
             onClick={onShowTranslation}
           >
             <Languages className="h-4 w-4 text-sky-700" />
@@ -255,8 +262,9 @@ export function MissionQuestionStage({
                     ? 'border-slate-900 bg-[#fdc800] text-slate-900 shadow-[4px_4px_0px_#000] translate-y-[-2px]'
                     : 'border-slate-900 bg-white text-slate-900 shadow-[2px_2px_0px_#000] hover:bg-slate-50')
                 }
+                disabled={interactionLocked}
                 onClick={() => {
-                  if (!feedback?.finalized) onAnswerChange(option.label)
+                  if (!feedback?.finalized && !interactionLocked) onAnswerChange(option.label)
                 }}
               >
                 <span>{option.label}</span>
@@ -272,12 +280,12 @@ export function MissionQuestionStage({
             value={answerValue}
             onChange={(event) => onAnswerChange(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key !== 'Enter') return
+              if (interactionLocked || event.key !== 'Enter') return
               event.preventDefault()
               if (feedback?.finalized) onNext()
               else if (answerValue.trim()) onSubmit()
             }}
-            disabled={feedback?.finalized}
+            disabled={feedback?.finalized || interactionLocked}
             placeholder="Nhập câu trả lời..."
             className="text-base sm:text-lg font-black border-3 border-slate-900 shadow-[3px_3px_0px_#000] rounded-xl p-3 sm:p-4 text-center bg-white"
           />
@@ -316,7 +324,7 @@ export function MissionQuestionStage({
         <div className="space-y-2.5 pt-2">
           <Button
             className="w-full py-3.5 text-base font-black bg-[#fdc800] hover:bg-amber-300 text-slate-900 border-3 border-slate-900 shadow-[4px_4px_0px_#000] rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!answerValue.trim()}
+            disabled={!answerValue.trim() || interactionLocked}
             onClick={onSubmit}
           >
             Kiểm tra
@@ -325,6 +333,7 @@ export function MissionQuestionStage({
             <Button
               variant="ghost"
               className="w-full py-2.5 text-xs font-black text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5"
+              disabled={interactionLocked}
               onClick={onSkip}
             >
               <HelpCircle className="h-3.5 w-3.5" />
@@ -336,7 +345,8 @@ export function MissionQuestionStage({
         <div ref={continueContainerRef} className="pt-2">
           <Button
             className="w-full py-4 text-base font-black bg-[#432dd7] hover:bg-indigo-700 text-white border-3 border-slate-900 shadow-[4px_4px_0px_#000] rounded-xl flex items-center justify-center gap-2 cursor-pointer"
-            autoFocus
+            autoFocus={!interactionLocked}
+            disabled={interactionLocked}
             onClick={onNext}
           >
             <span>{isLastQuestion ? 'Hoàn thành Mission' : 'Tiếp tục'}</span>
