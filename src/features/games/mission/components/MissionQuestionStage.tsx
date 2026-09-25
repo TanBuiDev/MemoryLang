@@ -72,8 +72,16 @@ export function MissionQuestionStage({
   useEffect(() => {
     if (feedback?.finalized) {
       continueContainerRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
+      const timer = setTimeout(() => {
+        continueContainerRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
+      }, 50)
+      return () => clearTimeout(timer)
     } else if (!question.options) {
       inputRef.current?.focus()
+      const timer = setTimeout(() => {
+        inputRef.current?.focus()
+      }, 50)
+      return () => clearTimeout(timer)
     }
   }, [feedback?.finalized, question.id, question.options])
 

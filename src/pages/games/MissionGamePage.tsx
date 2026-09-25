@@ -875,6 +875,7 @@ export default function MissionGamePage() {
         />
       ) : currentQuestion ? (
         <MissionQuestionStage
+          key={currentQuestion.id}
           stageType={currentStage?.type ?? currentQuestion.type}
           question={currentQuestion}
           index={attempt.questionIndex}
