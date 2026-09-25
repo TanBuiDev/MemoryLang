@@ -24,6 +24,7 @@ import {
   FileText,
   Swords,
   ArrowRight,
+  Flame,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -35,6 +36,18 @@ import {
   parseGameHubConfig,
   type GameHubConfig,
 } from '@/features/games/mission/gameConfig'
+import {
+  gameMissionLocalDb,
+  type StoredGameMissionAttempt,
+} from '@/services/local/gameMissionLocalDb'
+
+const MISSION_STAGE_NAMES = [
+  'Làm quen từ vựng',
+  'Ghép cặp thẻ',
+  'Phản xạ nghe',
+  'Ngữ cảnh điền từ',
+  'Boss Battle',
+]
 
 export default function GameHubPage() {
   const navigate = useNavigate()
@@ -46,6 +59,10 @@ export default function GameHubPage() {
   const [allTermsCount, setAllTermsCount] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [hubConfig, setHubConfig] = useState<GameHubConfig>(DEFAULT_GAME_HUB_CONFIG)
+  const [recentAttempt, setRecentAttempt] = useState<{
+    attempt: StoredGameMissionAttempt
+    deckName: string
+  } | null>(null)
 
   // UI state
   const [isConfigOpen, setIsConfigOpen] = useState(false)
@@ -66,7 +83,7 @@ export default function GameHubPage() {
       if (!user) return
       try {
         setLoading(true)
-        const [decksList, termsList, settingData] = await Promise.all([
+        const [decksList, termsList, settingData, userAttempts] = await Promise.all([
           deckService.list(user.id),
           vocabularyService.list(user.id),
           supabase
@@ -74,6 +91,7 @@ export default function GameHubPage() {
             .select('value')
             .eq('key', 'game_hub_config')
             .maybeSingle(),
+          gameMissionLocalDb.listUserAttempts(user.id),
         ])
         // Calculate term count recursively including sub-decks
         const mapped = (decksList ?? []).map((d: any) => ({
@@ -97,8 +115,19 @@ export default function GameHubPage() {
 
         setDecks(updatedDecks)
         setAllTermsCount(termsList.length)
-
         setHubConfig(parseGameHubConfig(settingData?.data?.value))
+
+        // Check for in-progress or most recent mission attempt
+        const inProgress = userAttempts.find((a) => a.state.status === 'in_progress')
+        if (inProgress) {
+          const matchedDeck = (decksList ?? []).find((d: any) => d.id === inProgress.deckId)
+          setRecentAttempt({
+            attempt: inProgress,
+            deckName: matchedDeck?.name ?? 'Bộ từ vựng',
+          })
+        } else {
+          setRecentAttempt(null)
+        }
       } catch (err) {
         console.error('Failed to load Game Hub data:', err)
       } finally {
@@ -307,6 +336,78 @@ export default function GameHubPage() {
           </div>
         </div>
       </div>
+
+      {/* Quick Resume Hero Card */}
+      {recentAttempt && (
+        <section className="neo-card border-4 border-slate-900 bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 p-5 sm:p-6 shadow-[6px_6px_0px_0px_#000] rounded-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400 border-2 border-slate-900 text-slate-900 font-black text-xs uppercase tracking-wider rounded-full shadow-[2px_2px_0px_#000]">
+                <Flame className="h-3.5 w-3.5 fill-slate-900" /> Đang Học Dở Dang
+              </span>
+              <span className="text-xs font-black text-slate-700">
+                Cập nhật{' '}
+                {new Date(recentAttempt.attempt.updatedAt).toLocaleTimeString('vi-VN', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            </div>
+
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <span>{recentAttempt.deckName}</span>
+                <span className="text-xs font-black px-2 py-0.5 bg-white border border-slate-900 rounded shadow-[1.5px_1.5px_0px_#000]">
+                  Mission {recentAttempt.attempt.missionIndex + 1}
+                </span>
+              </h2>
+              <p className="text-xs sm:text-sm font-bold text-slate-700 mt-1 flex flex-wrap items-center gap-2">
+                <span>Chặng {recentAttempt.attempt.state.stageIndex + 1}/5:</span>
+                <span className="text-indigo-900 font-black">
+                  {MISSION_STAGE_NAMES[recentAttempt.attempt.state.stageIndex] ?? 'Thử thách'}
+                </span>
+                <span className="text-slate-400">·</span>
+                <span>Đã làm {recentAttempt.attempt.state.answers.length} câu</span>
+              </p>
+            </div>
+
+            {/* Mini Progress Bar */}
+            <div className="w-full max-w-md h-3 bg-white border-2 border-slate-900 rounded-full overflow-hidden shadow-[1.5px_1.5px_0px_#000]">
+              <div
+                className="h-full bg-emerald-400 border-r-2 border-slate-900 transition-all duration-300"
+                style={{
+                  width: `${Math.max(15, ((recentAttempt.attempt.state.stageIndex + 1) / 5) * 100)}%`,
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+            <Button
+              variant="ghost"
+              className="font-bold border-2 border-slate-900 bg-white hover:bg-slate-100 shadow-[2px_2px_0px_#000] rounded-xl text-xs sm:text-sm h-11"
+              onClick={() => navigate('/app/games/mission/' + recentAttempt.attempt.deckId)}
+            >
+              Xem toàn bộ lộ trình
+            </Button>
+            <Button
+              className="h-11 px-5 text-xs sm:text-sm font-black bg-[#fdc800] hover:bg-amber-300 text-slate-900 border-3 border-slate-900 shadow-[3px_3px_0px_#000] rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+              onClick={() =>
+                navigate(
+                  '/app/games/mission/' +
+                    recentAttempt.attempt.deckId +
+                    '/' +
+                    recentAttempt.attempt.missionIndex
+                )
+              }
+            >
+              <Play className="h-4 w-4 fill-slate-900" />
+              <span>Tiếp tục chơi ngay</span>
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </section>
+      )}
 
       {/* Shared curriculum Mission */}
       <section className="neo-card border-4 border-slate-900 bg-yellow-50/70 p-6 sm:p-7 shadow-[6px_6px_0px_0px_#000] rounded-2xl space-y-5">

@@ -144,4 +144,15 @@ export const gameMissionLocalDb = {
       .toArray()
     await db.activeAttempts.bulkDelete(attempts.map((record) => record.key))
   },
+
+  async listUserAttempts(userId: string): Promise<StoredGameMissionAttempt[]> {
+    const rawList = await db.activeAttempts.where('userId').equals(userId).toArray()
+    return rawList
+      .map((item) => {
+        const parsed = storedAttemptSchema.safeParse(item)
+        return parsed.success ? (parsed.data as StoredGameMissionAttempt) : null
+      })
+      .filter((item): item is StoredGameMissionAttempt => item !== null)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+  },
 }

@@ -14,9 +14,13 @@ import {
   Volume2,
   X,
   BookOpen,
+  Compass,
+  LayoutGrid,
+  Trophy,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/common/EmptyState'
+import { cn } from '@/utils/cn'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore'
 import { gameMissionService } from '@/services/supabase/gameMission.service'
@@ -55,6 +59,7 @@ export default function MissionDeckPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [previewMissionIndex, setPreviewMissionIndex] = useState<number | null>(null)
+  const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid')
 
   useEffect(() => {
     let cancelled = false
@@ -276,124 +281,341 @@ export default function MissionDeckPage() {
         </div>
       ) : null}
 
-      {/* Mission Cards Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {loaded.groups.map((group, index) => {
-          const progress = loaded.progress.find((item) => item.mission_index === index)
-          const done = completed.has(index)
-          const inProgress = !done && loaded.activeMissionIndexes.includes(index)
-          const unlocked = index === 0 || completed.has(index - 1)
-          const bestAccuracy = progress?.best_accuracy ?? 0
-          const stars = bestAccuracy >= 90 ? 3 : bestAccuracy >= 75 ? 2 : 1
+      {/* View Switcher Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+        <div className="flex items-center gap-2">
+          {viewMode === 'map' ? (
+            <Compass className="h-5 w-5 text-indigo-600" />
+          ) : (
+            <LayoutGrid className="h-5 w-5 text-indigo-600" />
+          )}
+          <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+            {viewMode === 'map' ? 'Bản Đồ Hành Trình' : 'Danh Sách Thử Thách'} ({loaded.groups.length} Mission)
+          </h2>
+        </div>
 
-          return (
-            <article
-              key={index}
-              className={
-                'neo-card flex min-h-56 flex-col justify-between p-5 border-3 border-slate-900 rounded-2xl transition-all ' +
-                (done
-                  ? 'bg-emerald-50/50 shadow-[4px_4px_0px_#059669]'
-                  : unlocked
-                    ? 'bg-white shadow-[4px_4px_0px_#000] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_#000]'
-                    : 'bg-slate-50 opacity-80 shadow-[2px_2px_0px_#000]')
-              }
-            >
-              <div>
-                {/* Card Top Row: Mission Label, Icons & Stars */}
-                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                  <span className="text-xs font-black uppercase tracking-wider text-slate-600">
-                    Mission {String(index + 1).padStart(2, '0')}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    {done ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                    ) : unlocked ? (
-                      <Play className="h-5 w-5 fill-[#fdc800] text-slate-900" />
-                    ) : (
-                      <Lock className="h-5 w-5 text-slate-400" />
-                    )}
+        <div className="inline-flex p-1 bg-white border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_#000] self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setViewMode('grid')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer',
+              viewMode === 'grid'
+                ? 'bg-[#fdc800] text-slate-900 border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#000]'
+                : 'text-slate-600 hover:text-slate-900 border-2 border-transparent'
+            )}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            <span>Dạng Lưới</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('map')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer',
+              viewMode === 'map'
+                ? 'bg-[#fdc800] text-slate-900 border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#000]'
+                : 'text-slate-600 hover:text-slate-900 border-2 border-transparent'
+            )}
+          >
+            <Compass className="h-3.5 w-3.5" />
+            <span>Bản Đồ Hành Trình</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Roadmap Path View or Grid View */}
+      {viewMode === 'map' ? (
+        <section className="neo-card border-4 border-slate-900 bg-amber-50/40 p-6 sm:p-10 shadow-[6px_6px_0px_#000] rounded-2xl relative overflow-hidden">
+          {/* Top Destination Goal Banner */}
+          <div className="flex items-center justify-center gap-2 mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-300 border-3 border-slate-900 text-slate-900 font-black text-xs uppercase tracking-wider rounded-xl shadow-[3px_3px_0px_#000]">
+              <Trophy className="h-4 w-4" />
+              <span>Đích Đến: Hoàn Thành Toàn Bộ {loaded.groups.length} Mission</span>
+            </div>
+          </div>
+
+          {/* Stepper Timeline Pathway */}
+          <div className="relative max-w-2xl mx-auto py-2">
+            {/* Connecting Center Dashed Line */}
+            <div className="absolute top-6 bottom-6 left-8 sm:left-10 w-0.5 border-l-4 border-dashed border-slate-900 -z-0" />
+
+            <div className="space-y-8 relative z-10">
+              {loaded.groups.map((group, index) => {
+                const progress = loaded.progress.find((item) => item.mission_index === index)
+                const done = completed.has(index)
+                const inProgress = !done && loaded.activeMissionIndexes.includes(index)
+                const unlocked = index === 0 || completed.has(index - 1)
+                const bestAccuracy = progress?.best_accuracy ?? 0
+                const stars = bestAccuracy >= 90 ? 3 : bestAccuracy >= 75 ? 2 : 1
+
+                return (
+                  <div key={index} className="flex items-start gap-4 sm:gap-6 group">
+                    {/* Checkpoint Station Node */}
+                    <div className="relative shrink-0">
+                      <div
+                        className={cn(
+                          'w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-3 sm:border-4 border-slate-900 flex flex-col items-center justify-center transition-all',
+                          done
+                            ? 'bg-emerald-400 text-slate-900 shadow-[4px_4px_0px_#059669]'
+                            : inProgress
+                              ? 'bg-[#fdc800] text-slate-900 shadow-[4px_4px_0px_#000] ring-4 ring-amber-400/50 animate-pulse'
+                              : unlocked
+                                ? 'bg-yellow-300 text-slate-900 shadow-[4px_4px_0px_#000]'
+                                : 'bg-slate-200 text-slate-400 shadow-[2px_2px_0px_#94a3b8] opacity-80'
+                        )}
+                      >
+                        {done ? (
+                          <CheckCircle2 className="h-7 w-7 sm:h-8 sm:w-8 text-slate-900 stroke-[2.5]" />
+                        ) : unlocked ? (
+                          <Play className="h-7 w-7 sm:h-8 sm:w-8 fill-slate-900 text-slate-900" />
+                        ) : (
+                          <Lock className="h-6 w-6 sm:h-7 sm:w-7 text-slate-500" />
+                        )}
+
+                        <span className="text-[10px] sm:text-xs font-black mt-0.5">
+                          {String(index + 1).padStart(2, '0')}
+                        </span>
+                      </div>
+
+                      {/* 3-Star Cluster below completed node */}
+                      {done && (
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-white border border-slate-900 px-1.5 py-0.5 rounded-full shadow-[1px_1px_0px_#000]">
+                          {[1, 2, 3].map((s) => (
+                            <Star
+                              key={s}
+                              className={cn(
+                                'h-2.5 w-2.5',
+                                s <= stars
+                                  ? 'fill-[#fdc800] text-slate-900'
+                                  : 'fill-slate-200 text-slate-300'
+                              )}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Mission Info Card */}
+                    <div
+                      className={cn(
+                        'flex-1 neo-card p-4 sm:p-5 border-3 border-slate-900 rounded-2xl transition-all',
+                        done
+                          ? 'bg-white shadow-[3px_3px_0px_#059669]'
+                          : unlocked
+                            ? 'bg-white shadow-[4px_4px_0px_#000] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_#000]'
+                            : 'bg-slate-50 shadow-[2px_2px_0px_#000] opacity-80'
+                      )}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                            Mission {String(index + 1).padStart(2, '0')}
+                          </span>
+                          {done ? (
+                            <span className="text-[11px] font-black px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-slate-900 rounded-md shadow-[1px_1px_0px_#000]">
+                              Đã hoàn thành · {bestAccuracy}%
+                            </span>
+                          ) : inProgress ? (
+                            <span className="text-[11px] font-black px-2 py-0.5 bg-amber-300 text-slate-900 border border-slate-900 rounded-md shadow-[1px_1px_0px_#000]">
+                              Đang học dở
+                            </span>
+                          ) : unlocked ? (
+                            <span className="text-[11px] font-black px-2 py-0.5 bg-indigo-100 text-indigo-900 border border-slate-900 rounded-md shadow-[1px_1px_0px_#000]">
+                              Sẵn sàng thử thách
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-black px-2 py-0.5 bg-slate-200 text-slate-600 border border-slate-400 rounded-md">
+                              Chưa mở
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="text-xs font-bold text-slate-600">
+                          {group.length} từ mục tiêu
+                        </span>
+                      </div>
+
+                      {/* Words Preview Snippet */}
+                      <p className="mt-2 line-clamp-1 text-xs font-bold text-slate-600">
+                        {group
+                          .slice(0, 5)
+                          .map((term) => term.sourceText)
+                          .join(' · ')}
+                        {group.length > 5 ? ' · …' : ''}
+                      </p>
+
+                      {/* Action Buttons Row */}
+                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-9 px-2.5 text-xs font-black text-slate-700 hover:text-slate-900 border-2 border-slate-900 bg-white hover:bg-slate-100 rounded-xl shadow-[2px_2px_0px_#000] flex items-center gap-1 shrink-0"
+                          onClick={() => setPreviewMissionIndex(index)}
+                          title="Xem trước từ vựng"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          <span>Xem từ</span>
+                        </Button>
+
+                        <Button
+                          variant={done ? 'ghost' : 'primary'}
+                          disabled={!unlocked}
+                          className={cn(
+                            'flex-1 h-9 text-xs font-black rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center justify-center gap-1.5 cursor-pointer',
+                            done
+                              ? 'bg-slate-100 hover:bg-slate-200 text-slate-900'
+                              : unlocked
+                                ? 'bg-[#fdc800] hover:bg-amber-300 text-slate-900'
+                                : 'bg-slate-100 text-slate-400 border-slate-300 cursor-not-allowed'
+                          )}
+                          onClick={() => navigate('/app/games/mission/' + deckId + '/' + index)}
+                        >
+                          {done ? (
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          ) : unlocked ? (
+                            <Play className="h-3.5 w-3.5 fill-current" />
+                          ) : (
+                            <Lock className="h-3.5 w-3.5" />
+                          )}
+                          <span>
+                            {done
+                              ? 'Chơi lại'
+                              : inProgress
+                                ? 'Tiếp tục'
+                                : unlocked
+                                  ? 'Bắt đầu'
+                                  : 'Chưa mở'}
+                          </span>
+                        </Button>
+                      </div>
+                    </div>
                   </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+      ) : (
+        /* Mission Cards Grid */
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {loaded.groups.map((group, index) => {
+            const progress = loaded.progress.find((item) => item.mission_index === index)
+            const done = completed.has(index)
+            const inProgress = !done && loaded.activeMissionIndexes.includes(index)
+            const unlocked = index === 0 || completed.has(index - 1)
+            const bestAccuracy = progress?.best_accuracy ?? 0
+            const stars = bestAccuracy >= 90 ? 3 : bestAccuracy >= 75 ? 2 : 1
+
+            return (
+              <article
+                key={index}
+                className={
+                  'neo-card flex min-h-56 flex-col justify-between p-5 border-3 border-slate-900 rounded-2xl transition-all ' +
+                  (done
+                    ? 'bg-emerald-50/50 shadow-[4px_4px_0px_#059669]'
+                    : unlocked
+                      ? 'bg-white shadow-[4px_4px_0px_#000] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_#000]'
+                      : 'bg-slate-50 opacity-80 shadow-[2px_2px_0px_#000]')
+                }
+              >
+                <div>
+                  {/* Card Top Row: Mission Label, Icons & Stars */}
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-600">
+                      Mission {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {done ? (
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                      ) : unlocked ? (
+                        <Play className="h-5 w-5 fill-[#fdc800] text-slate-900" />
+                      ) : (
+                        <Lock className="h-5 w-5 text-slate-400" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Stars and Accuracy */}
+                  {done ? (
+                    <div className="flex items-center justify-between mt-2.5">
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3].map((s) => (
+                          <Star
+                            key={s}
+                            className={
+                              'h-4 w-4 ' +
+                              (s <= stars
+                                ? 'fill-[#fdc800] text-slate-900'
+                                : 'fill-slate-200 text-slate-400')
+                            }
+                          />
+                        ))}
+                      </div>
+                      <span className="text-xs font-black text-emerald-800">
+                        Tốt nhất: {bestAccuracy}%
+                      </span>
+                    </div>
+                  ) : null}
+
+                  {/* Target words count */}
+                  <h2 className="mt-2 text-xl font-black text-slate-900">
+                    {group.length} từ mục tiêu
+                  </h2>
+
+                  {/* Words preview snippet */}
+                  <p className="mt-1.5 line-clamp-2 text-xs font-bold text-slate-600 leading-relaxed">
+                    {group
+                      .slice(0, 5)
+                      .map((term) => term.sourceText)
+                      .join(' · ')}
+                    {group.length > 5 ? ' · …' : ''}
+                  </p>
                 </div>
 
-                {/* Stars and Accuracy */}
-                {done ? (
-                  <div className="flex items-center justify-between mt-2.5">
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3].map((s) => (
-                        <Star
-                          key={s}
-                          className={
-                            'h-4 w-4 ' +
-                            (s <= stars
-                              ? 'fill-[#fdc800] text-slate-900'
-                              : 'fill-slate-200 text-slate-400')
-                          }
-                        />
-                      ))}
-                    </div>
-                    <span className="text-xs font-black text-emerald-800">
-                      Tốt nhất: {bestAccuracy}%
-                    </span>
-                  </div>
-                ) : null}
+                {/* Action Buttons Row */}
+                <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-200">
+                  {/* View Words Preview Button */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-10 px-2.5 text-xs font-black text-slate-700 hover:text-slate-900 border-2 border-slate-900 bg-white hover:bg-slate-100 rounded-xl shadow-[2px_2px_0px_#000] flex items-center gap-1 shrink-0"
+                    onClick={() => setPreviewMissionIndex(index)}
+                    title="Xem trước từ vựng"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    <span>Xem từ</span>
+                  </Button>
 
-                {/* Target words count */}
-                <h2 className="mt-2 text-xl font-black text-slate-900">
-                  {group.length} từ mục tiêu
-                </h2>
-
-                {/* Words preview snippet */}
-                <p className="mt-1.5 line-clamp-2 text-xs font-bold text-slate-600 leading-relaxed">
-                  {group
-                    .slice(0, 5)
-                    .map((term) => term.sourceText)
-                    .join(' · ')}
-                  {group.length > 5 ? ' · …' : ''}
-                </p>
-              </div>
-
-              {/* Action Buttons Row */}
-              <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-200">
-                {/* View Words Preview Button */}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-10 px-2.5 text-xs font-black text-slate-700 hover:text-slate-900 border-2 border-slate-900 bg-white hover:bg-slate-100 rounded-xl shadow-[2px_2px_0px_#000] flex items-center gap-1 shrink-0"
-                  onClick={() => setPreviewMissionIndex(index)}
-                  title="Xem trước từ vựng"
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  <span>Xem từ</span>
-                </Button>
-
-                {/* Main Play/Resume Button */}
-                <Button
-                  variant={done ? 'ghost' : 'primary'}
-                  disabled={!unlocked}
-                  className={
-                    'flex-1 h-10 text-xs font-black rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center justify-center gap-1.5 cursor-pointer ' +
-                    (done
-                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-900'
-                      : unlocked
-                        ? 'bg-[#fdc800] hover:bg-amber-300 text-slate-900'
-                        : 'bg-slate-100 text-slate-400 border-slate-300 cursor-not-allowed')
-                  }
-                  onClick={() => navigate('/app/games/mission/' + deckId + '/' + index)}
-                >
-                  {done ? (
-                    <RotateCcw className="h-3.5 w-3.5" />
-                  ) : unlocked ? (
-                    <Play className="h-3.5 w-3.5 fill-current" />
-                  ) : (
-                    <Lock className="h-3.5 w-3.5" />
-                  )}
-                  <span>{done ? 'Chơi lại' : inProgress ? 'Tiếp tục' : unlocked ? 'Bắt đầu' : 'Chưa mở'}</span>
-                </Button>
-              </div>
-            </article>
-          )
-        })}
-      </div>
+                  {/* Main Play/Resume Button */}
+                  <Button
+                    variant={done ? 'ghost' : 'primary'}
+                    disabled={!unlocked}
+                    className={
+                      'flex-1 h-10 text-xs font-black rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center justify-center gap-1.5 cursor-pointer ' +
+                      (done
+                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-900'
+                        : unlocked
+                          ? 'bg-[#fdc800] hover:bg-amber-300 text-slate-900'
+                          : 'bg-slate-100 text-slate-400 border-slate-300 cursor-not-allowed')
+                    }
+                    onClick={() => navigate('/app/games/mission/' + deckId + '/' + index)}
+                  >
+                    {done ? (
+                      <RotateCcw className="h-3.5 w-3.5" />
+                    ) : unlocked ? (
+                      <Play className="h-3.5 w-3.5 fill-current" />
+                    ) : (
+                      <Lock className="h-3.5 w-3.5" />
+                    )}
+                    <span>{done ? 'Chơi lại' : inProgress ? 'Tiếp tục' : unlocked ? 'Bắt đầu' : 'Chưa mở'}</span>
+                  </Button>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      )}
 
       {/* Vocabulary Preview Modal */}
       {previewMissionIndex !== null && previewGroup ? (
