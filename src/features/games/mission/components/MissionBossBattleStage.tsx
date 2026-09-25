@@ -57,8 +57,12 @@ export function MissionBossBattleStage({
   const sfxVolume = useSoundStore((state) => state.sfxVolume)
   const [battleEvent, setBattleEvent] = useState<BattleEvent>('idle')
   const [interactionLocked, setInteractionLocked] = useState(false)
+  const [typingFocused, setTypingFocused] = useState(false)
+  const [keyboardVisible, setKeyboardVisible] = useState(false)
   const bgmRef = useRef<HTMLAudioElement | null>(null)
   const timersRef = useRef<number[]>([])
+
+  const compactMode = typingFocused || keyboardVisible
 
   const snapshot = useMemo(
     () => calculateBossBattleSnapshot(bossQuestionIds, answers),
@@ -82,6 +86,25 @@ export function MissionBossBattleStage({
     audio.volume = Math.max(0, Math.min(1, sfxVolume * volumeScale))
     void audio.play().catch(() => undefined)
   }, [sfxEnabled, sfxVolume])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return
+
+    const viewport = window.visualViewport
+    const updateKeyboardState = () => {
+      const keyboardHeight = Math.max(0, window.innerHeight - viewport.height)
+      setKeyboardVisible(keyboardHeight > 120)
+    }
+
+    updateKeyboardState()
+    viewport.addEventListener('resize', updateKeyboardState)
+    viewport.addEventListener('scroll', updateKeyboardState)
+
+    return () => {
+      viewport.removeEventListener('resize', updateKeyboardState)
+      viewport.removeEventListener('scroll', updateKeyboardState)
+    }
+  }, [])
 
   useEffect(() => {
     if (!sfxEnabled || typeof Audio === 'undefined') {
@@ -178,12 +201,25 @@ export function MissionBossBattleStage({
             ? ASSETS.boss.defeated
             : ASSETS.boss.idle
 
+  const battleStatus =
+    battleEvent === 'boss-attack'
+      ? 'Boss đang phản công'
+      : battleEvent === 'boss-hit'
+        ? 'Boss trúng đòn'
+        : battleEvent === 'finisher'
+          ? 'Đang tung đòn kết liễu'
+          : battleEvent === 'defeated'
+            ? 'Boss đã bị đánh bại'
+            : 'Sẵn sàng chiến đấu'
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <section
         aria-label="Đấu Boss"
         className={
-          'relative min-h-[330px] overflow-hidden rounded-2xl border-4 border-slate-900 shadow-[6px_6px_0px_#000] ' +
+          'relative overflow-hidden rounded-2xl border-4 border-slate-900 shadow-[6px_6px_0px_#000] transition-[height,transform] duration-200 ' +
+          'max-md:sticky max-md:top-[4.5rem] max-md:z-30 md:relative md:top-auto ' +
+          (compactMode ? 'h-[165px] md:h-[330px] ' : 'h-[270px] md:h-[330px] ') +
           (battleEvent === 'boss-attack' ? 'animate-pulse' : '')
         }
         style={{
@@ -192,32 +228,59 @@ export function MissionBossBattleStage({
           backgroundSize: 'cover',
         }}
       >
-        <div className="absolute inset-x-0 top-0 z-20 grid grid-cols-2 gap-3 bg-slate-950/75 p-3 text-white backdrop-blur-sm">
+        <span className="sr-only" aria-live="polite">{battleStatus}</span>
+
+        <div
+          className={
+            'absolute inset-x-0 top-0 z-20 grid grid-cols-2 bg-slate-950/80 text-white backdrop-blur-sm transition-all ' +
+            (compactMode ? 'gap-2 p-1.5 md:gap-3 md:p-3' : 'gap-3 p-2.5 md:p-3')
+          }
+        >
           <BattleBar
             label="Bạn"
             value={displayPlayerHpPercent}
             detail={`${displayPlayerHp}/${snapshot.playerMaxHp} HP`}
-            icon={<Heart className="h-4 w-4 fill-current" />}
+            icon={<Heart className="h-3.5 w-3.5 fill-current md:h-4 md:w-4" />}
             fillClass="bg-emerald-400"
+            compact={compactMode}
           />
           <BattleBar
             label="Rune Beetle"
             value={snapshot.bossHpPercent}
             detail={`${snapshot.bossHp}/${snapshot.bossMaxHp} HP`}
-            icon={<ShieldAlert className="h-4 w-4" />}
+            icon={<ShieldAlert className="h-3.5 w-3.5 md:h-4 md:w-4" />}
             fillClass="bg-rose-500"
+            compact={compactMode}
           />
         </div>
 
-        <div className="absolute inset-x-4 bottom-4 z-20 rounded-xl border-2 border-slate-900 bg-white/90 p-2 shadow-[3px_3px_0px_#000]">
-          <div className="mb-1 flex items-center justify-between text-[11px] font-black uppercase text-slate-800">
+        <div
+          className={
+            'absolute z-20 rounded-xl border-2 border-slate-900 bg-white/92 shadow-[3px_3px_0px_#000] transition-all ' +
+            (compactMode
+              ? 'inset-x-2 bottom-2 p-1.5 md:inset-x-4 md:bottom-4 md:p-2'
+              : 'inset-x-3 bottom-3 p-2 md:inset-x-4 md:bottom-4')
+          }
+        >
+          <div
+            className={
+              'flex items-center justify-between font-black uppercase text-slate-800 ' +
+              (compactMode ? 'mb-0.5 text-[9px] md:mb-1 md:text-[11px]' : 'mb-1 text-[10px] md:text-[11px]')
+            }
+          >
             <span className="flex items-center gap-1">
-              <Zap className="h-3.5 w-3.5 text-indigo-700" />
-              Kỹ năng kết liễu
+              <Zap className="h-3 w-3 text-indigo-700 md:h-3.5 md:w-3.5" />
+              <span className={compactMode ? 'max-md:hidden' : ''}>Kỹ năng kết liễu</span>
+              <span className={compactMode ? 'md:hidden' : 'hidden'}>Skill</span>
             </span>
             <span>{snapshot.skillReady ? 'Sẵn sàng!' : snapshot.skillPercent + '%'}</span>
           </div>
-          <div className="h-3 overflow-hidden rounded-full border-2 border-slate-900 bg-white">
+          <div
+            className={
+              'overflow-hidden rounded-full border-2 border-slate-900 bg-white ' +
+              (compactMode ? 'h-2 md:h-3' : 'h-2.5 md:h-3')
+            }
+          >
             <div
               className="h-full bg-indigo-500 transition-all duration-500"
               style={{ width: snapshot.skillPercent + '%' }}
@@ -225,21 +288,31 @@ export function MissionBossBattleStage({
           </div>
         </div>
 
-        <div className="absolute inset-0 z-10 flex items-center justify-center pt-12 pb-14">
+        <div
+          className={
+            'absolute inset-x-0 z-10 flex items-center justify-center overflow-hidden transition-all ' +
+            (compactMode
+              ? 'top-[46px] bottom-[38px] md:top-[58px] md:bottom-[58px]'
+              : 'top-[52px] bottom-[50px] md:top-[58px] md:bottom-[58px]')
+          }
+        >
           <img
             src={bossImage}
             alt="Rune Beetle"
             draggable={false}
             className={
-              'h-[230px] w-[230px] select-none object-contain drop-shadow-2xl transition-transform duration-200 sm:h-[260px] sm:w-[260px] ' +
+              'select-none object-contain drop-shadow-2xl transition-[transform,opacity,height,width] duration-200 ' +
+              (compactMode
+                ? 'h-[86px] w-[86px] md:h-[220px] md:w-[220px] '
+                : 'h-[165px] w-[165px] md:h-[230px] md:w-[230px] ') +
               (battleEvent === 'boss-hit'
                 ? 'scale-95 -rotate-3'
                 : battleEvent === 'boss-attack'
-                  ? 'scale-110 translate-x-3'
+                  ? 'scale-105 translate-x-2'
                   : battleEvent === 'finisher'
-                    ? 'scale-110'
+                    ? 'scale-105'
                     : battleEvent === 'defeated'
-                      ? 'translate-y-6 scale-90 opacity-80'
+                      ? 'translate-y-2 scale-90 opacity-80'
                       : 'animate-bounce')
             }
           />
@@ -250,13 +323,19 @@ export function MissionBossBattleStage({
                 src={ASSETS.effects.slash}
                 alt=""
                 aria-hidden="true"
-                className="pointer-events-none absolute h-52 w-52 animate-pulse object-contain"
+                className={
+                  'pointer-events-none absolute animate-pulse object-contain ' +
+                  (compactMode ? 'h-24 w-24 md:h-52 md:w-52' : 'h-36 w-36 md:h-52 md:w-52')
+                }
               />
               <img
                 src={ASSETS.effects.impact}
                 alt=""
                 aria-hidden="true"
-                className="pointer-events-none absolute h-36 w-36 object-contain"
+                className={
+                  'pointer-events-none absolute object-contain ' +
+                  (compactMode ? 'h-16 w-16 md:h-36 md:w-36' : 'h-24 w-24 md:h-36 md:w-36')
+                }
               />
             </>
           ) : null}
@@ -266,21 +345,29 @@ export function MissionBossBattleStage({
               src={ASSETS.effects.finisher}
               alt=""
               aria-hidden="true"
-              className="pointer-events-none absolute h-80 w-80 animate-pulse object-contain"
+              className={
+                'pointer-events-none absolute animate-pulse object-contain ' +
+                (compactMode ? 'h-32 w-32 md:h-80 md:w-80' : 'h-52 w-52 md:h-80 md:w-80')
+              }
             />
           ) : null}
 
-          {snapshot.skillReady && battleEvent === 'idle' ? (
-            <div className="absolute right-4 top-24 flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-[#fdc800] px-3 py-2 font-black text-slate-900 shadow-[3px_3px_0px_#000]">
-              <img src={ASSETS.skillReady} alt="" aria-hidden="true" className="h-8 w-8" />
-              <span className="text-xs uppercase">Finisher Ready</span>
+          {snapshot.skillReady && battleEvent === 'idle' && !compactMode ? (
+            <div className="absolute right-3 top-3 flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-[#fdc800] px-2.5 py-1.5 font-black text-slate-900 shadow-[3px_3px_0px_#000] md:right-4 md:top-6 md:px-3 md:py-2">
+              <img src={ASSETS.skillReady} alt="" aria-hidden="true" className="h-7 w-7 md:h-8 md:w-8" />
+              <span className="text-[10px] uppercase md:text-xs">Finisher Ready</span>
             </div>
           ) : null}
 
           {battleEvent === 'finisher' ? (
             <div className="absolute inset-x-0 top-1/2 z-30 -translate-y-1/2 text-center">
-              <span className="inline-flex items-center gap-2 rounded-xl border-4 border-slate-900 bg-[#fdc800] px-5 py-3 text-xl font-black uppercase text-slate-900 shadow-[5px_5px_0px_#000]">
-                <Sparkles className="h-6 w-6" /> Đòn kết liễu!
+              <span
+                className={
+                  'inline-flex items-center gap-2 rounded-xl border-4 border-slate-900 bg-[#fdc800] font-black uppercase text-slate-900 shadow-[5px_5px_0px_#000] ' +
+                  (compactMode ? 'px-3 py-1.5 text-xs md:px-5 md:py-3 md:text-xl' : 'px-4 py-2 text-base md:px-5 md:py-3 md:text-xl')
+                }
+              >
+                <Sparkles className="h-4 w-4 md:h-6 md:w-6" /> Đòn kết liễu!
               </span>
             </div>
           ) : null}
@@ -295,6 +382,8 @@ export function MissionBossBattleStage({
         bossHpPercent={snapshot.bossHpPercent}
         showBossHud={false}
         interactionLocked={interactionLocked}
+        compactMode={compactMode}
+        onTypingFocusChange={setTypingFocused}
       />
     </div>
   )
@@ -306,20 +395,32 @@ function BattleBar({
   detail,
   icon,
   fillClass,
+  compact,
 }: {
   label: string
   value: number
   detail: string
   icon: ReactNode
   fillClass: string
+  compact: boolean
 }) {
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between gap-2 text-xs font-black">
-        <span className="flex items-center gap-1.5 truncate">{icon}{label}</span>
+      <div
+        className={
+          'flex items-center justify-between gap-1 font-black ' +
+          (compact ? 'mb-0.5 text-[10px] md:mb-1 md:text-xs' : 'mb-1 text-[11px] md:text-xs')
+        }
+      >
+        <span className="flex min-w-0 items-center gap-1 truncate md:gap-1.5">{icon}{label}</span>
         <span className="shrink-0">{detail}</span>
       </div>
-      <div className="h-3 overflow-hidden rounded-full border-2 border-white/90 bg-slate-900">
+      <div
+        className={
+          'overflow-hidden rounded-full border-2 border-white/90 bg-slate-900 ' +
+          (compact ? 'h-2.5 md:h-3' : 'h-3')
+        }
+      >
         <div
           className={'h-full transition-all duration-500 ' + fillClass}
           style={{ width: Math.max(0, Math.min(100, value)) + '%' }}

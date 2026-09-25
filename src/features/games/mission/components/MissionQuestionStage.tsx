@@ -38,6 +38,8 @@ export interface MissionQuestionStageProps {
   bossHpPercent?: number
   showBossHud?: boolean
   interactionLocked?: boolean
+  compactMode?: boolean
+  onTypingFocusChange?: (focused: boolean) => void
   onAnswerChange: (value: string) => void
   onSubmit: () => void
   onNext: () => void
@@ -63,6 +65,8 @@ export function MissionQuestionStage({
   bossHpPercent,
   showBossHud = true,
   interactionLocked = false,
+  compactMode = false,
+  onTypingFocusChange,
   onAnswerChange,
   onSubmit,
   onNext,
@@ -111,14 +115,22 @@ export function MissionQuestionStage({
   return (
     <div
       className={
-        'neo-card space-y-6 p-6 sm:p-8 rounded-2xl border-4 border-slate-900 transition-all ' +
+        'neo-card rounded-2xl border-4 border-slate-900 transition-all ' +
+        (isBoss && compactMode
+          ? 'space-y-3 p-4 sm:space-y-6 sm:p-8 '
+          : 'space-y-6 p-6 sm:p-8 ') +
         (isBoss
           ? 'bg-gradient-to-b from-rose-50 to-white shadow-[6px_6px_0px_#9f1239]'
           : 'bg-white shadow-[6px_6px_0px_#000]')
       }
     >
       {/* Top Bar: Stage & Question Meta & Combo */}
-      <div className="flex items-center justify-between gap-3 pb-3 border-b-2 border-slate-900">
+      <div
+        className={
+          'items-center justify-between gap-3 border-b-2 border-slate-900 pb-3 ' +
+          (isBoss && compactMode ? 'hidden sm:flex' : 'flex')
+        }
+      >
         <div className="flex items-center gap-2">
           {isBoss ? (
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border-2 border-rose-900 bg-rose-200 text-rose-950 font-black text-xs uppercase tracking-wider shadow-[2px_2px_0px_#9f1239]">
@@ -184,7 +196,12 @@ export function MissionQuestionStage({
 
       {/* Question Prompt */}
       <div className="text-center space-y-2">
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 leading-snug tracking-tight">
+        <h1
+          className={
+            'font-black text-slate-900 leading-snug tracking-tight ' +
+            (isBoss && compactMode ? 'text-xl sm:text-3xl' : 'text-2xl sm:text-3xl')
+          }
+        >
           {question.prompt}
         </h1>
       </div>
@@ -278,6 +295,14 @@ export function MissionQuestionStage({
             ref={inputRef}
             autoFocus
             value={answerValue}
+            onFocus={(event) => {
+              const target = event.currentTarget
+              onTypingFocusChange?.(true)
+              window.setTimeout(() => {
+                target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+              }, 120)
+            }}
+            onBlur={() => onTypingFocusChange?.(false)}
             onChange={(event) => onAnswerChange(event.target.value)}
             onKeyDown={(event) => {
               if (interactionLocked || event.key !== 'Enter') return
@@ -287,7 +312,10 @@ export function MissionQuestionStage({
             }}
             disabled={feedback?.finalized || interactionLocked}
             placeholder="Nhập câu trả lời..."
-            className="text-base sm:text-lg font-black border-3 border-slate-900 shadow-[3px_3px_0px_#000] rounded-xl p-3 sm:p-4 text-center bg-white"
+            className={
+              'text-base sm:text-lg font-black border-3 border-slate-900 shadow-[3px_3px_0px_#000] rounded-xl text-center bg-white scroll-mt-[250px] ' +
+              (isBoss && compactMode ? 'p-2.5 sm:p-4' : 'p-3 sm:p-4')
+            }
           />
         </div>
       )}
@@ -321,7 +349,14 @@ export function MissionQuestionStage({
 
       {/* Footer Actions */}
       {!feedback?.finalized ? (
-        <div className="space-y-2.5 pt-2">
+        <div
+          className={
+            'space-y-2.5 pt-2 ' +
+            (isBoss && compactMode
+              ? 'sticky bottom-2 z-40 rounded-xl border-2 border-slate-900 bg-white/95 p-2 shadow-[3px_3px_0px_#000] backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none'
+              : '')
+          }
+        >
           <Button
             className="w-full py-3.5 text-base font-black bg-[#fdc800] hover:bg-amber-300 text-slate-900 border-3 border-slate-900 shadow-[4px_4px_0px_#000] rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={!answerValue.trim() || interactionLocked}
