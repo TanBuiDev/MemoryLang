@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Heart, ShieldAlert, Sparkles, Zap } from 'lucide-react'
 import { useSoundStore } from '@/stores/useSoundStore'
 import type { AnswerRecord } from '../mission.types'
@@ -310,7 +310,7 @@ function BattleBar({
   label: string
   value: number
   detail: string
-  icon: React.ReactNode
+  icon: ReactNode
   fillClass: string
 }) {
   return (
