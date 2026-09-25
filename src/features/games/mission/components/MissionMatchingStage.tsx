@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   ChevronDown,
   Puzzle,
-  Sparkles,
   XCircle,
   ArrowRight,
   Layers,
@@ -186,7 +185,7 @@ export function MissionMatchingStage({
                           (item) => item.id !== question.id && selections[item.id] === option.value
                         )
                         const isCurrent = selected === option.value
-                        const label = option.label + (owner ? ' · Đã chọn cho ' + owner.prompt : '')
+                        const label = option.label + (owner ? ' · ' + owner.prompt : '')
                         return (
                           <Button
                             key={option.value}
@@ -212,7 +211,12 @@ export function MissionMatchingStage({
                               setOpenQuestionId(null)
                             }}
                           >
-                            <span className="truncate">{label}</span>
+                            <span className="truncate">
+                              <span>{option.label}</span>
+                              {owner ? (
+                                <span className="font-semibold text-slate-500"> · {owner.prompt}</span>
+                              ) : null}
+                            </span>
                             {isCurrent ? <Check className="h-4 w-4 shrink-0 text-slate-900" /> : null}
                           </Button>
                         )
@@ -233,14 +237,6 @@ export function MissionMatchingStage({
           )
         })}
       </div>
-
-      {/* Helpful Hint */}
-      {!reviewed ? (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 border-2 border-slate-900 text-xs font-bold text-slate-600">
-          <Sparkles className="h-4 w-4 text-amber-600 shrink-0" />
-          <span>Gợi ý: Bạn có thể chọn lại nghĩa bất cứ lúc nào trước khi bấm kiểm tra.</span>
-        </div>
-      ) : null}
 
       {/* Action Footer */}
       {reviewed ? (

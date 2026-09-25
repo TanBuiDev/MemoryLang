@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import {
   CheckCircle2,
   Headphones,
@@ -9,6 +10,7 @@ import {
   Flame,
   ArrowRight,
   HelpCircle,
+  RotateCcw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,6 +33,7 @@ interface MissionQuestionStageProps {
   contextTranslationShown: boolean
   feedback: MissionQuestionFeedback | null
   isLastQuestion: boolean
+  isRetry?: boolean
   combo?: number
   bossHpPercent?: number
   onAnswerChange: (value: string) => void
@@ -53,6 +56,7 @@ export function MissionQuestionStage({
   contextTranslationShown,
   feedback,
   isLastQuestion,
+  isRetry,
   combo = 0,
   bossHpPercent,
   onAnswerChange,
@@ -64,6 +68,40 @@ export function MissionQuestionStage({
   onSkip,
 }: MissionQuestionStageProps) {
   const isBoss = stageType === 'boss'
+  const continueContainerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Focus Continue button when answer is finalized, or re-focus input on new question
+  useEffect(() => {
+    if (feedback?.finalized) {
+      continueContainerRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
+      const timer = setTimeout(() => {
+        continueContainerRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
+      }, 50)
+      return () => clearTimeout(timer)
+    } else if (!question.options) {
+      inputRef.current?.focus()
+      const timer = setTimeout(() => {
+        inputRef.current?.focus()
+      }, 50)
+      return () => clearTimeout(timer)
+    }
+  }, [feedback?.finalized, question.id, question.options])
+
+  // Global Enter key listener when answer is finalized so Enter always advances
+  useEffect(() => {
+    if (!feedback?.finalized) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Enter' && !event.repeat) {
+        event.preventDefault()
+        onNext()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [feedback?.finalized, onNext])
 
   return (
     <div
@@ -83,9 +121,16 @@ export function MissionQuestionStage({
               <span>THỬ THÁCH CUỐI</span>
             </div>
           ) : (
-            <span className="text-xs font-black uppercase tracking-widest text-slate-500">
-              Câu {index + 1}/{total}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-widest text-slate-500">
+                Câu {index + 1}/{total}
+              </span>
+              {isRetry ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border-2 border-slate-900 bg-amber-300 text-slate-900 font-black text-[11px] uppercase tracking-wider shadow-[1.5px_1.5px_0px_#000]">
+                  <RotateCcw className="h-3 w-3" /> Thử lại
+                </span>
+              ) : null}
+            </div>
           )}
         </div>
 
@@ -222,13 +267,15 @@ export function MissionQuestionStage({
       ) : (
         <div className="space-y-2">
           <Input
+            ref={inputRef}
             autoFocus
             value={answerValue}
             onChange={(event) => onAnswerChange(event.target.value)}
             onKeyDown={(event) => {
               if (event.key !== 'Enter') return
+              event.preventDefault()
               if (feedback?.finalized) onNext()
-              else onSubmit()
+              else if (answerValue.trim()) onSubmit()
             }}
             disabled={feedback?.finalized}
             placeholder="Nhập câu trả lời..."
@@ -286,17 +333,11 @@ export function MissionQuestionStage({
           ) : null}
         </div>
       ) : (
-        <div className="pt-2">
+        <div ref={continueContainerRef} className="pt-2">
           <Button
             className="w-full py-4 text-base font-black bg-[#432dd7] hover:bg-indigo-700 text-white border-3 border-slate-900 shadow-[4px_4px_0px_#000] rounded-xl flex items-center justify-center gap-2 cursor-pointer"
             autoFocus
             onClick={onNext}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.repeat) {
-                event.preventDefault()
-                onNext()
-              }
-            }}
           >
             <span>{isLastQuestion ? 'Hoàn thành Mission' : 'Tiếp tục'}</span>
             <ArrowRight className="h-5 w-5" />

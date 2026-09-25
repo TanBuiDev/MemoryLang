@@ -39,7 +39,7 @@ describe('Mission Matching selection', () => {
       onContinue={vi.fn()}
     />)
     fireEvent.click(screen.getByRole('button', { name: /nghĩa của compete/i }))
-    const occupied = screen.getByRole('button', { name: /nhà cung cấp.*đã chọn cho supplier/i })
+    const occupied = screen.getByRole('button', { name: /nhà cung cấp.*supplier/i })
     fireEvent.keyDown(occupied, { key: 'Enter' })
     expect(onSelect).toHaveBeenCalledWith('b', 'nhà cung cấp')
   })

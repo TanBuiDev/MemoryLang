@@ -8,7 +8,7 @@ import { missionAttemptReducer, shouldAutoSyncMission } from './missionReducer'
 import { getMissionScript } from './scriptRegistry'
 import { buildMissionReviewItems } from './missionReview'
 import { calculateMissionProgress, createSkippedMissionAnswer, formatMissionPartOfSpeech, getMissionContextTranslation, getMissionRetryFeedback, getSkippedMissionTerms, scoreMissionAnswer, selectMatchingTranslation } from './missionInteraction'
-import type { GameTerm, MissionDefinition } from './mission.types'
+import type { GameTerm, MissionAttemptState, MissionDefinition } from './mission.types'
 
 const term = (overrides: Partial<GameTerm> = {}): GameTerm => ({
   globalTermId: 'term-1',
@@ -216,7 +216,7 @@ describe('mission script registry', () => {
 })
 
 describe('mission attempt reducer', () => {
-  const initial = {
+  const initial: MissionAttemptState = {
     deckId: 'deck-1',
     curriculumFingerprint: 'fp',
     missionIndex: 0,
@@ -290,6 +290,45 @@ describe('mission attempt reducer', () => {
     expect(shouldAutoSyncMission(true, true, false, false)).toBe(true)
     expect(shouldAutoSyncMission(true, true, false, false, true)).toBe(false)
   })
+
+  it('enqueues retry questions and preserves retryQueue within stage then clears on next stage', () => {
+    const withRetry = missionAttemptReducer(initial, {
+      type: 'enqueueRetry',
+      questionId: 'q-missed',
+      at: '2026-09-24T00:01:00.000Z',
+    })
+    expect(withRetry?.retryQueue).toEqual(['q-missed'])
+
+    // Advancing question within the same stage preserves retryQueue
+    const nextQuestion = missionAttemptReducer(withRetry, {
+      type: 'transition',
+      stageIndex: 0,
+      questionIndex: 1,
+      at: '2026-09-24T00:02:00.000Z',
+    })
+    expect(nextQuestion?.retryQueue).toEqual(['q-missed'])
+
+    // Transitioning to a new stage resets retryQueue
+    const nextStage = missionAttemptReducer(nextQuestion, {
+      type: 'transition',
+      stageIndex: 1,
+      questionIndex: 0,
+      at: '2026-09-24T00:03:00.000Z',
+    })
+    expect(nextStage?.retryQueue).toBeUndefined()
+  })
+
+  it('caps retries for the same question at 3 attempts', () => {
+    let state: MissionAttemptState = initial
+    for (let i = 0; i < 5; i++) {
+      state = missionAttemptReducer(state, {
+        type: 'enqueueRetry',
+        questionId: 'q-difficult',
+        at: '2026-09-24T00:01:00.000Z',
+      }) ?? state
+    }
+    expect(state.retryQueue).toEqual(['q-difficult', 'q-difficult', 'q-difficult'])
+  })
 })
 
 describe('mission interactions', () => {
@@ -326,7 +365,11 @@ describe('mission interactions', () => {
   })
 
   it('points to an internal near-miss instead of repeating a first-letter hint', () => {
-    expect(getMissionRetryFeedback('suspicios', 'suspicious')).toMatch(/gần đúng.*vị trí/i)
+    expect(getMissionRetryFeedback('suspicios', 'suspicious')).toBe('Bạn gần đúng rồi! Hãy kiểm tra lại phần đuôi từ (từ có 10 chữ cái).')
+    expect(getMissionRetryFeedback('suspecous', 'suspicious')).toBe('Bạn gần đúng rồi! Hãy kiểm tra lại phần giữa từ (từ có 10 chữ cái).')
+    expect(getMissionRetryFeedback('supsicious', 'suspicious')).toBe('Bạn gần đúng rồi! Hãy kiểm tra lại phần đầu từ (từ có 10 chữ cái).')
+    expect(getMissionRetryFeedback('look fro', 'look for')).toBe('Bạn gần đúng rồi! Hãy kiểm tra lại phần giữa của từ thứ 2 (từ có 3 chữ cái).')
+    expect(getMissionRetryFeedback('take card', 'take care')).toBe('Bạn gần đúng rồi! Hãy kiểm tra lại phần đuôi của từ thứ 2 (từ có 4 chữ cái).')
     expect(getMissionRetryFeedback('different', 'suspicious')).not.toMatch(/gần đúng/i)
   })
   it('moves an occupied Matching translation and clears its previous row', () => {

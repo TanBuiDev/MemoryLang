@@ -77,8 +77,24 @@ export function getMissionRetryFeedback(submitted: string, expected: string): st
     }
   }
   if (matrix[actual.length][target.length] > 2) return 'Chưa đúng. Bạn có thể xem gợi ý rồi thử thêm một lần.'
-  const mismatch = [...target].findIndex((character, position) => character !== actual[position])
-  return `Bạn gần đúng rồi. Hãy xem lại từ thứ ${index + 1}, gần vị trí ${mismatch + 1} (${target.length} ký tự).`
+  let mismatch = [...target].findIndex((character, position) => character !== actual[position])
+  if (mismatch === -1) {
+    mismatch = Math.min(actual.length, target.length)
+  }
+
+  let positionDesc = 'phần giữa từ'
+  if (mismatch < target.length / 3) {
+    positionDesc = 'phần đầu từ'
+  } else if (mismatch >= (target.length * 2) / 3) {
+    positionDesc = 'phần đuôi từ'
+  }
+
+  if (targetWords.length > 1) {
+    const targetPart = positionDesc === 'phần đuôi từ' ? 'phần đuôi' : positionDesc === 'phần đầu từ' ? 'phần đầu' : 'phần giữa'
+    return `Bạn gần đúng rồi! Hãy kiểm tra lại ${targetPart} của từ thứ ${index + 1} (từ có ${target.length} chữ cái).`
+  }
+
+  return `Bạn gần đúng rồi! Hãy kiểm tra lại ${positionDesc} (từ có ${target.length} chữ cái).`
 }
 
 export function selectMatchingTranslation(

@@ -102,6 +102,7 @@ export interface MissionAttemptState {
   stageIndex: number
   questionIndex: number
   answers: AnswerRecord[]
+  retryQueue?: string[]
   draft?: {
     answerValue?: string
     attemptNumber?: number
