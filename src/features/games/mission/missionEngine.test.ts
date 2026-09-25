@@ -9,7 +9,7 @@ import { missionAttemptReducer, shouldAutoSyncMission } from './missionReducer'
 import { getMissionScript } from './scriptRegistry'
 import { buildMissionReviewItems } from './missionReview'
 import { calculateMissionProgress, createSkippedMissionAnswer, formatMissionPartOfSpeech, getMissionContextTranslation, getMissionRetryFeedback, getSkippedMissionTerms, scoreMissionAnswer, selectMatchingTranslation } from './missionInteraction'
-import type { GameTerm, MissionAttemptState, MissionDefinition } from './mission.types'
+import type { AnswerRecord, GameTerm, MissionAttemptState, MissionDefinition } from './mission.types'
 
 const term = (overrides: Partial<GameTerm> = {}): GameTerm => ({
   globalTermId: 'term-1',
