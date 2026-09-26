@@ -213,13 +213,16 @@ export function MissionBossBattleStage({
             : 'Sẵn sàng chiến đấu'
 
   return (
-    <div className="space-y-3 sm:space-y-4">
+    <div
+      className={
+        'relative overflow-hidden rounded-2xl sm:rounded-3xl border-4 border-slate-900 shadow-[6px_6px_0px_#000] bg-white flex flex-col transition-all duration-300'
+      }
+    >
       <section
         aria-label="Đấu Boss"
         className={
-          'relative overflow-hidden rounded-2xl border-4 border-slate-900 shadow-[6px_6px_0px_#000] transition-[height,transform] duration-200 ' +
-          'max-md:sticky max-md:top-[4.5rem] max-md:z-30 md:relative md:top-auto ' +
-          (compactMode ? 'h-[165px] md:h-[330px] ' : 'h-[270px] md:h-[330px] ') +
+          'relative w-full overflow-hidden transition-[height,transform] duration-200 border-b-4 border-slate-900 ' +
+          (compactMode ? 'h-[175px] md:h-[260px] ' : 'h-[280px] sm:h-[330px] md:h-[360px] ') +
           (battleEvent === 'boss-attack' ? 'animate-pulse' : '')
         }
         style={{
@@ -232,8 +235,8 @@ export function MissionBossBattleStage({
 
         <div
           className={
-            'absolute inset-x-0 top-0 z-20 grid grid-cols-2 bg-slate-950/80 text-white backdrop-blur-sm transition-all ' +
-            (compactMode ? 'gap-2 p-1.5 md:gap-3 md:p-3' : 'gap-3 p-2.5 md:p-3')
+            'absolute inset-x-0 top-0 z-20 grid grid-cols-2 bg-slate-950/85 text-white backdrop-blur-sm transition-all border-b-2 border-slate-900/40 ' +
+            (compactMode ? 'gap-2 p-1.5 md:gap-3 md:p-2.5' : 'gap-3 p-2.5 md:p-3')
           }
         >
           <BattleBar
@@ -256,16 +259,16 @@ export function MissionBossBattleStage({
 
         <div
           className={
-            'absolute z-20 rounded-xl border-2 border-slate-900 bg-white/92 shadow-[3px_3px_0px_#000] transition-all ' +
+            'absolute z-20 rounded-xl border-2 border-slate-900 bg-white/95 shadow-[2px_2px_0px_#000] transition-all ' +
             (compactMode
-              ? 'inset-x-2 bottom-2 p-1.5 md:inset-x-4 md:bottom-4 md:p-2'
-              : 'inset-x-3 bottom-3 p-2 md:inset-x-4 md:bottom-4')
+              ? 'inset-x-2 bottom-2 p-1.5 md:inset-x-4 md:bottom-2.5 md:p-2'
+              : 'inset-x-3 bottom-2.5 p-1.5 md:inset-x-4 md:bottom-3 md:p-2')
           }
         >
           <div
             className={
               'flex items-center justify-between font-black uppercase text-slate-800 ' +
-              (compactMode ? 'mb-0.5 text-[9px] md:mb-1 md:text-[11px]' : 'mb-1 text-[10px] md:text-[11px]')
+              (compactMode ? 'mb-0.5 text-[9px] md:mb-1 md:text-[10px]' : 'mb-0.5 text-[10px] md:text-[11px]')
             }
           >
             <span className="flex items-center gap-1">
@@ -278,7 +281,7 @@ export function MissionBossBattleStage({
           <div
             className={
               'overflow-hidden rounded-full border-2 border-slate-900 bg-white ' +
-              (compactMode ? 'h-2 md:h-3' : 'h-2.5 md:h-3')
+              (compactMode ? 'h-2 md:h-2.5' : 'h-2.5 md:h-3')
             }
           >
             <div
@@ -292,8 +295,8 @@ export function MissionBossBattleStage({
           className={
             'absolute inset-x-0 z-10 flex items-center justify-center overflow-hidden transition-all ' +
             (compactMode
-              ? 'top-[46px] bottom-[38px] md:top-[58px] md:bottom-[58px]'
-              : 'top-[52px] bottom-[50px] md:top-[58px] md:bottom-[58px]')
+              ? 'top-[44px] bottom-[34px] md:top-[54px] md:bottom-[44px]'
+              : 'top-[52px] bottom-[46px] md:top-[58px] md:bottom-[50px]')
           }
         >
           <img
@@ -303,8 +306,8 @@ export function MissionBossBattleStage({
             className={
               'select-none object-contain drop-shadow-2xl transition-[transform,opacity,height,width] duration-200 ' +
               (compactMode
-                ? 'h-[86px] w-[86px] md:h-[220px] md:w-[220px] '
-                : 'h-[165px] w-[165px] md:h-[230px] md:w-[230px] ') +
+                ? 'h-[86px] w-[86px] md:h-[180px] md:w-[180px] '
+                : 'h-[165px] w-[165px] md:h-[220px] md:w-[220px] ') +
               (battleEvent === 'boss-hit'
                 ? 'scale-95 -rotate-3'
                 : battleEvent === 'boss-attack'
@@ -374,6 +377,7 @@ export function MissionBossBattleStage({
         </div>
       </section>
 
+      {/* Battle Command Deck */}
       <MissionQuestionStage
         {...questionProps}
         question={question}
@@ -384,6 +388,7 @@ export function MissionBossBattleStage({
         interactionLocked={interactionLocked}
         compactMode={compactMode}
         onTypingFocusChange={setTypingFocused}
+        embedded={true}
       />
     </div>
   )

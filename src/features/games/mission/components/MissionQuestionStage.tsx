@@ -37,6 +37,7 @@ export interface MissionQuestionStageProps {
   showBossHud?: boolean
   interactionLocked?: boolean
   compactMode?: boolean
+  embedded?: boolean
   onTypingFocusChange?: (focused: boolean) => void
   onAnswerChange: (value: string) => void
   onSubmit: () => void
@@ -64,6 +65,7 @@ export function MissionQuestionStage({
   showBossHud = true,
   interactionLocked = false,
   compactMode = false,
+  embedded = false,
   onTypingFocusChange,
   onAnswerChange,
   onSubmit,
@@ -116,13 +118,18 @@ export function MissionQuestionStage({
   return (
     <div
       className={
-        'neo-card rounded-2xl border-4 border-slate-900 transition-all ' +
+        (embedded
+          ? 'transition-all '
+          : 'neo-card rounded-2xl border-4 border-slate-900 transition-all ' +
+            (isBoss
+              ? 'shadow-[6px_6px_0px_#9f1239] '
+              : 'shadow-[6px_6px_0px_#000] ')) +
         (isBoss && compactMode
           ? 'space-y-3 p-4 sm:space-y-4 sm:p-6 '
           : 'space-y-3.5 p-4 sm:space-y-4 sm:p-6 ') +
         (isBoss
-          ? 'bg-gradient-to-b from-rose-50 to-white shadow-[6px_6px_0px_#9f1239]'
-          : 'bg-white shadow-[6px_6px_0px_#000]')
+          ? 'bg-gradient-to-b from-rose-50/50 to-white'
+          : 'bg-white')
       }
     >
       {/* Retry Indicator */}
