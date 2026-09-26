@@ -124,9 +124,7 @@ export function MissionQuestionStage({
             (isBoss
               ? 'shadow-[6px_6px_0px_#9f1239] '
               : 'shadow-[6px_6px_0px_#000] ')) +
-        (isBoss && compactMode
-          ? 'space-y-3 p-3.5 sm:space-y-3.5 sm:p-5 '
-          : 'space-y-3.5 p-3.5 sm:space-y-4 sm:p-5 ') +
+        'space-y-3.5 p-3.5 sm:space-y-4 sm:p-5 ' +
         (embedded
           ? ''
           : isBoss
@@ -162,30 +160,27 @@ export function MissionQuestionStage({
         </div>
       ) : null}
 
-      {/* Audio Button */}
-      {question.audioText ? (
-        <div className="flex justify-center">
+      {/* Question Prompt & Audio Button on the same line */}
+      <div className="flex items-center justify-center gap-2.5 sm:gap-3">
+        {question.audioText ? (
           <Button
             variant="secondary"
-            className="h-12 w-12 rounded-2xl border-3 border-slate-900 shadow-[3px_3px_0px_#000] p-0 flex items-center justify-center bg-[#432dd7] hover:bg-indigo-700 text-white"
+            className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl border-3 border-slate-900 shadow-[2px_2px_0px_#000] p-0 flex items-center justify-center bg-[#432dd7] hover:bg-indigo-700 text-white shrink-0"
             aria-label="Phát lại audio"
             title="Phát lại audio"
             onClick={onPlayAudio}
           >
-            <Headphones className="h-6 w-6" />
+            <Headphones className="h-5 w-5" />
           </Button>
-        </div>
-      ) : null}
+        ) : null}
 
-      {/* Question Prompt */}
-      <div className="text-center space-y-1">
         <h1
           className={
-            'font-black text-slate-900 leading-snug tracking-tight ' +
+            'font-black text-slate-900 leading-snug tracking-tight text-center ' +
             (isBoss && compactMode ? 'text-xl sm:text-2xl' : 'text-xl sm:text-2xl')
           }
         >
-          {question.prompt}
+          {question.prompt === 'Nghe và nhập từ hoặc cụm từ' ? 'Nghe và nhập' : question.prompt}
         </h1>
       </div>
 
@@ -246,113 +241,105 @@ export function MissionQuestionStage({
           })}
         </div>
       ) : (
-        <div className="relative">
-          <Input
-            ref={inputRef}
-            autoFocus
-            value={answerValue}
-            onFocus={(event) => {
-              const target = event.currentTarget
-              onTypingFocusChange?.(true)
-              window.setTimeout(() => {
-                target.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
-              }, 120)
-            }}
-            onBlur={() => onTypingFocusChange?.(false)}
-            onChange={(event) => onAnswerChange(event.target.value)}
-            onKeyDown={(event) => {
-              if (interactionLocked || event.key !== 'Enter') return
-              event.preventDefault()
-              if (feedback?.finalized) onNext()
-              else if (answerValue.trim()) onSubmit()
-            }}
-            disabled={feedback?.finalized || interactionLocked}
-            placeholder="Nhập câu trả lời..."
-            className={
-              'text-base sm:text-lg font-black border-3 border-slate-900 shadow-[3px_3px_0px_#000] rounded-xl text-center bg-white scroll-mt-[250px] ' +
-              (hasHint && hasTranslation
-                ? 'pr-44 sm:pr-48 '
-                : hasHint || hasTranslation
-                  ? 'pr-24 sm:pr-28 '
-                  : '') +
-              (isBoss && compactMode ? 'p-2.5 sm:p-3.5' : 'p-3 sm:p-3.5')
-            }
-          />
-
-          {/* Action buttons inside input right corner */}
-          {(hasHint || hasTranslation) && (
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-              {hasTranslation && (
-                <Button
-                  variant="ghost"
-                  type="button"
-                  aria-label="Xem nghĩa câu"
-                  title="Xem nghĩa câu"
-                  className="h-8 px-2 sm:px-2.5 text-xs font-black border-2 border-slate-900 bg-sky-50 hover:bg-sky-100 text-slate-900 rounded-lg shadow-[1.5px_1.5px_0px_#000] flex items-center gap-1"
-                  disabled={interactionLocked}
-                  onClick={onShowTranslation}
-                >
-                  <Languages className="h-3.5 w-3.5 text-sky-700" />
-                  <span className="hidden sm:inline">Xem nghĩa câu</span>
-                  <span className="sm:hidden">Dịch</span>
-                </Button>
-              )}
-              {hasHint && (
-                <Button
-                  variant="ghost"
-                  type="button"
-                  aria-label={hintLevel === 0 ? 'Gợi ý' : 'Gợi ý thêm'}
-                  title={hintLevel === 0 ? 'Gợi ý' : 'Gợi ý thêm'}
-                  className="h-8 px-2.5 text-xs font-black border-2 border-slate-900 bg-amber-50 hover:bg-amber-100 text-slate-900 rounded-lg shadow-[1.5px_1.5px_0px_#000] flex items-center gap-1"
-                  disabled={interactionLocked}
-                  onClick={onHint}
-                >
-                  <Lightbulb className="h-3.5 w-3.5 text-amber-600" />
-                  <span>{hintLevel === 0 ? 'Gợi ý' : 'Gợi ý thêm'}</span>
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Answer Feedback Banner */}
-      {feedback ? (
-        <div
-          className={
-            'rounded-xl border-3 p-3.5 font-bold shadow-[3px_3px_0px_#000] ' +
-            (feedback.correct
-              ? 'border-emerald-700 bg-emerald-50 text-emerald-950'
-              : 'border-rose-700 bg-rose-50 text-rose-950')
-          }
-        >
-          <div className="flex items-center gap-2">
-            {feedback.correct ? (
-              <CheckCircle2 className="h-5 w-5 text-emerald-700 shrink-0" />
-            ) : (
-              <XCircle className="h-5 w-5 text-rose-700 shrink-0" />
+        <div className="space-y-1.5">
+          <div className="relative">
+            {/* Status icon inside input on the left when feedback is present */}
+            {feedback && (
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none z-10">
+                {feedback.correct ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-700 shrink-0" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-rose-700 shrink-0" />
+                )}
+              </div>
             )}
-            <span className="font-black text-sm">{feedback.text}</span>
+
+            <Input
+              ref={inputRef}
+              autoFocus
+              value={answerValue}
+              onFocus={(event) => {
+                const target = event.currentTarget
+                onTypingFocusChange?.(true)
+                window.setTimeout(() => {
+                  target.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+                }, 120)
+              }}
+              onBlur={() => onTypingFocusChange?.(false)}
+              onChange={(event) => onAnswerChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (interactionLocked || event.key !== 'Enter') return
+                event.preventDefault()
+                if (feedback?.finalized) onNext()
+                else if (answerValue.trim()) onSubmit()
+              }}
+              disabled={feedback?.finalized || interactionLocked}
+              placeholder="Nhập câu trả lời..."
+              className={
+                'text-base sm:text-lg font-black border-3 rounded-xl text-center scroll-mt-[250px] transition-colors disabled:opacity-100 disabled:cursor-default ' +
+                (feedback
+                  ? feedback.correct
+                    ? 'border-emerald-700 bg-emerald-50 text-emerald-950 shadow-[3px_3px_0px_#047857] '
+                    : 'border-rose-700 bg-rose-50 text-rose-950 shadow-[3px_3px_0px_#be123c] '
+                  : 'border-slate-900 bg-white text-slate-900 shadow-[3px_3px_0px_#000] ') +
+                (feedback ? 'pl-11 ' : '') +
+                (!feedback && hasHint && hasTranslation
+                  ? 'pr-24 '
+                  : !feedback && (hasHint || hasTranslation)
+                    ? 'pr-14 '
+                    : feedback
+                      ? 'pr-11 '
+                      : '') +
+                'p-3 sm:p-3.5'
+              }
+            />
+
+            {/* Action buttons inside input right corner */}
+            {(hasHint || hasTranslation) && (
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                {hasTranslation && (
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    aria-label="Xem nghĩa câu"
+                    title="Xem nghĩa câu"
+                    className="h-8 w-8 min-h-0 p-0 border-2 border-slate-900 bg-sky-50 hover:bg-sky-100 text-slate-900 rounded-lg shadow-[1.5px_1.5px_0px_#000] flex items-center justify-center shrink-0"
+                    disabled={interactionLocked}
+                    onClick={onShowTranslation}
+                  >
+                    <Languages className="h-4 w-4 text-sky-700" />
+                  </Button>
+                )}
+                {hasHint && (
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    aria-label={hintLevel === 0 ? 'Gợi ý' : 'Gợi ý thêm'}
+                    title={hintLevel === 0 ? 'Gợi ý' : 'Gợi ý thêm'}
+                    className="h-8 w-8 min-h-0 p-0 border-2 border-slate-900 bg-amber-50 hover:bg-amber-100 text-slate-900 rounded-lg shadow-[1.5px_1.5px_0px_#000] flex items-center justify-center shrink-0"
+                    disabled={interactionLocked}
+                    onClick={onHint}
+                  >
+                    <Lightbulb className="h-4 w-4 text-amber-600" />
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
-          {feedback.finalized && !feedback.correct ? (
-            <div className="mt-2 pt-2 border-t border-rose-200 text-xs sm:text-sm font-bold text-rose-900">
-              Đáp án: <strong className="font-black underline">{question.acceptedAnswers[0]}</strong>
+          {/* Correct answer subtitle when wrong and finalized */}
+          {feedback?.finalized && !feedback.correct && question.acceptedAnswers?.[0] ? (
+            <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold text-rose-800 pt-0.5">
+              <span>Đáp án đúng:</span>
+              <strong className="font-black underline text-rose-950">{question.acceptedAnswers[0]}</strong>
             </div>
           ) : null}
         </div>
-      ) : null}
+      )}
 
       {/* Footer Actions */}
       {!feedback?.finalized ? (
-        <div
-          className={
-            'pt-1 ' +
-            (isBoss && compactMode
-              ? 'sticky bottom-2 z-40 rounded-xl border-2 border-slate-900 bg-white/95 p-2 shadow-[3px_3px_0px_#000] backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none'
-              : '')
-          }
-        >
+        <div className="pt-1">
           {!question.options ? (
             <div className="flex items-center gap-2.5">
               <Button

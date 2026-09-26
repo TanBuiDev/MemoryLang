@@ -807,10 +807,10 @@ export default function MissionGamePage() {
   return (
     <div
       className={
-        'mx-auto max-w-3xl ' +
+        'mx-auto max-w-3xl -mt-3.5 sm:-mt-4 ' +
         (currentStage?.type === 'boss'
-          ? 'min-h-[calc(100dvh-5rem)] flex flex-col gap-3 px-3 py-3 sm:gap-4 sm:px-4 sm:py-5 sm:min-h-0'
-          : 'space-y-5 px-4 py-5')
+          ? 'min-h-[calc(100dvh-4.5rem)] flex flex-col gap-2.5 px-3 pt-0.5 pb-3 sm:gap-3 sm:px-4 sm:pt-1 sm:pb-4 sm:min-h-0'
+          : 'space-y-4 px-3 sm:px-4 pt-0.5 pb-4 sm:pt-1 sm:pb-5')
       }
     >
       {/* Compact Single-Row Mission Header */}
@@ -937,6 +937,7 @@ export default function MissionGamePage() {
       ) : currentStage?.type === 'boss' && currentQuestion ? (
         <MissionBossBattleStage
           key={`${currentQuestion.id}-${attempt.questionIndex}`}
+          missionIndex={missionIndex}
           question={currentQuestion}
           index={attempt.questionIndex}
           total={stageQuestions.length}
