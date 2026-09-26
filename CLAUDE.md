@@ -47,6 +47,7 @@ src/
     vocabulary/     # RelatedTermsSection, relationshipDisplay
   features/
     demo/           # Hardcoded demo data (3 vocab, 2 decks)
+    games/          # Vocabulary mission games & animated Boss Battle system
     quiz/           # Translation-input/multiple-choice quiz domain, legacy true/false generator, session persistence
     study/          # Study mode labels
     vocabulary/     # Zod form schema
@@ -334,6 +335,27 @@ Mission UI adheres to the Neobrutalist design with a strict no-emoji policy (usi
 - Do not configure JS chunks with year-long immutable caching. `/assets/*.js`, root `/*.js`, `/assets/*.css`, and root `/*.css` must revalidate; stale chunk fallback is handled in the app by `lazyWithChunkRecovery()`, not by a top-level `404.html`.
 - Cloudflare Pages `_redirects` only supports local proxy/rewrite status `200`. Do not add unsupported rewrite rules such as `/assets/* /404.html 404`; they can prevent the SPA fallback `/* /index.html 200` from working and make direct routes like `/app/admin` serve the static 404 page.
 - Do not ship a top-level `public/404.html` for this SPA. On Cloudflare Pages, a root `404.html` switches missing-path handling to Not Found behavior; without it, Pages treats the project as an SPA and routes deep links back to `/`.
+
+## Mission Game & Boss Battle Architecture
+- **Source Paths:** `src/features/games/mission/` & `src/pages/games/MissionGamePage.tsx`
+- **Shared Curriculum:**
+  - Mission stages share a unified core curriculum pipeline: question generation, answer normalization, scoring, retry progression, persistence, and SRS scheduling (`missionEngine.ts`, `generators.ts`).
+  - Stage types: `matching`, `listening_choice`, `listening_typing`, `meaning_recall`, `context_cloze`, `spelling`, and the climactic `boss` battle.
+  - Generates deterministic questions from target terms while preserving existing review and learning algorithms.
+- **Boss Battle System:**
+  - Original boss character: **Rune Beetle** (`public/game/boss-battle/art/boss/`).
+  - Animated states: `idle`, `hit`, `attack`, `finisher`, `defeated`.
+  - Deterministic state: Combat damage, animations, and finisher gauges are derived directly from persisted mission answers. Combat visual sequences temporarily lock controls to maintain state consistency without mutating grading rules.
+  - Unified Arena Console: Single integrated console scaled to `100dvh` on mobile, merging the combat stage, floating glassmorphic Finisher Bar (`bg-white/40 backdrop-blur-md`), and battle command deck directly on top of the environment.
+  - Interaction & Layout Stability: Zero-layout-shift input focus (static sizing, no sticky wrapper shrink), embedded inline grading status (check/cross icons in-input), and compact icon-only action buttons (Hint & Translation) preserving input space.
+- **Responsive WebP Background Themes:**
+  - 4 themes located in `public/game/boss-battle/art/backgrounds/webp/`:
+    - `forest-sunlit-enchanted` (active default)
+    - `forest-peaceful-shrine`
+    - `meadow-rpg-mountains`
+    - `valley-snowy-mountains`
+  - Breakpoint-aware delivery: HTML `<picture>` element serves 216×384 (9:16) WebP for mobile (`max-width: 767px`) and 384×216 (16:9) WebP for desktop, with fallback to `forest-arena.svg`.
+  - Asset Manifest: Managed via `public/game/boss-battle/manifest.json` and documented in `public/game/boss-battle/README.md`.
 
 ## Git Conventions
 See `AGENTS.md` for commit workflow. Conventional commits: `feat:`, `fix:`, `docs:`, `chore:`, `test:`, `refactor:`. No auto-push. Check for secrets before committing.
