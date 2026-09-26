@@ -215,19 +215,21 @@ export function MissionBossBattleStage({
   return (
     <div
       className={
-        'relative overflow-hidden rounded-2xl sm:rounded-3xl border-4 border-slate-900 shadow-[6px_6px_0px_#000] bg-white flex flex-col transition-all duration-300'
+        'relative overflow-hidden rounded-2xl sm:rounded-3xl border-4 border-slate-900 shadow-[6px_6px_0px_#000] bg-white flex flex-col flex-1 min-h-[calc(100dvh-9.5rem)] sm:min-h-[560px] transition-all duration-300'
       }
     >
       <section
         aria-label="Đấu Boss"
         className={
           'relative w-full overflow-hidden transition-[height,transform] duration-200 border-b-4 border-slate-900 ' +
-          (compactMode ? 'h-[175px] md:h-[260px] ' : 'h-[280px] sm:h-[330px] md:h-[360px] ') +
+          (compactMode
+            ? 'h-[160px] shrink-0 '
+            : 'flex-1 min-h-[240px] sm:min-h-[320px] ') +
           (battleEvent === 'boss-attack' ? 'animate-pulse' : '')
         }
         style={{
           backgroundImage: `url("${ASSETS.background}")`,
-          backgroundPosition: 'center',
+          backgroundPosition: 'center bottom',
           backgroundSize: 'cover',
         }}
       >

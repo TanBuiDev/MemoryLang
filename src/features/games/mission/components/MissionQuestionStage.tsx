@@ -119,7 +119,7 @@ export function MissionQuestionStage({
     <div
       className={
         (embedded
-          ? 'transition-all '
+          ? 'shrink-0 transition-all '
           : 'neo-card rounded-2xl border-4 border-slate-900 transition-all ' +
             (isBoss
               ? 'shadow-[6px_6px_0px_#9f1239] '

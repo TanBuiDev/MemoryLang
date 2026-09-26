@@ -805,9 +805,16 @@ export default function MissionGamePage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5 px-4 py-5">
+    <div
+      className={
+        'mx-auto max-w-3xl ' +
+        (currentStage?.type === 'boss'
+          ? 'min-h-[calc(100dvh-5rem)] flex flex-col gap-3 px-3 py-3 sm:gap-4 sm:px-4 sm:py-5 sm:min-h-0'
+          : 'space-y-5 px-4 py-5')
+      }
+    >
       {/* Compact Single-Row Mission Header */}
-      <div className="flex items-center gap-2.5 sm:gap-3.5">
+      <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
         <Button
           variant="ghost"
           className="h-10 w-10 p-0 shrink-0 border-2 border-slate-900 bg-white shadow-[2px_2px_0px_#000] rounded-xl hover:bg-slate-100"
