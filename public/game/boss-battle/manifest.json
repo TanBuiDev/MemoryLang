@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "boss": {
     "id": "rune-beetle",
     "states": {
@@ -8,7 +8,8 @@
       "attack": "/game/boss-battle/art/boss/rune-beetle-attack.svg",
       "defeated": "/game/boss-battle/art/boss/rune-beetle-defeated.svg",
       "finisherHit": "/game/boss-battle/art/boss/rune-beetle-finisher-hit.svg"
-    }
+    },
+    "fallback": true
   },
   "background": {
     "default": "forest-sunlit-enchanted",
@@ -56,5 +57,56 @@
   },
   "bgm": {
     "bossLoop": "/game/boss-battle/audio/bgm/boss-battle-loop.wav"
+  },
+  "themes": {
+    "forest-sunlit-enchanted": {
+      "name": "Khu rừng nắng mê hoặc",
+      "background": {
+        "desktop": "/game/boss-battle/art/backgrounds/webp/forest-sunlit-enchanted-desktop.webp",
+        "mobile": "/game/boss-battle/art/backgrounds/webp/forest-sunlit-enchanted-mobile.webp"
+      },
+      "boss": {
+        "name": "Sunleaf Guardian",
+        "image": "/game/boss-battle/art/bosses/forest-sunlit-enchanted.webp"
+      }
+    },
+    "forest-peaceful-shrine": {
+      "name": "Đền rừng thanh bình",
+      "background": {
+        "desktop": "/game/boss-battle/art/backgrounds/webp/forest-peaceful-shrine-desktop.webp",
+        "mobile": "/game/boss-battle/art/backgrounds/webp/forest-peaceful-shrine-mobile.webp"
+      },
+      "boss": {
+        "name": "Shrine Warden",
+        "image": "/game/boss-battle/art/bosses/forest-peaceful-shrine.webp"
+      }
+    },
+    "meadow-rpg-mountains": {
+      "name": "Đồng cỏ dưới chân núi",
+      "background": {
+        "desktop": "/game/boss-battle/art/backgrounds/webp/meadow-rpg-mountains-desktop.webp",
+        "mobile": "/game/boss-battle/art/backgrounds/webp/meadow-rpg-mountains-mobile.webp"
+      },
+      "boss": {
+        "name": "Summit Guardian",
+        "image": "/game/boss-battle/art/bosses/meadow-rpg-mountains.webp"
+      }
+    },
+    "valley-snowy-mountains": {
+      "name": "Thung lũng núi tuyết",
+      "background": {
+        "desktop": "/game/boss-battle/art/backgrounds/webp/valley-snowy-mountains-desktop.webp",
+        "mobile": "/game/boss-battle/art/backgrounds/webp/valley-snowy-mountains-mobile.webp"
+      },
+      "boss": {
+        "name": "Frosthorn Guardian",
+        "image": "/game/boss-battle/art/bosses/valley-snowy-mountains.webp"
+      }
+    }
+  },
+  "rotation": {
+    "strategy": "mission-index-modulo",
+    "cycleLength": 4,
+    "missionIndexBase": 0
   }
 }
