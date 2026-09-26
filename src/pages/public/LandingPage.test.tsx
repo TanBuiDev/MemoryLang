@@ -32,8 +32,10 @@ describe('LandingPage', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Tính năng' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Đấu Boss RPG' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Gia sư AI' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Hệ sinh thái' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Học Từ Vựng Qua Chiến Dịch & Đấu Boss RPG' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Hỏi đáp & Tra cứu tức thì với Gia sư AI 24/7' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Tất cả công cụ bạn cần để làm chủ Tiếng Anh' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Học không giới hạn cùng MemoryLang Pro' })).toBeInTheDocument()
@@ -42,6 +44,7 @@ describe('LandingPage', () => {
 
     const navigationTargets = [
       { button: 'Tính năng', sectionId: 'features' },
+      { button: 'Đấu Boss RPG', sectionId: 'mission-game' },
       { button: 'Gia sư AI', sectionId: 'ai-tutor' },
       { button: 'Hệ sinh thái', sectionId: 'pillars' },
     ]
