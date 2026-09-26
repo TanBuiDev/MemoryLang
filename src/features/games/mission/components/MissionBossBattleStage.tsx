@@ -9,7 +9,11 @@ import {
 } from './MissionQuestionStage'
 
 const ASSETS = {
-  background: '/game/boss-battle/art/backgrounds/forest-arena.svg',
+  background: {
+    desktop: '/game/boss-battle/art/backgrounds/webp/forest-sunlit-enchanted-desktop.webp',
+    mobile: '/game/boss-battle/art/backgrounds/webp/forest-sunlit-enchanted-mobile.webp',
+    fallback: '/game/boss-battle/art/backgrounds/forest-arena.svg',
+  },
   boss: {
     idle: '/game/boss-battle/art/boss/rune-beetle-idle.svg',
     hit: '/game/boss-battle/art/boss/rune-beetle-hit.svg',
@@ -217,12 +221,20 @@ export function MissionBossBattleStage({
       className={
         'relative overflow-hidden rounded-2xl sm:rounded-3xl border-4 border-slate-900 shadow-[6px_6px_0px_#000] flex flex-col flex-1 min-h-[calc(100dvh-9.5rem)] sm:min-h-[580px] transition-all duration-300'
       }
-      style={{
-        backgroundImage: `url("${ASSETS.background}")`,
-        backgroundPosition: 'center bottom',
-        backgroundSize: 'cover',
-      }}
     >
+      <picture className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
+        <source media="(max-width: 767px)" srcSet={ASSETS.background.mobile} />
+        <img
+          src={ASSETS.background.desktop}
+          alt=""
+          draggable={false}
+          className="h-full w-full object-cover object-center"
+          onError={(event) => {
+            event.currentTarget.src = ASSETS.background.fallback
+          }}
+        />
+      </picture>
+
       <span className="sr-only" aria-live="polite">{battleStatus}</span>
 
       {/* Top Battle HUD (Player HP vs Boss HP) - Floating overlay at the top */}

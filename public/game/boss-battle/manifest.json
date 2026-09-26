@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "boss": {
     "id": "rune-beetle",
     "states": {
@@ -10,7 +10,28 @@
       "finisherHit": "/game/boss-battle/art/boss/rune-beetle-finisher-hit.svg"
     }
   },
-  "background": "/game/boss-battle/art/backgrounds/forest-arena.svg",
+  "background": {
+    "default": "forest-sunlit-enchanted",
+    "fallback": "/game/boss-battle/art/backgrounds/forest-arena.svg",
+    "variants": {
+      "forest-sunlit-enchanted": {
+        "desktop": "/game/boss-battle/art/backgrounds/webp/forest-sunlit-enchanted-desktop.webp",
+        "mobile": "/game/boss-battle/art/backgrounds/webp/forest-sunlit-enchanted-mobile.webp"
+      },
+      "forest-peaceful-shrine": {
+        "desktop": "/game/boss-battle/art/backgrounds/webp/forest-peaceful-shrine-desktop.webp",
+        "mobile": "/game/boss-battle/art/backgrounds/webp/forest-peaceful-shrine-mobile.webp"
+      },
+      "meadow-rpg-mountains": {
+        "desktop": "/game/boss-battle/art/backgrounds/webp/meadow-rpg-mountains-desktop.webp",
+        "mobile": "/game/boss-battle/art/backgrounds/webp/meadow-rpg-mountains-mobile.webp"
+      },
+      "valley-snowy-mountains": {
+        "desktop": "/game/boss-battle/art/backgrounds/webp/valley-snowy-mountains-desktop.webp",
+        "mobile": "/game/boss-battle/art/backgrounds/webp/valley-snowy-mountains-mobile.webp"
+      }
+    }
+  },
   "effects": {
     "slash": "/game/boss-battle/art/effects/slash.svg",
     "impact": "/game/boss-battle/art/effects/impact.svg",
