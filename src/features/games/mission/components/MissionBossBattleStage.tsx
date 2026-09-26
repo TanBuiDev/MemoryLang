@@ -225,7 +225,7 @@ export function MissionBossBattleStage({
   return (
     <div
       className={
-        'relative overflow-hidden rounded-2xl sm:rounded-3xl border-4 border-slate-900 shadow-[6px_6px_0px_#000] flex flex-col flex-1 min-h-[calc(100dvh-9.5rem)] sm:min-h-[580px] transition-all duration-300'
+        'relative overflow-hidden rounded-2xl sm:rounded-3xl border-4 border-slate-900 shadow-[6px_6px_0px_#000] flex flex-col flex-1 min-h-[calc(100dvh-8.5rem)] sm:min-h-[580px] transition-all duration-300'
       }
     >
       <picture className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
