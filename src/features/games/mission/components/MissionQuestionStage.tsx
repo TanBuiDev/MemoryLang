@@ -124,9 +124,7 @@ export function MissionQuestionStage({
             (isBoss
               ? 'shadow-[6px_6px_0px_#9f1239] '
               : 'shadow-[6px_6px_0px_#000] ')) +
-        (isBoss && compactMode
-          ? 'space-y-3 p-3.5 sm:space-y-3.5 sm:p-5 '
-          : 'space-y-3.5 p-3.5 sm:space-y-4 sm:p-5 ') +
+        'space-y-3.5 p-3.5 sm:space-y-4 sm:p-5 ' +
         (embedded
           ? ''
           : isBoss
@@ -292,7 +290,7 @@ export function MissionQuestionStage({
                     : feedback
                       ? 'pr-11 '
                       : '') +
-                (isBoss && compactMode ? 'p-2.5 sm:p-3.5' : 'p-3 sm:p-3.5')
+                'p-3 sm:p-3.5'
               }
             />
 
@@ -341,14 +339,7 @@ export function MissionQuestionStage({
 
       {/* Footer Actions */}
       {!feedback?.finalized ? (
-        <div
-          className={
-            'pt-1 ' +
-            (isBoss && compactMode
-              ? 'sticky bottom-2 z-40 rounded-xl border-2 border-slate-900 bg-white/95 p-2 shadow-[3px_3px_0px_#000] backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none'
-              : '')
-          }
-        >
+        <div className="pt-1">
           {!question.options ? (
             <div className="flex items-center gap-2.5">
               <Button
