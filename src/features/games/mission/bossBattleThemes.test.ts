@@ -18,11 +18,11 @@ describe('bossBattleThemes', () => {
 
     for (const theme of BOSS_BATTLE_THEMES) {
       expect(theme.background.desktop).toContain(theme.id)
-      expect(theme.background.desktop).toEndWith('-desktop.webp')
+      expect(theme.background.desktop.endsWith('-desktop.webp')).toBe(true)
       expect(theme.background.mobile).toContain(theme.id)
-      expect(theme.background.mobile).toEndWith('-mobile.webp')
+      expect(theme.background.mobile.endsWith('-mobile.webp')).toBe(true)
       expect(theme.boss.image).toContain(theme.id)
-      expect(theme.boss.image).toEndWith('.webp')
+      expect(theme.boss.image.endsWith('.webp')).toBe(true)
       expect(theme.boss.name.length).toBeGreaterThan(0)
     }
   })
@@ -57,16 +57,16 @@ describe('bossBattleThemes', () => {
   })
 
   it('keeps the legacy Rune Beetle and SVG arena as resilient fallbacks', () => {
-    expect(FALLBACK_BOSS_BACKGROUND).toEndWith('forest-arena.svg')
+    expect(FALLBACK_BOSS_BACKGROUND.endsWith('forest-arena.svg')).toBe(true)
     expect(FALLBACK_BOSS.name).toBe('Rune Beetle')
-    expect(FALLBACK_BOSS.states.idle).toEndWith('rune-beetle-idle.svg')
-    expect(FALLBACK_BOSS.states.hit).toEndWith('rune-beetle-hit.svg')
-    expect(FALLBACK_BOSS.states.attack).toEndWith('rune-beetle-attack.svg')
-    expect(FALLBACK_BOSS.states.finisher).toEndWith(
+    expect(FALLBACK_BOSS.states.idle.endsWith('rune-beetle-idle.svg')).toBe(true)
+    expect(FALLBACK_BOSS.states.hit.endsWith('rune-beetle-hit.svg')).toBe(true)
+    expect(FALLBACK_BOSS.states.attack.endsWith('rune-beetle-attack.svg')).toBe(true)
+    expect(FALLBACK_BOSS.states.finisher.endsWith(
       'rune-beetle-finisher-hit.svg',
-    )
-    expect(FALLBACK_BOSS.states.defeated).toEndWith(
+    )).toBe(true)
+    expect(FALLBACK_BOSS.states.defeated.endsWith(
       'rune-beetle-defeated.svg',
-    )
+    )).toBe(true)
   })
 })
