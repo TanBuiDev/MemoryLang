@@ -4,14 +4,7 @@ import {
   ArrowLeft,
   Volume2,
   VolumeX,
-  BookOpen,
-  Puzzle,
-  Headphones,
-  FileText,
-  Brain,
-  Sparkles,
   Swords,
-  Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -68,19 +61,6 @@ function stageLabel(type: MissionDefinition['stages'][number]['type']) {
     case 'meaning_recall': return 'Nhớ từ'
     case 'spelling': return 'Chính tả'
     case 'boss': return 'Thử thách cuối'
-  }
-}
-
-function getStageIcon(type: MissionDefinition['stages'][number]['type']) {
-  switch (type) {
-    case 'learn': return BookOpen
-    case 'matching': return Puzzle
-    case 'listening_choice':
-    case 'listening_typing': return Headphones
-    case 'context_cloze': return FileText
-    case 'meaning_recall': return Brain
-    case 'spelling': return Sparkles
-    case 'boss': return Swords
   }
 }
 
@@ -826,77 +806,102 @@ export default function MissionGamePage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 px-4 py-5">
-      <div className="flex items-center justify-between gap-3">
-        <Button variant="ghost" className="h-11 w-11 p-0" aria-label="Thoát Mission" title="Thoát Mission" onClick={() => setExitOpen(true)}>
+      {/* Compact Single-Row Mission Header */}
+      <div className="flex items-center gap-2.5 sm:gap-3.5">
+        <Button
+          variant="ghost"
+          className="h-10 w-10 p-0 shrink-0 border-2 border-slate-900 bg-white shadow-[2px_2px_0px_#000] rounded-xl hover:bg-slate-100"
+          aria-label="Thoát Mission"
+          title="Thoát Mission"
+          onClick={() => setExitOpen(true)}
+        >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            className="h-11 w-11 p-0"
-            aria-label={sfxEnabled ? 'Tắt hiệu ứng âm thanh' : 'Bật hiệu ứng âm thanh'}
-            title={sfxEnabled ? 'Tắt hiệu ứng âm thanh' : 'Bật hiệu ứng âm thanh'}
-            aria-pressed={sfxEnabled}
-            onClick={toggleSfx}
+
+        {/* Center: Segmented Progress Bar & Stage Indicator */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+          {/* Segmented Progress Bar */}
+          <div
+            role="progressbar"
+            aria-label="Tiến độ Mission"
+            aria-valuenow={progressPercent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            className="flex items-center gap-1 sm:gap-1.5 w-full h-3 sm:h-3.5 bg-slate-100 p-0.5 border-2 border-slate-900 rounded-full shadow-[2px_2px_0px_#000]"
           >
-            {sfxEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
-          </Button>
-          <div className="text-right">
-            <div className="text-xs font-black uppercase text-muted-foreground">Mission {missionIndex + 1}</div>
-            <div className="text-sm font-black">{currentStage ? stageLabel(currentStage.type) : ''}</div>
-          </div>
-        </div>
-      </div>
+            {loaded?.definition.stages.map((stage, sIdx) => {
+              const isPassed = sIdx < (attempt?.stageIndex ?? 0)
+              const isCurrent = sIdx === (attempt?.stageIndex ?? 0)
+              const isBossStage = stage.type === 'boss'
 
-      {/* Stage Timeline Stepper */}
-      {loaded?.definition.stages && loaded.definition.stages.length > 1 ? (
-        <div className="flex items-center justify-between gap-1 sm:gap-2 px-1">
-          {loaded.definition.stages.map((stage, sIdx) => {
-            const Icon = getStageIcon(stage.type)
-            const isPassed = sIdx < (attempt?.stageIndex ?? 0)
-            const isCurrent = sIdx === (attempt?.stageIndex ?? 0)
-            const isBossStage = stage.type === 'boss'
+              let fillWidth = '0%'
+              if (isPassed) {
+                fillWidth = '100%'
+              } else if (isCurrent) {
+                const stageTotal = stage.type === 'learn'
+                  ? loaded.missionTerms.length
+                  : (stageQuestions.length || stage.questions.length || 1)
+                const currentQ = attempt?.questionIndex ?? 0
+                const ratio = Math.min(1, Math.max(0.15, currentQ / stageTotal))
+                fillWidth = `${Math.round(ratio * 100)}%`
+              }
 
-            return (
-              <div
-                key={sIdx}
-                className="flex-1 flex flex-col items-center group relative"
-                title={stageLabel(stage.type)}
-              >
+              return (
                 <div
-                  className={
-                    'w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 border-slate-900 flex items-center justify-center transition-all ' +
-                    (isCurrent
-                      ? isBossStage
-                        ? 'bg-rose-500 text-white shadow-[3px_3px_0px_#9f1239] scale-105'
-                        : 'bg-[#fdc800] text-slate-900 shadow-[3px_3px_0px_#000] scale-105'
-                      : isPassed
-                        ? 'bg-emerald-400 text-slate-900 shadow-[2px_2px_0px_#000]'
-                        : 'bg-slate-100 text-slate-400 border-slate-300')
-                  }
+                  key={sIdx}
+                  className="flex-1 h-full bg-white/70 rounded-full overflow-hidden relative cursor-default"
+                  title={`Chặng ${sIdx + 1}: ${stageLabel(stage.type)}`}
                 >
-                  {isPassed ? (
-                    <Check className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
-                  ) : (
-                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <div
+                    className={
+                      'h-full transition-all duration-300 rounded-full ' +
+                      (isPassed
+                        ? 'bg-emerald-400'
+                        : isCurrent
+                          ? isBossStage
+                            ? 'bg-rose-500 animate-pulse'
+                            : 'bg-[#fdc800]'
+                          : 'bg-transparent')
+                    }
+                    style={{ width: fillWidth }}
+                  />
+                  {isBossStage && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <Swords className={`h-2 w-2 sm:h-2.5 sm:w-2.5 ${isPassed ? 'text-slate-900' : isCurrent ? 'text-white' : 'text-slate-400'}`} />
+                    </div>
                   )}
                 </div>
-                <span
-                  className={
-                    'hidden sm:block text-[10px] font-black uppercase mt-1.5 truncate max-w-[70px] text-center ' +
-                    (isCurrent ? 'text-slate-900' : isPassed ? 'text-emerald-700' : 'text-slate-400')
-                  }
-                >
-                  {stageLabel(stage.type)}
-                </span>
-              </div>
-            )
-          })}
-        </div>
-      ) : null}
+              )
+            })}
+          </div>
 
-      <div role="progressbar" aria-label="Tiến độ Mission" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100} className="h-4 overflow-hidden rounded-full border-2 border-border bg-card">
-        <div className="h-full bg-primary transition-all" style={{ width: String(progressPercent) + '%' }} />
+          {/* Subtext: Stage name & percentage */}
+          <div className="flex items-center justify-between text-[11px] font-black px-0.5 text-slate-600">
+            <span className="flex items-center gap-1.5 truncate">
+              <span className="px-1.5 py-0.5 bg-amber-200 border border-slate-900 rounded-md text-[10px] text-slate-900 shrink-0">
+                Chặng {(attempt?.stageIndex ?? 0) + 1}/{loaded?.definition.stages.length ?? 5}
+              </span>
+              <span className="truncate text-slate-900">
+                {currentStage ? stageLabel(currentStage.type) : ''}
+              </span>
+            </span>
+            <span className="text-slate-500 shrink-0 text-[10px] sm:text-[11px]">
+              {progressPercent}%
+            </span>
+          </div>
+        </div>
+
+        {/* Right side: Sound toggle button */}
+        <Button
+          variant="ghost"
+          className="h-10 w-10 p-0 shrink-0 border-2 border-slate-900 bg-white shadow-[2px_2px_0px_#000] rounded-xl hover:bg-slate-100"
+          aria-label={sfxEnabled ? 'Tắt hiệu ứng âm thanh' : 'Bật hiệu ứng âm thanh'}
+          title={sfxEnabled ? 'Tắt hiệu ứng âm thanh' : 'Bật hiệu ứng âm thanh'}
+          aria-pressed={sfxEnabled}
+          onClick={toggleSfx}
+        >
+          {sfxEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+        </Button>
       </div>
 
       {currentStage?.type === 'learn' && currentLearnTerm ? (
