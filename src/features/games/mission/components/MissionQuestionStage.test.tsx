@@ -151,4 +151,47 @@ describe('Mission question hints', () => {
     fireEvent.keyDown(window, { key: 'Enter' })
     expect(onNext).toHaveBeenCalledOnce()
   })
+
+  it('renders feedback indicator directly inside the input container instead of a separate banner', () => {
+    const props = {
+      ...actions,
+      stageType: 'context_cloze' as const,
+      question: {
+        id: 'cloze:term-1',
+        type: 'context_cloze' as const,
+        targetTermId: 'term-1',
+        prompt: 'He was acting very ______ today.',
+        acceptedAnswers: ['suspicious'],
+      },
+      index: 0,
+      total: 1,
+      answerValue: 'suspicious',
+      hintLevel: 0,
+      contextTranslation: null,
+      contextTranslationShown: false,
+      feedback: { correct: true, finalized: true, text: 'Chính xác ngay lần đầu!' },
+      isLastQuestion: false,
+    }
+    const { rerender } = render(<MissionQuestionStage {...props} />)
+    const input = screen.getByDisplayValue('suspicious')
+    expect(input).toBeInTheDocument()
+    expect(input.className).toContain('border-emerald-700')
+    expect(input.className).toContain('bg-emerald-50')
+    // No separate standalone feedback banner text
+    expect(screen.queryByText('Chính xác ngay lần đầu!')).not.toBeInTheDocument()
+
+    // When incorrect
+    rerender(
+      <MissionQuestionStage
+        {...props}
+        answerValue="wrong"
+        feedback={{ correct: false, finalized: true, text: 'Chưa chính xác.' }}
+      />
+    )
+    const wrongInput = screen.getByDisplayValue('wrong')
+    expect(wrongInput.className).toContain('border-rose-700')
+    expect(wrongInput.className).toContain('bg-rose-50')
+    expect(screen.getByText('Đáp án đúng:')).toBeInTheDocument()
+    expect(screen.getByText('suspicious')).toBeInTheDocument()
+  })
 })
