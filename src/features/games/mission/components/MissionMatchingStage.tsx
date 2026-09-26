@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import {
   Check,
   CheckCircle2,
@@ -180,47 +180,85 @@ export function MissionMatchingStage({
                           <XCircle className="h-3.5 w-3.5 mr-1.5" /> Bỏ chọn
                         </Button>
                       ) : null}
-                      {options.map((option) => {
-                        const owner = questions.find(
-                          (item) => item.id !== question.id && selections[item.id] === option.value
-                        )
-                        const isCurrent = selected === option.value
-                        const label = option.label + (owner ? ' · ' + owner.prompt : '')
-                        return (
-                          <Button
-                            key={option.value}
-                            data-matching-option
-                            variant="ghost"
-                            className={
-                              'w-full justify-between rounded-lg border-2 text-left font-bold text-sm py-2.5 px-3 transition-colors ' +
-                              (isCurrent
-                                ? 'border-slate-900 bg-[#fdc800] text-slate-900 shadow-[2px_2px_0px_#000]'
-                                : owner
-                                  ? 'border-amber-300 bg-amber-50/80 text-slate-700'
-                                  : 'border-transparent text-slate-800 hover:border-slate-900 hover:bg-slate-100')
-                            }
-                            aria-label={label}
-                            onClick={() => {
-                              onSelect(question.id, option.value)
-                              setOpenQuestionId(null)
-                            }}
-                            onKeyDown={(event) => {
-                              if (event.key !== 'Enter') return
-                              event.preventDefault()
-                              onSelect(question.id, option.value)
-                              setOpenQuestionId(null)
-                            }}
-                          >
-                            <span className="truncate">
-                              <span>{option.label}</span>
-                              {owner ? (
-                                <span className="font-semibold text-slate-500"> · {owner.prompt}</span>
-                              ) : null}
-                            </span>
-                            {isCurrent ? <Check className="h-4 w-4 shrink-0 text-slate-900" /> : null}
-                          </Button>
-                        )
-                      })}
+                      {(() => {
+                        const sortedOptions = [...options].sort((a, b) => {
+                          const isCurrentA = selected === a.value
+                          const isCurrentB = selected === b.value
+                          const isOccupiedA = questions.some(
+                            (item) => item.id !== question.id && selections[item.id] === a.value
+                          )
+                          const isOccupiedB = questions.some(
+                            (item) => item.id !== question.id && selections[item.id] === b.value
+                          )
+
+                          // 1. Đáp án đang chọn cho câu này lên đầu
+                          if (isCurrentA && !isCurrentB) return -1
+                          if (!isCurrentA && isCurrentB) return 1
+
+                          // 2. Đáp án chưa được chọn (chưa bị câu khác chiếm) lên trước
+                          if (!isOccupiedA && isOccupiedB) return -1
+                          if (isOccupiedA && !isOccupiedB) return 1
+
+                          return 0
+                        })
+
+                        return sortedOptions.map((option, optionIdx) => {
+                          const owner = questions.find(
+                            (item) => item.id !== question.id && selections[item.id] === option.value
+                          )
+                          const isCurrent = selected === option.value
+                          const label = option.label + (owner ? ' · ' + owner.prompt : '')
+
+                          const prevOption = optionIdx > 0 ? sortedOptions[optionIdx - 1] : null
+                          const prevOwner = prevOption
+                            ? questions.find(
+                                (item) => item.id !== question.id && selections[item.id] === prevOption.value
+                              )
+                            : null
+                          const showOccupiedDivider = Boolean(owner && !prevOwner)
+
+                          return (
+                            <Fragment key={option.value}>
+                              {showOccupiedDivider && (
+                                <div className="pt-2 pb-1 px-2.5 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 border-t-2 border-dashed border-slate-200 mt-1">
+                                  <span>Đã chọn cho từ khác</span>
+                                </div>
+                              )}
+                              <Button
+                                data-matching-option
+                                variant="ghost"
+                                className={
+                                  'w-full justify-between rounded-lg border-2 text-left font-bold text-sm py-2.5 px-3 transition-colors ' +
+                                  (isCurrent
+                                    ? 'border-slate-900 bg-[#fdc800] text-slate-900 shadow-[2px_2px_0px_#000]'
+                                    : owner
+                                      ? 'border-amber-300 bg-amber-50/80 text-slate-700'
+                                      : 'border-transparent text-slate-800 hover:border-slate-900 hover:bg-slate-100')
+                                }
+                                aria-label={label}
+                                onClick={() => {
+                                  onSelect(question.id, option.value)
+                                  setOpenQuestionId(null)
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key !== 'Enter') return
+                                  event.preventDefault()
+                                  onSelect(question.id, option.value)
+                                  setOpenQuestionId(null)
+                                }}
+                              >
+                                <span className="truncate">
+                                  <span>{option.label}</span>
+                                  {owner ? (
+                                    <span className="font-semibold text-slate-500"> · {owner.prompt}</span>
+                                  ) : null}
+                                </span>
+                                {isCurrent ? <Check className="h-4 w-4 shrink-0 text-slate-900" /> : null}
+                              </Button>
+                            </Fragment>
+                          )
+                        })
+                      })()}
                     </div>
                   ) : null}
                 </div>

@@ -66,4 +66,21 @@ describe('Mission Matching selection', () => {
     expect(screen.queryByRole('button', { name: 'nhà cung cấp' })).not.toBeInTheDocument()
     expect(screen.getByText('Ghép từ')).toBeInTheDocument()
   })
+
+  it('places unselected options at the top and occupied options at the bottom with a divider', () => {
+    render(<MissionMatchingStage
+      questions={questions}
+      selections={{ a: 'nhà cung cấp' }}
+      reviewed={false}
+      options={[{ value: 'nhà cung cấp', label: 'nhà cung cấp' }, { value: 'cạnh tranh', label: 'cạnh tranh' }]}
+      onSelect={vi.fn()}
+      onCheck={vi.fn()}
+      onContinue={vi.fn()}
+    />)
+    fireEvent.click(screen.getByRole('button', { name: /nghĩa của compete/i }))
+    const choices = screen.getAllByRole('button', { name: /nhà cung cấp|cạnh tranh/i })
+    expect(choices[0]).toHaveTextContent('cạnh tranh')
+    expect(choices[1]).toHaveTextContent(/nhà cung cấp.*supplier/)
+    expect(screen.getByText('Đã chọn cho từ khác')).toBeInTheDocument()
+  })
 })
