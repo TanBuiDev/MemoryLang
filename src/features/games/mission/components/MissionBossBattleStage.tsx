@@ -362,30 +362,32 @@ export function MissionBossBattleStage({
         {/* Finisher Skill Bar */}
         <div
           className={
-            'rounded-xl border-2 border-slate-900 bg-white/95 backdrop-blur-sm shadow-[2px_2px_0px_#000] transition-all ' +
+            'rounded-xl border-2 border-slate-900 bg-white/40 backdrop-blur-md shadow-[2px_2px_0px_#000] transition-all ' +
             (compactMode ? 'p-1' : 'p-1.5 sm:p-2')
           }
         >
           <div
             className={
-              'flex items-center justify-between font-black uppercase text-slate-800 ' +
+              'flex items-center justify-between font-black uppercase text-slate-900 ' +
               (compactMode ? 'mb-0.5 text-[9px]' : 'mb-0.5 text-[10px] sm:text-[11px]')
             }
           >
             <span className="flex items-center gap-1">
-              <Zap className="h-3 w-3 text-indigo-700 sm:h-3.5 sm:w-3.5" />
+              <Zap className="h-3 w-3 text-indigo-700 fill-indigo-500 sm:h-3.5 sm:w-3.5" />
               <span>Kỹ năng kết liễu</span>
             </span>
-            <span>{snapshot.skillReady ? 'Sẵn sàng!' : snapshot.skillPercent + '%'}</span>
+            <span className={snapshot.skillReady ? 'text-amber-600 animate-pulse' : ''}>
+              {snapshot.skillReady ? 'Sẵn sàng!' : snapshot.skillPercent + '%'}
+            </span>
           </div>
           <div
             className={
-              'overflow-hidden rounded-full border-2 border-slate-900 bg-slate-100 ' +
+              'overflow-hidden rounded-full border-2 border-slate-900 bg-slate-900/15 backdrop-blur-sm ' +
               (compactMode ? 'h-2' : 'h-2.5 sm:h-3')
             }
           >
             <div
-              className="h-full bg-indigo-500 transition-all duration-500"
+              className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-500"
               style={{ width: snapshot.skillPercent + '%' }}
             />
           </div>
