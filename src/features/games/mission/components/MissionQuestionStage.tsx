@@ -162,30 +162,27 @@ export function MissionQuestionStage({
         </div>
       ) : null}
 
-      {/* Audio Button */}
-      {question.audioText ? (
-        <div className="flex justify-center">
+      {/* Question Prompt & Audio Button on the same line */}
+      <div className="flex items-center justify-center gap-2.5 sm:gap-3">
+        {question.audioText ? (
           <Button
             variant="secondary"
-            className="h-12 w-12 rounded-2xl border-3 border-slate-900 shadow-[3px_3px_0px_#000] p-0 flex items-center justify-center bg-[#432dd7] hover:bg-indigo-700 text-white"
+            className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl border-3 border-slate-900 shadow-[2px_2px_0px_#000] p-0 flex items-center justify-center bg-[#432dd7] hover:bg-indigo-700 text-white shrink-0"
             aria-label="Phát lại audio"
             title="Phát lại audio"
             onClick={onPlayAudio}
           >
-            <Headphones className="h-6 w-6" />
+            <Headphones className="h-5 w-5" />
           </Button>
-        </div>
-      ) : null}
+        ) : null}
 
-      {/* Question Prompt */}
-      <div className="text-center space-y-1">
         <h1
           className={
-            'font-black text-slate-900 leading-snug tracking-tight ' +
+            'font-black text-slate-900 leading-snug tracking-tight text-center ' +
             (isBoss && compactMode ? 'text-xl sm:text-2xl' : 'text-xl sm:text-2xl')
           }
         >
-          {question.prompt}
+          {question.prompt === 'Nghe và nhập từ hoặc cụm từ' ? 'Nghe và nhập' : question.prompt}
         </h1>
       </div>
 
