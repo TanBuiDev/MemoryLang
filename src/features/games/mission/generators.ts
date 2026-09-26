@@ -88,7 +88,7 @@ export function generateQuestion(
   if (type === 'listening_typing') {
     if (!target.audioUrl) return { question: null, diagnostic: { code: 'MISSING_AUDIO', targetTermId: target.globalTermId, blocking: false, message: 'Từ chưa có audio lưu sẵn.' } }
     if (target.sourceText.trim().split(/\s+/).length > 6) return { question: null, diagnostic: { code: 'SOURCE_TOO_LONG', targetTermId: target.globalTermId, blocking: false, message: 'Nội dung quá dài cho bài nghe nhập từ.' } }
-    return { question: { id: questionId(type, target.globalTermId), type, targetTermId: target.globalTermId, prompt: 'Nghe và nhập từ hoặc cụm từ', acceptedAnswers, audioText: target.sourceText, audioUrl: target.audioUrl, hint: hintFor(target) } }
+    return { question: { id: questionId(type, target.globalTermId), type, targetTermId: target.globalTermId, prompt: 'Nghe và nhập', acceptedAnswers, audioText: target.sourceText, audioUrl: target.audioUrl, hint: hintFor(target) } }
   }
   if (type === 'meaning_recall') {
     if (!target.translation) return { question: null, diagnostic: { code: 'MISSING_TRANSLATION', targetTermId: target.globalTermId, blocking: false, message: 'Từ chưa có bản dịch để tạo bài nhớ nghĩa.' } }

@@ -194,4 +194,31 @@ describe('Mission question hints', () => {
     expect(screen.getByText('Đáp án đúng:')).toBeInTheDocument()
     expect(screen.getByText('suspicious')).toBeInTheDocument()
   })
+
+  it('renders audio button and prompt on the same line and shortens listening prompt', () => {
+    render(
+      <MissionQuestionStage
+        {...actions}
+        stageType="listening_typing"
+        question={{
+          ...question,
+          id: 'listen:term-1',
+          type: 'listening_typing',
+          prompt: 'Nghe và nhập từ hoặc cụm từ',
+          audioText: 'supplier',
+        }}
+        index={0}
+        total={1}
+        answerValue=""
+        hintLevel={0}
+        contextTranslation={null}
+        contextTranslationShown={false}
+        feedback={null}
+        isLastQuestion={false}
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Phát lại audio' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Nghe và nhập')
+    expect(screen.queryByText('Nghe và nhập từ hoặc cụm từ')).not.toBeInTheDocument()
+  })
 })
