@@ -286,9 +286,9 @@ export function MissionQuestionStage({
                   : 'border-slate-900 bg-white text-slate-900 shadow-[3px_3px_0px_#000] ') +
                 (feedback ? 'pl-11 ' : '') +
                 (!feedback && hasHint && hasTranslation
-                  ? 'pr-44 sm:pr-48 '
+                  ? 'pr-24 '
                   : !feedback && (hasHint || hasTranslation)
-                    ? 'pr-24 sm:pr-28 '
+                    ? 'pr-14 '
                     : feedback
                       ? 'pr-11 '
                       : '') +
@@ -305,13 +305,11 @@ export function MissionQuestionStage({
                     type="button"
                     aria-label="Xem nghĩa câu"
                     title="Xem nghĩa câu"
-                    className="h-8 px-2 sm:px-2.5 text-xs font-black border-2 border-slate-900 bg-sky-50 hover:bg-sky-100 text-slate-900 rounded-lg shadow-[1.5px_1.5px_0px_#000] flex items-center gap-1"
+                    className="h-8 w-8 min-h-0 p-0 border-2 border-slate-900 bg-sky-50 hover:bg-sky-100 text-slate-900 rounded-lg shadow-[1.5px_1.5px_0px_#000] flex items-center justify-center shrink-0"
                     disabled={interactionLocked}
                     onClick={onShowTranslation}
                   >
-                    <Languages className="h-3.5 w-3.5 text-sky-700" />
-                    <span className="hidden sm:inline">Xem nghĩa câu</span>
-                    <span className="sm:hidden">Dịch</span>
+                    <Languages className="h-4 w-4 text-sky-700" />
                   </Button>
                 )}
                 {hasHint && (
@@ -320,12 +318,11 @@ export function MissionQuestionStage({
                     type="button"
                     aria-label={hintLevel === 0 ? 'Gợi ý' : 'Gợi ý thêm'}
                     title={hintLevel === 0 ? 'Gợi ý' : 'Gợi ý thêm'}
-                    className="h-8 px-2.5 text-xs font-black border-2 border-slate-900 bg-amber-50 hover:bg-amber-100 text-slate-900 rounded-lg shadow-[1.5px_1.5px_0px_#000] flex items-center gap-1"
+                    className="h-8 w-8 min-h-0 p-0 border-2 border-slate-900 bg-amber-50 hover:bg-amber-100 text-slate-900 rounded-lg shadow-[1.5px_1.5px_0px_#000] flex items-center justify-center shrink-0"
                     disabled={interactionLocked}
                     onClick={onHint}
                   >
-                    <Lightbulb className="h-3.5 w-3.5 text-amber-600" />
-                    <span>{hintLevel === 0 ? 'Gợi ý' : 'Gợi ý thêm'}</span>
+                    <Lightbulb className="h-4 w-4 text-amber-600" />
                   </Button>
                 )}
               </div>
