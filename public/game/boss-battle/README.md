@@ -29,3 +29,21 @@ The pack is wired into the Mission Boss stage on this branch:
 - battle state is derived from persisted Mission answers, so reload/resume keeps HP consistent
 
 The combat layer does not change vocabulary grading, retry rules, scoring, progress persistence, or SRS.
+
+
+## Responsive WebP backgrounds
+
+Boss Battle now ships four optimized environment themes, each with dedicated desktop and mobile crops:
+
+- `forest-sunlit-enchanted` — current default
+- `forest-peaceful-shrine`
+- `meadow-rpg-mountains`
+- `valley-snowy-mountains`
+
+Runtime assets:
+- desktop: 384×216 WebP (16:9)
+- mobile: 216×384 WebP (9:16)
+- responsive art direction uses a `<picture>` source at the 768px breakpoint
+- the original `forest-arena.svg` remains available as a fallback
+
+The WebP backgrounds change only presentation. Question generation, grading, retry logic, combat damage, Mission progress and SRS are unchanged.
