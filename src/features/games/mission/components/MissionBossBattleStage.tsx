@@ -4,23 +4,16 @@ import { useSoundStore } from '@/stores/useSoundStore'
 import type { AnswerRecord } from '../mission.types'
 import { calculateBossBattleSnapshot } from '../bossBattle'
 import {
+  FALLBACK_BOSS,
+  FALLBACK_BOSS_BACKGROUND,
+  getBossBattleTheme,
+} from '../bossBattleThemes'
+import {
   MissionQuestionStage,
   type MissionQuestionStageProps,
 } from './MissionQuestionStage'
 
 const ASSETS = {
-  background: {
-    desktop: '/game/boss-battle/art/backgrounds/webp/forest-sunlit-enchanted-desktop.webp',
-    mobile: '/game/boss-battle/art/backgrounds/webp/forest-sunlit-enchanted-mobile.webp',
-    fallback: '/game/boss-battle/art/backgrounds/forest-arena.svg',
-  },
-  boss: {
-    idle: '/game/boss-battle/art/boss/rune-beetle-idle.svg',
-    hit: '/game/boss-battle/art/boss/rune-beetle-hit.svg',
-    attack: '/game/boss-battle/art/boss/rune-beetle-attack.svg',
-    defeated: '/game/boss-battle/art/boss/rune-beetle-defeated.svg',
-    finisher: '/game/boss-battle/art/boss/rune-beetle-finisher-hit.svg',
-  },
   effects: {
     slash: '/game/boss-battle/art/effects/slash.svg',
     impact: '/game/boss-battle/art/effects/impact.svg',
@@ -48,11 +41,13 @@ interface MissionBossBattleStageProps
   > {
   answers: AnswerRecord[]
   bossQuestionIds: string[]
+  missionIndex?: number
 }
 
 export function MissionBossBattleStage({
   answers,
   bossQuestionIds,
+  missionIndex,
   question,
   feedback,
   ...questionProps
@@ -63,10 +58,15 @@ export function MissionBossBattleStage({
   const [interactionLocked, setInteractionLocked] = useState(false)
   const [typingFocused, setTypingFocused] = useState(false)
   const [keyboardVisible, setKeyboardVisible] = useState(false)
+  const [bossFallback, setBossFallback] = useState(false)
   const bgmRef = useRef<HTMLAudioElement | null>(null)
   const timersRef = useRef<number[]>([])
 
   const compactMode = typingFocused || keyboardVisible
+  const battleTheme = useMemo(
+    () => getBossBattleTheme(missionIndex),
+    [missionIndex],
+  )
 
   const snapshot = useMemo(
     () => calculateBossBattleSnapshot(bossQuestionIds, answers),
@@ -194,16 +194,22 @@ export function MissionBossBattleStage({
 
   useEffect(() => clearTimers, [clearTimers])
 
-  const bossImage =
+  useEffect(() => {
+    setBossFallback(false)
+  }, [battleTheme.id])
+
+  const fallbackBossImage =
     battleEvent === 'boss-hit'
-      ? ASSETS.boss.hit
+      ? FALLBACK_BOSS.states.hit
       : battleEvent === 'boss-attack'
-        ? ASSETS.boss.attack
+        ? FALLBACK_BOSS.states.attack
         : battleEvent === 'finisher'
-          ? ASSETS.boss.finisher
+          ? FALLBACK_BOSS.states.finisher
           : battleEvent === 'defeated'
-            ? ASSETS.boss.defeated
-            : ASSETS.boss.idle
+            ? FALLBACK_BOSS.states.defeated
+            : FALLBACK_BOSS.states.idle
+  const bossImage = bossFallback ? fallbackBossImage : battleTheme.boss.image
+  const bossName = bossFallback ? FALLBACK_BOSS.name : battleTheme.boss.name
 
   const battleStatus =
     battleEvent === 'boss-attack'
@@ -223,14 +229,14 @@ export function MissionBossBattleStage({
       }
     >
       <picture className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
-        <source media="(max-width: 767px)" srcSet={ASSETS.background.mobile} />
+        <source media="(max-width: 767px)" srcSet={battleTheme.background.mobile} />
         <img
-          src={ASSETS.background.desktop}
+          src={battleTheme.background.desktop}
           alt=""
           draggable={false}
           className="h-full w-full object-cover object-center"
           onError={(event) => {
-            event.currentTarget.src = ASSETS.background.fallback
+            event.currentTarget.src = FALLBACK_BOSS_BACKGROUND
           }}
         />
       </picture>
@@ -253,7 +259,7 @@ export function MissionBossBattleStage({
           compact={compactMode}
         />
         <BattleBar
-          label="Rune Beetle"
+          label={bossName}
           value={snapshot.bossHpPercent}
           detail={`${snapshot.bossHp}/${snapshot.bossMaxHp} HP`}
           icon={<ShieldAlert className="h-3.5 w-3.5 md:h-4 md:w-4" />}
@@ -275,21 +281,22 @@ export function MissionBossBattleStage({
       >
         <img
           src={bossImage}
-          alt="Rune Beetle"
+          alt={bossName}
           draggable={false}
+          onError={() => setBossFallback(true)}
           className={
             'select-none object-contain drop-shadow-2xl transition-[transform,opacity,height,width] duration-200 ' +
             (compactMode
               ? 'h-[75px] w-[75px] sm:h-[110px] sm:w-[110px] '
               : 'h-[140px] w-[140px] sm:h-[190px] sm:w-[190px] ') +
             (battleEvent === 'boss-hit'
-              ? 'scale-95 -rotate-3'
+              ? 'scale-95 -rotate-3 brightness-125 saturate-150'
               : battleEvent === 'boss-attack'
-                ? 'scale-105 translate-x-2'
+                ? 'scale-110 translate-x-3'
                 : battleEvent === 'finisher'
-                  ? 'scale-105'
+                  ? 'scale-110 brightness-125 saturate-125'
                   : battleEvent === 'defeated'
-                    ? 'translate-y-2 scale-90 opacity-80'
+                    ? 'translate-y-2 scale-90 grayscale opacity-70'
                     : 'animate-bounce')
           }
         />

@@ -335,6 +335,14 @@ Mission UI adheres to the Neobrutalist design with a strict no-emoji policy (usi
 - Cloudflare Pages `_redirects` only supports local proxy/rewrite status `200`. Do not add unsupported rewrite rules such as `/assets/* /404.html 404`; they can prevent the SPA fallback `/* /index.html 200` from working and make direct routes like `/app/admin` serve the static 404 page.
 - Do not ship a top-level `public/404.html` for this SPA. On Cloudflare Pages, a root `404.html` switches missing-path handling to Not Found behavior; without it, Pages treats the project as an SPA and routes deep links back to `/`.
 
+## Mission Boss Battle themes
+- Boss Battle presentation rotates deterministically by the zero-based Mission route index: `missionIndex % 4`. Reloading a Mission must therefore keep the same visual theme; never use `Math.random()` for Mission theme selection.
+- The four theme IDs are `forest-sunlit-enchanted`, `forest-peaceful-shrine`, `meadow-rpg-mountains`, and `valley-snowy-mountains`.
+- Each theme owns one desktop WebP background, one mobile WebP background, and one transparent WebP guardian boss. Desktop/mobile must always stay in the same theme.
+- The themed guardian artwork is a presentation layer only. Existing Boss Battle grading, HP, retry/mastery queue, score, Mission progress, SRS, persistence, audio, and finisher rules remain unchanged.
+- Current themed guardians use one transparent character artwork per theme; hit/attack/finisher/defeated states are expressed through CSS motion/filter effects plus the existing battle effect assets. The original Rune Beetle state SVGs and forest arena SVG remain resilient fallbacks.
+- Theme definitions and selection live in `src/features/games/mission/bossBattleThemes.ts`; `MissionGamePage` passes the zero-based `missionIndex` into `MissionBossBattleStage`.
+
 ## Git Conventions
 See `AGENTS.md` for commit workflow. Conventional commits: `feat:`, `fix:`, `docs:`, `chore:`, `test:`, `refactor:`. No auto-push. Check for secrets before committing.
 

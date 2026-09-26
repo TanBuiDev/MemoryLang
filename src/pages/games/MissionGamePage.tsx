@@ -970,6 +970,7 @@ export default function MissionGamePage() {
           onPlayAudio={playCurrentAudio}
           answers={attempt.answers}
           bossQuestionIds={currentStage.questions.map((question) => question.id)}
+          missionIndex={missionIndex}
         />
       ) : currentQuestion ? (
         <MissionQuestionStage
