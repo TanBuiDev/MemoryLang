@@ -4,10 +4,8 @@ import {
   Headphones,
   Languages,
   Lightbulb,
-  Swords,
   XCircle,
   ShieldAlert,
-  Flame,
   ArrowRight,
   HelpCircle,
   RotateCcw,
@@ -52,8 +50,8 @@ export interface MissionQuestionStageProps {
 export function MissionQuestionStage({
   stageType,
   question,
-  index,
-  total,
+  index: _index,
+  total: _total,
   answerValue,
   hintLevel,
   contextTranslation,
@@ -61,7 +59,7 @@ export function MissionQuestionStage({
   feedback,
   isLastQuestion,
   isRetry,
-  combo = 0,
+  combo: _combo = 0,
   bossHpPercent,
   showBossHud = true,
   interactionLocked = false,
@@ -112,57 +110,33 @@ export function MissionQuestionStage({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [feedback?.finalized, interactionLocked, onNext])
 
+  const hasHint = !feedback?.finalized && !question.options && Boolean(question.hint) && hintLevel < 2
+  const hasTranslation = Boolean(contextTranslation) && question.type === 'context_cloze' && !contextTranslationShown && !feedback?.finalized
+
   return (
     <div
       className={
         'neo-card rounded-2xl border-4 border-slate-900 transition-all ' +
         (isBoss && compactMode
-          ? 'space-y-3 p-4 sm:space-y-6 sm:p-8 '
-          : 'space-y-6 p-6 sm:p-8 ') +
+          ? 'space-y-3 p-4 sm:space-y-4 sm:p-6 '
+          : 'space-y-3.5 p-4 sm:space-y-4 sm:p-6 ') +
         (isBoss
           ? 'bg-gradient-to-b from-rose-50 to-white shadow-[6px_6px_0px_#9f1239]'
           : 'bg-white shadow-[6px_6px_0px_#000]')
       }
     >
-      {/* Top Bar: Stage & Question Meta & Combo */}
-      <div
-        className={
-          'items-center justify-between gap-3 border-b-2 border-slate-900 pb-3 ' +
-          (isBoss && compactMode ? 'hidden sm:flex' : 'flex')
-        }
-      >
-        <div className="flex items-center gap-2">
-          {isBoss ? (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border-2 border-rose-900 bg-rose-200 text-rose-950 font-black text-xs uppercase tracking-wider shadow-[2px_2px_0px_#9f1239]">
-              <Swords className="h-4 w-4 text-rose-700" />
-              <span>THỬ THÁCH CUỐI</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-widest text-slate-500">
-                Câu {index + 1}/{total}
-              </span>
-              {isRetry ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border-2 border-slate-900 bg-amber-300 text-slate-900 font-black text-[11px] uppercase tracking-wider shadow-[1.5px_1.5px_0px_#000]">
-                  <RotateCcw className="h-3 w-3" /> Thử lại
-                </span>
-              ) : null}
-            </div>
-          )}
+      {/* Retry Indicator */}
+      {isRetry ? (
+        <div className="flex justify-center -mb-1">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border-2 border-slate-900 bg-amber-300 text-slate-900 font-black text-[10px] uppercase tracking-wider shadow-[1.5px_1.5px_0px_#000]">
+            <RotateCcw className="h-3 w-3" /> Thử lại
+          </span>
         </div>
-
-        {/* Streak Combo Badge */}
-        {combo >= 2 ? (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border-2 border-slate-900 bg-[#fdc800] text-slate-900 font-black text-xs shadow-[2px_2px_0px_#000]">
-            <Flame className="h-3.5 w-3.5 text-amber-700 fill-amber-700" />
-            <span>Combo x{combo}!</span>
-          </div>
-        ) : null}
-      </div>
+      ) : null}
 
       {/* Boss Health Bar (Only in Boss stage) */}
       {isBoss && showBossHud && bossHpPercent !== undefined ? (
-        <div className="p-3.5 rounded-xl border-2 border-rose-900 bg-rose-100/70 shadow-[2px_2px_0px_#9f1239] space-y-1.5">
+        <div className="p-3 rounded-xl border-2 border-rose-900 bg-rose-100/70 shadow-[2px_2px_0px_#9f1239] space-y-1.5">
           <div className="flex items-center justify-between text-xs font-black text-rose-950">
             <span className="flex items-center gap-1.5">
               <ShieldAlert className="h-4 w-4 text-rose-700" />
@@ -184,58 +158,31 @@ export function MissionQuestionStage({
         <div className="flex justify-center">
           <Button
             variant="secondary"
-            className="h-14 w-14 rounded-2xl border-3 border-slate-900 shadow-[3px_3px_0px_#000] p-0 flex items-center justify-center bg-[#432dd7] hover:bg-indigo-700 text-white"
+            className="h-12 w-12 rounded-2xl border-3 border-slate-900 shadow-[3px_3px_0px_#000] p-0 flex items-center justify-center bg-[#432dd7] hover:bg-indigo-700 text-white"
             aria-label="Phát lại audio"
             title="Phát lại audio"
             onClick={onPlayAudio}
           >
-            <Headphones className="h-7 w-7" />
+            <Headphones className="h-6 w-6" />
           </Button>
         </div>
       ) : null}
 
       {/* Question Prompt */}
-      <div className="text-center space-y-2">
+      <div className="text-center space-y-1">
         <h1
           className={
             'font-black text-slate-900 leading-snug tracking-tight ' +
-            (isBoss && compactMode ? 'text-xl sm:text-3xl' : 'text-2xl sm:text-3xl')
+            (isBoss && compactMode ? 'text-xl sm:text-2xl' : 'text-xl sm:text-2xl')
           }
         >
           {question.prompt}
         </h1>
       </div>
 
-      {/* Action Buttons: Hint & Translation */}
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        {!feedback?.finalized && !question.options && question.hint && hintLevel < 2 ? (
-          <Button
-            variant="ghost"
-            className="border-2 border-slate-900 bg-amber-50 hover:bg-amber-100 text-slate-900 font-black text-xs py-2 px-3.5 rounded-xl shadow-[2px_2px_0px_#000]"
-            disabled={interactionLocked}
-            onClick={onHint}
-          >
-            <Lightbulb className="h-4 w-4 text-amber-600" />
-            <span>{hintLevel === 0 ? 'Gợi ý' : 'Gợi ý thêm'}</span>
-          </Button>
-        ) : null}
-
-        {contextTranslation && question.type === 'context_cloze' && !contextTranslationShown && !feedback?.finalized ? (
-          <Button
-            variant="ghost"
-            className="border-2 border-slate-900 bg-sky-50 hover:bg-sky-100 text-slate-900 font-black text-xs py-2 px-3.5 rounded-xl shadow-[2px_2px_0px_#000]"
-            disabled={interactionLocked}
-            onClick={onShowTranslation}
-          >
-            <Languages className="h-4 w-4 text-sky-700" />
-            <span>Xem nghĩa câu</span>
-          </Button>
-        ) : null}
-      </div>
-
       {/* Context Translation Display */}
       {contextTranslation && question.type === 'context_cloze' && contextTranslationShown ? (
-        <div className="rounded-xl border-2 border-slate-900 bg-amber-50 p-3.5 text-sm font-bold text-slate-900 shadow-[2px_2px_0px_#000] flex items-start gap-2.5">
+        <div className="rounded-xl border-2 border-slate-900 bg-amber-50 p-3 text-xs sm:text-sm font-bold text-slate-900 shadow-[2px_2px_0px_#000] flex items-start gap-2.5">
           <Languages className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
           <span>{contextTranslation}</span>
         </div>
@@ -243,7 +190,7 @@ export function MissionQuestionStage({
 
       {/* Hint Level Display */}
       {hintLevel > 0 ? (
-        <div className="rounded-xl border-2 border-slate-900 bg-amber-50 p-3.5 text-xs sm:text-sm font-bold text-slate-900 shadow-[2px_2px_0px_#000] flex items-start gap-2.5">
+        <div className="rounded-xl border-2 border-slate-900 bg-amber-50 p-3 text-xs sm:text-sm font-bold text-slate-900 shadow-[2px_2px_0px_#000] flex items-start gap-2.5">
           <Lightbulb className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
           <div>
             Gợi ý: bắt đầu bằng “{question.hint?.firstLetter || '?'}”,{' '}
@@ -266,7 +213,7 @@ export function MissionQuestionStage({
 
       {/* Answering Area: Options or Typing Input */}
       {question.options ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-2.5 sm:grid-cols-2">
           {question.options.map((option) => {
             const isSelected = answerValue === option.label
             return (
@@ -274,7 +221,7 @@ export function MissionQuestionStage({
                 key={option.id}
                 variant={isSelected ? 'secondary' : 'ghost'}
                 className={
-                  'min-h-14 whitespace-normal text-left font-black text-sm sm:text-base border-3 rounded-xl p-3.5 transition-all ' +
+                  'min-h-12 whitespace-normal text-left font-black text-sm sm:text-base border-3 rounded-xl p-3 transition-all ' +
                   (isSelected
                     ? 'border-slate-900 bg-[#fdc800] text-slate-900 shadow-[4px_4px_0px_#000] translate-y-[-2px]'
                     : 'border-slate-900 bg-white text-slate-900 shadow-[2px_2px_0px_#000] hover:bg-slate-50')
@@ -290,7 +237,7 @@ export function MissionQuestionStage({
           })}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="relative">
           <Input
             ref={inputRef}
             autoFocus
@@ -314,9 +261,49 @@ export function MissionQuestionStage({
             placeholder="Nhập câu trả lời..."
             className={
               'text-base sm:text-lg font-black border-3 border-slate-900 shadow-[3px_3px_0px_#000] rounded-xl text-center bg-white scroll-mt-[250px] ' +
-              (isBoss && compactMode ? 'p-2.5 sm:p-4' : 'p-3 sm:p-4')
+              (hasHint && hasTranslation
+                ? 'pr-44 sm:pr-48 '
+                : hasHint || hasTranslation
+                  ? 'pr-24 sm:pr-28 '
+                  : '') +
+              (isBoss && compactMode ? 'p-2.5 sm:p-3.5' : 'p-3 sm:p-3.5')
             }
           />
+
+          {/* Action buttons inside input right corner */}
+          {(hasHint || hasTranslation) && (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+              {hasTranslation && (
+                <Button
+                  variant="ghost"
+                  type="button"
+                  aria-label="Xem nghĩa câu"
+                  title="Xem nghĩa câu"
+                  className="h-8 px-2 sm:px-2.5 text-xs font-black border-2 border-slate-900 bg-sky-50 hover:bg-sky-100 text-slate-900 rounded-lg shadow-[1.5px_1.5px_0px_#000] flex items-center gap-1"
+                  disabled={interactionLocked}
+                  onClick={onShowTranslation}
+                >
+                  <Languages className="h-3.5 w-3.5 text-sky-700" />
+                  <span className="hidden sm:inline">Xem nghĩa câu</span>
+                  <span className="sm:hidden">Dịch</span>
+                </Button>
+              )}
+              {hasHint && (
+                <Button
+                  variant="ghost"
+                  type="button"
+                  aria-label={hintLevel === 0 ? 'Gợi ý' : 'Gợi ý thêm'}
+                  title={hintLevel === 0 ? 'Gợi ý' : 'Gợi ý thêm'}
+                  className="h-8 px-2.5 text-xs font-black border-2 border-slate-900 bg-amber-50 hover:bg-amber-100 text-slate-900 rounded-lg shadow-[1.5px_1.5px_0px_#000] flex items-center gap-1"
+                  disabled={interactionLocked}
+                  onClick={onHint}
+                >
+                  <Lightbulb className="h-3.5 w-3.5 text-amber-600" />
+                  <span>{hintLevel === 0 ? 'Gợi ý' : 'Gợi ý thêm'}</span>
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -324,7 +311,7 @@ export function MissionQuestionStage({
       {feedback ? (
         <div
           className={
-            'rounded-xl border-3 p-4 font-bold shadow-[3px_3px_0px_#000] ' +
+            'rounded-xl border-3 p-3.5 font-bold shadow-[3px_3px_0px_#000] ' +
             (feedback.correct
               ? 'border-emerald-700 bg-emerald-50 text-emerald-950'
               : 'border-rose-700 bg-rose-50 text-rose-950')
@@ -340,7 +327,7 @@ export function MissionQuestionStage({
           </div>
 
           {feedback.finalized && !feedback.correct ? (
-            <div className="mt-2.5 pt-2 border-t border-rose-200 text-xs sm:text-sm font-bold text-rose-900">
+            <div className="mt-2 pt-2 border-t border-rose-200 text-xs sm:text-sm font-bold text-rose-900">
               Đáp án: <strong className="font-black underline">{question.acceptedAnswers[0]}</strong>
             </div>
           ) : null}
@@ -351,35 +338,47 @@ export function MissionQuestionStage({
       {!feedback?.finalized ? (
         <div
           className={
-            'space-y-2.5 pt-2 ' +
+            'pt-1 ' +
             (isBoss && compactMode
               ? 'sticky bottom-2 z-40 rounded-xl border-2 border-slate-900 bg-white/95 p-2 shadow-[3px_3px_0px_#000] backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none'
               : '')
           }
         >
-          <Button
-            className="w-full py-3.5 text-base font-black bg-[#fdc800] hover:bg-amber-300 text-slate-900 border-3 border-slate-900 shadow-[4px_4px_0px_#000] rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!answerValue.trim() || interactionLocked}
-            onClick={onSubmit}
-          >
-            Kiểm tra
-          </Button>
           {!question.options ? (
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                aria-label="Chưa nhớ từ này"
+                title="Chưa nhớ từ này"
+                className="w-[36%] sm:w-[32%] py-3 text-xs sm:text-sm font-black border-3 border-slate-900 bg-slate-50 hover:bg-slate-100 text-slate-700 shadow-[3px_3px_0px_#000] rounded-xl flex items-center justify-center gap-1.5 shrink-0"
+                disabled={interactionLocked}
+                onClick={onSkip}
+              >
+                <HelpCircle className="h-4 w-4 shrink-0 text-slate-500" />
+                <span className="truncate">Chưa nhớ</span>
+              </Button>
+              <Button
+                className="flex-1 py-3 text-base font-black bg-[#fdc800] hover:bg-amber-300 text-slate-900 border-3 border-slate-900 shadow-[3px_3px_0px_#000] rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!answerValue.trim() || interactionLocked}
+                onClick={onSubmit}
+              >
+                Kiểm tra
+              </Button>
+            </div>
+          ) : (
             <Button
-              variant="ghost"
-              className="w-full py-2.5 text-xs font-black text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5"
-              disabled={interactionLocked}
-              onClick={onSkip}
+              className="w-full py-3 text-base font-black bg-[#fdc800] hover:bg-amber-300 text-slate-900 border-3 border-slate-900 shadow-[3px_3px_0px_#000] rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!answerValue.trim() || interactionLocked}
+              onClick={onSubmit}
             >
-              <HelpCircle className="h-3.5 w-3.5" />
-              <span>Chưa nhớ từ này</span>
+              Kiểm tra
             </Button>
-          ) : null}
+          )}
         </div>
       ) : (
-        <div ref={continueContainerRef} className="pt-2">
+        <div ref={continueContainerRef} className="pt-1">
           <Button
-            className="w-full py-4 text-base font-black bg-[#432dd7] hover:bg-indigo-700 text-white border-3 border-slate-900 shadow-[4px_4px_0px_#000] rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3.5 text-base font-black bg-[#432dd7] hover:bg-indigo-700 text-white border-3 border-slate-900 shadow-[4px_4px_0px_#000] rounded-xl flex items-center justify-center gap-2 cursor-pointer"
             autoFocus={!interactionLocked}
             disabled={interactionLocked}
             onClick={onNext}
