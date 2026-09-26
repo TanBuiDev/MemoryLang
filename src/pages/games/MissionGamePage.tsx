@@ -937,6 +937,7 @@ export default function MissionGamePage() {
       ) : currentStage?.type === 'boss' && currentQuestion ? (
         <MissionBossBattleStage
           key={`${currentQuestion.id}-${attempt.questionIndex}`}
+          missionIndex={missionIndex}
           question={currentQuestion}
           index={attempt.questionIndex}
           total={stageQuestions.length}

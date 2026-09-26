@@ -4,40 +4,16 @@ import { useSoundStore } from '@/stores/useSoundStore'
 import type { AnswerRecord } from '../mission.types'
 import { calculateBossBattleSnapshot } from '../bossBattle'
 import {
+  BOSS_BATTLE_STATIC_ASSETS,
+  FALLBACK_BOSS_BACKGROUND,
+  getBossBackgroundTheme,
+} from '../bossBattleAssets'
+import {
   MissionQuestionStage,
   type MissionQuestionStageProps,
 } from './MissionQuestionStage'
 
-const ASSETS = {
-  background: {
-    desktop: '/game/boss-battle/art/backgrounds/webp/forest-sunlit-enchanted-desktop.webp',
-    mobile: '/game/boss-battle/art/backgrounds/webp/forest-sunlit-enchanted-mobile.webp',
-    fallback: '/game/boss-battle/art/backgrounds/forest-arena.svg',
-  },
-  boss: {
-    idle: '/game/boss-battle/art/boss/rune-beetle-idle.svg',
-    hit: '/game/boss-battle/art/boss/rune-beetle-hit.svg',
-    attack: '/game/boss-battle/art/boss/rune-beetle-attack.svg',
-    defeated: '/game/boss-battle/art/boss/rune-beetle-defeated.svg',
-    finisher: '/game/boss-battle/art/boss/rune-beetle-finisher-hit.svg',
-  },
-  effects: {
-    slash: '/game/boss-battle/art/effects/slash.svg',
-    impact: '/game/boss-battle/art/effects/impact.svg',
-    finisher: '/game/boss-battle/art/effects/finisher-burst.svg',
-  },
-  skillReady: '/game/boss-battle/art/ui/skill-ready.svg',
-  sfx: {
-    playerAttack: '/game/boss-battle/audio/sfx/player-attack.wav',
-    bossHit: '/game/boss-battle/audio/sfx/boss-hit.wav',
-    bossAttack: '/game/boss-battle/audio/sfx/boss-attack.wav',
-    playerHit: '/game/boss-battle/audio/sfx/player-hit.wav',
-    skillCharge: '/game/boss-battle/audio/sfx/skill-charge.wav',
-    finisher: '/game/boss-battle/audio/sfx/finisher.wav',
-    victory: '/game/boss-battle/audio/sfx/victory.wav',
-  },
-  bgm: '/game/boss-battle/audio/bgm/boss-battle-loop.wav',
-} as const
+const ASSETS = BOSS_BATTLE_STATIC_ASSETS
 
 type BattleEvent = 'idle' | 'boss-hit' | 'boss-attack' | 'finisher' | 'defeated'
 
@@ -48,11 +24,13 @@ interface MissionBossBattleStageProps
   > {
   answers: AnswerRecord[]
   bossQuestionIds: string[]
+  missionIndex?: number
 }
 
 export function MissionBossBattleStage({
   answers,
   bossQuestionIds,
+  missionIndex,
   question,
   feedback,
   ...questionProps
@@ -63,6 +41,11 @@ export function MissionBossBattleStage({
   const [interactionLocked, setInteractionLocked] = useState(false)
   const bgmRef = useRef<HTMLAudioElement | null>(null)
   const timersRef = useRef<number[]>([])
+
+  const backgroundTheme = useMemo(
+    () => getBossBackgroundTheme(missionIndex),
+    [missionIndex],
+  )
 
   const snapshot = useMemo(
     () => calculateBossBattleSnapshot(bossQuestionIds, answers),
@@ -82,9 +65,16 @@ export function MissionBossBattleStage({
 
   const playSfx = useCallback((url: string, volumeScale = 1) => {
     if (!sfxEnabled || typeof Audio === 'undefined') return
-    const audio = new Audio(url)
-    audio.volume = Math.max(0, Math.min(1, sfxVolume * volumeScale))
-    void audio.play().catch(() => undefined)
+    try {
+      const audio = new Audio(url)
+      audio.volume = Math.max(0, Math.min(1, sfxVolume * volumeScale))
+      const playPromise = audio.play()
+      if (playPromise && typeof playPromise.catch === 'function') {
+        void playPromise.catch(() => undefined)
+      }
+    } catch {
+      // Bỏ qua lỗi audio không hỗ trợ trong môi trường không có codec
+    }
   }, [sfxEnabled, sfxVolume])
 
 
@@ -95,16 +85,27 @@ export function MissionBossBattleStage({
       return
     }
 
-    const bgm = new Audio(ASSETS.bgm)
-    bgm.loop = true
-    bgm.volume = Math.max(0, Math.min(0.22, sfxVolume * 0.22))
-    bgmRef.current = bgm
-    void bgm.play().catch(() => undefined)
+    try {
+      const bgm = new Audio(ASSETS.bgm)
+      bgm.loop = true
+      bgm.volume = Math.max(0, Math.min(0.22, sfxVolume * 0.22))
+      bgmRef.current = bgm
+      const playPromise = bgm.play()
+      if (playPromise && typeof playPromise.catch === 'function') {
+        void playPromise.catch(() => undefined)
+      }
+    } catch {
+      // Bỏ qua lỗi BGM
+    }
 
     return () => {
-      bgm.pause()
-      bgm.currentTime = 0
-      if (bgmRef.current === bgm) bgmRef.current = null
+      try {
+        bgmRef.current?.pause()
+        if (bgmRef.current) bgmRef.current.currentTime = 0
+      } catch {
+        // Bỏ qua
+      }
+      bgmRef.current = null
     }
   }, [sfxEnabled, sfxVolume])
 
@@ -201,14 +202,14 @@ export function MissionBossBattleStage({
       }
     >
       <picture className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
-        <source media="(max-width: 767px)" srcSet={ASSETS.background.mobile} />
+        <source media="(max-width: 767px)" srcSet={backgroundTheme.mobile} />
         <img
-          src={ASSETS.background.desktop}
+          src={backgroundTheme.desktop}
           alt=""
           draggable={false}
           className="h-full w-full object-cover object-center"
           onError={(event) => {
-            event.currentTarget.src = ASSETS.background.fallback
+            event.currentTarget.src = FALLBACK_BOSS_BACKGROUND
           }}
         />
       </picture>
