@@ -119,17 +119,19 @@ export function MissionQuestionStage({
     <div
       className={
         (embedded
-          ? 'shrink-0 transition-all '
+          ? 'shrink-0 transition-all rounded-2xl border-3 border-slate-900 bg-white/95 backdrop-blur-sm shadow-[4px_4px_0px_#000] '
           : 'neo-card rounded-2xl border-4 border-slate-900 transition-all ' +
             (isBoss
               ? 'shadow-[6px_6px_0px_#9f1239] '
               : 'shadow-[6px_6px_0px_#000] ')) +
         (isBoss && compactMode
-          ? 'space-y-3 p-4 sm:space-y-4 sm:p-6 '
-          : 'space-y-3.5 p-4 sm:space-y-4 sm:p-6 ') +
-        (isBoss
-          ? 'bg-gradient-to-b from-rose-50/50 to-white'
-          : 'bg-white')
+          ? 'space-y-3 p-3.5 sm:space-y-3.5 sm:p-5 '
+          : 'space-y-3.5 p-3.5 sm:space-y-4 sm:p-5 ') +
+        (embedded
+          ? ''
+          : isBoss
+            ? 'bg-gradient-to-b from-rose-50 to-white'
+            : 'bg-white')
       }
     >
       {/* Retry Indicator */}

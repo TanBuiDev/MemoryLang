@@ -215,75 +215,154 @@ export function MissionBossBattleStage({
   return (
     <div
       className={
-        'relative overflow-hidden rounded-2xl sm:rounded-3xl border-4 border-slate-900 shadow-[6px_6px_0px_#000] bg-white flex flex-col flex-1 min-h-[calc(100dvh-9.5rem)] sm:min-h-[560px] transition-all duration-300'
+        'relative overflow-hidden rounded-2xl sm:rounded-3xl border-4 border-slate-900 shadow-[6px_6px_0px_#000] flex flex-col flex-1 min-h-[calc(100dvh-9.5rem)] sm:min-h-[580px] transition-all duration-300'
       }
+      style={{
+        backgroundImage: `url("${ASSETS.background}")`,
+        backgroundPosition: 'center bottom',
+        backgroundSize: 'cover',
+      }}
     >
+      <span className="sr-only" aria-live="polite">{battleStatus}</span>
+
+      {/* Top Battle HUD (Player HP vs Boss HP) - Floating overlay at the top */}
+      <div
+        className={
+          'relative z-20 grid grid-cols-2 bg-slate-950/85 text-white backdrop-blur-sm transition-all border-b-2 border-slate-900/40 shrink-0 ' +
+          (compactMode ? 'gap-2 p-1.5 md:gap-3 md:p-2' : 'gap-3 p-2 md:p-2.5')
+        }
+      >
+        <BattleBar
+          label="Bạn"
+          value={displayPlayerHpPercent}
+          detail={`${displayPlayerHp}/${snapshot.playerMaxHp} HP`}
+          icon={<Heart className="h-3.5 w-3.5 fill-current md:h-4 md:w-4" />}
+          fillClass="bg-emerald-400"
+          compact={compactMode}
+        />
+        <BattleBar
+          label="Rune Beetle"
+          value={snapshot.bossHpPercent}
+          detail={`${snapshot.bossHp}/${snapshot.bossMaxHp} HP`}
+          icon={<ShieldAlert className="h-3.5 w-3.5 md:h-4 md:w-4" />}
+          fillClass="bg-rose-500"
+          compact={compactMode}
+        />
+      </div>
+
+      {/* Center Stage: Boss Sprite & Battle Effects - Floating in center of the landscape */}
       <section
         aria-label="Đấu Boss"
         className={
-          'relative w-full overflow-hidden transition-[height,transform] duration-200 border-b-4 border-slate-900 ' +
+          'relative z-10 flex-1 flex items-center justify-center overflow-hidden transition-all ' +
           (compactMode
-            ? 'h-[160px] shrink-0 '
-            : 'flex-1 min-h-[240px] sm:min-h-[320px] ') +
-          (battleEvent === 'boss-attack' ? 'animate-pulse' : '')
+            ? 'min-h-[90px] py-1'
+            : 'min-h-[160px] sm:min-h-[220px] py-2') +
+          (battleEvent === 'boss-attack' ? ' animate-pulse' : '')
         }
-        style={{
-          backgroundImage: `url("${ASSETS.background}")`,
-          backgroundPosition: 'center bottom',
-          backgroundSize: 'cover',
-        }}
       >
-        <span className="sr-only" aria-live="polite">{battleStatus}</span>
-
-        <div
+        <img
+          src={bossImage}
+          alt="Rune Beetle"
+          draggable={false}
           className={
-            'absolute inset-x-0 top-0 z-20 grid grid-cols-2 bg-slate-950/85 text-white backdrop-blur-sm transition-all border-b-2 border-slate-900/40 ' +
-            (compactMode ? 'gap-2 p-1.5 md:gap-3 md:p-2.5' : 'gap-3 p-2.5 md:p-3')
-          }
-        >
-          <BattleBar
-            label="Bạn"
-            value={displayPlayerHpPercent}
-            detail={`${displayPlayerHp}/${snapshot.playerMaxHp} HP`}
-            icon={<Heart className="h-3.5 w-3.5 fill-current md:h-4 md:w-4" />}
-            fillClass="bg-emerald-400"
-            compact={compactMode}
-          />
-          <BattleBar
-            label="Rune Beetle"
-            value={snapshot.bossHpPercent}
-            detail={`${snapshot.bossHp}/${snapshot.bossMaxHp} HP`}
-            icon={<ShieldAlert className="h-3.5 w-3.5 md:h-4 md:w-4" />}
-            fillClass="bg-rose-500"
-            compact={compactMode}
-          />
-        </div>
-
-        <div
-          className={
-            'absolute z-20 rounded-xl border-2 border-slate-900 bg-white/95 shadow-[2px_2px_0px_#000] transition-all ' +
+            'select-none object-contain drop-shadow-2xl transition-[transform,opacity,height,width] duration-200 ' +
             (compactMode
-              ? 'inset-x-2 bottom-2 p-1.5 md:inset-x-4 md:bottom-2.5 md:p-2'
-              : 'inset-x-3 bottom-2.5 p-1.5 md:inset-x-4 md:bottom-3 md:p-2')
+              ? 'h-[75px] w-[75px] sm:h-[110px] sm:w-[110px] '
+              : 'h-[140px] w-[140px] sm:h-[190px] sm:w-[190px] ') +
+            (battleEvent === 'boss-hit'
+              ? 'scale-95 -rotate-3'
+              : battleEvent === 'boss-attack'
+                ? 'scale-105 translate-x-2'
+                : battleEvent === 'finisher'
+                  ? 'scale-105'
+                  : battleEvent === 'defeated'
+                    ? 'translate-y-2 scale-90 opacity-80'
+                    : 'animate-bounce')
+          }
+        />
+
+        {battleEvent === 'boss-hit' ? (
+          <>
+            <img
+              src={ASSETS.effects.slash}
+              alt=""
+              aria-hidden="true"
+              className={
+                'pointer-events-none absolute animate-pulse object-contain ' +
+                (compactMode ? 'h-24 w-24 md:h-44 md:w-44' : 'h-32 w-32 md:h-48 md:w-48')
+              }
+            />
+            <img
+              src={ASSETS.effects.impact}
+              alt=""
+              aria-hidden="true"
+              className={
+                'pointer-events-none absolute object-contain ' +
+                (compactMode ? 'h-16 w-16 md:h-32 md:w-32' : 'h-20 w-20 md:h-32 md:w-32')
+              }
+            />
+          </>
+        ) : null}
+
+        {battleEvent === 'finisher' ? (
+          <img
+            src={ASSETS.effects.finisher}
+            alt=""
+            aria-hidden="true"
+            className={
+              'pointer-events-none absolute animate-pulse object-contain ' +
+              (compactMode ? 'h-28 w-28 md:h-64 md:w-64' : 'h-44 w-44 md:h-72 md:w-72')
+            }
+          />
+        ) : null}
+
+        {snapshot.skillReady && battleEvent === 'idle' && !compactMode ? (
+          <div className="absolute right-3 top-3 flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-[#fdc800] px-2.5 py-1.5 font-black text-slate-900 shadow-[3px_3px_0px_#000]">
+            <img src={ASSETS.skillReady} alt="" aria-hidden="true" className="h-6 w-6" />
+            <span className="text-[10px] uppercase">Finisher Ready</span>
+          </div>
+        ) : null}
+
+        {battleEvent === 'finisher' ? (
+          <div className="absolute inset-x-0 top-1/2 z-30 -translate-y-1/2 text-center">
+            <span
+              className={
+                'inline-flex items-center gap-2 rounded-xl border-4 border-slate-900 bg-[#fdc800] font-black uppercase text-slate-900 shadow-[5px_5px_0px_#000] ' +
+                (compactMode ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-base md:text-xl')
+              }
+            >
+              <Sparkles className="h-4 w-4 md:h-6 md:w-6" /> Đòn kết liễu!
+            </span>
+          </div>
+        ) : null}
+      </section>
+
+      {/* Bottom Area: Finisher Skill Bar & Floating Command Deck - Floating on landscape ground */}
+      <div className="relative z-20 shrink-0 px-2.5 pb-2.5 sm:px-4 sm:pb-4 space-y-2">
+        {/* Finisher Skill Bar */}
+        <div
+          className={
+            'rounded-xl border-2 border-slate-900 bg-white/95 backdrop-blur-sm shadow-[2px_2px_0px_#000] transition-all ' +
+            (compactMode ? 'p-1' : 'p-1.5 sm:p-2')
           }
         >
           <div
             className={
               'flex items-center justify-between font-black uppercase text-slate-800 ' +
-              (compactMode ? 'mb-0.5 text-[9px] md:mb-1 md:text-[10px]' : 'mb-0.5 text-[10px] md:text-[11px]')
+              (compactMode ? 'mb-0.5 text-[9px]' : 'mb-0.5 text-[10px] sm:text-[11px]')
             }
           >
             <span className="flex items-center gap-1">
-              <Zap className="h-3 w-3 text-indigo-700 md:h-3.5 md:w-3.5" />
-              <span className={compactMode ? 'max-md:hidden' : ''}>Kỹ năng kết liễu</span>
-              <span className={compactMode ? 'md:hidden' : 'hidden'}>Skill</span>
+              <Zap className="h-3 w-3 text-indigo-700 sm:h-3.5 sm:w-3.5" />
+              <span>Kỹ năng kết liễu</span>
             </span>
             <span>{snapshot.skillReady ? 'Sẵn sàng!' : snapshot.skillPercent + '%'}</span>
           </div>
           <div
             className={
-              'overflow-hidden rounded-full border-2 border-slate-900 bg-white ' +
-              (compactMode ? 'h-2 md:h-2.5' : 'h-2.5 md:h-3')
+              'overflow-hidden rounded-full border-2 border-slate-900 bg-slate-100 ' +
+              (compactMode ? 'h-2' : 'h-2.5 sm:h-3')
             }
           >
             <div
@@ -293,105 +372,20 @@ export function MissionBossBattleStage({
           </div>
         </div>
 
-        <div
-          className={
-            'absolute inset-x-0 z-10 flex items-center justify-center overflow-hidden transition-all ' +
-            (compactMode
-              ? 'top-[44px] bottom-[34px] md:top-[54px] md:bottom-[44px]'
-              : 'top-[52px] bottom-[46px] md:top-[58px] md:bottom-[50px]')
-          }
-        >
-          <img
-            src={bossImage}
-            alt="Rune Beetle"
-            draggable={false}
-            className={
-              'select-none object-contain drop-shadow-2xl transition-[transform,opacity,height,width] duration-200 ' +
-              (compactMode
-                ? 'h-[86px] w-[86px] md:h-[180px] md:w-[180px] '
-                : 'h-[165px] w-[165px] md:h-[220px] md:w-[220px] ') +
-              (battleEvent === 'boss-hit'
-                ? 'scale-95 -rotate-3'
-                : battleEvent === 'boss-attack'
-                  ? 'scale-105 translate-x-2'
-                  : battleEvent === 'finisher'
-                    ? 'scale-105'
-                    : battleEvent === 'defeated'
-                      ? 'translate-y-2 scale-90 opacity-80'
-                      : 'animate-bounce')
-            }
-          />
-
-          {battleEvent === 'boss-hit' ? (
-            <>
-              <img
-                src={ASSETS.effects.slash}
-                alt=""
-                aria-hidden="true"
-                className={
-                  'pointer-events-none absolute animate-pulse object-contain ' +
-                  (compactMode ? 'h-24 w-24 md:h-52 md:w-52' : 'h-36 w-36 md:h-52 md:w-52')
-                }
-              />
-              <img
-                src={ASSETS.effects.impact}
-                alt=""
-                aria-hidden="true"
-                className={
-                  'pointer-events-none absolute object-contain ' +
-                  (compactMode ? 'h-16 w-16 md:h-36 md:w-36' : 'h-24 w-24 md:h-36 md:w-36')
-                }
-              />
-            </>
-          ) : null}
-
-          {battleEvent === 'finisher' ? (
-            <img
-              src={ASSETS.effects.finisher}
-              alt=""
-              aria-hidden="true"
-              className={
-                'pointer-events-none absolute animate-pulse object-contain ' +
-                (compactMode ? 'h-32 w-32 md:h-80 md:w-80' : 'h-52 w-52 md:h-80 md:w-80')
-              }
-            />
-          ) : null}
-
-          {snapshot.skillReady && battleEvent === 'idle' && !compactMode ? (
-            <div className="absolute right-3 top-3 flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-[#fdc800] px-2.5 py-1.5 font-black text-slate-900 shadow-[3px_3px_0px_#000] md:right-4 md:top-6 md:px-3 md:py-2">
-              <img src={ASSETS.skillReady} alt="" aria-hidden="true" className="h-7 w-7 md:h-8 md:w-8" />
-              <span className="text-[10px] uppercase md:text-xs">Finisher Ready</span>
-            </div>
-          ) : null}
-
-          {battleEvent === 'finisher' ? (
-            <div className="absolute inset-x-0 top-1/2 z-30 -translate-y-1/2 text-center">
-              <span
-                className={
-                  'inline-flex items-center gap-2 rounded-xl border-4 border-slate-900 bg-[#fdc800] font-black uppercase text-slate-900 shadow-[5px_5px_0px_#000] ' +
-                  (compactMode ? 'px-3 py-1.5 text-xs md:px-5 md:py-3 md:text-xl' : 'px-4 py-2 text-base md:px-5 md:py-3 md:text-xl')
-                }
-              >
-                <Sparkles className="h-4 w-4 md:h-6 md:w-6" /> Đòn kết liễu!
-              </span>
-            </div>
-          ) : null}
-        </div>
-      </section>
-
-      {/* Battle Command Deck */}
-      <MissionQuestionStage
-        {...questionProps}
-        question={question}
-        feedback={feedback}
-        stageType="boss"
-        bossHpPercent={snapshot.bossHpPercent}
-        showBossHud={false}
-        interactionLocked={interactionLocked}
-        compactMode={compactMode}
-        onTypingFocusChange={setTypingFocused}
-        embedded={true}
-      />
+        {/* Floating Battle Command Deck */}
+        <MissionQuestionStage
+          {...questionProps}
+          question={question}
+          feedback={feedback}
+          stageType="boss"
+          bossHpPercent={snapshot.bossHpPercent}
+          showBossHud={false}
+          interactionLocked={interactionLocked}
+          compactMode={compactMode}
+          onTypingFocusChange={setTypingFocused}
+          embedded={true}
+        />
+      </div>
     </div>
   )
 }
