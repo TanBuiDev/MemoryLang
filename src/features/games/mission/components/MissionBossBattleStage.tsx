@@ -82,9 +82,16 @@ export function MissionBossBattleStage({
 
   const playSfx = useCallback((url: string, volumeScale = 1) => {
     if (!sfxEnabled || typeof Audio === 'undefined') return
-    const audio = new Audio(url)
-    audio.volume = Math.max(0, Math.min(1, sfxVolume * volumeScale))
-    void audio.play().catch(() => undefined)
+    try {
+      const audio = new Audio(url)
+      audio.volume = Math.max(0, Math.min(1, sfxVolume * volumeScale))
+      const playPromise = audio.play()
+      if (playPromise && typeof playPromise.catch === 'function') {
+        void playPromise.catch(() => undefined)
+      }
+    } catch {
+      // Bỏ qua lỗi audio không hỗ trợ
+    }
   }, [sfxEnabled, sfxVolume])
 
 
@@ -95,16 +102,27 @@ export function MissionBossBattleStage({
       return
     }
 
-    const bgm = new Audio(ASSETS.bgm)
-    bgm.loop = true
-    bgm.volume = Math.max(0, Math.min(0.22, sfxVolume * 0.22))
-    bgmRef.current = bgm
-    void bgm.play().catch(() => undefined)
+    try {
+      const bgm = new Audio(ASSETS.bgm)
+      bgm.loop = true
+      bgm.volume = Math.max(0, Math.min(0.22, sfxVolume * 0.22))
+      bgmRef.current = bgm
+      const playPromise = bgm.play()
+      if (playPromise && typeof playPromise.catch === 'function') {
+        void playPromise.catch(() => undefined)
+      }
+    } catch {
+      // Bỏ qua lỗi BGM
+    }
 
     return () => {
-      bgm.pause()
-      bgm.currentTime = 0
-      if (bgmRef.current === bgm) bgmRef.current = null
+      try {
+        bgmRef.current?.pause()
+        if (bgmRef.current) bgmRef.current.currentTime = 0
+      } catch {
+        // Bỏ qua
+      }
+      bgmRef.current = null
     }
   }, [sfxEnabled, sfxVolume])
 
@@ -243,7 +261,7 @@ export function MissionBossBattleStage({
       <section
         aria-label="Đấu Boss"
         className={
-          'relative z-10 flex-1 flex items-center justify-center overflow-hidden transition-all min-h-[140px] sm:min-h-[200px] py-2' +
+          'relative z-10 flex-1 flex items-center justify-center overflow-hidden transition-all min-h-[170px] sm:min-h-[250px] py-2' +
           (battleEvent === 'boss-attack' ? ' animate-pulse' : '')
         }
       >
@@ -253,7 +271,7 @@ export function MissionBossBattleStage({
           draggable={false}
           onError={() => setBossFallback(true)}
           className={
-            'select-none object-contain drop-shadow-2xl transition-[transform,opacity] duration-200 h-[120px] w-[120px] sm:h-[180px] sm:w-[180px] ' +
+            'select-none object-contain drop-shadow-2xl transition-[transform,opacity] duration-200 h-[195px] w-[195px] sm:h-[255px] sm:w-[255px] md:h-[285px] md:w-[285px] ' +
             (battleEvent === 'boss-hit'
               ? 'scale-95 -rotate-3 brightness-125 saturate-150'
               : battleEvent === 'boss-attack'
@@ -272,13 +290,13 @@ export function MissionBossBattleStage({
               src={ASSETS.effects.slash}
               alt=""
               aria-hidden="true"
-              className="pointer-events-none absolute animate-pulse object-contain h-32 w-32 md:h-48 md:w-48"
+              className="pointer-events-none absolute animate-pulse object-contain h-40 w-40 sm:h-56 sm:w-56 md:h-64 md:w-64"
             />
             <img
               src={ASSETS.effects.impact}
               alt=""
               aria-hidden="true"
-              className="pointer-events-none absolute object-contain h-20 w-20 md:h-32 md:w-32"
+              className="pointer-events-none absolute object-contain h-24 w-24 sm:h-36 sm:w-36 md:h-44 md:w-44"
             />
           </>
         ) : null}
@@ -288,7 +306,7 @@ export function MissionBossBattleStage({
             src={ASSETS.effects.finisher}
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute animate-pulse object-contain h-44 w-44 md:h-72 md:w-72"
+            className="pointer-events-none absolute animate-pulse object-contain h-52 w-52 sm:h-72 sm:w-72 md:h-80 md:w-80"
           />
         ) : null}
 
