@@ -14,18 +14,6 @@ import {
 } from './MissionQuestionStage'
 
 const ASSETS = {
-  background: {
-    desktop: '/game/boss-battle/art/backgrounds/webp/forest-sunlit-enchanted-desktop.webp',
-    mobile: '/game/boss-battle/art/backgrounds/webp/forest-sunlit-enchanted-mobile.webp',
-    fallback: '/game/boss-battle/art/backgrounds/forest-arena.svg',
-  },
-  boss: {
-    idle: '/game/boss-battle/art/boss/rune-beetle-idle.svg',
-    hit: '/game/boss-battle/art/boss/rune-beetle-hit.svg',
-    attack: '/game/boss-battle/art/boss/rune-beetle-attack.svg',
-    defeated: '/game/boss-battle/art/boss/rune-beetle-defeated.svg',
-    finisher: '/game/boss-battle/art/boss/rune-beetle-finisher-hit.svg',
-  },
   effects: {
     slash: '/game/boss-battle/art/effects/slash.svg',
     impact: '/game/boss-battle/art/effects/impact.svg',
