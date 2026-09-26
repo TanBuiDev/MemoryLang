@@ -47,6 +47,7 @@ src/
     vocabulary/     # RelatedTermsSection, relationshipDisplay
   features/
     demo/           # Hardcoded demo data (3 vocab, 2 decks)
+    games/          # Vocabulary mission games & animated Boss Battle system
     quiz/           # Translation-input/multiple-choice quiz domain, legacy true/false generator, session persistence
     study/          # Study mode labels
     vocabulary/     # Zod form schema
@@ -335,13 +336,27 @@ Mission UI adheres to the Neobrutalist design with a strict no-emoji policy (usi
 - Cloudflare Pages `_redirects` only supports local proxy/rewrite status `200`. Do not add unsupported rewrite rules such as `/assets/* /404.html 404`; they can prevent the SPA fallback `/* /index.html 200` from working and make direct routes like `/app/admin` serve the static 404 page.
 - Do not ship a top-level `public/404.html` for this SPA. On Cloudflare Pages, a root `404.html` switches missing-path handling to Not Found behavior; without it, Pages treats the project as an SPA and routes deep links back to `/`.
 
-## Mission Boss Battle themes
-- Boss Battle presentation rotates deterministically by the zero-based Mission route index: `missionIndex % 4`. Reloading a Mission must therefore keep the same visual theme; never use `Math.random()` for Mission theme selection.
-- The four theme IDs are `forest-sunlit-enchanted`, `forest-peaceful-shrine`, `meadow-rpg-mountains`, and `valley-snowy-mountains`.
-- Each theme owns one desktop WebP background, one mobile WebP background, and one transparent WebP guardian boss. Desktop/mobile must always stay in the same theme.
-- The themed guardian artwork is a presentation layer only. Existing Boss Battle grading, HP, retry/mastery queue, score, Mission progress, SRS, persistence, audio, and finisher rules remain unchanged.
-- Current themed guardians use one transparent character artwork per theme; hit/attack/finisher/defeated states are expressed through CSS motion/filter effects plus the existing battle effect assets. The original Rune Beetle state SVGs and forest arena SVG remain resilient fallbacks.
-- Theme definitions and selection live in `src/features/games/mission/bossBattleThemes.ts`; `MissionGamePage` passes the zero-based `missionIndex` into `MissionBossBattleStage`.
+## Mission Game & Boss Battle Architecture
+- **Source Paths:** `src/features/games/mission/` & `src/pages/games/MissionGamePage.tsx`
+- **Shared Curriculum:**
+  - Mission stages share a unified core curriculum pipeline: question generation, answer normalization, scoring, retry progression, persistence, and SRS scheduling (`missionEngine.ts`, `generators.ts`).
+  - Stage types: `matching`, `listening_choice`, `listening_typing`, `meaning_recall`, `context_cloze`, `spelling`, and the climactic `boss` battle.
+  - Generates deterministic questions from target terms while preserving existing review and learning algorithms.
+- **Boss Battle System:**
+  - Original boss character: **Rune Beetle** (`public/game/boss-battle/art/boss/`).
+  - Animated states: `idle`, `hit`, `attack`, `finisher`, `defeated`.
+  - Deterministic state: Combat damage, animations, and finisher gauges are derived directly from persisted mission answers. Combat visual sequences temporarily lock controls to maintain state consistency without mutating grading rules.
+  - Unified Arena Console: Single integrated console scaled to `100dvh` on mobile, merging the combat stage, floating glassmorphic Finisher Bar (`bg-white/40 backdrop-blur-md`), and battle command deck directly on top of the environment.
+  - Interaction & Layout Stability: Zero-layout-shift input focus (static sizing, no sticky wrapper shrink), embedded inline grading status (check/cross icons in-input), and compact icon-only action buttons (Hint & Translation) preserving input space.
+- **Responsive WebP Background & Boss Guardian Themes:**
+  - Boss Battle presentation rotates deterministically by the zero-based Mission route index: `missionIndex % 4`. Reloading a Mission must therefore keep the same visual theme; never use `Math.random()` for Mission theme selection.
+  - The four theme IDs are `forest-sunlit-enchanted`, `forest-peaceful-shrine`, `meadow-rpg-mountains`, and `valley-snowy-mountains`.
+  - Each theme owns one desktop WebP background, one mobile WebP background, and one transparent WebP guardian boss. Desktop/mobile must always stay in the same theme.
+  - The themed guardian artwork is a presentation layer only. Existing Boss Battle grading, HP, retry/mastery queue, score, Mission progress, SRS, persistence, audio, and finisher rules remain unchanged.
+  - Current themed guardians use one transparent character artwork per theme; hit/attack/finisher/defeated states are expressed through CSS motion/filter effects plus the existing battle effect assets. The original Rune Beetle state SVGs and forest arena SVG remain resilient fallbacks.
+  - Theme definitions and selection live in `src/features/games/mission/bossBattleThemes.ts`; `MissionGamePage` passes the zero-based `missionIndex` into `MissionBossBattleStage`.
+  - Breakpoint-aware delivery: HTML `<picture>` element serves 216×384 (9:16) WebP for mobile (`max-width: 767px`) and 384×216 (16:9) WebP for desktop, with fallback to `forest-arena.svg`.
+  - Asset Manifest: Managed via `public/game/boss-battle/manifest.json` and documented in `public/game/boss-battle/README.md`.
 
 ## Git Conventions
 See `AGENTS.md` for commit workflow. Conventional commits: `feat:`, `fix:`, `docs:`, `chore:`, `test:`, `refactor:`. No auto-push. Check for secrets before committing.
