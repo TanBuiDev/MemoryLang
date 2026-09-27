@@ -1,7 +1,12 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  BOSS_BATTLE_THEMES,
+  FALLBACK_BOSS,
+  FALLBACK_BOSS_BACKGROUND,
+} from '@/features/games/mission/bossBattleThemes'
 import { authService } from '@/services/supabase/auth.service'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { LandingPage } from './LandingPage'
@@ -107,4 +112,40 @@ describe('LandingPage', () => {
     expect(signOutSpy).toHaveBeenCalledTimes(1)
     signOutSpy.mockRestore()
   })
+
+  it('switches between 4 boss battle themes and falls back gracefully when images error', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <LandingPage />
+      </MemoryRouter>,
+    )
+
+    // Check all 4 themes can be selected and display the right boss
+    for (const theme of BOSS_BATTLE_THEMES) {
+      const tabButton = screen.getByRole('button', { name: new RegExp(theme.name) })
+      await user.click(tabButton)
+
+      const bossImg = screen.getByAltText(theme.boss.name) as HTMLImageElement
+      expect(bossImg).toBeInTheDocument()
+      expect(bossImg.src).toContain(theme.boss.image)
+
+      const bgImg = screen.getByAltText(theme.name) as HTMLImageElement
+      expect(bgImg).toBeInTheDocument()
+      expect(bgImg.src).toContain(theme.background.desktop)
+    }
+
+    // Verify onError fallback for boss image
+    const currentBoss = BOSS_BATTLE_THEMES[BOSS_BATTLE_THEMES.length - 1].boss
+    const bossImg = screen.getByAltText(currentBoss.name) as HTMLImageElement
+    fireEvent.error(bossImg)
+    expect(bossImg.src).toContain(FALLBACK_BOSS.states.idle)
+
+    // Verify onError fallback for background image
+    const currentTheme = BOSS_BATTLE_THEMES[BOSS_BATTLE_THEMES.length - 1]
+    const bgImg = screen.getByAltText(currentTheme.name) as HTMLImageElement
+    fireEvent.error(bgImg)
+    expect(bgImg.src).toContain(FALLBACK_BOSS_BACKGROUND)
+  })
 })
+

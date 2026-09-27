@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import {
   BOSS_BATTLE_THEMES,
+  FALLBACK_BOSS,
   FALLBACK_BOSS_BACKGROUND,
 } from '@/features/games/mission/bossBattleThemes'
 import { useI18n } from '@/i18n'
@@ -349,6 +350,7 @@ export function LandingPage() {
               <picture className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
                 <source media="(max-width: 767px)" srcSet={currentTheme.background.mobile} />
                 <img
+                  key={`bg-${currentTheme.id}`}
                   src={currentTheme.background.desktop}
                   alt={currentTheme.name}
                   draggable={false}
@@ -389,10 +391,14 @@ export function LandingPage() {
               {/* Center Boss Stage */}
               <div className="relative z-10 flex-1 flex items-center justify-center py-4 overflow-hidden min-h-[170px]">
                 <img
+                  key={`boss-${currentTheme.id}`}
                   src={currentTheme.boss.image}
                   alt={currentTheme.boss.name}
                   draggable={false}
                   className="h-[185px] w-[185px] sm:h-[220px] sm:w-[220px] object-contain drop-shadow-2xl animate-bounce select-none"
+                  onError={(event) => {
+                    event.currentTarget.src = FALLBACK_BOSS.states.idle
+                  }}
                 />
                 <div className="absolute right-3 top-3 flex items-center gap-1.5 rounded-xl border-2 border-slate-900 bg-[#fdc800] px-2.5 py-1 font-black text-slate-900 shadow-[3px_3px_0px_#000] text-[10px] uppercase">
                   <Sparkles size={13} /> Finisher Ready
