@@ -2,20 +2,44 @@ name: Supabase Keep-Alive
 
 on:
   schedule:
-    # 12:00 UTC every Thursday (mỗi 5-6 ngày, tránh 7 ngày inactivity)
-    - cron: '0 12 * * 4'
+    # Ba truy vấn đọc nhẹ mỗi ngày, tránh phút 00 vì GitHub Actions dễ quá tải đầu giờ.
+    - cron: '23 1,9,17 * * *'
   workflow_dispatch: {}
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase REST API
+      - name: Query Supabase database
+        shell: bash
         run: |
-          curl -sS -o /dev/null -w "%{http_code}" \
-            "${SUPABASE_URL}/rest/v1/" \
+          set -euo pipefail
+
+          : "${SUPABASE_URL:?Missing SUPABASE_URL repository secret}"
+          : "${SUPABASE_ANON_KEY:?Missing SUPABASE_ANON_KEY repository secret}"
+
+          response_file="$(mktemp)"
+          trap 'rm -f "${response_file}"' EXIT
+
+          http_code="$(curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --retry 3 \
+            --retry-all-errors \
+            --connect-timeout 10 \
+            --max-time 30 \
+            --output "${response_file}" \
+            --write-out "%{http_code}" \
+            "${SUPABASE_URL%/}/rest/v1/app_settings?select=key&key=eq.maintenance_mode&limit=1" \
             -H "apikey: ${SUPABASE_ANON_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}"
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")"
+
+          test "${http_code}" = "200"
+          jq -e 'type == "array" and any(.[]; .key == "maintenance_mode")' \
+            "${response_file}" > /dev/null
+
+          echo "Supabase database query succeeded with HTTP ${http_code}."
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
