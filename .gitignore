@@ -55,3 +55,22 @@ scripts/*.sql
 scripts/*.json
 scripts/
 scratch/
+
+# Local test & debug scripts
+test-pg/
+test-*.js
+test-*.cjs
+test-*.mjs
+check-char.js
+debug-*.js
+debug-*.cjs
+debug-*.mjs
+test_sql.sql
+
+# Package manager stores & local caches
+.pnpm-store/
+.codex-remote-attachments/
+
+# Backups & scratch dumps
+docs/backup-*.json
+
