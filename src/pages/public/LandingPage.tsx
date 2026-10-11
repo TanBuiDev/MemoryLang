@@ -111,7 +111,7 @@ export function LandingPage() {
           <button onClick={(e) => scrollToSection('mission-game', e)} className="rounded px-3 py-1.5 hover:bg-rose-100 transition-colors text-slate-900 font-black cursor-pointer">Đấu Boss RPG</button>
           <button onClick={(e) => scrollToSection('ai-tutor', e)} className="rounded px-3 py-1.5 hover:bg-amber-100 transition-colors text-slate-900 font-black cursor-pointer">Gia sư AI</button>
           <button onClick={(e) => scrollToSection('pillars', e)} className="rounded px-3 py-1.5 hover:bg-amber-100 transition-colors text-slate-900 font-black cursor-pointer">Hệ sinh thái</button>
-          <Link onClick={handleButtonClick} className="rounded px-3 py-1.5 hover:bg-purple-100 text-purple-700 transition-colors" to="/app/upgrade">Gói Pro 👑</Link>
+          <Link onClick={handleButtonClick} className="rounded px-3 py-1.5 hover:bg-purple-100 text-purple-700 transition-colors" to="/app/upgrade">Gói Pro</Link>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
@@ -534,7 +534,7 @@ export function LandingPage() {
         <div className="neo-card p-6 sm:p-10 border-4 border-slate-900 shadow-[8px_8px_0px_0px_#000] bg-[#fdc800] rounded-2xl relative overflow-hidden">
           <div className="max-w-2xl space-y-4 relative z-10">
             <Badge className="bg-slate-900 text-white font-black px-3 py-1 border-0">
-              👑 Nâng cấp Gói Pro
+              Nâng cấp Gói Pro
             </Badge>
             <h2 className="text-3xl sm:text-5xl font-black text-slate-900 leading-tight">
               Học không giới hạn cùng MemoryLang Pro
